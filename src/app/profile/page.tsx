@@ -1,0 +1,218 @@
+"use client";
+
+import { useSession } from "@/hooks/useSession";
+import { ProfileAvatar } from "@/components/profile-avatar";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import {
+  User,
+  Settings2,
+  Key,
+  Mail,
+  Shield,
+  Sparkles,
+  Crown,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+
+export default function ProfilePage() {
+  const { data: session, loading: isLoading } = useSession();
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-10">
+        <div className="animate-pulse space-y-6">
+          <div className="h-32 w-32 rounded-full bg-slate-700/40 shadow-[0_0_40px_rgba(6,182,212,0.15)]" />
+          <div className="h-8 w-72 rounded-lg bg-slate-700/40" />
+          <div className="h-5 w-96 rounded-lg bg-slate-700/40" />
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="h-40 rounded-2xl bg-slate-700/40" />
+            <div className="h-40 rounded-2xl bg-slate-700/40" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session?.user) {
+    return (
+      <div className="mx-auto max-w-4xl px-4 py-10">
+        <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/60 p-8 shadow-[0_20px_70px_rgba(6,182,212,0.12)]">
+          <h1 className="mb-2 text-2xl font-semibold">You are not signed in</h1>
+          <p className="mb-6 text-slate-400">Please log in to view your profile.</p>
+          <div className="flex gap-2">
+            <Button
+              asChild
+              className="rounded-full bg-linear-to-r from-emerald-500 to-cyan-500 text-black hover:from-emerald-400 hover:to-cyan-400"
+            >
+              <Link href="/login">Login</Link>
+            </Button>
+            <Button variant="secondary" asChild>
+              <Link href="/signup">Sign up</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const user = session.user;
+  const isVerified = user.emailVerified ?? false;
+  const membershipTier = ((user as unknown) as { membershipTier?: string }).membershipTier ?? "free";
+
+  return (
+    <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="mb-8 flex flex-col gap-2">
+        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs uppercase tracking-wide text-cyan-200">
+          Profile
+        </div>
+        <h1 className="text-3xl font-semibold text-slate-50">Your Account</h1>
+        <p className="text-slate-400">Manage your identity, credentials, and preferences.</p>
+      </div>
+
+      <div className="space-y-6">
+        {/* Profile Header Card */}
+        <div className="relative overflow-hidden rounded-2xl border border-cyan-400/20 bg-slate-950/60 p-6 shadow-[0_20px_70px_rgba(6,182,212,0.12)]">
+          <div className="absolute right-4 top-4">
+            {membershipTier === "premium" && (
+              <div className="flex items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                <Crown className="h-3.5 w-3.5" />
+                Premium
+              </div>
+            )}
+            {membershipTier === "free" && (
+              <div className="flex items-center gap-1.5 rounded-full border border-slate-400/30 bg-slate-500/10 px-3 py-1 text-xs font-medium text-slate-300">
+                Free
+              </div>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-6 md:flex-row md:items-center">
+            <div className="relative">
+              <ProfileAvatar user={user} size="lg" />
+              <div className="absolute -bottom-1 -right-1 rounded-full bg-slate-950 p-1">
+                {isVerified ? (
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-slate-500" />
+                )}
+              </div>
+            </div>
+
+            <div className="flex-1">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-50">
+                {user.name ?? user.email}
+              </h2>
+              {user.email && (
+                <div className="mt-1 flex items-center gap-2 text-slate-400">
+                  <Mail className="h-4 w-4" />
+                  <span>{user.email}</span>
+                </div>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                {isVerified ? (
+                  <span className="flex items-center gap-1.5 text-sm text-emerald-300">
+                    <Shield className="h-4 w-4" />
+                    Email verified
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5 text-sm text-slate-500">
+                    <Shield className="h-4 w-4" />
+                    Email not verified
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Account Details Grid */}
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/60 p-6 shadow-[0_20px_70px_rgba(6,182,212,0.12)]">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="rounded-lg bg-emerald-500/15 p-2">
+                <User className="h-5 w-5 text-emerald-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-50">Identity</h3>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">User ID</span>
+                <span className="font-mono text-xs text-slate-300">{user.id.slice(0, 12)}...</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Display Name</span>
+                <span className="text-slate-300">{user.name ?? "Not set"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Email Status</span>
+                <span className={isVerified ? "text-emerald-300" : "text-slate-500"}>
+                  {isVerified ? "Verified" : "Pending"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-cyan-400/20 bg-slate-950/60 p-6 shadow-[0_20px_70px_rgba(6,182,212,0.12)]">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="rounded-lg bg-cyan-500/15 p-2">
+                <Crown className="h-5 w-5 text-cyan-300" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-50">Membership</h3>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-400">Current Plan</span>
+                <span className="capitalize text-slate-300">{membershipTier}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Features</span>
+                <span className="text-slate-300">{membershipTier === "premium" ? "Unlimited" : "Standard"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-400">Support</span>
+                <span className="text-slate-300">{membershipTier === "premium" ? "Priority" : "Community"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Button
+            variant="secondary"
+            asChild
+            className="flex h-auto items-center justify-start gap-3 rounded-xl border-cyan-400/30 bg-slate-950/60 p-4 hover:border-cyan-400/50 hover:bg-slate-900/70"
+          >
+            <Link href="/settings">
+              <div className="rounded-lg bg-cyan-500/15 p-2">
+                <Settings2 className="h-5 w-5 text-cyan-300" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-semibold text-slate-50">Edit Profile</span>
+                <span className="text-xs text-slate-400">Update name and avatar</span>
+              </div>
+            </Link>
+          </Button>
+
+          <Button
+            variant="secondary"
+            asChild
+            className="flex h-auto items-center justify-start gap-3 rounded-xl border-cyan-400/30 bg-slate-950/60 p-4 hover:border-cyan-400/50 hover:bg-slate-900/70"
+          >
+            <Link href="/api-tokens">
+              <div className="rounded-lg bg-emerald-500/15 p-2">
+                <Key className="h-5 w-5 text-emerald-300" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-semibold text-slate-50">API Tokens</span>
+                <span className="text-xs text-slate-400">Manage access keys</span>
+              </div>
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}

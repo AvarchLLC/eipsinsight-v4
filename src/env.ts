@@ -6,10 +6,10 @@ export const env = createEnv({
     DATABASE_URL: z.string().url(),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url(),
-    GOOGLE_CLIENT_ID: z.string().min(1),
-    GOOGLE_CLIENT_SECRET: z.string().min(1),
     GITHUB_CLIENT_ID: z.string().min(1),
     GITHUB_CLIENT_SECRET: z.string().min(1),
+    GOOGLE_CLIENT_ID: z.string().min(1),
+    GOOGLE_CLIENT_SECRET: z.string().min(1),
     GITHUB_ACCESS_TOKEN: z.string().min(1),
     EMAIL_SERVICE: z.string().min(1),
     EMAIL_HOST: z.string().min(1),
@@ -17,6 +17,8 @@ export const env = createEnv({
     EMAIL_USERNAME: z.string().min(1),
     EMAIL_PASSWORD: z.string().min(1),
     EMAIL_FROM: z.string().email(),
+    CLOUDINARY_URL: z.string().url(),
+    CLOUDINARY_UPLOAD_PRESET: z.string().min(1).optional(),
   },
 
   /**
