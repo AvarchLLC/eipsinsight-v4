@@ -138,6 +138,19 @@ export default function EIPsInsightHero() {
           
         </div>
       </div>
+
+      {/* Themed Section Separator */}
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
+        <div className="relative flex items-center justify-center py-2">
+          {/* Center glow effect */}
+          
+          {/* Decorative line with gradient - Positioned below glow */}
+          <div className="absolute inset-x-0 flex items-center translate-y-2">
+            <div className="w-full border-t border-cyan-400/20" />
+          </div>
+        </div>
+      </div>
+
       <ProtocolBento />
       <ProposalStructure />
       <OurTools />

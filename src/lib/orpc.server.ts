@@ -4,7 +4,7 @@ import { createRouterClient } from '@orpc/server'
 import { headers } from 'next/headers'
 import { router } from '@/server/orpc/router'
 
-;(globalThis as any).$client = createRouterClient(router, {
+;(globalThis as { $client?: RouterClient<typeof router> }).$client = createRouterClient(router, {
   context: async () => ({
     headers: Object.fromEntries((await headers()).entries()),
   }),

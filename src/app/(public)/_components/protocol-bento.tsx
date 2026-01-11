@@ -1,81 +1,204 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { TrendingUp, ArrowRight, Clock, Activity, Info, Download } from "lucide-react";
+import { toast } from "sonner";
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { PieChart, Pie, Cell, Label, AreaChart, Area, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from "@/components/ui/chart";
+import { client } from "@/lib/orpc";
+import { toast as sonnerToast } from "sonner";
 
-// Mock data - replace with actual data later
-const activeProposals = {
-  total: 245,
-  draft: 156,
-  review: 89,
-  lastCall: 12, // CRITICAL: Last Call is governance-critical
+// Types for API responses
+interface ActiveProposals {
+  total: number;
+  draft: number;
+  review: number;
+  lastCall: number;
+}
+
+interface LifecycleStage {
+  stage: string;
+  count: number;
+  color: string;
+  opacity: string;
+}
+
+interface StandardsMix {
+  type: string;
+  count: number;
+  percentage: number;
+  color: string;
+  category: string;
+  repository?: string;
+}
+
+interface RecentChange {
+  eip: string;
+  eip_type: string;
+  title: string;
+  from: string;
+  to: string;
+  days: number;
+  statusColor: string;
+  repository: string;
+  changed_at: Date;
+}
+
+interface DecisionVelocity {
+  current: number;
+  previous: number;
+  change: number;
+}
+
+interface PRData {
+  number: string;
+  title: string;
+  author: string;
+  status: string;
+  days: number;
+}
+
+interface LastCallItem {
+  eip: string;
+  eip_type: string;
+  title: string;
+  deadline: string;
+  daysRemaining: number;
+  category: string | null;
+  repository: string;
+}
+
+// Default/fallback data
+const defaultActiveProposals: ActiveProposals = {
+  total: 0,
+  draft: 0,
+  review: 0,
+  lastCall: 0,
 };
 
-const lifecycleData = [
-  { stage: "Draft", count: 156, color: "cyan", opacity: "full" },
-  { stage: "Review", count: 89, color: "blue", opacity: "full" },
-  { stage: "Last Call", count: 12, color: "amber", opacity: "full" }, // NEW: Governance-critical
-  { stage: "Final", count: 412, color: "emerald", opacity: "full" },
-  { stage: "Stagnant", count: 67, color: "slate", opacity: "dim" }, // NEW: Shows friction
-  { stage: "Withdrawn", count: 134, color: "slate", opacity: "dim" },
-  { stage: "Living", count: 3, color: "violet", opacity: "full" }, // NEW: Special status (EIP-1, etc.)
-];
+// Chart configuration for Active Proposals
+const activeProposalsChartConfig = {
+  proposals: {
+    label: "Proposals",
+  },
+  draft: {
+    label: "Draft",
+    color: "#22d3ee",
+  },
+  review: {
+    label: "Review",
+    color: "#60a5fa",
+  },
+  lastCall: {
+    label: "Last Call",
+    color: "#fbbf24",
+  },
+} satisfies ChartConfig;
 
-const standardsMix = [
-  { type: "Core", count: 45, percentage: 16, color: "emerald", category: "Standards Track" },
-  { type: "ERC", count: 120, percentage: 42, color: "cyan", category: "Standards Track" },
-  { type: "Networking", count: 30, percentage: 11, color: "blue", category: "Standards Track" },
-  { type: "Interface", count: 25, percentage: 9, color: "violet", category: "Standards Track" },
-  { type: "Meta", count: 28, percentage: 10, color: "pink", category: "Meta" }, // NEW: Meta type
-  { type: "Informational", count: 30, percentage: 11, color: "slate", category: "Informational" },
-  { type: "RIP", count: 8, percentage: 3, color: "orange", category: "RIP" }, // NEW: RIPs
-];
-
-const recentChanges = [
-  { eip: "7702", from: "Review", to: "Final", days: 2, statusColor: "emerald" },
-  { eip: "7691", from: "Draft", to: "Review", days: 3, statusColor: "blue" },
-  { eip: "7623", from: "Last Call", to: "Final", days: 1, statusColor: "emerald" },
-];
-
-const decisionVelocity = {
-  current: 186,
-  previous: 214,
-  change: -13,
-};
-
-const momentumData = [45, 52, 48, 61, 68, 72, 65, 78, 82, 75, 88, 91];
-
-const prsData = [
-  { number: "8234", title: "Add EIP-7702: Set EOA account code", author: "lightclient", status: "merged", days: 1 },
-  { number: "8227", title: "Update EIP-7623: Increase calldata cost", author: "vbuterin", status: "open", days: 2 },
-  { number: "8219", title: "Add EIP-7691: Execution layer withdrawals", author: "adietrichs", status: "merged", days: 3 },
-];
-
-const lastCallWatchlist = [
-  { eip: "7702", title: "Set EOA account code", deadline: "2026-01-18", daysRemaining: 8 },
-  { eip: "7628", "title": "ERC-721 metadata extension", deadline: "2026-01-22", daysRemaining: 12 },
-  { eip: "7691", title: "Execution layer triggerable withdrawals", deadline: "2026-01-15", daysRemaining: 5 },
-  { eip: "7623", title: "Increase calldata cost", deadline: "2026-01-25", daysRemaining: 15 },
-];
-
-const stagnationData = {
-  count: 67,
-  medianInactivity: 8.5, // months
-  topCategories: [
-    { type: "ERC", count: 28 },
-    { type: "Core", count: 15 },
-    { type: "Meta", count: 12 },
-  ],
-};
+// Chart configuration for Standards Composition
+const standardsChartConfig = {
+  total: { label: "Total EIPs" },
+  core: { label: "Core", color: "#10b981" },
+  erc: { label: "ERC", color: "#22d3ee" },
+  networking: { label: "Networking", color: "#60a5fa" },
+  interface: { label: "Interface", color: "#a78bfa" },
+  meta: { label: "Meta", color: "#f472b6" },
+  informational: { label: "Informational", color: "#94a3b8" },
+  other: { label: "Other", color: "#fb923c" },
+} satisfies ChartConfig;
 
 export default function ProtocolBento() {
+  const { toast } = useToast();
+  const [activeProposals, setActiveProposals] = useState<ActiveProposals>(defaultActiveProposals);
+  const [lifecycleData, setLifecycleData] = useState<LifecycleStage[]>([]);
+  const [standardsMix, setStandardsMix] = useState<StandardsMix[]>([]);
+  const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
+  const [decisionVelocity, setDecisionVelocity] = useState<DecisionVelocity>({ current: 0, previous: 0, change: 0 });
+  const [momentumData, setMomentumData] = useState<number[]>([]);
+  const [prsData, setPrsData] = useState<PRData[]>([]);
+  const [lastCallWatchlist, setLastCallWatchlist] = useState<LastCallItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedStandards, setSelectedStandards] = useState<Set<string>>(new Set(['Core', 'ERC', 'Networking', 'Interface', 'Meta', 'Informational', 'RIP']));
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch all data in parallel
+        const [
+          activeProposalsData,
+          lifecycleDataRes,
+          standardsMixData,
+          recentChangesData,
+          decisionVelocityData,
+          momentumDataRes,
+          prsDataRes,
+          lastCallData
+        ] = await Promise.all([
+          client.analytics.getActiveProposals({}),
+          client.analytics.getLifecycleData({}),
+          client.analytics.getStandardsComposition({}),
+          client.analytics.getRecentChanges({ limit: 20 }),
+          client.analytics.getDecisionVelocity({}),
+          client.analytics.getMomentumData({ months: 12 }),
+          client.analytics.getRecentPRs({ limit: 3 }),
+          client.analytics.getLastCallWatchlist({})
+        ]);
+
+        setActiveProposals(activeProposalsData);
+        setLifecycleData(lifecycleDataRes);
+        setStandardsMix(standardsMixData);
+        setRecentChanges(recentChangesData);
+        setDecisionVelocity(decisionVelocityData);
+        setMomentumData(momentumDataRes);
+        setPrsData(prsDataRes);
+        setLastCallWatchlist(lastCallData);
+      } catch (error) {
+        console.error("Failed to fetch analytics data:", error);
+        // Keep default/empty data on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const stagnationData = {
+    count: lifecycleData.find(d => d.stage === "Stagnant")?.count || 0,
+    medianInactivity: 8.5,
+    topCategories: [
+      { type: "ERC", count: 28 },
+      { type: "Core", count: 15 },
+      { type: "Meta", count: 12 },
+    ],
+  };
+
+  if (loading) {
+    return (
+      <section className="relative overflow-hidden bg-background py-16">
+        <div className="container relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-20">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" />
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <TooltipProvider>
       <section className="relative overflow-hidden bg-background py-16">
@@ -139,104 +262,134 @@ export default function ProtocolBento() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                {/* Live indicator */}
-                <div className="flex items-center gap-1.5">
-                  <motion.div
-                    animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
-                    transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
-                    className="h-2 w-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 motion-reduce:animate-none motion-reduce:opacity-100"
-                  />
-                  <span className="text-xs font-medium text-emerald-300">LIVE</span>
+                {/* Live indicator and Download */}
+                <div className="flex items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button 
+                        className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 transition-all hover:border-cyan-400/40 hover:bg-cyan-500/20"
+                        onClick={async () => {
+                          try {
+                            const data = await client.analytics.getActiveProposalsDetailed({});
+                            const csvData = data.map((d, index) => {
+                              let prefix = 'EIP';
+                              if (d.category === 'ERC') {
+                                prefix = 'ERC';
+                              } else if (d.repository?.includes('RIPs')) {
+                                prefix = 'RIP';
+                              }
+                              
+                              let repoUrl = '';
+                              if (prefix === 'ERC') {
+                                repoUrl = `https://github.com/ethereum/ERCs/blob/master/ERCS/erc-${d.eip_number}.md`;
+                              } else if (prefix === 'RIP') {
+                                repoUrl = `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${d.eip_number}.md`;
+                              } else {
+                                repoUrl = `https://github.com/ethereum/EIPs/blob/master/EIPS/eip-${d.eip_number}.md`;
+                              }
+                              
+                              const date = 'N/A';
+                              
+                              return `${index + 1},${prefix}-${d.eip_number},"${d.title}",${d.status},${date},${d.repository || 'N/A'},${repoUrl}`;
+                            });
+                            const csv = "sr_number,eip_erc_rip_number,title,status,date,repository,link\n" + csvData.join("\n");
+                            const blob = new Blob([csv], { type: "text/csv" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = "active-proposals-detailed.csv";
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            toast.success("CSV Downloaded", {
+                              description: `${data.length} active proposals exported successfully`,
+                            });
+                          } catch (error) {
+                            console.error('Failed to download CSV:', error);
+                            toast.error("Download Failed", {
+                              description: "Could not export active proposals data",
+                            });
+                          }
+                        }}
+                      >
+                        <Download className="h-3.5 w-3.5 text-cyan-300" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p className="text-xs">Download active proposals with full metadata</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  <div className="flex items-center gap-1.5">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                      transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
+                      className="h-2 w-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 motion-reduce:animate-none motion-reduce:opacity-100"
+                    />
+                    <span className="text-xs font-medium text-emerald-300">LIVE</span>
+                  </div>
                 </div>
               </div>
 
-              {/* Content - LEFT: Ring Chart, RIGHT: Number Breakdown */}
+              {/* Content - LEFT: Recharts Donut, RIGHT: Number Breakdown */}
               <div className="flex flex-1 items-center gap-8">
-                {/* Left: Ring chart */}
+                {/* Left: Recharts Donut Chart */}
                 <div className="flex flex-shrink-0 items-center justify-center">
-                  <div className="relative">
-                    <svg className="h-36 w-36 lg:h-40 lg:w-40" viewBox="0 0 100 100">
-                      {/* Background ring */}
-                      <circle
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        className="text-slate-800"
+                  <ChartContainer
+                    config={activeProposalsChartConfig}
+                    className="h-36 w-36 lg:h-40 lg:w-40"
+                  >
+                    <PieChart>
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
                       />
-                      
-                      {/* Draft segment */}
-                      <motion.circle
-                        initial={{ strokeDashoffset: 251.2 }}
-                        whileInView={{ strokeDashoffset: 251.2 - (251.2 * activeProposals.draft) / activeProposals.total }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1, delay: 0.2, ease: "easeOut" }}
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        strokeDasharray="251.2"
-                        strokeLinecap="round"
-                        className="text-cyan-400"
-                        style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
-                      />
-                      
-                      {/* Review segment */}
-                      <motion.circle
-                        initial={{ strokeDashoffset: 251.2 }}
-                        whileInView={{ strokeDashoffset: 251.2 - (251.2 * activeProposals.review) / activeProposals.total }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1, delay: 0.4, ease: "easeOut" }}
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        strokeDasharray="251.2"
-                        strokeDashoffset={(251.2 * activeProposals.draft) / activeProposals.total}
-                        strokeLinecap="round"
-                        className="text-blue-400"
-                        style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
-                      />
-                      
-                      {/* Last Call segment */}
-                      <motion.circle
-                        initial={{ strokeDashoffset: 251.2 }}
-                        whileInView={{ strokeDashoffset: 251.2 - (251.2 * activeProposals.lastCall) / activeProposals.total }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 1, delay: 0.6, ease: "easeOut" }}
-                        cx="50"
-                        cy="50"
-                        r="40"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="8"
-                        strokeDasharray="251.2"
-                        strokeDashoffset={(251.2 * (activeProposals.draft + activeProposals.review)) / activeProposals.total}
-                        strokeLinecap="round"
-                        className="text-amber-400"
-                        style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
-                      />
-                    </svg>
-
-                    {/* Center number */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <motion.span
-                        initial={{ scale: 0, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        transition={{ duration: 0.6, delay: 0.5 }}
-                        className="text-4xl font-bold text-cyan-300 lg:text-5xl"
+                      <Pie
+                        data={[
+                          { status: 'draft', value: activeProposals.draft, fill: activeProposalsChartConfig.draft.color },
+                          { status: 'review', value: activeProposals.review, fill: activeProposalsChartConfig.review.color },
+                          { status: 'lastCall', value: activeProposals.lastCall, fill: activeProposalsChartConfig.lastCall.color }
+                        ]}
+                        dataKey="value"
+                        nameKey="status"
+                        innerRadius="65%"
+                        outerRadius="88%"
+                        strokeWidth={2}
+                        paddingAngle={2}
+                        animationBegin={200}
+                        animationDuration={1000}
+                        animationEasing="ease-out"
                       >
-                        {activeProposals.total}
-                      </motion.span>
-                      <span className="mt-1 text-[10px] text-cyan-400/60">in motion</span>
-                    </div>
-                  </div>
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              return (
+                                <text
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  textAnchor="middle"
+                                  dominantBaseline="middle"
+                                >
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={viewBox.cy}
+                                    className="fill-cyan-300 text-3xl lg:text-4xl font-bold drop-shadow-[0_0_12px_rgba(34,211,238,0.5)]"
+                                  >
+                                    {activeProposals.total}
+                                  </tspan>
+                                  <tspan
+                                    x={viewBox.cx}
+                                    y={(viewBox.cy || 0) + 20}
+                                    className="fill-cyan-400/60 text-[9px] font-medium"
+                                  >
+                                    in motion
+                                  </tspan>
+                                </text>
+                              )
+                            }
+                          }}
+                        />
+                      </Pie>
+                    </PieChart>
+                  </ChartContainer>
                 </div>
 
                 {/* Right: Numbers breakdown */}
@@ -316,15 +469,26 @@ export default function ProtocolBento() {
                   <TooltipTrigger asChild>
                     <button 
                       className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-500/10 transition-all hover:border-emerald-400/40 hover:bg-emerald-500/20"
-                      onClick={() => {
-                        const csv = "status,count\n" + lifecycleData.map(d => `${d.stage},${d.count}`).join("\n");
-                        const blob = new Blob([csv], { type: "text/csv" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = "eip-lifecycle.csv";
-                        a.click();
-                        URL.revokeObjectURL(url);
+                      onClick={async () => {
+                        try {
+                          const data = await client.analytics.getLifecycleDetailed({});
+                          const csv = "eip_number,type,title,status,category,repository,created_at\n" + data.map(d => `${d.eip_number},${d.type},"${d.title}",${d.status},${d.category || 'N/A'},${d.repository},${d.created_at}`).join("\n");
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "eip-lifecycle-detailed.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("CSV Downloaded", {
+                            description: `${data.length} lifecycle records exported successfully`,
+                          });
+                        } catch (error) {
+                          console.error('Failed to download CSV:', error);
+                          toast.error("Download Failed", {
+                            description: "Could not export lifecycle data",
+                          });
+                        }
                       }}
                     >
                       <Download className="h-3.5 w-3.5 text-emerald-300" />
@@ -431,7 +595,7 @@ export default function ProtocolBento() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs text-xs">
-                        Distribution of EIPs by proposal type and category.
+                        Distribution of EIPs by proposal type and category. Click legend items to filter.
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -440,148 +604,293 @@ export default function ProtocolBento() {
                   <TooltipTrigger asChild>
                     <button 
                       className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/10 transition-all hover:border-blue-400/40 hover:bg-blue-500/20"
-                      onClick={() => {
-                        const csv = "type,category,count,percentage\n" + standardsMix.map(d => `${d.type},${d.category},${d.count},${d.percentage}`).join("\n");
-                        const blob = new Blob([csv], { type: "text/csv" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = "eip-standards-composition.csv";
-                        a.click();
-                        URL.revokeObjectURL(url);
+                      onClick={async () => {
+                        try {
+                          const data = await client.analytics.getStandardsCompositionDetailed({});
+                          
+                          // Filter data based on selected standards
+                          const filteredData = data.filter(d => {
+                            // Find matching standard to check repository
+                            const matchingStandard = standardsMix.find(s => 
+                              s.type === d.type || s.category === d.type
+                            );
+                            
+                            // Check if it's a RIP based on repository field from standardsMix
+                            const isRIP = matchingStandard?.repository === 'ethereum/RIPs';
+                            
+                            if (isRIP) {
+                              return selectedStandards.has('RIP');
+                            }
+                            
+                            // Determine display value same way as chart for non-RIPs
+                            const displayValue = matchingStandard?.type === 'Standards Track' 
+                              ? (matchingStandard.category || matchingStandard.type) 
+                              : d.type;
+                            return selectedStandards.has(displayValue);
+                          });
+                          
+                          const csvData = filteredData.map((d, index) => {
+                            let prefix = 'EIP';
+                            let repository = 'ethereum/EIPs';
+                            
+                            // Find matching standard to check repository
+                            const matchingStandard = standardsMix.find(s => 
+                              s.type === d.type || s.category === d.type
+                            );
+                            
+                            // Check repository field for RIPs (same as chart)
+                            if (matchingStandard?.repository === 'ethereum/RIPs') {
+                              prefix = 'RIP';
+                              repository = 'ethereum/RIPs';
+                            }
+                            // Check type field for ERC
+                            else if (d.type === 'ERC') {
+                              prefix = 'ERC';
+                              repository = 'ethereum/ERCs';
+                            }
+                            
+                            let repoUrl = '';
+                            if (prefix === 'RIP') {
+                              repoUrl = `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${d.eip_number}.md`;
+                            } else if (prefix === 'ERC') {
+                              repoUrl = `https://github.com/ethereum/ERCs/blob/master/ERCS/erc-${d.eip_number}.md`;
+                            } else {
+                              repoUrl = `https://github.com/ethereum/EIPs/blob/master/EIPS/eip-${d.eip_number}.md`;
+                            }
+                            
+                            // Find category from standardsMix
+                            const matchingStandardForCategory = standardsMix.find(s => 
+                              s.type === d.type || s.category === d.type
+                            );
+                            const category = matchingStandardForCategory?.category || '';
+                            
+                            return `${index + 1},${prefix}-${d.eip_number},"${d.title}",${d.type},${category},${d.status},${repository},${repoUrl}`;
+                          });
+                          const csv = "sr_number,eip_erc_rip_number,title,type,category,status,repository,link\n" + csvData.join("\n");
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "standards-composition-detailed.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("CSV Downloaded", {
+                            description: `${filteredData.length} standards records exported successfully`,
+                          });
+                        } catch (error) {
+                          console.error('Failed to download CSV:', error);
+                          toast.error("Download Failed", {
+                            description: "Could not export standards composition data",
+                          });
+                        }
                       }}
                     >
                       <Download className="h-3.5 w-3.5 text-blue-300" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
-                    <p className="text-xs">Download proposal distribution by type and category</p>
+                    <p className="text-xs">Download filtered standards with type & category</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
               
-              {/* Content - Donut Chart */}
-              <div className="relative flex flex-1 items-center justify-center">
-                {/* EIPsInsight Watermark */}
-                <div className="absolute bottom-4 right-4 text-[10px] font-medium text-slate-600/40">
-                  EIPsInsight
-                </div>
-                
-                <div className="relative">
-                  {/* Donut Chart SVG */}
-                  <svg className="h-80 w-80 lg:h-96 lg:w-96" viewBox="0 0 100 100">
-                    {/* Background ring */}
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="35"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="12"
-                      className="text-slate-800/50"
-                    />
-                    
-                    {(() => {
-                      const circumference = 2 * Math.PI * 35;
-                      
-                      return standardsMix.map((standard, index) => {
-                        const cumulativeBeforeThis = standardsMix
-                          .slice(0, index)
-                          .reduce((sum, s) => sum + s.percentage, 0);
-                        const offset = circumference - cumulativeBeforeThis * circumference / 100;
-                        
-                        const colorMap: Record<string, string> = {
-                          emerald: "#10b981",
-                          cyan: "#22d3ee",
-                          blue: "#60a5fa",
-                          violet: "#a78bfa",
-                          slate: "#94a3b8",
-                          pink: "#f472b6",
-                          orange: "#fb923c",
-                        };
-                        
-                        return (
-                          <Tooltip key={standard.type}>
-                            <TooltipTrigger asChild>
-                              <motion.circle
-                                initial={{ strokeDashoffset: circumference }}
-                                whileInView={{ 
-                                  strokeDashoffset: circumference - (standard.percentage * circumference / 100)
-                                }}
-                                viewport={{ once: true }}
-                                transition={{ duration: 1, delay: index * 0.15, ease: "easeOut" }}
-                                cx="50"
-                                cy="50"
-                                r="35"
-                                fill="none"
-                                stroke={colorMap[standard.color as keyof typeof colorMap]}
-                                strokeWidth="12"
-                                strokeDasharray={circumference}
-                                strokeDashoffset={offset}
-                                strokeLinecap="butt"
-                                className="cursor-pointer transition-all hover:brightness-125"
-                                style={{ transform: "rotate(-90deg)", transformOrigin: "50% 50%" }}
-                              />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">
-                                <span className="font-bold">{standard.type}</span>: {standard.count} ({standard.percentage}%)
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
-                        );
-                      });
-                    })()}
-                  </svg>
+              {/* Content - Donut Chart & Legend */}
+              <div className="relative flex flex-1 flex-col lg:flex-row items-center justify-center gap-6">
+                {/* Donut Chart */}
+                <div className="relative flex items-center justify-center">
+                  {/* EIPsInsight Watermark */}
+                  <div className="absolute bottom-4 right-4 text-[10px] font-medium text-slate-600/40">
+                    EIPsInsight
+                  </div>
                   
-                  {/* Center count */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-4xl font-bold text-white">
-                      {standardsMix.reduce((sum, s) => sum + s.count, 0)}
-                    </span>
-                    <span className="text-xs text-slate-400">Total EIPs</span>
-                  </div>
+                  <ChartContainer
+                    config={standardsChartConfig}
+                    className="h-64 w-64 lg:h-80 lg:w-80"
+                  >
+                    <PieChart>
+                      <ChartTooltip
+                        cursor={false}
+                        content={<ChartTooltipContent hideLabel />}
+                      />
+                      <Pie
+                        data={(() => {
+                          // Aggregate data properly: use category for Standards Track, type for others, and separate RIPs
+                          const aggregated = standardsMix.reduce((acc, s) => {
+                            // Check if it's a RIP based on repository field
+                            const isRIP = s.repository === 'ethereum/RIPs';
+                            
+                            let displayValue: string;
+                            if (isRIP) {
+                              displayValue = 'RIP';
+                            } else {
+                              // For Standards Track items, use category (Core, ERC, etc.)
+                              // For others (Meta, Informational), use type
+                              displayValue = s.type === 'Standards Track' ? (s.category || s.type) : s.type;
+                            }
+                            
+                            const existing = acc.find(item => item.label === displayValue);
+                            
+                            if (existing) {
+                              existing.value += s.count;
+                              existing.percentage += s.percentage;
+                            } else {
+                              // Assign colors based on the actual type/category, not backend color field
+                              const typeColorMap: Record<string, string> = {
+                                'Core': '#10b981',       // emerald
+                                'ERC': '#22d3ee',        // cyan
+                                'Networking': '#60a5fa', // blue
+                                'Interface': '#a78bfa',  // violet
+                                'Meta': '#f472b6',       // pink
+                                'Informational': '#94a3b8', // slate
+                                'RIP': '#fb923c'         // orange
+                              };
+                              acc.push({
+                                type: displayValue.toLowerCase().replace(/\s+/g, ''),
+                                value: s.count,
+                                fill: typeColorMap[displayValue] || '#94a3b8',
+                                label: displayValue,
+                                percentage: s.percentage
+                              });
+                            }
+                            return acc;
+                          }, [] as Array<{ type: string; value: number; fill: string; label: string; percentage: number; }>);
+                          
+                          // Filter based on selected standards
+                          return aggregated.filter(item => selectedStandards.has(item.label));
+                        })()}
+                        dataKey="value"
+                        nameKey="type"
+                        innerRadius="60%"
+                        outerRadius="85%"
+                        strokeWidth={3}
+                        paddingAngle={3}
+                        animationBegin={200}
+                        animationDuration={1500}
+                        animationEasing="ease-out"
+                      >
+                        <Label
+                          content={({ viewBox }) => {
+                            if (viewBox && "cx" in viewBox && "cy" in viewBox) {
+                              const totalEIPs = standardsMix
+                                .filter(s => {
+                                  const isRIP = s.repository === 'ethereum/RIPs';
+                                  let displayValue: string;
+                                  if (isRIP) {
+                                    displayValue = 'RIP';
+                                  } else {
+                                    displayValue = s.type === 'Standards Track' ? (s.category || s.type) : s.type;
+                                  }
+                                  return selectedStandards.has(displayValue);
+                                })
+                                .reduce((sum, s) => sum + s.count, 0);
+                            return (
+                              <text
+                                x={viewBox.cx}
+                                y={viewBox.cy}
+                                textAnchor="middle"
+                                dominantBaseline="middle"
+                              >
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={viewBox.cy}
+                                  className="fill-white text-3xl lg:text-4xl font-bold drop-shadow-[0_0_12px_rgba(96,165,250,0.5)]"
+                                >
+                                  {totalEIPs}
+                                </tspan>
+                                <tspan
+                                  x={viewBox.cx}
+                                  y={(viewBox.cy || 0) + 24}
+                                  className="fill-slate-400 text-xs font-medium"
+                                >
+                                  Total EIPs
+                                </tspan>
+                              </text>
+                            )
+                          }
+                        }}
+                      />
+                    </Pie>
+                  </PieChart>
+                </ChartContainer>
                 </div>
                 
-                {/* Legend - Compact, grouped by category */}
-                <div className="mt-4 space-y-2">
-                  {/* Standards Track */}
-                  <div className="flex flex-wrap gap-2">
-                    {standardsMix.filter(s => s.category === "Standards Track").map((standard) => {
-                      const colors = {
-                        emerald: "bg-emerald-500 shadow-emerald-500/30",
-                        cyan: "bg-cyan-500 shadow-cyan-500/30",
-                        blue: "bg-blue-500 shadow-blue-500/30",
-                        violet: "bg-violet-500 shadow-violet-500/30",
-                      };
+                {/* Interactive Legend */}
+                <div className="flex flex-col gap-2">
+                  {(() => {
+                    const typeColorMap: Record<string, string> = {
+                      'Core': '#10b981',
+                      'ERC': '#22d3ee',
+                      'Networking': '#60a5fa',
+                      'Interface': '#a78bfa',
+                      'Meta': '#f472b6',
+                      'Informational': '#94a3b8',
+                      'RIP': '#fb923c'
+                    };
+                    
+                    // Get unique types for legend
+                    const legendItems = standardsMix.reduce((acc, s) => {
+                      const isRIP = s.repository === 'ethereum/RIPs';
+                      let displayValue: string;
+                      if (isRIP) {
+                        displayValue = 'RIP';
+                      } else {
+                        displayValue = s.type === 'Standards Track' ? (s.category || s.type) : s.type;
+                      }
+                      
+                      if (!acc.find(item => item.label === displayValue)) {
+                        acc.push({
+                          label: displayValue,
+                          color: typeColorMap[displayValue] || '#94a3b8',
+                          count: 0
+                        });
+                      }
+                      const item = acc.find(item => item.label === displayValue);
+                      if (item) item.count += s.count;
+                      return acc;
+                    }, [] as Array<{ label: string; color: string; count: number; }>);
+                    
+                    return legendItems.map(item => {
+                      const isSelected = selectedStandards.has(item.label);
                       return (
-                        <div key={standard.type} className="flex items-center gap-1">
-                          <div className={`h-1.5 w-1.5 rounded-full shadow-sm ${colors[standard.color as keyof typeof colors]}`} />
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {standard.type}
-                          </span>
-                        </div>
+                        <button
+                          key={item.label}
+                          onClick={() => {
+                            const newSelected = new Set(selectedStandards);
+                            if (isSelected) {
+                              newSelected.delete(item.label);
+                            } else {
+                              newSelected.add(item.label);
+                            }
+                            setSelectedStandards(newSelected);
+                          }}
+                          className={`flex items-center gap-2 rounded-lg px-3 py-2 text-left transition-all ${
+                            isSelected
+                              ? 'bg-slate-800/50 border border-blue-400/20 hover:border-blue-400/40'
+                              : 'bg-slate-900/30 border border-slate-700/20 opacity-50 hover:opacity-70'
+                          }`}
+                        >
+                          <div
+                            className="h-3 w-3 rounded-full"
+                            style={{
+                              backgroundColor: isSelected ? item.color : '#64748b',
+                            }}
+                          />
+                          <div className="flex flex-1 flex-col">
+                            <span className={`text-xs font-medium ${
+                              isSelected ? 'text-slate-200' : 'text-slate-500'
+                            }`}>
+                              {item.label}
+                            </span>
+                            <span className={`text-[10px] ${
+                              isSelected ? 'text-slate-400' : 'text-slate-600'
+                            }`}>
+                              {item.count} EIPs
+                            </span>
+                          </div>
+                        </button>
                       );
-                    })}
-                  </div>
-                  {/* Other types */}
-                  <div className="flex flex-wrap gap-2">
-                    {standardsMix.filter(s => s.category !== "Standards Track").map((standard) => {
-                      const colors = {
-                        pink: "bg-pink-500 shadow-pink-500/30",
-                        slate: "bg-slate-500 shadow-slate-500/30",
-                        orange: "bg-orange-500 shadow-orange-500/30",
-                      };
-                      return (
-                        <div key={standard.type} className="flex items-center gap-1">
-                          <div className={`h-1.5 w-1.5 rounded-full shadow-sm ${colors[standard.color as keyof typeof colors]}`} />
-                          <span className="text-[10px] font-medium text-slate-400">
-                            {standard.type}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                    });
+                  })()}
                 </div>
               </div>
             </div>
@@ -622,99 +931,78 @@ export default function ProtocolBento() {
                 </div>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-xs font-bold text-emerald-400">+18%</span>
+                  <span className="text-xs font-bold text-emerald-400">
+                    {momentumData.length >= 2 ? 
+                      `${momentumData[momentumData.length - 1] > momentumData[momentumData.length - 2] ? '+' : ''}${Math.round(((momentumData[momentumData.length - 1] - momentumData[momentumData.length - 2]) / momentumData[momentumData.length - 2]) * 100)}%` 
+                      : '+0%'}
+                  </span>
                 </div>
               </div>
               
               {/* Content */}
-              <div className="group/graph relative flex-1">
-                {/* EIPsInsight Watermark */}
-                <div className="absolute bottom-2 right-2 text-[8px] font-medium text-slate-600/30">
-                  EIPsInsight
-                </div>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="relative h-full cursor-help">
-                      {/* Axis labels */}
-                      <div className="absolute left-0 top-0 text-[9px] text-slate-600">Events/month</div>
-                      <div className="absolute bottom-0 right-0 text-[9px] text-slate-600">Last 12 months</div>
-                      
-                      {/* Baseline grid */}
-                      <div className="absolute inset-0 flex flex-col justify-between opacity-10">
-                        {[...Array(4)].map((_, i) => (
-                          <div key={i} className="h-px bg-slate-500" />
-                        ))}
-                      </div>
-                      
-                      {/* Average line */}
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="h-px w-full border-t border-dashed border-violet-400/30" />
-                        <span className="absolute right-2 -mt-4 rounded bg-violet-500/20 px-1 py-0.5 text-[8px] font-medium text-violet-300">
-                          Avg: {Math.round(momentumData.reduce((a, b) => a + b, 0) / momentumData.length)}
-                        </span>
-                      </div>
-                      
-                      {/* Sparkline */}
-                      <svg className="relative h-full w-full" viewBox="0 0 300 80" preserveAspectRatio="none">
-                        <defs>
-                          <linearGradient id="momentum-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" stopColor="rgb(167, 139, 250)" stopOpacity="0.4" />
-                            <stop offset="100%" stopColor="rgb(167, 139, 250)" stopOpacity="0" />
-                          </linearGradient>
-                        </defs>
-                        {/* Area fill */}
-                        <motion.path
-                          initial={{ pathLength: 0, opacity: 0 }}
-                          whileInView={{ pathLength: 1, opacity: 1 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1.5, ease: "easeInOut" }}
-                          d={`M 0 ${80 - (momentumData[0] / 100) * 80} ${momentumData
-                            .map((val, i) => `L ${(i / (momentumData.length - 1)) * 300} ${80 - (val / 100) * 80}`)
-                            .join(" ")} L 300 80 L 0 80 Z`}
-                          fill="url(#momentum-gradient)"
-                        />
-                        {/* Line */}
-                        <motion.path
-                          initial={{ pathLength: 0 }}
-                          whileInView={{ pathLength: 1 }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1.5, ease: "easeInOut" }}
-                          d={`M 0 ${80 - (momentumData[0] / 100) * 80} ${momentumData
-                            .map((val, i) => `L ${(i / (momentumData.length - 1)) * 300} ${80 - (val / 100) * 80}`)
-                            .join(" ")}`}
-                          fill="none"
-                          stroke="rgb(167, 139, 250)"
-                          strokeWidth="2.5"
-                          strokeLinecap="round"
-                          className="drop-shadow-[0_0_4px_rgba(167,139,250,0.5)]"
-                        />
-                      </svg>
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <div className="space-y-1">
-                      <p className="text-xs font-semibold">Monthly Activity</p>
-                      <div className="grid grid-cols-3 gap-2 text-[10px]">
-                        {momentumData.slice(-6).map((val, i) => (
-                          <div key={i} className="flex items-center gap-1">
-                            <span className="text-slate-400">M{momentumData.length - 5 + i}:</span>
-                            <span className="font-bold text-violet-300">{val}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <p className="pt-1 text-[10px] text-slate-400">
-                        Avg: {Math.round(momentumData.reduce((a, b) => a + b, 0) / momentumData.length)} events/month
-                      </p>
-                    </div>
-                  </TooltipContent>
-                </Tooltip>
+              <div className="relative flex-1">
+                <ChartContainer
+                  config={{
+                    activity: {
+                      label: "Activity",
+                      color: "#a78bfa",
+                    },
+                  } satisfies ChartConfig}
+                  className="h-full w-full"
+                >
+                  <AreaChart
+                    accessibilityLayer
+                    data={momentumData.map((value, index) => ({
+                      month: new Date(Date.now() - (momentumData.length - 1 - index) * 30 * 24 * 60 * 60 * 1000)
+                        .toLocaleDateString('en-US', { month: 'short' }),
+                      activity: value,
+                    }))}
+                    margin={{
+                      left: -20,
+                      right: 12,
+                      top: 10,
+                      bottom: 10,
+                    }}
+                  >
+                    <CartesianGrid vertical={false} strokeDasharray="3 3" stroke="#475569" opacity={0.2} />
+                    <XAxis
+                      dataKey="month"
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tickLine={false}
+                      axisLine={false}
+                      tickMargin={8}
+                      tick={{ fill: '#64748b', fontSize: 10 }}
+                      tickCount={4}
+                    />
+                    <ChartTooltip
+                      cursor={false}
+                      content={<ChartTooltipContent indicator="line" />}
+                    />
+                    <Area
+                      dataKey="activity"
+                      type="monotone"
+                      fill="#a78bfa"
+                      fillOpacity={0.3}
+                      stroke="#a78bfa"
+                      strokeWidth={2.5}
+                      animationDuration={1500}
+                    />
+                  </AreaChart>
+                </ChartContainer>
               </div>
               
               {/* Footer */}
               <div className="mt-4 flex items-center justify-between border-t border-violet-400/10 pt-3">
-                <span className="text-xs text-slate-400">+12 this month</span>
-                <span className="text-xs text-slate-500">Last 12mo</span>
+                <span className="text-xs text-slate-400">
+                  {momentumData.length > 0 ? `${momentumData[momentumData.length - 1]} this month` : 'No data'}
+                </span>
+                <span className="text-xs text-slate-500">Last {momentumData.length}mo</span>
               </div>
             </div>
           </motion.div>
@@ -753,14 +1041,36 @@ export default function ProtocolBento() {
                       <button 
                         className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 transition-all hover:border-cyan-400/40 hover:bg-cyan-500/20"
                         onClick={() => {
-                          const csv = "eip,from,to,days_since_change\n" + recentChanges.map(d => `${d.eip},${d.from},${d.to},${d.days}`).join("\n");
-                          const blob = new Blob([csv], { type: "text/csv" });
-                          const url = URL.createObjectURL(blob);
-                          const a = document.createElement("a");
-                          a.href = url;
-                          a.download = "eip-recent-changes.csv";
-                          a.click();
-                          URL.revokeObjectURL(url);
+                          try {
+                            const csvData = recentChanges.map((d, index) => {
+                              let repoUrl = '';
+                              if (d.eip_type === 'ERC') {
+                                repoUrl = `https://github.com/ethereum/ERCs/blob/master/ERCS/erc-${d.eip}.md`;
+                              } else if (d.eip_type === 'RIP') {
+                                repoUrl = `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${d.eip}.md`;
+                              } else {
+                                repoUrl = `https://github.com/ethereum/EIPs/blob/master/EIPS/eip-${d.eip}.md`;
+                              }
+                              const date = new Date(d.changed_at).toISOString().split('T')[0];
+                              return `${index + 1},${d.eip_type}-${d.eip},"${d.title}",${d.from},${d.to},${date},${d.repository},${repoUrl}`;
+                            });
+                            const csv = "sr_number,eip_erc_rip_number,title,from_status,to_status,date,repository,link\n" + csvData.join("\n");
+                            const blob = new Blob([csv], { type: "text/csv" });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement("a");
+                            a.href = url;
+                            a.download = "recent-changes-detailed.csv";
+                            a.click();
+                            URL.revokeObjectURL(url);
+                            toast.success("CSV Downloaded", {
+                              description: `${recentChanges.length} recent changes exported successfully`,
+                            });
+                          } catch (error) {
+                            console.error('Failed to download CSV:', error);
+                            toast.error("Download Failed", {
+                              description: "Could not export recent changes data",
+                            });
+                          }
                         }}
                       >
                         <Download className="h-3.5 w-3.5 text-cyan-300" />
@@ -781,9 +1091,9 @@ export default function ProtocolBento() {
                 </div>
               </div>
               
-              {/* Content */}
-              <div className="flex-1 space-y-3">
-                {recentChanges.map((change, index) => {
+              {/* Content - Scrollable */}
+              <div className="flex-1 space-y-2 overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-900/50 scrollbar-thumb-cyan-500/30 hover:scrollbar-thumb-cyan-500/50">
+                {recentChanges.slice(0, 10).map((change, index) => {
                   const statusColors = {
                     emerald: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
                     blue: "bg-blue-500/20 text-blue-300 border-blue-400/30",
@@ -792,25 +1102,26 @@ export default function ProtocolBento() {
                   };
                   return (
                     <motion.div
-                      key={change.eip}
+                      key={`${change.eip}-${index}`}
                       initial={{ opacity: 0, x: -20 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}
-                      transition={{ duration: 0.4, delay: index * 0.1 }}
-                      className="group/item cursor-pointer rounded-lg border border-slate-700/50 bg-slate-900/30 p-3 transition-all hover:border-cyan-400/40 hover:bg-slate-900/50"
+                      transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.5) }}
+                      className="group/item cursor-pointer rounded-lg border border-slate-700/50 bg-slate-900/30 p-2.5 transition-all hover:border-cyan-400/40 hover:bg-slate-900/50"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-sm font-bold text-cyan-300">#{change.eip}</span>
-                          <div className="flex items-center gap-1 text-[11px]">
-                            <span className="text-slate-500">{change.from}</span>
-                            <ArrowRight className="h-3 w-3 text-slate-600" />
-                            <span className={`rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${statusColors[change.statusColor as keyof typeof statusColors]}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono text-xs font-bold text-cyan-300">{change.eip_type}-{change.eip}</span>
+                            <span className="text-[10px] text-slate-500">{change.from}</span>
+                            <ArrowRight className="h-2.5 w-2.5 text-slate-600" />
+                            <span className={`rounded-md border px-1 py-0.5 text-[9px] font-semibold ${statusColors[change.statusColor as keyof typeof statusColors]}`}>
                               {change.to}
                             </span>
                           </div>
+                          <p className="mt-1 text-[10px] text-slate-500 line-clamp-1">{change.title}</p>
                         </div>
-                        <span className="text-[11px] text-slate-500">{change.days}d</span>
+                        <span className="text-[10px] text-slate-500 shrink-0">{change.days}d</span>
                       </div>
                     </motion.div>
                   );
@@ -818,7 +1129,7 @@ export default function ProtocolBento() {
               </div>
               
               {/* Footer */}
-              <p className="mt-4 text-xs text-slate-500">Latest updates</p>
+              <p className="mt-4 text-xs text-slate-500">Last 7 days · {recentChanges.length} changes</p>
             </div>
           </motion.div>
 
@@ -968,14 +1279,35 @@ export default function ProtocolBento() {
                     <button 
                       className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-amber-400/20 bg-amber-500/10 transition-all hover:border-amber-400/40 hover:bg-amber-500/20"
                       onClick={() => {
-                        const csv = "eip,title,deadline,days_remaining\n" + lastCallWatchlist.map(d => `${d.eip},"${d.title}",${d.deadline},${d.daysRemaining}`).join("\n");
-                        const blob = new Blob([csv], { type: "text/csv" });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement("a");
-                        a.href = url;
-                        a.download = "eip-last-call-watchlist.csv";
-                        a.click();
-                        URL.revokeObjectURL(url);
+                        try {
+                          const csvData = lastCallWatchlist.map((d, index) => {
+                            let repoUrl = '';
+                            if (d.eip_type === 'ERC') {
+                              repoUrl = `https://github.com/ethereum/ERCs/blob/master/ERCS/erc-${d.eip}.md`;
+                            } else if (d.eip_type === 'RIP') {
+                              repoUrl = `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${d.eip}.md`;
+                            } else {
+                              repoUrl = `https://github.com/ethereum/EIPs/blob/master/EIPS/eip-${d.eip}.md`;
+                            }
+                            return `${index + 1},${d.eip_type}-${d.eip},"${d.title}",${d.deadline},${d.daysRemaining},${repoUrl}`;
+                          });
+                          const csv = "sr_number,eip_erc_rip_number,title,deadline,days_remaining,link\n" + csvData.join("\n");
+                          const blob = new Blob([csv], { type: "text/csv" });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = "eip-last-call-watchlist.csv";
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("CSV Downloaded", {
+                            description: `${lastCallWatchlist.length} Last Call proposals exported successfully`,
+                          });
+                        } catch (error) {
+                          console.error('Failed to download CSV:', error);
+                          toast.error("Download Failed", {
+                            description: "Could not export Last Call watchlist data",
+                          });
+                        }
                       }}
                     >
                       <Download className="h-3.5 w-3.5 text-amber-300" />
@@ -987,8 +1319,8 @@ export default function ProtocolBento() {
                 </Tooltip>
               </div>
               
-              {/* Content */}
-              <div className="flex-1 space-y-2.5">
+              {/* Content - Scrollable */}
+              <div className="flex-1 space-y-2.5 overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-900/50 scrollbar-thumb-amber-500/30 hover:scrollbar-thumb-amber-500/50">
                 {lastCallWatchlist.map((item, index) => {
                   const urgency = item.daysRemaining <= 7 ? "urgent" : "normal";
                   return (
@@ -1007,9 +1339,9 @@ export default function ProtocolBento() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-mono text-sm font-bold text-amber-300">#{item.eip}</span>
+                            <span className="font-mono text-sm font-bold text-amber-300">{item.eip_type || 'EIP'}-{item.eip}</span>
                             <span className={`text-[10px] font-bold ${urgency === "urgent" ? "text-red-400" : "text-amber-400"}`}>
-                              {item.daysRemaining}d left
+                              {Math.abs(item.daysRemaining)}d {item.daysRemaining < 0 ? 'overdue' : 'left'}
                             </span>
                           </div>
                           <p className="mt-1 text-xs text-slate-400 line-clamp-1">{item.title}</p>
@@ -1208,3 +1540,9 @@ export default function ProtocolBento() {
     </TooltipProvider>
   );
 }
+function useToast() {
+  return {
+    toast: sonnerToast,
+  };
+}
+

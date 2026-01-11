@@ -137,3 +137,26 @@ html, body, #__next {
   padding-top: 0.1em;
   padding-bottom: 0.1em;
 }
+
+/* Custom scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-track-slate-900\/50::-webkit-scrollbar-track {
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-cyan-500\/30::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.3);
+  border-radius: 3px;
+}
+
+.scrollbar-thumb-cyan-500\/30:hover::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.5);
+}

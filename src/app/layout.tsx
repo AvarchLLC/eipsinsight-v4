@@ -5,6 +5,8 @@ import "@/lib/orpc.server";
 import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import Navbar from "@/components/navbar";
+import Footer from "@/components/footer";
+import { Toaster } from "@/components/ui/sonner";
 
 const Libre_Baskerville = LibreBaskervilleFont({
   variable: "--font-libre-baskerville",
@@ -107,13 +109,15 @@ export default function RootLayout({
           <div className="flex min-h-screen w-full overflow-x-hidden">
             <AppSidebar />
             <SidebarInset className="flex flex-1 flex-col max-w-full overflow-x-hidden">
-              <header className="sticky top-0 z-40">
+              <header className="sticky top-0 z-50">
                 <Navbar />
               </header>
               <main className="flex-1">{children}</main>
+              <Footer />
             </SidebarInset>
           </div>
         </SidebarProvider>
+        <Toaster />
       </body>
     </html>
   );

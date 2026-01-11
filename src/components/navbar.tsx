@@ -37,7 +37,7 @@ export default function Navbar() {
   const userName = session?.user?.name ?? session?.user?.email;
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-cyan-300/20 bg-background/80 backdrop-blur-xl">
+    <nav className="sticky top-0 z-50 w-full border-b border-cyan-300/20 bg-slate-950/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(6,182,212,0.08)]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6">
         <div className="flex h-16 items-center justify-between gap-4">
           {/* Collapse Button - Show only when sidebar is open */}

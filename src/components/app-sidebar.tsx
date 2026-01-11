@@ -130,7 +130,7 @@ export function AppSidebar() {
     <Sidebar
       collapsible="icon"
       className={cn(
-        "border-r border-cyan-300/20 bg-background/80 backdrop-blur-xl",
+        "border-r border-cyan-300/20 bg-background/80 backdrop-blur-xl z-[60]",
         state === "collapsed" && "w-[88px]"
       )}
     >

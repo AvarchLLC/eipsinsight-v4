@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider   = "prisma-client-js"
   output     = "../src/generated/prisma"
@@ -14,24 +8,21 @@ datasource db {
   provider = "postgresql"
 }
 
-// Better Auth Schema
-
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String
-  emailVerified Boolean   @default(false)
-  image         String?
-  avatarUrl     String?
-  role          String    @default("user")
-  membershipTier String?
+  id                  String     @id @default(cuid())
+  name                String
+  email               String
+  emailVerified       Boolean    @default(false)
+  image               String?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  avatarUrl           String?
   membershipExpiresAt DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  sessions      Session[]
-  accounts      Account[]
-  apiTokens     ApiToken[]
+  membershipTier      String?
+  role                String     @default("user")
+  accounts            Account[]
+  apiTokens           ApiToken[]
+  sessions            Session[]
 
   @@map("user")
 }
@@ -45,28 +36,26 @@ model Session {
   userAgent String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("session")
 }
 
 model Account {
-  id                     String    @id @default(cuid())
-  userId                 String
-  accountId              String
-  providerId             String
-  accessToken            String?
-  refreshToken           String?
-  accessTokenExpiresAt   DateTime?
-  refreshTokenExpiresAt  DateTime?
-  scope                  String?
-  idToken                String?
-  password               String?
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("account")
 }
@@ -98,16 +87,240 @@ model MembershipTier {
 }
 
 model ApiToken {
-  id        String   @id @default(cuid())
+  id        String    @id @default(cuid())
   userId    String
   name      String
-  token     String   @unique
+  token     String    @unique
   lastUsed  DateTime?
   expiresAt DateTime?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("api_token")
+}
+
+model eip_category_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_category String?
+  to_category   String
+  commit_sha    String
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eip_id, commit_sha, to_category], map: "eip_category_events_unique")
+}
+
+model eip_deadline_events {
+  id                BigInt        @id @default(autoincrement())
+  eip_id            Int?
+  repository_id     Int?
+  previous_deadline DateTime?     @db.Date
+  new_deadline      DateTime?     @db.Date
+  commit_sha        String
+  changed_at        DateTime      @db.Timestamp(6)
+  eips              eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories      repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eip_id, commit_sha], map: "eip_deadline_events_unique")
+}
+
+model eip_files {
+  id             Int           @id @default(autoincrement())
+  eip_id         Int?
+  repository_id  Int?
+  file_path      String
+  valid_from_sha String
+  valid_to_sha   String?
+  created_at     DateTime?     @default(now()) @db.Timestamp(6)
+  eips           eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories   repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
+
+model eip_snapshots {
+  eip_id          Int           @id
+  repository_id   Int?
+  status          String
+  type            String?
+  category        String?
+  deadline        DateTime?     @db.Date
+  last_commit_sha String?
+  updated_at      DateTime      @db.Timestamp(6)
+  eips            eips          @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories    repositories? @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
+
+model eip_status_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_status   String?
+  to_status     String
+  commit_sha    String
+  pr_number     Int?
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eip_id, commit_sha, to_status], map: "eip_status_events_unique")
+}
+
+model eip_type_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_type     String?
+  to_type       String
+  commit_sha    String
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([eip_id, commit_sha, to_type], map: "eip_type_events_unique")
+}
+
+model eips {
+  id                  Int                   @id @default(autoincrement())
+  eip_number          Int                   @unique
+  created_at          DateTime?             @db.Date
+  title               String?
+  author              String?
+  eip_category_events eip_category_events[]
+  eip_deadline_events eip_deadline_events[]
+  eip_files           eip_files[]
+  eip_snapshots       eip_snapshots?
+  eip_status_events   eip_status_events[]
+  eip_type_events     eip_type_events[]
+  pull_request_eips   pull_request_eips[]
+}
+
+model pgmigrations {
+  id     Int      @id @default(autoincrement())
+  name   String   @db.VarChar(255)
+  run_on DateTime @db.Timestamp(6)
+}
+
+model pull_request_eips {
+  pr_id         Int
+  eip_id        Int
+  eips          eips          @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  pull_requests pull_requests @relation(fields: [pr_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([pr_id, eip_id])
+}
+
+model pull_requests {
+  id                Int                 @id @default(autoincrement())
+  pr_number         Int
+  repository_id     Int?
+  title             String?
+  author            String?
+  merged_at         DateTime?           @db.Timestamp(6)
+  closed_at         DateTime?           @db.Timestamp(6)
+  num_commits       Int?
+  num_files         Int?
+  num_participants  Int?
+  created_at        DateTime?           @default(now()) @db.Timestamp(6)
+  updated_at        DateTime?           @db.Timestamp(6)
+  state             String?
+  pull_request_eips pull_request_eips[]
+  repositories      repositories?       @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([pr_number, repository_id], map: "pull_requests_unique")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model repositories {
+  id                   Int                    @id @default(autoincrement())
+  name                 String                 @unique
+  type                 String?
+  active               Boolean?               @default(true)
+  contributor_activity contributor_activity[]
+  eip_category_events  eip_category_events[]
+  eip_deadline_events  eip_deadline_events[]
+  eip_files            eip_files[]
+  eip_snapshots        eip_snapshots[]
+  eip_status_events    eip_status_events[]
+  eip_type_events      eip_type_events[]
+  pr_events            pr_events[]
+  pr_governance_state  pr_governance_state[]
+  pull_requests        pull_requests[]
+}
+
+model rip_commits {
+  id            BigInt   @id @default(autoincrement())
+  rip_id        Int?
+  commit_sha    String
+  commit_date   DateTime @db.Timestamp(6)
+  author        String?
+  message       String?
+  files_changed Int?
+  insertions    Int?
+  deletions     Int?
+  repo          String?  @default("RIPs")
+  rips          rips?    @relation(fields: [rip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([rip_id, commit_sha], map: "rip_commits_unique")
+}
+
+model rips {
+  id          Int           @id @default(autoincrement())
+  rip_number  Int           @unique
+  title       String?
+  status      String?
+  author      String?
+  created_at  DateTime?     @default(now()) @db.Timestamp(6)
+  rip_commits rip_commits[]
+}
+
+model scheduler_state {
+  key        String    @id
+  value      String?
+  updated_at DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model contributor_activity {
+  id            BigInt        @id @default(autoincrement())
+  pr_number     Int
+  repository_id Int?
+  actor         String
+  role          String?
+  action_type   String
+  occurred_at   DateTime      @db.Timestamp(6)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([actor], map: "contributor_activity_actor_index")
+  @@index([repository_id, occurred_at], map: "contributor_activity_repository_id_occurred_at_index")
+}
+
+model pr_events {
+  id            BigInt        @id @default(autoincrement())
+  pr_number     Int
+  repository_id Int?
+  event_type    String
+  actor         String
+  actor_role    String?
+  commit_sha    String?
+  github_id     String?       @unique
+  metadata      Json?
+  created_at    DateTime      @db.Timestamp(6)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([repository_id, pr_number], map: "pr_events_repository_id_pr_number_index")
+}
+
+model pr_governance_state {
+  pr_number       Int
+  repository_id   Int
+  current_state   String
+  waiting_since   DateTime?    @db.Timestamp(6)
+  last_actor      String?
+  last_event_type String?
+  updated_at      DateTime?    @default(now()) @db.Timestamp(6)
+  repositories    repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([repository_id, pr_number])
 }
