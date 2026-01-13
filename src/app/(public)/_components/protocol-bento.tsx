@@ -1331,7 +1331,7 @@ export default function ProtocolBento() {
               
               {/* Content */}
               <div className="flex-1 space-y-2.5">
-                {lastCallWatchlist.map((item, index) => {
+                {lastCallWatchlist.slice(0, 6).map((item, index) => {
                   const urgency = item.daysRemaining <= 7 ? "urgent" : "normal";
                   const eipLink = item.repository === 'ethereum/RIPs'
                     ? `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${item.eip}.md`

@@ -129,6 +129,7 @@ export function AppSidebar() {
   const [openItems, setOpenItems] = React.useState<string[]>(["Home", "Standards"]);
   const rememberedOpen = React.useRef<string[]>(openItems);
   const [currentHash, setCurrentHash] = React.useState<string>('');
+  const [activeSection, setActiveSection] = React.useState<string>('');
 
   const toggleItem = (title: string) => {
     setOpenItems((prev) =>
@@ -178,12 +179,85 @@ export function AppSidebar() {
     };
     updateHash();
     window.addEventListener('hashchange', updateHash);
-    window.addEventListener('scroll', updateHash);
     return () => {
       window.removeEventListener('hashchange', updateHash);
-      window.removeEventListener('scroll', updateHash);
     };
   }, []);
+
+  // Scroll spy: Track which section is currently in view
+  React.useEffect(() => {
+    const sectionIds = pageSections.map(s => s.sectionId);
+    const observerOptions = {
+      root: null,
+      rootMargin: '-20% 0px -60% 0px', // Trigger when section is 20% from top
+      threshold: [0, 0.25, 0.5, 0.75, 1],
+    };
+
+    const observerCallback = (entries: IntersectionObserverEntry[]) => {
+      // Find the section that is most visible
+      let maxIntersection = 0;
+      let mostVisibleSection = '';
+
+      entries.forEach((entry) => {
+        if (entry.isIntersecting && entry.intersectionRatio > maxIntersection) {
+          maxIntersection = entry.intersectionRatio;
+          mostVisibleSection = entry.target.id;
+        }
+      });
+
+      // If we found a visible section, update active section
+      if (mostVisibleSection && maxIntersection > 0.1) {
+        setActiveSection(mostVisibleSection);
+        // Update hash without scrolling
+        if (window.location.hash !== `#${mostVisibleSection}`) {
+          window.history.replaceState(null, '', `#${mostVisibleSection}`);
+          setCurrentHash(`#${mostVisibleSection}`);
+        }
+      }
+    };
+
+    const observer = new IntersectionObserver(observerCallback, observerOptions);
+
+    // Observe all sections
+    sectionIds.forEach((sectionId) => {
+      const element = document.getElementById(sectionId);
+      if (element) {
+        observer.observe(element);
+      }
+    });
+
+    // Also check on initial load
+    const checkInitialSection = () => {
+      const hash = window.location.hash.slice(1);
+      if (hash && sectionIds.includes(hash)) {
+        setActiveSection(hash);
+      } else {
+        // Find first visible section
+        sectionIds.forEach((sectionId) => {
+          const element = document.getElementById(sectionId);
+          if (element) {
+            const rect = element.getBoundingClientRect();
+            const isVisible = rect.top < window.innerHeight * 0.3 && rect.bottom > 0;
+            if (isVisible && !activeSection) {
+              setActiveSection(sectionId);
+            }
+          }
+        });
+      }
+    };
+
+    // Wait for page to load
+    if (document.readyState === 'complete') {
+      checkInitialSection();
+    } else {
+      window.addEventListener('load', checkInitialSection);
+    }
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('load', checkInitialSection);
+    };
+  }, [activeSection]);
 
   return (
     <Sidebar
@@ -293,8 +367,9 @@ export function AppSidebar() {
                           <SidebarMenuSub className="ml-0 border-l-2 border-cyan-400/10 pl-6 pt-2">
                             {item.items?.map((subItem) => {
                               const subItemWithSection = subItem as typeof subItem & { sectionId?: string };
+                              // Use scroll spy active section if available, otherwise fall back to hash
                               const isSubActive = subItemWithSection.sectionId 
-                                ? currentHash === `#${subItemWithSection.sectionId}`
+                                ? (activeSection === subItemWithSection.sectionId || currentHash === `#${subItemWithSection.sectionId}`)
                                 : pathname === subItem.href;
                               return (
                                 <SidebarMenuSubItem key={subItem.title}>
