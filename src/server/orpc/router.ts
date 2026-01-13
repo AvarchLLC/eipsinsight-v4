@@ -4,6 +4,7 @@ import { governanceProcedures } from './procedures/governance'
 import { governanceTimelineProcedures } from './procedures/governanceTimeline'
 import { historicalProcedures } from './procedures/historical'
 import { accountProcedures } from './procedures/account'
+import { proposalsProcedures } from './procedures/proposals'
 
 export const router = {
   auth: authProcedures,
@@ -12,4 +13,5 @@ export const router = {
   governanceTimeline: governanceTimelineProcedures,
   historical: historicalProcedures,
   account: accountProcedures,
+  proposals: proposalsProcedures,
 }
