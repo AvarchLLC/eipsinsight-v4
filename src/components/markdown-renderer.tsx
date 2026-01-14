@@ -16,6 +16,8 @@ interface MarkdownRendererProps {
     requires?: string;
     discussionsTo?: string;
   };
+  skipPreamble?: boolean; // If true, don't render preamble table
+  stripDuplicateHeaders?: boolean; // If true, remove headers matching the title
 }
 
 // Simple markdown parser (basic implementation)
@@ -29,11 +31,11 @@ function parseMarkdown(markdown: string): { body: string; frontmatter: Record<st
     const frontmatterText = frontmatterMatch[1];
     body = frontmatterMatch[2];
 
-    // Parse YAML-like key-value pairs
+    // Parse YAML-like key-value pairs (handle hyphens in keys like "discussions-to")
     frontmatterText.split('\n').forEach(line => {
-      const match = line.match(/^(\w+):\s*(.+)$/);
+      const match = line.match(/^([\w-]+):\s*(.+)$/);
       if (match) {
-        const key = match[1].toLowerCase();
+        const key = match[1].toLowerCase().replace(/-/g, '_'); // Convert "discussions-to" to "discussions_to"
         let value = match[2].trim();
         // Remove quotes if present
         value = value.replace(/^["']|["']$/g, '');
@@ -45,9 +47,35 @@ function parseMarkdown(markdown: string): { body: string; frontmatter: Record<st
   return { body, frontmatter };
 }
 
+// Convert proposal file links to internal routes
+function convertProposalLinks(markdown: string): string {
+  // Match patterns in markdown links: [text](./eip-5920.md) or [text](eip-5920.md)
+  // Pattern: [optional text](optional ./)(eip|erc|rip)-(number).md
+  return markdown.replace(
+    /\[([^\]]*)\]\((\.\/)?(eip|erc|rip)-(\d+)\.md\)/gi,
+    (match, linkText, dotSlash, repoType, number) => {
+      const repo = repoType.toLowerCase();
+      const internalRoute = `/${repo}/${number}`;
+      // Preserve link text or use default
+      const text = linkText || `${repoType.toUpperCase()}-${number}`;
+      return `[${text}](${internalRoute})`;
+    }
+  );
+}
+
 // Convert markdown to HTML (improved implementation)
-function markdownToHtml(markdown: string): string {
+function markdownToHtml(markdown: string, stripDuplicateHeaders?: boolean, titleToStrip?: string): string {
   let html = markdown;
+  
+  // Convert proposal file links to internal routes first
+  html = convertProposalLinks(html);
+  
+  // Strip duplicate title header if present
+  if (stripDuplicateHeaders && titleToStrip) {
+    // Remove # Title or ## Title that matches the proposal title
+    const titleRegex = new RegExp(`^#+\\s+${titleToStrip.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'gmi');
+    html = html.replace(titleRegex, '');
+  }
 
   // Code blocks first (to avoid processing inside code)
   html = html.replace(/```(\w+)?\n([\s\S]*?)```/g, (match, lang, code) => {
@@ -93,8 +121,24 @@ function markdownToHtml(markdown: string): string {
   html = html.replace(/\b\*([^*\n]+?)\*\b/g, '<em class="italic text-slate-300">$1</em>');
   html = html.replace(/\b_([^_\n]+?)_\b/g, '<em class="italic text-slate-300">$1</em>');
 
-  // Links
-  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-cyan-300 hover:text-cyan-200 underline transition-colors" target="_blank" rel="noopener noreferrer">$1</a>');
+  // Links - convert proposal links to internal routes, external links open in new tab
+  html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (match, linkText, url) => {
+    // Check if it's an internal proposal route (already converted)
+    const isInternalRoute = /^\/(eip|erc|rip)\/\d+$/.test(url);
+    // Check if it's an external URL
+    const isExternal = /^(https?:\/\/|mailto:)/.test(url);
+    
+    if (isInternalRoute) {
+      // Internal route - use Next.js Link behavior (client-side navigation)
+      return `<a href="${url}" class="text-cyan-300 hover:text-cyan-200 underline transition-colors">${linkText}</a>`;
+    } else if (isExternal) {
+      // External link - open in new tab
+      return `<a href="${url}" class="text-cyan-300 hover:text-cyan-200 underline transition-colors" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    } else {
+      // Relative link or other - treat as external for safety
+      return `<a href="${url}" class="text-cyan-300 hover:text-cyan-200 underline transition-colors" target="_blank" rel="noopener noreferrer">${linkText}</a>`;
+    }
+  });
 
   // Ordered lists
   html = html.replace(/^(\d+)\.\s+(.+)$/gim, '<li class="ml-6 text-slate-300 mb-1">$2</li>');
@@ -168,9 +212,10 @@ function markdownToHtml(markdown: string): string {
   return processed.join('\n');
 }
 
-export function MarkdownRenderer({ content, preamble }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, preamble, skipPreamble = false, stripDuplicateHeaders = false }: MarkdownRendererProps) {
   const { body, frontmatter } = parseMarkdown(content);
-  const html = markdownToHtml(body);
+  const titleToStrip = preamble?.title || frontmatter.title;
+  const html = markdownToHtml(body, stripDuplicateHeaders, titleToStrip);
 
   // Merge preamble with frontmatter (preamble takes precedence)
   const metadata = { ...frontmatter, ...preamble };
@@ -178,7 +223,7 @@ export function MarkdownRenderer({ content, preamble }: MarkdownRendererProps) {
   return (
     <div className="prose prose-invert max-w-none">
       {/* Preamble Table */}
-      {metadata && (
+      {!skipPreamble && metadata && (
         <div className="mb-10 overflow-hidden rounded-lg border border-slate-700/50 bg-slate-950/30">
           <table className="w-full border-collapse">
             <tbody className="divide-y divide-slate-700/50">
@@ -253,6 +298,24 @@ export function MarkdownRenderer({ content, preamble }: MarkdownRendererProps) {
           lineHeight: '1.75',
         }}
       />
+      
+      {/* Section anchor links */}
+      <style jsx>{`
+        .markdown-content h2[id],
+        .markdown-content h3[id],
+        .markdown-content h4[id] {
+          position: relative;
+        }
+        .markdown-content h2[id]:hover::before,
+        .markdown-content h3[id]:hover::before,
+        .markdown-content h4[id]:hover::before {
+          content: '#';
+          position: absolute;
+          left: -1.5rem;
+          color: rgba(148, 163, 184, 0.5);
+          font-weight: normal;
+        }
+      `}</style>
     </div>
   );
 }

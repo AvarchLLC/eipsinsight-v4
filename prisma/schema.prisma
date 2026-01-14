@@ -324,3 +324,38 @@ model pr_governance_state {
 
   @@id([repository_id, pr_number])
 }
+
+model upgrade_composition_current {
+  upgrade_id Int
+  eip_number Int
+  bucket     String?
+  updated_at DateTime? @db.Timestamp(6)
+
+  @@id([upgrade_id, eip_number])
+}
+
+model upgrade_composition_events {
+  id          BigInt    @id @default(autoincrement())
+  upgrade_id  Int?
+  meta_eip    Int?
+  eip_number  Int?
+  bucket      String?
+  event_type  String?
+  commit_sha  String?
+  commit_date DateTime? @db.Timestamp(6)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  upgrades    upgrades? @relation(fields: [upgrade_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([upgrade_id, commit_sha, eip_number, bucket, event_type], map: "upgrade_composition_events_unique")
+}
+
+model upgrades {
+  id                         Int                          @id @default(autoincrement())
+  slug                       String                       @unique
+  name                       String?
+  meta_eip                   Int?
+  repo                       String?
+  file_path                  String?
+  created_at                 DateTime?                    @default(now()) @db.Timestamp(6)
+  upgrade_composition_events upgrade_composition_events[]
+}

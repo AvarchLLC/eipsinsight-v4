@@ -101,6 +101,7 @@ export const proposalsProcedures = {
           from_status: true,
           to_status: true,
           changed_at: true,
+          commit_sha: true,
         },
       });
 
@@ -108,6 +109,7 @@ export const proposalsProcedures = {
         from: e.from_status || null,
         to: e.to_status,
         changed_at: e.changed_at.toISOString(),
+        commit_sha: e.commit_sha && e.commit_sha.trim() !== '' ? e.commit_sha : undefined,
       }));
     }),
 
@@ -148,7 +150,7 @@ export const proposalsProcedures = {
       }));
     }),
 
-  // D. Upgrade Inclusion (placeholder - upgrade_composition_events may not exist yet)
+  // D. Upgrade Inclusion
   getUpgrades: os
     .$context<Ctx>()
     .input(z.object({
@@ -158,9 +160,67 @@ export const proposalsProcedures = {
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      // TODO: Implement when upgrade_composition_events table exists
-      // For now, return empty array
-      return [];
+      const eip = await prisma.eips.findUnique({
+        where: { eip_number: input.number },
+      });
+
+      if (!eip) {
+        return [];
+      }
+
+      // Get all events for this EIP, ordered by date descending
+      const events = await prisma.upgrade_composition_events.findMany({
+        where: { 
+          eip_number: eip.eip_number,
+          bucket: { in: ['considered', 'scheduled', 'proposed', 'declined'] },
+        },
+        orderBy: { commit_date: 'desc' },
+        select: {
+          upgrade_id: true,
+          bucket: true,
+          commit_date: true,
+        },
+      });
+
+      if (events.length === 0) {
+        return [];
+      }
+
+      // Get unique upgrade_ids and their latest bucket
+      const upgradeMap = new Map<number, { bucket: string; commit_date: Date | null }>();
+      
+      for (const event of events) {
+        if (!event.upgrade_id) continue;
+        
+        if (!upgradeMap.has(event.upgrade_id)) {
+          upgradeMap.set(event.upgrade_id, {
+            bucket: event.bucket || '',
+            commit_date: event.commit_date,
+          });
+        }
+      }
+
+      const upgradeIds = Array.from(upgradeMap.keys());
+      
+      // Get upgrade details
+      const upgradesData = await prisma.upgrades.findMany({
+        where: { id: { in: upgradeIds } },
+        select: {
+          id: true,
+          name: true,
+        },
+      });
+
+      // Combine data
+      return Array.from(upgradeMap.entries()).map(([upgradeId, eventData]) => {
+        const upgrade = upgradesData.find(u => u.id === upgradeId);
+        
+        return {
+          upgrade_id: upgradeId,
+          name: upgrade?.name || '',
+          bucket: eventData.bucket,
+        };
+      });
     }),
 
   // E. Markdown Content (placeholder - eip_files may contain this)
