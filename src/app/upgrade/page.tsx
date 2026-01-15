@@ -8,6 +8,7 @@ import { UpgradeStatsCards } from '@/app/upgrade/_components/upgrade-stats-cards
 import { CollapsibleHeader } from '@/app/upgrade/_components/collapsible-header';
 import { NetworkUpgradesChart } from '@/app/upgrade/_components/network-upgrades-chart';
 import { HorizontalUpgradeTimeline } from '@/app/upgrade/_components/horizontal-upgrade-timeline';
+import { UpgradeTimelineChart } from '@/app/upgrade/_components/upgrade-timeline-chart';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -32,6 +33,14 @@ export default function UpgradePage() {
   const [upgrades, setUpgrades] = useState<Upgrade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [glamsterdamTimeline, setGlamsterdamTimeline] = useState<Array<{
+    date: string;
+    included: string[];
+    scheduled: string[];
+    declined: string[];
+    considered: string[];
+    proposed: string[];
+  }>>([]);
 
   useEffect(() => {
     async function fetchData() {
@@ -39,8 +48,13 @@ export default function UpgradePage() {
         setLoading(true);
         setError(null);
 
-        const upgradesData = await client.upgrades.listUpgrades({});
+        const [upgradesData, timelineData] = await Promise.all([
+          client.upgrades.listUpgrades({}),
+          client.upgrades.getUpgradeTimeline({ slug: 'glamsterdam' }).catch(() => []),
+        ]);
+        
         setUpgrades(upgradesData);
+        setGlamsterdamTimeline(timelineData);
       } catch (err) {
         console.error('Failed to fetch upgrade data:', err);
         setError('Failed to load upgrade data');
@@ -91,7 +105,7 @@ export default function UpgradePage() {
 
       {/* Stats & Flowchart Section */}
       <section className="relative w-full bg-slate-950/30">
-        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-6 pb-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Left: Stats Cards */}
             <div className="flex h-full">
@@ -171,49 +185,20 @@ export default function UpgradePage() {
           className="bg-slate-950/30"
         />
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
-          <div className="mb-4">
+          <div className="mb-6">
             <HorizontalUpgradeTimeline />
           </div>
 
-          {upgrades.length > 0 && (
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-              {upgrades.map((upgrade, index) => (
-                <motion.div
-                  key={upgrade.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index * 0.05 }}
-                  whileHover={{ y: -2 }}
-                >
-                  <Link href={`/upgrade/${upgrade.slug}`}>
-                    <div
-                      className={cn(
-                        'group relative cursor-pointer rounded-lg border border-cyan-400/20 bg-gradient-to-br from-slate-900/80 to-slate-950/80 p-4 backdrop-blur-sm',
-                        'hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10 transition-all duration-200',
-                      )}
-                    >
-                      <div className="mb-2 flex items-start justify-between">
-                        <h3 className="text-base font-semibold text-white transition-colors group-hover:text-cyan-300">
-                          {upgrade.name}
-                        </h3>
-                        <ArrowRight className="h-3.5 w-3.5 text-slate-400 transition-all group-hover:translate-x-1 group-hover:text-cyan-400 flex-shrink-0 mt-0.5" />
-                      </div>
-                      {upgrade.meta_eip && (
-                        <p className="mb-2 text-xs text-slate-400">
-                          Meta EIP: {upgrade.meta_eip}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 text-xs text-slate-500">
-                        <span>{upgrade.stats.totalEIPs} EIPs</span>
-                        {upgrade.created_at && (
-                          <span>{new Date(upgrade.created_at).getFullYear()}</span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
-            </div>
+          {/* Glamsterdam Timeline Chart */}
+          {glamsterdamTimeline.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="mt-6"
+            >
+              <UpgradeTimelineChart data={glamsterdamTimeline} upgradeName="Glamsterdam" />
+            </motion.div>
           )}
         </div>
       </section>

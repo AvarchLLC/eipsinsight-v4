@@ -14,58 +14,58 @@ export function UpgradeStatsCards() {
   };
 
   return (
-    <div className="flex flex-col gap-2 w-full h-full justify-between">
+    <div className="flex flex-col gap-3 w-full h-full justify-between">
       {/* Main Total Upgrades Card */}
       <motion.div
         variants={cardVariants}
         whileHover="hover"
         transition={{ duration: 0.2 }}
         className={cn(
-          "relative p-4 rounded-lg border border-cyan-400/20",
+          "relative p-5 rounded-xl border border-cyan-400/20",
           "bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm",
-          "shadow-md shadow-cyan-500/5",
-          "hover:border-cyan-400/40 hover:shadow-lg hover:shadow-cyan-500/10",
+          "shadow-lg shadow-cyan-500/5",
+          "hover:border-cyan-400/40 hover:shadow-xl hover:shadow-cyan-500/10",
           "transition-all duration-200"
         )}
       >
-        <div className="flex items-center gap-2 mb-2">
-          <div className="p-1.5 rounded-lg bg-cyan-500/10 border border-cyan-400/20">
-            <Rocket className="h-3.5 w-3.5 text-cyan-400" />
+        <div className="flex items-center gap-2 mb-3">
+          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-400/20">
+            <Rocket className="h-4 w-4 text-cyan-400" />
           </div>
           <h3 className="text-xs font-semibold text-slate-300 uppercase tracking-wider">
             Total Network Upgrades
           </h3>
         </div>
-        <p className="text-3xl font-bold text-white mb-1">21</p>
-        <p className="text-xs text-slate-400">
+        <p className="text-4xl font-bold text-white mb-1">21</p>
+        <p className="text-sm text-slate-400">
           Since Frontier Thawing (2015)
         </p>
       </motion.div>
 
       {/* Two Column Grid */}
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 gap-3">
         {/* Execution Layer */}
         <motion.div
           variants={cardVariants}
           whileHover="hover"
           transition={{ duration: 0.2 }}
           className={cn(
-            "relative p-3 rounded-lg border border-emerald-400/20",
+            "relative p-4 rounded-xl border border-emerald-400/20",
             "bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm",
-            "shadow-md shadow-emerald-500/5",
-            "hover:border-emerald-400/40 hover:shadow-lg hover:shadow-emerald-500/10",
+            "shadow-lg shadow-emerald-500/5",
+            "hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/10",
             "transition-all duration-200"
           )}
         >
           <div className="flex items-center gap-1.5 mb-2">
             <div className="p-1 rounded-lg bg-emerald-500/10 border border-emerald-400/20">
-              <Code className="h-3 w-3 text-emerald-400" />
+              <Code className="h-3.5 w-3.5 text-emerald-400" />
             </div>
             <h3 className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
               Execution Layer
             </h3>
           </div>
-          <p className="text-2xl font-bold text-white mb-0.5">19</p>
+          <p className="text-3xl font-bold text-white mb-1">19</p>
           <p className="text-xs text-slate-400">Protocol & EVM</p>
         </motion.div>
 
@@ -75,22 +75,22 @@ export function UpgradeStatsCards() {
           whileHover="hover"
           transition={{ duration: 0.2 }}
           className={cn(
-            "relative p-3 rounded-lg border border-violet-400/20",
+            "relative p-4 rounded-xl border border-violet-400/20",
             "bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm",
-            "shadow-md shadow-violet-500/5",
-            "hover:border-violet-400/40 hover:shadow-lg hover:shadow-violet-500/10",
+            "shadow-lg shadow-violet-500/5",
+            "hover:border-violet-400/40 hover:shadow-xl hover:shadow-violet-500/10",
             "transition-all duration-200"
           )}
         >
           <div className="flex items-center gap-1.5 mb-2">
             <div className="p-1 rounded-lg bg-violet-500/10 border border-violet-400/20">
-              <Layers className="h-3 w-3 text-violet-400" />
+              <Layers className="h-3.5 w-3.5 text-violet-400" />
             </div>
             <h3 className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
               Consensus Layer
             </h3>
           </div>
-          <p className="text-2xl font-bold text-white mb-0.5">6</p>
+          <p className="text-3xl font-bold text-white mb-1">6</p>
           <p className="text-xs text-slate-400">Beacon Chain</p>
         </motion.div>
       </div>
@@ -101,22 +101,22 @@ export function UpgradeStatsCards() {
         whileHover="hover"
         transition={{ duration: 0.2 }}
         className={cn(
-          "relative p-3 rounded-lg border border-amber-400/20",
+          "relative p-4 rounded-xl border border-amber-400/20",
           "bg-gradient-to-br from-slate-900/80 to-slate-950/80 backdrop-blur-sm",
-          "shadow-md shadow-amber-500/5",
-          "hover:border-amber-400/40 hover:shadow-lg hover:shadow-amber-500/10",
+          "shadow-lg shadow-amber-500/5",
+          "hover:border-amber-400/40 hover:shadow-xl hover:shadow-amber-500/10",
           "transition-all duration-200"
         )}
       >
         <div className="flex items-center gap-1.5 mb-2">
           <div className="p-1 rounded-lg bg-amber-500/10 border border-amber-400/20">
-            <Network className="h-3 w-3 text-amber-400" />
+            <Network className="h-3.5 w-3.5 text-amber-400" />
           </div>
           <h3 className="text-[10px] font-semibold text-slate-300 uppercase tracking-wider">
             Total Core EIPs
           </h3>
         </div>
-        <p className="text-2xl font-bold text-white mb-0.5">62</p>
+        <p className="text-3xl font-bold text-white mb-1">62</p>
         <p className="text-xs text-slate-400">Implemented in upgrades</p>
       </motion.div>
     </div>

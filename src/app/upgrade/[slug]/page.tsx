@@ -329,6 +329,7 @@ export default function UpgradePage() {
           {/* Timeline Chart Section */}
           {timelineData.length > 0 && (
             <motion.div
+              id="timeline-chart"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
@@ -340,6 +341,7 @@ export default function UpgradePage() {
 
           {/* About This Upgrade Section */}
           <motion.div
+            id="about"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
@@ -451,6 +453,7 @@ export default function UpgradePage() {
           {/* Blog Carousel Section */}
           {blogPosts.length > 0 && (
             <motion.div
+              id="related-articles"
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
@@ -462,6 +465,7 @@ export default function UpgradePage() {
 
           {/* EIPs Showcase Section */}
           <motion.div
+            id="eips"
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15 }}
