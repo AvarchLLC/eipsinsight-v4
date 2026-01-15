@@ -158,9 +158,9 @@ export function PageHeader({
 export function SectionSeparator({ className }: { className?: string }) {
   return (
     <div className={cn('relative z-10 w-full px-4 sm:px-6 lg:px-8', className)}>
-      <div className="relative flex items-center justify-center py-2">
+      <div className="relative flex items-center justify-center">
         {/* Decorative line with gradient */}
-        <div className="absolute inset-x-0 flex items-center translate-y-2">
+        <div className="absolute inset-x-0 flex items-center">
           <div className="w-full border-t border-cyan-400/20" />
         </div>
       </div>

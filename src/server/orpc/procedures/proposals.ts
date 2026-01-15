@@ -160,18 +160,11 @@ export const proposalsProcedures = {
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const eip = await prisma.eips.findUnique({
-        where: { eip_number: input.number },
-      });
-
-      if (!eip) {
-        return [];
-      }
-
-      // Get all events for this EIP, ordered by date descending
+      // Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
+      // Query directly by proposal number - no need to verify proposal exists first
       const events = await prisma.upgrade_composition_events.findMany({
         where: { 
-          eip_number: eip.eip_number,
+          eip_number: input.number,
           bucket: { in: ['considered', 'scheduled', 'proposed', 'declined'] },
         },
         orderBy: { commit_date: 'desc' },

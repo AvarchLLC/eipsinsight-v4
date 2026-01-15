@@ -19,6 +19,7 @@ import { useSidebarStore } from "@/stores/sidebarStore";
 import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/hooks/useSession";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { SearchBar } from "@/components/search-bar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,20 +98,7 @@ export default function Navbar() {
 
           {/* CENTER: Search (Desktop) */}
           <div className="hidden flex-1 justify-center px-6 md:flex">
-            <div className="relative w-full max-w-xl">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400/80" />
-              <input
-                type="search"
-                placeholder="Search EIPs, ERCs, RIPs, authors, status…"
-                className={cn(
-                  "w-full rounded-full border border-cyan-300/30 bg-black/40",
-                  "pl-10 pr-4 py-2.5 text-sm text-slate-200",
-                  "placeholder:text-slate-400",
-                  "focus:outline-none focus:ring-2 focus:ring-emerald-400/40",
-                  "transition"
-                )}
-              />
-            </div>
+            <SearchBar />
           </div>
 
           {/* RIGHT: Auth/Profile (Desktop) */}
