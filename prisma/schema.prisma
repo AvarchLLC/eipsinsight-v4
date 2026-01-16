@@ -100,93 +100,93 @@ model ApiToken {
   @@map("api_token")
 }
 
-  model eip_category_events {
-    id            BigInt        @id @default(autoincrement())
-    eip_id        Int?
-    repository_id Int?
-    from_category String?
-    to_category   String
-    commit_sha    String
-    changed_at    DateTime      @db.Timestamp(6)
-    eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model eip_category_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_category String?
+  to_category   String
+  commit_sha    String
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-    @@unique([eip_id, commit_sha, to_category], map: "eip_category_events_unique")
-  }
+  @@unique([eip_id, commit_sha, to_category], map: "eip_category_events_unique")
+}
 
-  model eip_deadline_events {
-    id                BigInt        @id @default(autoincrement())
-    eip_id            Int?
-    repository_id     Int?
-    previous_deadline DateTime?     @db.Date
-    new_deadline      DateTime?     @db.Date
-    commit_sha        String
-    changed_at        DateTime      @db.Timestamp(6)
-    eips              eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories      repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model eip_deadline_events {
+  id                BigInt        @id @default(autoincrement())
+  eip_id            Int?
+  repository_id     Int?
+  previous_deadline DateTime?     @db.Date
+  new_deadline      DateTime?     @db.Date
+  commit_sha        String
+  changed_at        DateTime      @db.Timestamp(6)
+  eips              eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories      repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-    @@unique([eip_id, commit_sha], map: "eip_deadline_events_unique")
-  }
+  @@unique([eip_id, commit_sha], map: "eip_deadline_events_unique")
+}
 
-  model eip_files {
-    id             Int           @id @default(autoincrement())
-    eip_id         Int?
-    repository_id  Int?
-    file_path      String
-    valid_from_sha String
-    valid_to_sha   String?
-    created_at     DateTime?     @default(now()) @db.Timestamp(6)
-    eips           eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories   repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  }
+model eip_files {
+  id             Int           @id @default(autoincrement())
+  eip_id         Int?
+  repository_id  Int?
+  file_path      String
+  valid_from_sha String
+  valid_to_sha   String?
+  created_at     DateTime?     @default(now()) @db.Timestamp(6)
+  eips           eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories   repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+}
 
-  model eip_snapshots {
-    eip_id          Int           @id
-    repository_id   Int?
-    status          String
-    type            String?
-    category        String?
-    deadline        DateTime?     @db.Date
-    last_commit_sha String?
-    updated_at      DateTime      @db.Timestamp(6)
-    eips            eips          @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories    repositories? @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  }
+model eip_snapshots {
+  eip_id          Int           @id
+  repository_id   Int?
+  status          String
+  type            String?
+  category        String?
+  deadline        DateTime?     @db.Date
+  last_commit_sha String?
+  updated_at      DateTime      @db.Timestamp(6)
+  eips            eips          @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories    repositories? @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+}
 
-  model eip_status_events {
-    id            BigInt        @id @default(autoincrement())
-    eip_id        Int?
-    repository_id Int?
-    from_status   String?
-    to_status     String
-    commit_sha    String
-    pr_number     Int?
-    changed_at    DateTime      @db.Timestamp(6)
-    eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model eip_status_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_status   String?
+  to_status     String
+  commit_sha    String
+  pr_number     Int?
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-    @@unique([eip_id, commit_sha, to_status], map: "eip_status_events_unique")
-  }
+  @@unique([eip_id, commit_sha, to_status], map: "eip_status_events_unique")
+}
 
-  model eip_type_events {
-    id            BigInt        @id @default(autoincrement())
-    eip_id        Int?
-    repository_id Int?
-    from_type     String?
-    to_type       String
-    commit_sha    String
-    changed_at    DateTime      @db.Timestamp(6)
-    eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-    repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+model eip_type_events {
+  id            BigInt        @id @default(autoincrement())
+  eip_id        Int?
+  repository_id Int?
+  from_type     String?
+  to_type       String
+  commit_sha    String
+  changed_at    DateTime      @db.Timestamp(6)
+  eips          eips?         @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-    @@unique([eip_id, commit_sha, to_type], map: "eip_type_events_unique")
-  }
+  @@unique([eip_id, commit_sha, to_type], map: "eip_type_events_unique")
+}
 
-  model eips {
-    id                  Int                   @id @default(autoincrement())
-    eip_number          Int                   @unique
-    created_at          DateTime?             @db.Date
-    title               String?
+model eips {
+  id                  Int                   @id @default(autoincrement())
+  eip_number          Int                   @unique
+  created_at          DateTime?             @db.Date
+  title               String?
   author              String?
   eip_category_events eip_category_events[]
   eip_deadline_events eip_deadline_events[]
