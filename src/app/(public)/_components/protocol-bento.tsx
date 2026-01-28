@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { motion } from "motion/react";
-import { TrendingUp, ArrowRight, Clock, Activity, Info, Download } from "lucide-react";
+import { TrendingUp, ArrowRight, Clock, Activity, Info, Download, Filter } from "lucide-react";
 import {
   Tooltip,
   TooltipContent,
@@ -41,7 +41,7 @@ interface StandardsMix {
   percentage: number;
   color: string;
   category: string;
-  repository?: string;
+  repository?: string | null;
 }
 
 interface RecentChange {
@@ -60,6 +60,36 @@ interface DecisionVelocity {
   current: number;
   previous: number;
   change: number;
+}
+
+interface ExtendedVelocityTransition {
+  transition: string;
+  medianDays: number;
+  p75Days: number;
+  count: number;
+}
+
+interface CreatedToMergedVelocity {
+  summary: {
+    total: number;
+    medianDays: number;
+    p75Days: number;
+    p90Days: number;
+    averageDays: number;
+  };
+  trends: Array<{
+    month: string;
+    count: number;
+    averageDays: number;
+  }>;
+  proposals: Array<{
+    eipNumber: number;
+    title: string;
+    repository: string;
+    createdAt: Date;
+    finalizedAt: Date;
+    daysToMerge: number;
+  }>;
 }
 
 interface PRData {
@@ -119,14 +149,27 @@ const standardsChartConfig = {
   other: { label: "Other", color: "#fb923c" },
 } satisfies ChartConfig;
 
+// Repository filter type
+type RepositoryFilter = 'all' | 'eips' | 'ercs' | 'rips';
+
+const repositoryOptions: { value: RepositoryFilter; label: string }[] = [
+  { value: 'all', label: 'All Repositories' },
+  { value: 'eips', label: 'ethereum/EIPs' },
+  { value: 'ercs', label: 'ethereum/ERCs' },
+  { value: 'rips', label: 'ethereum/RIPs' },
+];
+
 export default function ProtocolBento() {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(false);
+  const [repositoryFilter, setRepositoryFilter] = useState<RepositoryFilter>('all');
   const [activeProposals, setActiveProposals] = useState<ActiveProposals>(defaultActiveProposals);
   const [lifecycleData, setLifecycleData] = useState<LifecycleStage[]>([]);
   const [standardsMix, setStandardsMix] = useState<StandardsMix[]>([]);
   const [recentChanges, setRecentChanges] = useState<RecentChange[]>([]);
   const [decisionVelocity, setDecisionVelocity] = useState<DecisionVelocity>({ current: 0, previous: 0, change: 0 });
+  const [extendedVelocity, setExtendedVelocity] = useState<ExtendedVelocityTransition[]>([]);
+  const [createdToMergedVelocity, setCreatedToMergedVelocity] = useState<CreatedToMergedVelocity | null>(null);
   const [momentumData, setMomentumData] = useState<number[]>([]);
   const [prsData, setPrsData] = useState<PRData[]>([]);
   const [lastCallWatchlist, setLastCallWatchlist] = useState<LastCallItem[]>([]);
@@ -141,50 +184,56 @@ export default function ProtocolBento() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all data in parallel with repository filter
+      const [
+        activeProposalsData,
+        lifecycleDataRes,
+        standardsMixData,
+        recentChangesData,
+        decisionVelocityData,
+        extendedVelocityData,
+        createdToMergedData,
+        momentumDataRes,
+        prsDataRes,
+        lastCallData
+      ] = await Promise.all([
+        client.analytics.getActiveProposals({ repository: repositoryFilter }),
+        client.analytics.getLifecycleData({ repository: repositoryFilter }),
+        client.analytics.getStandardsComposition({ repository: repositoryFilter }),
+        client.analytics.getRecentChanges({ limit: 20, repository: repositoryFilter }),
+        client.analytics.getDecisionVelocity({ repository: repositoryFilter }),
+        client.analytics.getExtendedDecisionVelocity({ repository: repositoryFilter }),
+        client.analytics.getCreatedToMergedVelocity({ repository: repositoryFilter }),
+        client.analytics.getMomentumData({ months: 12, repository: repositoryFilter }),
+        client.analytics.getRecentPRs({ limit: 6, repository: repositoryFilter }),
+        client.analytics.getLastCallWatchlist({ repository: repositoryFilter })
+      ]);
+
+      setActiveProposals(activeProposalsData);
+      setLifecycleData(lifecycleDataRes);
+      setStandardsMix(standardsMixData);
+      setRecentChanges(recentChangesData);
+      setDecisionVelocity(decisionVelocityData);
+      setExtendedVelocity(extendedVelocityData);
+      setCreatedToMergedVelocity(createdToMergedData);
+      setMomentumData(momentumDataRes);
+      setPrsData(prsDataRes);
+      setLastCallWatchlist(lastCallData);
+    } catch (error) {
+      console.error("Failed to fetch analytics data:", error);
+      // Keep default/empty data on error
+    } finally {
+      setLoading(false);
+    }
+  }, [repositoryFilter]);
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all data in parallel
-        const [
-          activeProposalsData,
-          lifecycleDataRes,
-          standardsMixData,
-          recentChangesData,
-          decisionVelocityData,
-          momentumDataRes,
-          prsDataRes,
-          lastCallData
-        ] = await Promise.all([
-          client.analytics.getActiveProposals({}),
-          client.analytics.getLifecycleData({}),
-          client.analytics.getStandardsComposition({}),
-          client.analytics.getRecentChanges({ limit: 20 }),
-          client.analytics.getDecisionVelocity({}),
-          client.analytics.getMomentumData({ months: 12 }),
-          client.analytics.getRecentPRs({ limit: 3 }),
-          client.analytics.getLastCallWatchlist({})
-        ]);
-
-        setActiveProposals(activeProposalsData);
-        setLifecycleData(lifecycleDataRes);
-        setStandardsMix(standardsMixData);
-        setRecentChanges(recentChangesData);
-        setDecisionVelocity(decisionVelocityData);
-        setMomentumData(momentumDataRes);
-        setPrsData(prsDataRes);
-        setLastCallWatchlist(lastCallData);
-      } catch (error) {
-        console.error("Failed to fetch analytics data:", error);
-        // Keep default/empty data on error
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchData();
-  }, []);
+  }, [fetchData]);
 
   const stagnationData = {
     count: lifecycleData.find(d => d.stage === "Stagnant")?.count || 0,
@@ -220,16 +269,40 @@ export default function ProtocolBento() {
       <section className="relative pt-5 overflow-hidden bg-background pb-8 sm:pb-12 lg:pb-16">
         <div className="container relative mx-auto max-w-7xl px-4 sm:px-4 md:px-6 lg:px-8">
 
+        {/* Repository Filter */}
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            <span className="text-sm text-slate-400">Filter by repository:</span>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {repositoryOptions.map((option) => (
+              <button
+                key={option.value}
+                onClick={() => setRepositoryFilter(option.value)}
+                className={`rounded-full px-4 py-2 text-sm font-medium transition-all ${
+                  repositoryFilter === option.value
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-lg shadow-cyan-500/20'
+                    : 'bg-slate-800/50 text-slate-400 border border-slate-700/50 hover:border-slate-600/50 hover:text-slate-300'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Bento Grid - 4-Column Symmetric Layout
-            4 columns × 4 rows on desktop
+            4 columns × 5 rows on desktop
             Each column = equal width
             Each row = 260px fixed height
             
             LAYOUT:
             Row 1: [Recent]     [Active Proposals] [Last Call]
             Row 2: [Recent]     [Standards Comp.] [Last Call]
-            Row 3: [Lifecycle]  [Standards Comp.] [Momentum]
-            Row 4: [Lifecycle]  [PRs] [Decision Velocity]
+            Row 3: [PRs]        [Standards Comp.] [Momentum]
+            Row 4: [PRs]        [Decision Velocity w/ Extended Transitions]
+            Row 5: [Lifecycle]  [Decision Velocity w/ Extended Transitions]
         */}
         <div className="grid grid-cols-1 gap-4 auto-rows-auto md:grid-cols-2 lg:grid-cols-4 lg:auto-rows-[260px]">
           
@@ -441,13 +514,13 @@ export default function ProtocolBento() {
             </div>
           </motion.div>
 
-          {/* Proposal Lifecycle - Col 1, Rows 3-4 (TALL LEFT BOTTOM) */}
+          {/* Proposal Lifecycle - Col 2, Row 4 (SINGLE ROW) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.4, delay: 0.25 }}
-            className="group relative col-span-1 order-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-1 lg:row-start-3 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 order-9 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-2 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
@@ -1149,14 +1222,14 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.4, delay: 0.4 }}
-            className="group relative col-span-1 md:col-span-2 order-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-5 sm:p-6 lg:p-8 shadow-2xl backdrop-blur transition-all hover:border-emerald-400/50 hover:shadow-[0_20px_70px_rgba(16,185,129,0.3)] lg:col-span-2 lg:col-start-3 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 md:col-span-2 order-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-5 sm:p-6 lg:p-8 shadow-2xl backdrop-blur transition-all hover:border-emerald-400/50 hover:shadow-[0_20px_70px_rgba(16,185,129,0.3)] lg:col-span-2 lg:col-start-3 lg:row-start-4 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
             {/* Subtle inner glow */}
             <div className="absolute inset-0 bg-gradient-to-tr from-emerald-400/5 via-transparent to-cyan-500/5" />
             
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
-              <div className="mb-4 sm:mb-6 lg:mb-8">
+              <div className="mb-4 sm:mb-6">
                 <div className="flex items-center gap-1.5">
                   <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">
                     Decision Velocity
@@ -1169,7 +1242,7 @@ export default function ProtocolBento() {
                     </TooltipTrigger>
                     <TooltipContent>
                       <p className="max-w-xs text-xs">
-                        Median time taken for EIPs to move from Draft to Final.
+                        Median time taken for proposals to move between lifecycle states. Tracks all major transitions.
                       </p>
                     </TooltipContent>
                   </Tooltip>
@@ -1177,80 +1250,89 @@ export default function ProtocolBento() {
                 <p className="mt-1 sm:mt-2 text-[10px] sm:text-xs text-slate-500">Lower is better ↓ · Reflects governance efficiency</p>
               </div>
 
-              {/* Content - centered */}
-              <div className="flex flex-1 flex-col items-center justify-center">
-                <motion.div
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.6, delay: 0.4 }}
-                  className="text-center"
-                >
-                  <div className="flex items-baseline justify-center gap-2">
-                    <span className="text-5xl sm:text-6xl lg:text-7xl font-bold text-emerald-300 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
-                      {decisionVelocity.current}
-                    </span>
-                    <span className="text-xl sm:text-2xl text-slate-400">days</span>
-                  </div>
-                  <p className="mt-3 text-sm text-slate-400">median to finalization</p>
-                </motion.div>
-                
-                {/* Comparison */}
-                <div className="mt-6 sm:mt-8 lg:mt-12 w-full max-w-xs">
-                  <div className="mb-3 flex items-center justify-between text-xs font-medium text-slate-400">
-                    <span>This year</span>
-                    <span>Last year</span>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-4 sm:gap-3">
-                    <div className="relative flex-1">
-                      <div className="h-3 overflow-hidden rounded-full bg-slate-800/50 shadow-inner">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          whileInView={{ width: "100%" }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1, delay: 0.6 }}
-                          className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-sm shadow-emerald-400/50"
-                        />
-                      </div>
-                      <span className="absolute -top-6 left-0 text-sm font-bold text-emerald-300">
-                        {decisionVelocity.current}d
+              {/* Content - Two Column Layout */}
+              <div className="flex flex-1 flex-col lg:flex-row gap-6 lg:gap-8">
+                {/* Left: Main Metric */}
+                <div className="flex flex-col items-center justify-center lg:w-1/2">
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    whileInView={{ scale: 1, opacity: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.6, delay: 0.4 }}
+                    className="text-center"
+                  >
+                    <div className="flex items-baseline justify-center gap-2">
+                      <span className="text-4xl sm:text-5xl lg:text-6xl font-bold text-emerald-300 drop-shadow-[0_0_20px_rgba(52,211,153,0.3)]">
+                        {decisionVelocity.current}
                       </span>
+                      <span className="text-lg sm:text-xl text-slate-400">days</span>
                     </div>
-                    <div className="relative flex-1">
-                      <div className="h-3 overflow-hidden rounded-full bg-slate-800/50 shadow-inner">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${(decisionVelocity.current / decisionVelocity.previous) * 100}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1, delay: 0.6 }}
-                          className="h-full bg-slate-500/70"
-                        />
-                      </div>
-                      <span className="absolute -top-6 right-0 text-sm font-bold text-slate-400">
-                        {decisionVelocity.previous}d
-                      </span>
-                    </div>
-                  </div>
+                    <p className="mt-2 text-sm text-slate-400">Draft → Final median</p>
+                  </motion.div>
+                  
+                  {/* Improvement badge */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.5, delay: 0.8 }}
+                    className="mt-4 flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2"
+                  >
+                    <Clock className="h-4 w-4 text-emerald-400" />
+                    <span className="text-sm font-bold text-emerald-300">{Math.abs(decisionVelocity.change)}% faster</span>
+                    <span className="text-sm text-slate-400">YoY</span>
+                  </motion.div>
                 </div>
 
-                {/* Improvement badge */}
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.5, delay: 0.8 }}
-                  className="mt-8 flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2"
-                >
-                  <Clock className="h-4 w-4 text-emerald-400" />
-                  <span className="text-sm font-bold text-emerald-300">{Math.abs(decisionVelocity.change)}% faster</span>
-                  <span className="text-sm text-slate-400">YoY</span>
-                </motion.div>
+                {/* Right: Extended Transitions */}
+                <div className="flex-1 lg:w-1/2">
+                  <h4 className="text-xs font-medium text-slate-400 mb-3">Transition Breakdown</h4>
+                  <div className="space-y-2 max-h-[280px] overflow-y-auto pr-2 scrollbar-thin scrollbar-track-slate-900/50 scrollbar-thumb-emerald-500/30">
+                    {extendedVelocity.map((transition, index) => {
+                      const maxDays = Math.max(...extendedVelocity.map(t => t.medianDays), 1);
+                      const width = (transition.medianDays / maxDays) * 100;
+                      
+                      return (
+                        <motion.div
+                          key={transition.transition}
+                          initial={{ opacity: 0, x: 20 }}
+                          whileInView={{ opacity: 1, x: 0 }}
+                          viewport={{ once: true }}
+                          transition={{ duration: 0.4, delay: index * 0.1 }}
+                          className="rounded-lg border border-slate-700/50 bg-slate-900/30 p-3"
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-medium text-emerald-300">{transition.transition}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-bold text-white">{transition.medianDays}d</span>
+                              <span className="text-[10px] text-slate-500">({transition.count} proposals)</span>
+                            </div>
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-slate-800/50">
+                            <motion.div
+                              initial={{ width: 0 }}
+                              whileInView={{ width: `${width}%` }}
+                              viewport={{ once: true }}
+                              transition={{ duration: 0.8, delay: index * 0.1 }}
+                              className="h-full bg-gradient-to-r from-emerald-400 to-cyan-400"
+                            />
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                    {extendedVelocity.length === 0 && (
+                      <p className="text-xs text-slate-500 text-center py-4">No transition data available</p>
+                    )}
+                  </div>
+                </div>
               </div>
 
               {/* Footer */}
-              <div className="mt-8 border-t border-emerald-400/10 pt-4">
+              <div className="mt-4 border-t border-emerald-400/10 pt-3">
                 <p className="text-center text-xs text-slate-500">
-                  Governance is accelerating
+                  {createdToMergedVelocity && createdToMergedVelocity.summary.total > 0 
+                    ? `${createdToMergedVelocity.summary.total} proposals finalized · ${createdToMergedVelocity.summary.averageDays}d average from creation`
+                    : 'Governance is accelerating'}
                 </p>
               </div>
             </div>
@@ -1427,13 +1509,13 @@ export default function ProtocolBento() {
             </div>
           </motion.div>
 
-          {/* PRs - Col 2, Row 4 */}
+          {/* PRs - Col 1, Rows 3-4 (TALL LEFT BOTTOM) */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.4, delay: 0.4 }}
-            className="group relative col-span-1 order-9 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-2 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
+            className="group relative col-span-1 order-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-1 lg:row-start-3 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}

@@ -5,24 +5,28 @@ import * as z from 'zod'
 export const analyticsProcedures = {
   getActiveProposals: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const result = await prisma.$queryRaw<Array<{
+      const result = await prisma.$queryRawUnsafe<Array<{
         draft: bigint;
         review: bigint;
         last_call: bigint;
         total: bigint;
-      }>>`
+      }>>(`
         SELECT
-          COUNT(*) FILTER (WHERE status = 'Draft') as draft,
-          COUNT(*) FILTER (WHERE status = 'Review') as review,
-          COUNT(*) FILTER (WHERE status = 'Last Call') as last_call,
+          COUNT(*) FILTER (WHERE s.status = 'Draft') as draft,
+          COUNT(*) FILTER (WHERE s.status = 'Review') as review,
+          COUNT(*) FILTER (WHERE s.status = 'Last Call') as last_call,
           COUNT(*) as total
-        FROM eip_snapshots
-        WHERE status IN ('Draft', 'Review', 'Last Call')
-      `;
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE s.status IN ('Draft', 'Review', 'Last Call')
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+      `, input.repository || 'all');
 
       const row = result[0] || { draft: BigInt(0), review: BigInt(0), last_call: BigInt(0), total: BigInt(0) };
 
@@ -69,34 +73,38 @@ export const analyticsProcedures = {
 
   getLifecycleData: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         stage: string;
         count: bigint;
         color: string;
         opacity: string;
-      }>>`
+      }>>(`
         SELECT 
-          status as stage, 
+          s.status as stage, 
           COUNT(*) as count,
           CASE 
-            WHEN status IN ('Draft', 'Review', 'Last Call') THEN 'cyan'
-            WHEN status = 'Final' THEN 'emerald'
-            WHEN status = 'Stagnant' THEN 'slate'
-            WHEN status = 'Withdrawn' THEN 'red'
+            WHEN s.status IN ('Draft', 'Review', 'Last Call') THEN 'cyan'
+            WHEN s.status = 'Final' THEN 'emerald'
+            WHEN s.status = 'Stagnant' THEN 'slate'
+            WHEN s.status = 'Withdrawn' THEN 'red'
             ELSE 'blue' 
           END as color,
           CASE 
-            WHEN status IN ('Withdrawn', 'Stagnant') THEN 'dim'
+            WHEN s.status IN ('Withdrawn', 'Stagnant') THEN 'dim'
             ELSE 'bright'
           END as opacity
-        FROM eip_snapshots
-        GROUP BY status
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY s.status
         ORDER BY count DESC
-      `;
+      `, input.repository || 'all');
 
       return results.map(r => ({
         stage: r.stage,
@@ -140,39 +148,52 @@ export const analyticsProcedures = {
 
   getStandardsComposition: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         type: string;
         category: string | null;
         count: bigint;
         percentage: number;
         color: string;
-      }>>`
+        repository: string | null;
+      }>>(`
+        WITH total_count AS (
+          SELECT COUNT(*) as total
+          FROM eip_snapshots s
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        )
         SELECT
-          type,
-          COALESCE(category, 'Core') as category,
+          s.type,
+          COALESCE(s.category, 'Core') as category,
           COUNT(*) as count,
-          ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM eip_snapshots), 1) as percentage,
+          ROUND(COUNT(*) * 100.0 / NULLIF((SELECT total FROM total_count), 0), 1) as percentage,
           CASE 
-            WHEN type = 'Standards Track' AND category = 'Core' THEN 'emerald'
-            WHEN type = 'Standards Track' AND category = 'ERC' THEN 'blue'
-            WHEN type = 'Meta' THEN 'violet'
+            WHEN s.type = 'Standards Track' AND s.category = 'Core' THEN 'emerald'
+            WHEN s.type = 'Standards Track' AND s.category = 'ERC' THEN 'blue'
+            WHEN s.type = 'Meta' THEN 'violet'
             ELSE 'slate'
-          END as color
-        FROM eip_snapshots
-        GROUP BY type, category
+          END as color,
+          r.name as repository
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY s.type, s.category, r.name
         ORDER BY count DESC
-      `;
+      `, input.repository || 'all');
 
       return results.map(r => ({
         type: r.type,
         category: r.category || 'Core',
         count: Number(r.count),
         percentage: Number(r.percentage),
-        color: r.color
+        color: r.color,
+        repository: r.repository
       }));
     }),
 
@@ -218,12 +239,13 @@ export const analyticsProcedures = {
   getRecentChanges: os
     .$context<Ctx>()
     .input(z.object({
-      limit: z.number().optional().default(5)
+      limit: z.number().optional().default(5),
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
         eip_type: string;
         title: string;
@@ -233,7 +255,7 @@ export const analyticsProcedures = {
         statusColor: string;
         repository: string;
         changed_at: Date;
-      }>>`
+      }>>(`
         SELECT
           e.eip_number::text as eip,
           CASE 
@@ -257,35 +279,42 @@ export const analyticsProcedures = {
         LEFT JOIN eip_snapshots s ON s.eip_id = e.id
         LEFT JOIN repositories r ON se.repository_id = r.id
         WHERE se.changed_at >= NOW() - INTERVAL '7 days'
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY se.changed_at DESC
-        LIMIT ${input.limit}
-      `;
+        LIMIT $2
+      `, input.repository || 'all', input.limit);
 
       return results;
     }),
 
   getDecisionVelocity: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const result = await prisma.$queryRaw<Array<{
+      const result = await prisma.$queryRawUnsafe<Array<{
         current: number | null;
         previous: number | null;
         change: number;
-      }>>`
+      }>>(`
         WITH FinalizedEIPs AS (
-          SELECT eip_id, changed_at as final_date
-          FROM eip_status_events
-          WHERE to_status = 'Final'
-          AND changed_at >= NOW() - INTERVAL '365 days'
+          SELECT se.eip_id, se.changed_at as final_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE se.to_status = 'Final'
+          AND se.changed_at >= NOW() - INTERVAL '365 days'
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ),
         DraftDates AS (
-          SELECT eip_id, MIN(changed_at) as draft_date
-          FROM eip_status_events
-          WHERE to_status = 'Draft'
-          GROUP BY eip_id
+          SELECT se.eip_id, MIN(se.changed_at) as draft_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE se.to_status = 'Draft'
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          GROUP BY se.eip_id
         ),
         Durations AS (
           SELECT 
@@ -299,7 +328,7 @@ export const analyticsProcedures = {
           PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_to_final) + 42 as previous,
           -15 as change
         FROM Durations
-      `;
+      `, input.repository || 'all');
 
       const row = result[0] || { current: 0, previous: 0, change: 0 };
 
@@ -313,23 +342,26 @@ export const analyticsProcedures = {
   getMomentumData: os
     .$context<Ctx>()
     .input(z.object({
-      months: z.number().optional().default(12)
+      months: z.number().optional().default(12),
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
     }))
-    .handler(async ({ context }) => {
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         count: bigint;
-      }>>`
+      }>>(`
         SELECT
-          TO_CHAR(date_trunc('month', changed_at), 'Mon') as month,
+          TO_CHAR(date_trunc('month', se.changed_at), 'Mon') as month,
           COUNT(*) as count
-        FROM eip_status_events
-        WHERE changed_at >= date_trunc('month', NOW() - INTERVAL '11 months')
-        GROUP BY date_trunc('month', changed_at)
-        ORDER BY date_trunc('month', changed_at) ASC
-      `;
+        FROM eip_status_events se
+        LEFT JOIN repositories r ON se.repository_id = r.id
+        WHERE se.changed_at >= date_trunc('month', NOW() - INTERVAL '11 months')
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY date_trunc('month', se.changed_at)
+        ORDER BY date_trunc('month', se.changed_at) ASC
+      `, input.repository || 'all');
 
       return results.map(r => Number(r.count));
     }),
@@ -337,42 +369,47 @@ export const analyticsProcedures = {
   getRecentPRs: os
     .$context<Ctx>()
     .input(z.object({
-      limit: z.number().optional().default(5)
+      limit: z.number().optional().default(5),
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         number: string;
         title: string;
         author: string;
         status: string;
         days: number;
-      }>>`
+      }>>(`
         SELECT 
-          pr_number::text as number,
-          title,
-          author,
+          pr.pr_number::text as number,
+          pr.title,
+          pr.author,
           CASE 
-            WHEN merged_at IS NOT NULL THEN 'merged' 
+            WHEN pr.merged_at IS NOT NULL THEN 'merged' 
             ELSE 'open' 
           END as status,
-          EXTRACT(DAY FROM (NOW() - created_at))::int as days
-        FROM pull_requests
-        ORDER BY created_at DESC
-        LIMIT ${input.limit}
-      `;
+          EXTRACT(DAY FROM (NOW() - pr.created_at))::int as days
+        FROM pull_requests pr
+        LEFT JOIN repositories r ON pr.repository_id = r.id
+        WHERE ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ORDER BY pr.created_at DESC
+        LIMIT $2
+      `, input.repository || 'all', input.limit);
 
       return results;
     }),
 
   getLastCallWatchlist: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
         eip_type: string;
         title: string;
@@ -380,7 +417,7 @@ export const analyticsProcedures = {
         daysRemaining: number;
         category: string | null;
         repository: string;
-      }>>`
+      }>>(`
         SELECT 
           e.eip_number::text as eip,
           CASE 
@@ -397,8 +434,9 @@ export const analyticsProcedures = {
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE s.status = 'Last Call'
+          AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY s.deadline ASC
-      `;
+      `, input.repository || 'all');
 
       return results;
     }),
@@ -937,5 +975,230 @@ export const analyticsProcedures = {
         ageDays: r.age_days,
         lastActivity: r.last_activity,
       }));
+    }),
+
+  // Created-to-Merged Velocity - Tracks time from proposal creation to merge/finalization
+  getCreatedToMergedVelocity: os
+    .$context<Ctx>()
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all'),
+      months: z.number().optional().default(24)
+    }))
+    .handler(async ({ context, input }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        eip_number: number;
+        title: string;
+        repository: string;
+        created_at: Date;
+        finalized_at: Date;
+        days_to_merge: number;
+        month: string;
+      }>>(`
+        WITH finalized_proposals AS (
+          SELECT 
+            e.id as eip_id,
+            e.eip_number,
+            e.title,
+            r.name as repository,
+            e.created_at,
+            se.changed_at as finalized_at,
+            EXTRACT(DAY FROM (se.changed_at - e.created_at))::int as days_to_merge,
+            TO_CHAR(se.changed_at, 'YYYY-MM') as month
+          FROM eip_status_events se
+          JOIN eips e ON se.eip_id = e.id
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE se.to_status = 'Final'
+            AND se.changed_at >= NOW() - INTERVAL '${input.months} months'
+            AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        )
+        SELECT 
+          eip_number,
+          title,
+          repository,
+          created_at,
+          finalized_at,
+          days_to_merge,
+          month
+        FROM finalized_proposals
+        WHERE days_to_merge > 0
+        ORDER BY finalized_at DESC
+      `, input.repository || 'all');
+
+      // Calculate summary statistics
+      const daysArray = results.map(r => r.days_to_merge).filter(d => d > 0);
+      const sortedDays = [...daysArray].sort((a, b) => a - b);
+      
+      const median = sortedDays.length > 0 
+        ? sortedDays[Math.floor(sortedDays.length / 2)] 
+        : 0;
+      const p75 = sortedDays.length > 0 
+        ? sortedDays[Math.floor(sortedDays.length * 0.75)] 
+        : 0;
+      const p90 = sortedDays.length > 0 
+        ? sortedDays[Math.floor(sortedDays.length * 0.9)] 
+        : 0;
+      const average = sortedDays.length > 0 
+        ? Math.round(sortedDays.reduce((a, b) => a + b, 0) / sortedDays.length) 
+        : 0;
+
+      // Group by month for trend data
+      const monthlyData = results.reduce((acc, r) => {
+        if (!acc[r.month]) {
+          acc[r.month] = { count: 0, totalDays: 0 };
+        }
+        acc[r.month].count++;
+        acc[r.month].totalDays += r.days_to_merge;
+        return acc;
+      }, {} as Record<string, { count: number; totalDays: number }>);
+
+      const trends = Object.entries(monthlyData)
+        .map(([month, data]) => ({
+          month,
+          count: data.count,
+          averageDays: Math.round(data.totalDays / data.count)
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+
+      return {
+        summary: {
+          total: results.length,
+          medianDays: median,
+          p75Days: p75,
+          p90Days: p90,
+          averageDays: average
+        },
+        trends,
+        proposals: results.slice(0, 50).map(r => ({
+          eipNumber: r.eip_number,
+          title: r.title,
+          repository: r.repository,
+          createdAt: r.created_at,
+          finalizedAt: r.finalized_at,
+          daysToMerge: r.days_to_merge
+        }))
+      };
+    }),
+
+  // Extended Decision Velocity - Tracks multiple status transitions
+  getExtendedDecisionVelocity: os
+    .$context<Ctx>()
+    .input(z.object({
+      repository: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all')
+    }))
+    .handler(async ({ context, input }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        transition: string;
+        median_days: number;
+        p75_days: number;
+        count: bigint;
+      }>>(`
+        WITH status_transitions AS (
+          SELECT 
+            se1.eip_id,
+            se1.from_status,
+            se1.to_status,
+            se1.changed_at as to_date,
+            (
+              SELECT MAX(se2.changed_at) 
+              FROM eip_status_events se2 
+              WHERE se2.eip_id = se1.eip_id 
+                AND se2.to_status = se1.from_status
+                AND se2.changed_at < se1.changed_at
+            ) as from_date
+          FROM eip_status_events se1
+          LEFT JOIN repositories r ON se1.repository_id = r.id
+          WHERE se1.changed_at >= NOW() - INTERVAL '2 years'
+            AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ),
+        transition_durations AS (
+          SELECT 
+            CONCAT(from_status, ' → ', to_status) as transition,
+            EXTRACT(DAY FROM (to_date - from_date))::int as days
+          FROM status_transitions
+          WHERE from_date IS NOT NULL
+            AND EXTRACT(DAY FROM (to_date - from_date)) > 0
+            AND from_status IN ('Draft', 'Review', 'Last Call')
+            AND to_status IN ('Review', 'Last Call', 'Final', 'Withdrawn', 'Stagnant')
+        )
+        SELECT 
+          transition,
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days)::numeric as median_days,
+          PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY days)::numeric as p75_days,
+          COUNT(*)::bigint as count
+        FROM transition_durations
+        GROUP BY transition
+        HAVING COUNT(*) >= 3
+        ORDER BY 
+          CASE 
+            WHEN transition LIKE 'Draft → Review%' THEN 1
+            WHEN transition LIKE 'Review → Last Call%' THEN 2
+            WHEN transition LIKE 'Last Call → Final%' THEN 3
+            WHEN transition LIKE 'Draft → Final%' THEN 4
+            ELSE 5
+          END
+      `, input.repository || 'all');
+
+      // Also get Draft → Final direct metric for comparison
+      const draftToFinal = await prisma.$queryRawUnsafe<Array<{
+        median_days: number;
+        p75_days: number;
+        count: bigint;
+      }>>(`
+        WITH draft_dates AS (
+          SELECT 
+            eip_id, 
+            MIN(changed_at) as draft_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE to_status = 'Draft'
+            AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          GROUP BY eip_id
+        ),
+        final_dates AS (
+          SELECT 
+            eip_id, 
+            MIN(changed_at) as final_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE to_status = 'Final'
+            AND changed_at >= NOW() - INTERVAL '2 years'
+            AND ($1::text = 'all' OR $1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          GROUP BY eip_id
+        ),
+        durations AS (
+          SELECT EXTRACT(DAY FROM (f.final_date - d.draft_date))::int as days
+          FROM final_dates f
+          JOIN draft_dates d ON f.eip_id = d.eip_id
+          WHERE EXTRACT(DAY FROM (f.final_date - d.draft_date)) > 0
+        )
+        SELECT 
+          PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days)::numeric as median_days,
+          PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY days)::numeric as p75_days,
+          COUNT(*)::bigint as count
+        FROM durations
+      `, input.repository || 'all');
+
+      const transitions = results.map(r => ({
+        transition: r.transition,
+        medianDays: Math.round(Number(r.median_days || 0)),
+        p75Days: Math.round(Number(r.p75_days || 0)),
+        count: Number(r.count)
+      }));
+
+      // Add Draft → Final if not already present
+      if (draftToFinal[0] && draftToFinal[0].count > 0 && !transitions.find(t => t.transition === 'Draft → Final')) {
+        transitions.push({
+          transition: 'Draft → Final',
+          medianDays: Math.round(Number(draftToFinal[0].median_days || 0)),
+          p75Days: Math.round(Number(draftToFinal[0].p75_days || 0)),
+          count: Number(draftToFinal[0].count)
+        });
+      }
+
+      return transitions;
     }),
 }
