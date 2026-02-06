@@ -261,8 +261,8 @@ export default function ContributorsAnalyticsPage() {
           <PageHeader title="Live Activity Feed" description="Last 24–48h, chronological" sectionId="feed" className="bg-slate-950/30" />
           <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-6">
             <div className="rounded-lg border border-cyan-400/20 bg-slate-950/50 divide-y divide-slate-800/50 max-h-[400px] overflow-y-auto">
-              {liveFeed.map((a) => (
-                <div key={`${a.actor}-${a.occurredAt}-${a.prNumber}`} className="flex items-center justify-between gap-4 py-2 px-4 text-sm">
+              {liveFeed.map((a, index) => (
+                <div key={`${a.actor}-${a.occurredAt}-${a.prNumber}-${index}`} className="flex items-center justify-between gap-4 py-2 px-4 text-sm">
                   <span className="text-cyan-300 font-medium">{a.actor}</span>
                   <span className="text-slate-400">{a.actionType}</span>
                   <span className="text-slate-500">PR #{a.prNumber}</span>
