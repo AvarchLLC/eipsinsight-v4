@@ -9,6 +9,39 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'avatars.githubusercontent.com', pathname: '/**' },
     ],
   },
+
+  // Backward-compatible redirects for legacy routes
+  async redirects() {
+    return [
+      // Legacy route redirects
+      {
+        source: '/standards-by-repo',
+        destination: '/all',
+        permanent: true,
+      },
+      {
+        source: '/n-w-upgrades',
+        destination: '/upgrade',
+        permanent: true,
+      },
+      // Keep /eips, /ercs, /rips working (if they exist elsewhere)
+      {
+        source: '/eips/:path*',
+        destination: '/eip/:path*',
+        permanent: true,
+      },
+      {
+        source: '/ercs/:path*',
+        destination: '/erc/:path*',
+        permanent: true,
+      },
+      {
+        source: '/rips/:path*',
+        destination: '/rip/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

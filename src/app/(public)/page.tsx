@@ -15,6 +15,7 @@ import LogoCloud from '@/components/logo-cloud';
 import TrendingProposals from './_components/trending-proposals';
 import LatestUpdates from './_components/latest-updates';
 import FAQs from './_components/faqs';
+import { PersonaNudgeBanner } from '@/components/persona-nudge-banner';
 
 export default function EIPsInsightHero() {
   return (
@@ -140,6 +141,15 @@ export default function EIPsInsightHero() {
             </div>
           </motion.div>
 
+          {/* Persona Nudge Banner - gentle prompt for new users */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, delay: 0.5 }}
+            className="mt-8"
+          >
+            <PersonaNudgeBanner variant="card" className="mx-auto max-w-md" />
+          </motion.div>
           
         </div>
       </div>

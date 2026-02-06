@@ -9,6 +9,7 @@ import { CollapsibleHeader } from '@/app/upgrade/_components/collapsible-header'
 import { NetworkUpgradesChart } from '@/app/upgrade/_components/network-upgrades-chart';
 import { HorizontalUpgradeTimeline } from '@/app/upgrade/_components/horizontal-upgrade-timeline';
 import { UpgradeTimelineChart } from '@/app/upgrade/_components/upgrade-timeline-chart';
+import { PersonaHighlights } from '@/app/upgrade/_components/persona-highlights';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
@@ -100,6 +101,9 @@ export default function UpgradePage() {
 
       {/* Collapsible Header */}
       <CollapsibleHeader />
+
+      {/* Persona-specific Highlights */}
+      <PersonaHighlights className="bg-slate-950/30" />
 
       <SectionSeparator />
 

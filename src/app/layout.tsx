@@ -7,6 +7,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
+import { Providers } from "@/providers/Providers";
 
 const Libre_Baskerville = LibreBaskervilleFont({
   variable: "--font-libre-baskerville",
@@ -103,21 +104,21 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth dark">
       <body
-        className={`${Libre_Baskerville.variable} ${Space_Grotesk.variable} antialiased overflow-x-hidden`}
+        className={`${Libre_Baskerville.variable} ${Space_Grotesk.variable} antialiased`}
       >
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full overflow-x-hidden">
+        <Providers>
+          <SidebarProvider>
             <AppSidebar />
-            <SidebarInset className="flex flex-1 flex-col max-w-full overflow-x-hidden">
-              <header className="sticky top-0 z-50">
+            <SidebarInset className="h-screen overflow-y-auto">
+              <div className="sticky top-0 z-40">
                 <Navbar />
-              </header>
+              </div>
               <main className="flex-1">{children}</main>
               <Footer />
             </SidebarInset>
-          </div>
-        </SidebarProvider>
-        <Toaster />
+          </SidebarProvider>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   );

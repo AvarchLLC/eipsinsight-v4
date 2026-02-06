@@ -9,22 +9,34 @@ datasource db {
 }
 
 model User {
-  id                  String     @id @default(cuid())
+  id                  String            @id @default(cuid())
   name                String
   email               String
-  emailVerified       Boolean    @default(false)
+  emailVerified       Boolean           @default(false)
   image               String?
-  createdAt           DateTime   @default(now())
-  updatedAt           DateTime   @updatedAt
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
   avatarUrl           String?
   membershipExpiresAt DateTime?
   membershipTier      String?
-  role                String     @default("user")
+  role                String            @default("user")
   accounts            Account[]
   apiTokens           ApiToken[]
   sessions            Session[]
+  preferences         user_preferences?
 
   @@map("user")
+}
+
+model user_preferences {
+  user_id      String   @id
+  persona      String?
+  default_view Json?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+  user         User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 model Session {
@@ -226,10 +238,14 @@ model pull_requests {
   created_at        DateTime?           @default(now()) @db.Timestamp(6)
   updated_at        DateTime?           @db.Timestamp(6)
   state             String?
+  num_comments      Int?                @default(0)
+  num_reviews       Int?                @default(0)
+  labels            String[]            @default([])
   pull_request_eips pull_request_eips[]
   repositories      repositories?       @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([pr_number, repository_id], map: "pull_requests_unique")
+  @@index([labels], map: "idx_pull_requests_labels", type: Gin)
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -239,12 +255,17 @@ model repositories {
   type                 String?
   active               Boolean?               @default(true)
   contributor_activity contributor_activity[]
+  contributor_scores   contributor_scores[]
   eip_category_events  eip_category_events[]
   eip_deadline_events  eip_deadline_events[]
   eip_files            eip_files[]
   eip_snapshots        eip_snapshots[]
   eip_status_events    eip_status_events[]
   eip_type_events      eip_type_events[]
+  issue_custom_tags    issue_custom_tags[]
+  issue_events         issue_events[]
+  issues               issues[]
+  pr_custom_tags       pr_custom_tags[]
   pr_events            pr_events[]
   pr_governance_state  pr_governance_state[]
   pull_requests        pull_requests[]
@@ -358,4 +379,85 @@ model upgrades {
   file_path                  String?
   created_at                 DateTime?                    @default(now()) @db.Timestamp(6)
   upgrade_composition_events upgrade_composition_events[]
+}
+
+model contributor_scores {
+  id             Int           @id @default(autoincrement())
+  actor          String
+  repository_id  Int?
+  total_score    Int?          @default(0)
+  commits_count  Int?          @default(0)
+  prs_created    Int?          @default(0)
+  prs_merged     Int?          @default(0)
+  reviews_count  Int?          @default(0)
+  comments_count Int?          @default(0)
+  first_activity DateTime?     @db.Timestamptz(6)
+  last_activity  DateTime?     @db.Timestamptz(6)
+  updated_at     DateTime?     @default(now()) @db.Timestamptz(6)
+  repositories   repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([actor, repository_id])
+  @@index([actor], map: "idx_contributor_scores_actor")
+  @@index([total_score], map: "idx_contributor_scores_score")
+}
+
+model issue_custom_tags {
+  id            Int          @id @default(autoincrement())
+  issue_number  Int
+  repository_id Int
+  tag           String       @db.VarChar(100)
+  created_at    DateTime?    @default(now()) @db.Timestamptz(6)
+  repositories  repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([issue_number, repository_id, tag])
+  @@index([issue_number, repository_id], map: "idx_issue_custom_tags_issue")
+  @@index([tag], map: "idx_issue_custom_tags_tag")
+}
+
+model issue_events {
+  id            BigInt       @id @default(autoincrement())
+  issue_number  Int
+  repository_id Int
+  event_type    String
+  actor         String
+  actor_role    String?
+  github_id     String?      @unique
+  metadata      Json?
+  created_at    DateTime     @db.Timestamptz(6)
+  repositories  repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([repository_id, issue_number], map: "idx_issue_events_repo")
+}
+
+model issues {
+  id            Int          @id @default(autoincrement())
+  issue_number  Int
+  repository_id Int
+  title         String?
+  author        String?
+  state         String?
+  created_at    DateTime?    @db.Timestamptz(6)
+  updated_at    DateTime?    @db.Timestamptz(6)
+  closed_at     DateTime?    @db.Timestamptz(6)
+  labels        String[]     @default([])
+  num_comments  Int?         @default(0)
+  repositories  repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([issue_number, repository_id])
+  @@index([created_at], map: "idx_issues_created")
+  @@index([labels], map: "idx_issues_labels", type: Gin)
+  @@index([repository_id, state], map: "idx_issues_repo_state")
+}
+
+model pr_custom_tags {
+  id            Int          @id @default(autoincrement())
+  pr_number     Int
+  repository_id Int
+  tag           String       @db.VarChar(100)
+  created_at    DateTime?    @default(now()) @db.Timestamptz(6)
+  repositories  repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([pr_number, repository_id, tag])
+  @@index([pr_number, repository_id], map: "idx_pr_custom_tags_pr")
+  @@index([tag], map: "idx_pr_custom_tags_tag")
 }
