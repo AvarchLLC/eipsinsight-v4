@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
+import Link from 'next/link';
 import { 
   CheckCircle2, 
   XCircle, 
@@ -14,11 +15,14 @@ import {
 import { cn } from '@/lib/utils';
 
 interface ActivityEvent {
+  id: string;
   actor: string;
   role: string | null;
   eventType: string;
   prNumber: number;
   createdAt: string;
+  githubId: string | null;
+  repoName: string;
 }
 
 interface RoleActivityTimelineProps {
@@ -50,6 +54,33 @@ function formatTimeAgo(dateStr: string): string {
   if (diffDays === 1) return 'yesterday';
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function getPRLink(event: ActivityEvent): string {
+  const repoPath = event.repoName || 'ethereum/EIPs';
+  const baseUrl = `https://github.com/${repoPath}/pull/${event.prNumber}`;
+  
+  // If we have a github_id, we can link directly to the specific activity
+  // GitHub IDs for reviews/comments can be used as anchors
+  if (event.githubId) {
+    // For reviews, the anchor is #pullrequestreview-{id}
+    // For comments, the anchor is #issuecomment-{id} or #discussion_r{id}
+    if (event.eventType === 'APPROVED' || event.eventType === 'CHANGES_REQUESTED' || event.eventType === 'REVIEWED') {
+      return `${baseUrl}#pullrequestreview-${event.githubId}`;
+    }
+    if (event.eventType === 'COMMENTED') {
+      // Could be issue comment or review comment
+      return `${baseUrl}#issuecomment-${event.githubId}`;
+    }
+  }
+  
+  // For other events, link to the appropriate tab
+  if (event.eventType === 'MERGED' || event.eventType === 'CLOSED' || event.eventType === 'OPENED') {
+    return baseUrl;
+  }
+  
+  // Default: link to the files changed tab for commits
+  return baseUrl;
 }
 
 export function RoleActivityTimeline({ events, loading }: RoleActivityTimelineProps) {
@@ -109,7 +140,7 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
 
               return (
                 <motion.div
-                  key={`${event.prNumber}-${event.createdAt}-${index}`}
+                  key={event.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -126,7 +157,14 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
                   {/* Content */}
                   <div className="flex-1 min-w-0 pt-0.5">
                     <p className="text-sm">
-                      <span className="font-medium text-white">{event.actor}</span>
+                      <Link 
+                        href={`https://github.com/${event.actor}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-medium text-white hover:text-cyan-400 transition-colors"
+                      >
+                        {event.actor}
+                      </Link>
                       {event.role && (
                         <span className={cn(
                           "mx-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
@@ -138,7 +176,14 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
                         </span>
                       )}
                       <span className="text-slate-400"> {config.label} </span>
-                      <span className="text-cyan-400 font-medium">PR #{event.prNumber}</span>
+                      <Link
+                        href={getPRLink(event)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 font-medium hover:text-cyan-300 hover:underline transition-colors"
+                      >
+                        PR #{event.prNumber}
+                      </Link>
                     </p>
                     <p className="text-xs text-slate-500 mt-0.5">
                       {formatTimeAgo(event.createdAt)}

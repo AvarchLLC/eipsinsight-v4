@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { Trophy, Medal, Award, Clock, MessageSquare, GitPullRequest } from 'lucide-react';
+import Link from 'next/link';
+import { Trophy, Medal, Award, MessageSquare, GitPullRequest } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LeaderboardEntry {
@@ -28,13 +29,6 @@ const rankIcons: Record<number, { icon: React.ElementType; color: string }> = {
   2: { icon: Medal, color: 'text-slate-300' },
   3: { icon: Award, color: 'text-orange-400' },
 };
-
-function formatResponseTime(hours: number | null): string {
-  if (hours === null) return '-';
-  if (hours < 1) return '< 1h';
-  if (hours < 24) return `${Math.round(hours)}h`;
-  return `${Math.round(hours / 24)}d`;
-}
 
 function formatLastActivity(dateStr: string | null): string {
   if (!dateStr) return '-';
@@ -97,19 +91,19 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <div className="flex items-center justify-center gap-1">
                   <GitPullRequest className="h-3 w-3" />
-                  PRs Reviewed
+                  PRs Touched
                 </div>
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <div className="flex items-center justify-center gap-1">
                   <MessageSquare className="h-3 w-3" />
-                  Comments
+                  Actions
                 </div>
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
                 <div className="flex items-center justify-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Avg Response
+                  <Trophy className="h-3 w-3" />
+                  Score
                 </div>
               </th>
               <th className="px-4 py-3 text-center text-xs font-semibold text-slate-400 uppercase tracking-wider">
@@ -124,7 +118,7 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
 
               return (
                 <motion.tr
-                  key={entry.actor}
+                  key={`${entry.actor}-${index}`}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.03 }}
@@ -142,15 +136,25 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                     </div>
                   </td>
                   <td className="px-4 py-4">
-                    <div className="flex items-center gap-3">
-                      {/* Avatar placeholder */}
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500/30 to-violet-500/30 border border-slate-700">
-                        <span className="text-xs font-semibold text-white">
-                          {entry.actor.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
+                    <Link
+                      href={`https://github.com/${entry.actor}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 group"
+                    >
+                      {/* Avatar */}
+                      <img
+                        src={`https://github.com/${entry.actor}.png?size=64`}
+                        alt={entry.actor}
+                        className="h-8 w-8 rounded-full border border-slate-700 group-hover:border-cyan-500/50 transition-colors"
+                        onError={(e) => {
+                          // Fallback to placeholder on error
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect fill="%231e293b" width="32" height="32" rx="16"/><text x="16" y="20" text-anchor="middle" fill="white" font-size="14">${entry.actor.charAt(0).toUpperCase()}</text></svg>`;
+                        }}
+                      />
                       <div>
-                        <span className="font-medium text-white">
+                        <span className="font-medium text-white group-hover:text-cyan-400 transition-colors">
                           {entry.actor}
                         </span>
                         {entry.role && (
@@ -164,7 +168,7 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   </td>
                   <td className="px-4 py-4 text-center">
                     <span className="font-semibold text-white">
@@ -177,13 +181,8 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                     </span>
                   </td>
                   <td className="px-4 py-4 text-center">
-                    <span className={cn(
-                      "text-sm",
-                      entry.avgResponseHours && entry.avgResponseHours < 24
-                        ? "text-emerald-400"
-                        : "text-slate-400"
-                    )}>
-                      {formatResponseTime(entry.avgResponseHours)}
+                    <span className="font-semibold text-amber-400">
+                      {entry.totalScore.toLocaleString()}
                     </span>
                   </td>
                   <td className="px-4 py-4 text-center">

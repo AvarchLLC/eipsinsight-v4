@@ -119,9 +119,19 @@ const standardsChartConfig = {
   other: { label: "Other", color: "#fb923c" },
 } satisfies ChartConfig;
 
+export type RepositoryFilter = 'all' | 'eips' | 'ercs' | 'rips';
+
+const REPO_OPTIONS: { value: RepositoryFilter; label: string }[] = [
+  { value: 'all', label: 'All Repositories' },
+  { value: 'eips', label: 'ethereum/EIPs' },
+  { value: 'ercs', label: 'ethereum/ERCs' },
+  { value: 'rips', label: 'ethereum/RIPs' },
+];
+
 export default function ProtocolBento() {
   const { toast } = useToast();
   const [isMobile, setIsMobile] = useState(false);
+  const [repoFilter, setRepoFilter] = useState<RepositoryFilter>('all');
   const [activeProposals, setActiveProposals] = useState<ActiveProposals>(defaultActiveProposals);
   const [lifecycleData, setLifecycleData] = useState<LifecycleStage[]>([]);
   const [standardsMix, setStandardsMix] = useState<StandardsMix[]>([]);
@@ -132,6 +142,8 @@ export default function ProtocolBento() {
   const [lastCallWatchlist, setLastCallWatchlist] = useState<LastCallItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStandards, setSelectedStandards] = useState<Set<string>>(new Set(['Core', 'ERC', 'Networking', 'Interface', 'Meta', 'Informational', 'RIP']));
+
+  const repoParam = repoFilter === 'all' ? undefined : repoFilter;
 
   // Mobile detection
   useEffect(() => {
@@ -145,8 +157,9 @@ export default function ProtocolBento() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        // Fetch all data in parallel
+        const repoArg = repoParam ? { repo: repoParam } : {};
+
+        // Fetch all data in parallel with optional repository filter
         const [
           activeProposalsData,
           lifecycleDataRes,
@@ -157,14 +170,14 @@ export default function ProtocolBento() {
           prsDataRes,
           lastCallData
         ] = await Promise.all([
-          client.analytics.getActiveProposals({}),
-          client.analytics.getLifecycleData({}),
-          client.analytics.getStandardsComposition({}),
-          client.analytics.getRecentChanges({ limit: 20 }),
-          client.analytics.getDecisionVelocity({}),
-          client.analytics.getMomentumData({ months: 12 }),
-          client.analytics.getRecentPRs({ limit: 3 }),
-          client.analytics.getLastCallWatchlist({})
+          client.analytics.getActiveProposals(repoArg),
+          client.analytics.getLifecycleData(repoArg),
+          client.analytics.getStandardsComposition(repoArg),
+          client.analytics.getRecentChanges({ limit: 20, ...repoArg }),
+          client.analytics.getDecisionVelocity(repoArg),
+          client.analytics.getMomentumData({ months: 12, ...repoArg }),
+          client.analytics.getRecentPRs({ limit: 3, ...repoArg }),
+          client.analytics.getLastCallWatchlist(repoArg)
         ]);
 
         setActiveProposals(activeProposalsData);
@@ -184,7 +197,7 @@ export default function ProtocolBento() {
     };
 
     fetchData();
-  }, []);
+  }, [repoParam]);
 
   const stagnationData = {
     count: lifecycleData.find(d => d.stage === "Stagnant")?.count || 0,
@@ -220,6 +233,27 @@ export default function ProtocolBento() {
       <section className="relative pt-5 overflow-hidden bg-background pb-8 sm:pb-12 lg:pb-16">
         <div className="container relative mx-auto max-w-7xl px-4 sm:px-4 md:px-6 lg:px-8">
 
+        {/* Repository filter */}
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Repository</span>
+          <div className="flex rounded-lg border border-slate-700/50 bg-slate-900/30 p-0.5">
+            {REPO_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setRepoFilter(opt.value)}
+                className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
+                  repoFilter === opt.value
+                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Bento Grid - 4-Column Symmetric Layout
             4 columns × 4 rows on desktop
             Each column = equal width
@@ -239,7 +273,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.1 }}
             className="group relative col-span-1 order-2 overflow-hidden rounded-2xl border border-cyan-400/30 bg-gradient-to-b from-cyan-500/10 via-cyan-500/5 to-transparent p-4 sm:p-6 shadow-xl backdrop-blur transition-all hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/30 md:col-span-2 lg:col-span-2 lg:col-start-2 lg:row-start-1 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -274,7 +308,7 @@ export default function ProtocolBento() {
                         className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 transition-all hover:border-cyan-400/40 hover:bg-cyan-500/20"
                         onClick={async () => {
                           try {
-                            const data = await client.analytics.getActiveProposalsDetailed({});
+                            const data = await client.analytics.getActiveProposalsDetailed(repoParam ? { repo: repoParam } : {});
                             const csvData = data.map((d, index) => {
                               let prefix = 'EIP';
                               if (d.category === 'ERC') {
@@ -445,7 +479,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.25 }}
             className="group relative col-span-1 order-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-1 lg:row-start-3 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -475,7 +509,7 @@ export default function ProtocolBento() {
                       className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-500/10 transition-all hover:border-emerald-400/40 hover:bg-emerald-500/20"
                       onClick={async () => {
                         try {
-                          const data = await client.analytics.getLifecycleDetailed({});
+                          const data = await client.analytics.getLifecycleDetailed(repoParam ? { repo: repoParam } : {});
                           const csv = "eip_number,type,title,status,category,repository,created_at\n" + data.map(d => `${d.eip_number},${d.type},"${d.title}",${d.status},${d.category || 'N/A'},${d.repository},${d.created_at}`).join("\n");
                           const blob = new Blob([csv], { type: "text/csv" });
                           const url = URL.createObjectURL(blob);
@@ -542,7 +576,7 @@ export default function ProtocolBento() {
                         <motion.div
                           initial={{ width: 0 }}
                           whileInView={{ width: `${width}%` }}
-                          viewport={{ once: true }}
+                          viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                           transition={{ duration: 1, delay: index * 0.1, ease: "easeOut" }}
                           className={`h-full ${colorClasses[stage.color as keyof typeof colorClasses]} ${isDimmed ? 'opacity-60' : ''} border-r-2`}
                         />
@@ -580,7 +614,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.3 }}
             className="group relative col-span-1 md:col-span-2 order-6 overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-blue-400/40 hover:shadow-xl hover:shadow-blue-500/20 lg:col-span-2 lg:col-start-2 lg:row-start-2 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -610,7 +644,7 @@ export default function ProtocolBento() {
                       className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/10 transition-all hover:border-blue-400/40 hover:bg-blue-500/20"
                       onClick={async () => {
                         try {
-                          const data = await client.analytics.getStandardsCompositionDetailed({});
+                          const data = await client.analytics.getStandardsCompositionDetailed(repoParam ? { repo: repoParam } : {});
                           
                           // Filter data based on selected standards
                           const filteredData = data.filter(d => {
@@ -906,7 +940,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.2 }}
             className="group relative col-span-1 order-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-violet-400/40 hover:shadow-xl hover:shadow-violet-500/20 lg:col-start-4 lg:row-start-3 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
           >
@@ -1015,7 +1049,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.05 }}
             className="group relative col-span-1 order-1 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-cyan-400/40 hover:shadow-xl hover:shadow-cyan-500/20 lg:col-start-1 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -1115,7 +1149,7 @@ export default function ProtocolBento() {
                       rel="noopener noreferrer"
                       initial={{ opacity: 0, x: -20 }}
                       whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.5) }}
                       className="group/item block cursor-pointer rounded-lg border border-slate-700/50 bg-slate-900/30 p-2.5 transition-all hover:border-cyan-400/40 hover:bg-slate-900/50"
                     >
@@ -1147,7 +1181,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.4 }}
             className="group relative col-span-1 md:col-span-2 order-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-emerald-400/30 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-5 sm:p-6 lg:p-8 shadow-2xl backdrop-blur transition-all hover:border-emerald-400/50 hover:shadow-[0_20px_70px_rgba(16,185,129,0.3)] lg:col-span-2 lg:col-start-3 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -1182,7 +1216,7 @@ export default function ProtocolBento() {
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                   transition={{ duration: 0.6, delay: 0.4 }}
                   className="text-center"
                 >
@@ -1207,7 +1241,7 @@ export default function ProtocolBento() {
                         <motion.div
                           initial={{ width: 0 }}
                           whileInView={{ width: "100%" }}
-                          viewport={{ once: true }}
+                          viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                           transition={{ duration: 1, delay: 0.6 }}
                           className="h-full bg-gradient-to-r from-emerald-400 to-emerald-500 shadow-sm shadow-emerald-400/50"
                         />
@@ -1221,7 +1255,7 @@ export default function ProtocolBento() {
                         <motion.div
                           initial={{ width: 0 }}
                           whileInView={{ width: `${(decisionVelocity.current / decisionVelocity.previous) * 100}%` }}
-                          viewport={{ once: true }}
+                          viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                           transition={{ duration: 1, delay: 0.6 }}
                           className="h-full bg-slate-500/70"
                         />
@@ -1237,7 +1271,7 @@ export default function ProtocolBento() {
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                   transition={{ duration: 0.5, delay: 0.8 }}
                   className="mt-8 flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-4 py-2"
                 >
@@ -1260,7 +1294,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.15 }}
             className="group relative col-span-1 order-3 overflow-hidden rounded-2xl border border-amber-400/30 bg-gradient-to-br from-amber-500/10 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-amber-400/50 hover:shadow-xl hover:shadow-amber-500/20 lg:col-start-4 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
           >
@@ -1344,7 +1378,7 @@ export default function ProtocolBento() {
                       rel="noopener noreferrer"
                       initial={{ opacity: 0, y: 10 }}
                       whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                       transition={{ duration: 0.3 }}
                       className={`group/item block rounded-lg border p-3 transition-all ${
                         urgency === "urgent"
@@ -1381,7 +1415,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.35 }}
             className="group relative col-span-1 order-7 hidden overflow-hidden rounded-2xl border border-slate-400/20 bg-gradient-to-br from-slate-500/5 to-transparent p-5 shadow-lg backdrop-blur transition hover:border-slate-400/30"
           >
@@ -1410,7 +1444,7 @@ export default function ProtocolBento() {
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}
                   whileInView={{ scale: 1, opacity: 1 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                   transition={{ duration: 0.5, delay: 0.4 }}
                   className="text-center"
                 >
@@ -1431,7 +1465,7 @@ export default function ProtocolBento() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.3 }}
+            viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.4 }}
             className="group relative col-span-1 order-9 overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-2 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
           >
@@ -1471,7 +1505,7 @@ export default function ProtocolBento() {
                       rel="noopener noreferrer"
                       initial={{ opacity: 0, x: -20 }}
                       whileInView={{ opacity: 1, x: 0 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
                       className="group/item block rounded-lg border border-slate-700/50 bg-slate-900/30 p-3 transition-all hover:border-emerald-400/40 hover:bg-slate-900/50 hover:shadow-lg hover:shadow-emerald-500/10"
                     >
@@ -1504,7 +1538,7 @@ export default function ProtocolBento() {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.5 }}
+          viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="mt-8 overflow-hidden rounded-2xl border border-cyan-400/20 bg-gradient-to-br from-cyan-500/5 via-transparent to-blue-500/5 p-6 backdrop-blur lg:p-8"
         >

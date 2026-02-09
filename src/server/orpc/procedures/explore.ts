@@ -442,61 +442,88 @@ export const exploreProcedures = {
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      // Get from contributor_scores for overall stats
-      const scores = await prisma.contributor_scores.findMany({
-        orderBy: { total_score: 'desc' },
-        take: input.limit,
-      });
+      // Common bot patterns to exclude
+      const botExcludeCondition = `
+        AND actor NOT LIKE '%[bot]%'
+        AND actor NOT LIKE '%-bot'
+        AND actor NOT LIKE '%bot'
+        AND actor NOT IN ('dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot')
+      `;
 
-      // Get role-specific activity counts using Prisma query
-      const activityCounts = input.role
-        ? await prisma.$queryRaw<Array<{
-            actor: string;
-            actions: bigint;
-            role: string | null;
-          }>>`
-            SELECT 
-              actor,
-              COUNT(*) as actions,
-              role
-            FROM contributor_activity
-            WHERE role = ${input.role}
-            GROUP BY actor, role
-            ORDER BY actions DESC
-            LIMIT ${input.limit}
-          `
-        : await prisma.$queryRaw<Array<{
-            actor: string;
-            actions: bigint;
-            role: string | null;
-          }>>`
-            SELECT 
-              actor,
-              COUNT(*) as actions,
-              role
-            FROM contributor_activity
-            GROUP BY actor, role
-            ORDER BY actions DESC
-            LIMIT ${input.limit}
-          `;
+      // Use contributor_activity for role-based stats (has proper role data)
+      if (input.role) {
+        const roleLeaderboard = await prisma.$queryRaw<Array<{
+          actor: string;
+          total_actions: bigint;
+          last_activity: Date | null;
+          distinct_prs: bigint;
+        }>>`
+          SELECT 
+            ca.actor,
+            COUNT(*) as total_actions,
+            COUNT(DISTINCT ca.pr_number) as distinct_prs,
+            MAX(ca.occurred_at) as last_activity
+          FROM contributor_activity ca
+          WHERE ca.role = ${input.role}
+            AND ca.actor NOT LIKE '%[bot]%'
+            AND ca.actor NOT LIKE '%-bot'
+            AND LOWER(ca.actor) NOT LIKE '%bot'
+            AND ca.actor NOT IN ('dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot')
+          GROUP BY ca.actor
+          ORDER BY total_actions DESC
+          LIMIT ${input.limit}
+        `;
 
-      const activityMap = new Map(activityCounts.map(a => [a.actor, { actions: Number(a.actions), role: a.role }]));
-
-      return scores.map((score, index) => {
-        const activity = activityMap.get(score.actor);
-        return {
+        return roleLeaderboard.map((entry, index) => ({
           rank: index + 1,
-          actor: score.actor,
-          totalScore: score.total_score || 0,
-          prsReviewed: score.reviews_count || 0,
-          comments: score.comments_count || 0,
-          prsCreated: score.prs_created || 0,
-          prsMerged: score.prs_merged || 0,
+          actor: entry.actor,
+          totalScore: Number(entry.total_actions),
+          prsReviewed: Number(entry.distinct_prs || 0),  // PRs touched
+          comments: Number(entry.total_actions || 0),    // Total contributions
+          prsCreated: 0,
+          prsMerged: 0,
           avgResponseHours: null,
-          lastActivity: score.last_activity?.toISOString() || null,
-          role: activity?.role || null,
-        };
-      });
+          lastActivity: entry.last_activity?.toISOString() || null,
+          role: input.role,
+        }));
+      }
+
+      // When no role selected, use contributor_activity for all actors
+      const leaderboard = await prisma.$queryRaw<Array<{
+        actor: string;
+        primary_role: string | null;
+        total_actions: bigint;
+        last_activity: Date | null;
+        distinct_prs: bigint;
+      }>>`
+        SELECT 
+          ca.actor,
+          (SELECT role FROM contributor_activity ca2 WHERE ca2.actor = ca.actor ORDER BY occurred_at DESC LIMIT 1) as primary_role,
+          COUNT(*) as total_actions,
+          COUNT(DISTINCT ca.pr_number) as distinct_prs,
+          MAX(ca.occurred_at) as last_activity
+        FROM contributor_activity ca
+        WHERE ca.actor NOT LIKE '%[bot]%'
+          AND ca.actor NOT LIKE '%-bot'
+          AND LOWER(ca.actor) NOT LIKE '%bot'
+          AND ca.actor NOT IN ('dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot')
+        GROUP BY ca.actor
+        ORDER BY total_actions DESC
+        LIMIT ${input.limit}
+      `;
+
+      return leaderboard.map((entry, index) => ({
+        rank: index + 1,
+        actor: entry.actor,
+        totalScore: Number(entry.total_actions),
+        prsReviewed: Number(entry.distinct_prs || 0),  // PRs touched
+        comments: Number(entry.total_actions || 0),    // Total contributions
+        prsCreated: 0,
+        prsMerged: 0,
+        avgResponseHours: null,
+        lastActivity: entry.last_activity?.toISOString() || null,
+        role: entry.primary_role,
+      }));
     }),
 
   // Get top actors by role
@@ -566,27 +593,46 @@ export const exploreProcedures = {
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
+      // Exclude bots from the timeline
+      const botPatterns = ['%[bot]%', '%-bot'];
+      const botNames = ['dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot'];
+
       const events = await prisma.pr_events.findMany({
-        where: input.role ? {
-          actor_role: input.role,
-        } : {},
+        where: {
+          ...(input.role ? { actor_role: input.role } : {}),
+          NOT: [
+            { actor: { contains: '[bot]' } },
+            { actor: { endsWith: '-bot' } },
+            { actor: { in: botNames } },
+          ],
+        },
         orderBy: { created_at: 'desc' },
         take: input.limit,
         select: {
+          id: true,
           actor: true,
           actor_role: true,
           event_type: true,
           pr_number: true,
           created_at: true,
+          github_id: true,
+          repositories: {
+            select: {
+              name: true,
+            },
+          },
         },
       });
 
       return events.map(e => ({
+        id: e.id.toString(),
         actor: e.actor,
         role: e.actor_role,
         eventType: e.event_type,
         prNumber: e.pr_number,
         createdAt: e.created_at.toISOString(),
+        githubId: e.github_id,
+        repoName: e.repositories?.name || 'ethereum/EIPs',
       }));
     }),
 

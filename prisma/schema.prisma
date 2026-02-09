@@ -1,7 +1,6 @@
 generator client {
-  provider   = "prisma-client-js"
-  output     = "../src/generated/prisma"
-  engineType = "binary"
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
@@ -211,7 +210,7 @@ model eips {
 
 model pgmigrations {
   id     Int      @id @default(autoincrement())
-  name   String   @db.VarChar(255)
+  name   String   @unique @db.VarChar(255)
   run_on DateTime @db.Timestamp(6)
 }
 

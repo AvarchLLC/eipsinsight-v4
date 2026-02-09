@@ -2,27 +2,36 @@ import { os, checkAPIToken, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
+const repoFilterSchema = z.object({
+  repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+});
+
 export const analyticsProcedures = {
   getActiveProposals: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const result = await prisma.$queryRaw<Array<{
+      const result = await prisma.$queryRawUnsafe<Array<{
         draft: bigint;
         review: bigint;
         last_call: bigint;
         total: bigint;
-      }>>`
+      }>>(
+        `
         SELECT
-          COUNT(*) FILTER (WHERE status = 'Draft') as draft,
-          COUNT(*) FILTER (WHERE status = 'Review') as review,
-          COUNT(*) FILTER (WHERE status = 'Last Call') as last_call,
+          COUNT(*) FILTER (WHERE s.status = 'Draft') as draft,
+          COUNT(*) FILTER (WHERE s.status = 'Review') as review,
+          COUNT(*) FILTER (WHERE s.status = 'Last Call') as last_call,
           COUNT(*) as total
-        FROM eip_snapshots
-        WHERE status IN ('Draft', 'Review', 'Last Call')
-      `;
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE s.status IN ('Draft', 'Review', 'Last Call')
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+      `,
+        input.repo ?? null
+      );
 
       const row = result[0] || { draft: BigInt(0), review: BigInt(0), last_call: BigInt(0), total: BigInt(0) };
 
@@ -36,11 +45,11 @@ export const analyticsProcedures = {
 
   getActiveProposalsDetailed: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
         type: string;
         title: string;
@@ -48,7 +57,8 @@ export const analyticsProcedures = {
         category: string | null;
         repository: string;
         created_at: Date | null;
-      }>>`
+      }>>(
+        `
         SELECT
           e.eip_number,
           COALESCE(s.type, 'EIP') as type,
@@ -61,42 +71,50 @@ export const analyticsProcedures = {
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE s.status IN ('Draft', 'Review', 'Last Call')
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY e.eip_number ASC
-      `;
+      `,
+        input.repo ?? null
+      );
 
       return results;
     }),
 
   getLifecycleData: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         stage: string;
         count: bigint;
         color: string;
         opacity: string;
-      }>>`
+      }>>(
+        `
         SELECT 
-          status as stage, 
+          s.status as stage, 
           COUNT(*) as count,
           CASE 
-            WHEN status IN ('Draft', 'Review', 'Last Call') THEN 'cyan'
-            WHEN status = 'Final' THEN 'emerald'
-            WHEN status = 'Stagnant' THEN 'slate'
-            WHEN status = 'Withdrawn' THEN 'red'
+            WHEN s.status IN ('Draft', 'Review', 'Last Call') THEN 'cyan'
+            WHEN s.status = 'Final' THEN 'emerald'
+            WHEN s.status = 'Stagnant' THEN 'slate'
+            WHEN s.status = 'Withdrawn' THEN 'red'
             ELSE 'blue' 
           END as color,
           CASE 
-            WHEN status IN ('Withdrawn', 'Stagnant') THEN 'dim'
+            WHEN s.status IN ('Withdrawn', 'Stagnant') THEN 'dim'
             ELSE 'bright'
           END as opacity
-        FROM eip_snapshots
-        GROUP BY status
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY s.status
         ORDER BY count DESC
-      `;
+      `,
+        input.repo ?? null
+      );
 
       return results.map(r => ({
         stage: r.stage,
@@ -108,11 +126,11 @@ export const analyticsProcedures = {
 
   getLifecycleDetailed: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
         type: string;
         title: string;
@@ -120,7 +138,8 @@ export const analyticsProcedures = {
         category: string | null;
         repository: string;
         created_at: Date;
-      }>>`
+      }>>(
+        `
         SELECT
           e.eip_number,
           COALESCE(s.type, 'EIP') as type,
@@ -132,44 +151,61 @@ export const analyticsProcedures = {
         FROM eip_snapshots s
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id
+        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY e.eip_number ASC
-      `;
+      `,
+        input.repo ?? null
+      );
 
       return results;
     }),
 
   getStandardsComposition: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         type: string;
         category: string | null;
+        repository: string | null;
         count: bigint;
         percentage: number;
         color: string;
-      }>>`
+      }>>(
+        `
+        WITH filtered AS (
+          SELECT s.type, s.category, r.name AS repository
+          FROM eip_snapshots s
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ),
+        total AS (SELECT COUNT(*)::float AS n FROM filtered)
         SELECT
           type,
           COALESCE(category, 'Core') as category,
-          COUNT(*) as count,
-          ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM eip_snapshots), 1) as percentage,
+          repository,
+          COUNT(*)::bigint as count,
+          ROUND((COUNT(*) * 100.0 / (SELECT n FROM total))::numeric, 1) as percentage,
           CASE 
-            WHEN type = 'Standards Track' AND category = 'Core' THEN 'emerald'
+            WHEN type = 'Standards Track' AND category = 'Core' AND (repository IS NULL OR repository NOT LIKE '%RIPs%') THEN 'emerald'
             WHEN type = 'Standards Track' AND category = 'ERC' THEN 'blue'
             WHEN type = 'Meta' THEN 'violet'
+            WHEN repository LIKE '%RIPs%' THEN 'slate'
             ELSE 'slate'
           END as color
-        FROM eip_snapshots
-        GROUP BY type, category
+        FROM filtered
+        GROUP BY type, category, repository
         ORDER BY count DESC
-      `;
+      `,
+        input.repo ?? null
+      );
 
       return results.map(r => ({
         type: r.type,
         category: r.category || 'Core',
+        repository: r.repository ?? undefined,
         count: Number(r.count),
         percentage: Number(r.percentage),
         color: r.color
@@ -178,11 +214,11 @@ export const analyticsProcedures = {
 
   getStandardsCompositionDetailed: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         type: string;
         category: string;
         count: bigint;
@@ -190,19 +226,29 @@ export const analyticsProcedures = {
         status: string;
         eip_number: number;
         title: string;
-      }>>`
+      }>>(
+        `
+        WITH filtered AS (
+          SELECT s.type, s.category, s.status, e.eip_number, e.title
+          FROM eip_snapshots s
+          JOIN eips e ON s.eip_id = e.id
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ),
+        total AS (SELECT COUNT(*)::float AS n FROM filtered)
         SELECT
-          s.type,
-          COALESCE(s.category, 'Core') as category,
-          COUNT(*) OVER (PARTITION BY s.type, s.category) as count,
-          ROUND(COUNT(*) OVER (PARTITION BY s.type, s.category) * 100.0 / (SELECT COUNT(*) FROM eip_snapshots), 1) as percentage,
-          s.status,
-          e.eip_number,
-          e.title
-        FROM eip_snapshots s
-        JOIN eips e ON s.eip_id = e.id
-        ORDER BY s.type, s.category, e.eip_number
-      `;
+          type,
+          COALESCE(category, 'Core') as category,
+          COUNT(*) OVER (PARTITION BY type, category) as count,
+          ROUND((COUNT(*) OVER (PARTITION BY type, category) * 100.0 / (SELECT n FROM total))::numeric, 1) as percentage,
+          status,
+          eip_number,
+          title
+        FROM filtered
+        ORDER BY type, category, eip_number
+      `,
+        input.repo ?? null
+      );
 
       return results.map(r => ({
         type: r.type,
@@ -218,12 +264,13 @@ export const analyticsProcedures = {
   getRecentChanges: os
     .$context<Ctx>()
     .input(z.object({
-      limit: z.number().optional().default(5)
+      limit: z.number().optional().default(5),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
         eip_type: string;
         title: string;
@@ -233,7 +280,8 @@ export const analyticsProcedures = {
         statusColor: string;
         repository: string;
         changed_at: Date;
-      }>>`
+      }>>(
+        `
         SELECT
           e.eip_number::text as eip,
           CASE 
@@ -257,35 +305,44 @@ export const analyticsProcedures = {
         LEFT JOIN eip_snapshots s ON s.eip_id = e.id
         LEFT JOIN repositories r ON se.repository_id = r.id
         WHERE se.changed_at >= NOW() - INTERVAL '7 days'
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY se.changed_at DESC
-        LIMIT ${input.limit}
-      `;
+        LIMIT $2
+      `,
+        input.repo ?? null,
+        input.limit
+      );
 
       return results;
     }),
 
   getDecisionVelocity: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const result = await prisma.$queryRaw<Array<{
+      const result = await prisma.$queryRawUnsafe<Array<{
         current: number | null;
         previous: number | null;
         change: number;
-      }>>`
+      }>>(
+        `
         WITH FinalizedEIPs AS (
-          SELECT eip_id, changed_at as final_date
-          FROM eip_status_events
-          WHERE to_status = 'Final'
-          AND changed_at >= NOW() - INTERVAL '365 days'
+          SELECT se.eip_id, se.changed_at as final_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE se.to_status = 'Final'
+            AND se.changed_at >= NOW() - INTERVAL '365 days'
+            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ),
         DraftDates AS (
-          SELECT eip_id, MIN(changed_at) as draft_date
-          FROM eip_status_events
-          WHERE to_status = 'Draft'
-          GROUP BY eip_id
+          SELECT se.eip_id, MIN(se.changed_at) as draft_date
+          FROM eip_status_events se
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          WHERE se.to_status = 'Draft'
+            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          GROUP BY se.eip_id
         ),
         Durations AS (
           SELECT 
@@ -299,7 +356,9 @@ export const analyticsProcedures = {
           PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY days_to_final) + 42 as previous,
           -15 as change
         FROM Durations
-      `;
+      `,
+        input.repo ?? null
+      );
 
       const row = result[0] || { current: 0, previous: 0, change: 0 };
 
@@ -313,23 +372,29 @@ export const analyticsProcedures = {
   getMomentumData: os
     .$context<Ctx>()
     .input(z.object({
-      months: z.number().optional().default(12)
+      months: z.number().optional().default(12),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context }) => {
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         count: bigint;
-      }>>`
+      }>>(
+        `
         SELECT
-          TO_CHAR(date_trunc('month', changed_at), 'Mon') as month,
-          COUNT(*) as count
-        FROM eip_status_events
-        WHERE changed_at >= date_trunc('month', NOW() - INTERVAL '11 months')
-        GROUP BY date_trunc('month', changed_at)
-        ORDER BY date_trunc('month', changed_at) ASC
-      `;
+          TO_CHAR(date_trunc('month', se.changed_at), 'Mon') as month,
+          COUNT(*)::bigint as count
+        FROM eip_status_events se
+        LEFT JOIN repositories r ON se.repository_id = r.id
+        WHERE se.changed_at >= date_trunc('month', NOW() - INTERVAL '11 months')
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY date_trunc('month', se.changed_at)
+        ORDER BY date_trunc('month', se.changed_at) ASC
+      `,
+        input.repo ?? null
+      );
 
       return results.map(r => Number(r.count));
     }),
@@ -337,42 +402,49 @@ export const analyticsProcedures = {
   getRecentPRs: os
     .$context<Ctx>()
     .input(z.object({
-      limit: z.number().optional().default(5)
+      limit: z.number().optional().default(5),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         number: string;
         title: string;
         author: string;
         status: string;
         days: number;
-      }>>`
+      }>>(
+        `
         SELECT 
-          pr_number::text as number,
-          title,
-          author,
+          pr.pr_number::text as number,
+          pr.title,
+          pr.author,
           CASE 
-            WHEN merged_at IS NOT NULL THEN 'merged' 
+            WHEN pr.merged_at IS NOT NULL THEN 'merged' 
             ELSE 'open' 
           END as status,
-          EXTRACT(DAY FROM (NOW() - created_at))::int as days
-        FROM pull_requests
-        ORDER BY created_at DESC
-        LIMIT ${input.limit}
-      `;
+          EXTRACT(DAY FROM (NOW() - pr.created_at))::int as days
+        FROM pull_requests pr
+        JOIN repositories r ON pr.repository_id = r.id
+        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ORDER BY pr.created_at DESC
+        LIMIT $2
+      `,
+        input.repo ?? null,
+        input.limit
+      );
 
       return results;
     }),
 
   getLastCallWatchlist: os
     .$context<Ctx>()
-    .input(z.object({}))
-    .handler(async ({ context }) => {
+    .input(repoFilterSchema)
+    .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
         eip_type: string;
         title: string;
@@ -380,7 +452,8 @@ export const analyticsProcedures = {
         daysRemaining: number;
         category: string | null;
         repository: string;
-      }>>`
+      }>>(
+        `
         SELECT 
           e.eip_number::text as eip,
           CASE 
@@ -397,8 +470,11 @@ export const analyticsProcedures = {
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE s.status = 'Last Call'
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY s.deadline ASC
-      `;
+      `,
+        input.repo ?? null
+      );
 
       return results;
     }),
@@ -729,7 +805,7 @@ export const analyticsProcedures = {
         SELECT 
           stage,
           COUNT(*)::bigint as count,
-          ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM pull_requests), 1)::numeric as percentage
+          ROUND((COUNT(*) * 100.0 / (SELECT COUNT(*) FROM pull_requests))::numeric, 1)::numeric as percentage
         FROM pr_stages
         GROUP BY stage
         ORDER BY 
@@ -1562,7 +1638,7 @@ export const analyticsProcedures = {
         ),
         totals AS (SELECT actor, COUNT(*) AS total FROM base GROUP BY actor)
         SELECT b.actor, b.repo, COUNT(*)::bigint AS count,
-          ROUND(100.0 * COUNT(*) / NULLIF(t.total, 0), 1)::numeric AS pct
+          ROUND((100.0 * COUNT(*) / NULLIF(t.total, 0))::numeric, 1)::numeric AS pct
         FROM base b JOIN totals t ON t.actor = b.actor
         GROUP BY b.actor, b.repo, t.total
         ORDER BY b.actor, count DESC
@@ -1604,7 +1680,7 @@ export const analyticsProcedures = {
         ),
         totals AS (SELECT actor, COUNT(*) AS total FROM base GROUP BY actor)
         SELECT b.actor, b.repo, COUNT(*)::bigint AS count,
-          ROUND(100.0 * COUNT(*) / NULLIF(t.total, 0), 1)::numeric AS pct
+          ROUND((100.0 * COUNT(*) / NULLIF(t.total, 0))::numeric, 1)::numeric AS pct
         FROM base b JOIN totals t ON t.actor = b.actor
         GROUP BY b.actor, b.repo, t.total
         ORDER BY b.actor, count DESC

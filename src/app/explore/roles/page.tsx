@@ -29,11 +29,14 @@ interface LeaderboardEntry {
 }
 
 interface ActivityEvent {
+  id: string;
   actor: string;
   role: string | null;
   eventType: string;
   prNumber: number;
   createdAt: string;
+  githubId: string | null;
+  repoName: string;
 }
 
 interface SparklineData {
