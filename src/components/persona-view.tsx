@@ -63,6 +63,10 @@ export function PersonaView({
   const highlights = customHighlights ?? (page === "upgrades" ? getUpgradeHighlights(persona) : undefined);
   const personaMeta = getPersonaMeta(persona);
 
+  if (!persona) {
+    return <>{children}</>;
+  }
+
   return (
     <div className={className}>
       {/* Persona badge + highlights section */}

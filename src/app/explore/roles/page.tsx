@@ -93,7 +93,9 @@ function RolesPageContent() {
           role: selectedRole || undefined,
           limit: 20,
         });
-        setLeaderboard(data);
+        // The API can return a slightly wider union for `role`;
+        // at runtime this matches the LeaderboardEntry shape we expect.
+        setLeaderboard(data as LeaderboardEntry[]);
       } catch (err) {
         console.error('Failed to fetch leaderboard:', err);
       } finally {

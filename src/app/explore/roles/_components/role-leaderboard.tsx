@@ -24,7 +24,7 @@ interface RoleLeaderboardProps {
   loading: boolean;
 }
 
-const rankIcons: Record<number, { icon: React.ElementType; color: string }> = {
+const rankIcons: Record<number, { icon: React.ComponentType<{ className?: string }>; color: string }> = {
   1: { icon: Trophy, color: 'text-amber-400' },
   2: { icon: Medal, color: 'text-slate-300' },
   3: { icon: Award, color: 'text-orange-400' },

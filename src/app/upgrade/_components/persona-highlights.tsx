@@ -41,7 +41,7 @@ interface PersonaIntro {
   stats?: Array<{
     label: string;
     value: string;
-    icon: React.ElementType;
+    icon: React.ComponentType<{ className?: string }>;
   }>;
 }
 
@@ -144,6 +144,11 @@ export function PersonaHighlights({ className }: PersonaHighlightsProps) {
         </div>
       </div>
     );
+  }
+
+  // If persona is not yet set, don't try to look up persona-specific config
+  if (!persona) {
+    return null;
   }
 
   const highlights = getUpgradeHighlights(persona);

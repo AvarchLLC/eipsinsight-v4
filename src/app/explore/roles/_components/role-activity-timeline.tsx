@@ -30,7 +30,7 @@ interface RoleActivityTimelineProps {
   loading: boolean;
 }
 
-const eventConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
+const eventConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
   'APPROVED': { icon: CheckCircle2, color: 'text-emerald-400', label: 'approved' },
   'CHANGES_REQUESTED': { icon: XCircle, color: 'text-orange-400', label: 'requested changes on' },
   'COMMENTED': { icon: MessageSquare, color: 'text-blue-400', label: 'commented on' },

@@ -50,7 +50,7 @@ function Section({
   children,
 }: {
   title: string;
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   children: React.ReactNode;
 }) {
   return (
@@ -135,6 +135,19 @@ export default function DebugPersonaPage() {
       fetchServerPrefs();
     }
   }, [sessionLoading, fetchServerPrefs]);
+  // If persona is not yet set or hydrated, show a simple fallback
+  if (!persona) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
+        <div className="text-center space-y-2">
+          <p className="text-sm text-slate-400">Persona is not set yet.</p>
+          <p className="text-xs text-slate-500">
+            Open the app and choose a persona to enable this debug view.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   const personaMeta = PERSONAS[persona];
   const PersonaIcon = personaMeta.icon;

@@ -19,7 +19,7 @@ interface TopActor {
 }
 
 const roleConfig: Record<string, {
-  icon: React.ElementType;
+  icon: React.ComponentType<{ className?: string }>;
   label: string;
   description: string;
   color: {

@@ -26,7 +26,7 @@ interface CategoryCount {
   count: number;
 }
 
-const statusIcons: Record<string, React.ElementType> = {
+const statusIcons: Record<string, React.ComponentType<{ className?: string }>> = {
   'Draft': FileEdit,
   'Review': Search,
   'Last Call': Clock,

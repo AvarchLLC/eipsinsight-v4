@@ -48,6 +48,11 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
     );
   }
 
+  // If persona is not yet set, don't try to index into PERSONAS
+  if (!persona) {
+    return null;
+  }
+
   const currentPersona = PERSONAS[persona];
   const CurrentIcon = currentPersona.icon;
 

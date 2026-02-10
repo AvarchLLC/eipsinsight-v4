@@ -17,7 +17,7 @@ interface RoleTabSwitcherProps {
   };
 }
 
-const tabs: Array<{ role: Role; label: string; icon: React.ElementType; color: string }> = [
+const tabs: Array<{ role: Role; label: string; icon: React.ComponentType<{ className?: string }>; color: string }> = [
   { role: null, label: 'All', icon: Users, color: 'cyan' },
   { role: 'EDITOR', label: 'Editors', icon: Shield, color: 'cyan' },
   { role: 'REVIEWER', label: 'Reviewers', icon: Eye, color: 'violet' },
