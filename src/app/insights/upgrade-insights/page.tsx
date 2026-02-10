@@ -24,11 +24,10 @@ export default function UpgradeInsightsPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const [u, c] = await Promise.all([
-          client.insights.getUpgradeTimeline(),
-          client.insights.getUpgradeCompositionChanges({}),
-        ]);
+        const u = await client.insights.getUpgradeTimeline();
         setUpgrades(u);
+
+        const c = await client.insights.getUpgradeCompositionChanges({});
         setCompositionChanges(c);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }

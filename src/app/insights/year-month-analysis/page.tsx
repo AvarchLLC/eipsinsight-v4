@@ -47,18 +47,22 @@ function YearMonthContent() {
     const load = async () => {
       setLoading(true);
       try {
-        const [snap, flow, dl, eds, prs] = await Promise.all([
-          client.insights.getMonthlyStatusSnapshot({ month, repo }),
-          client.insights.getStatusFlowOverTime({ repo }),
-          client.insights.getDeadlineVolatility({ repo }),
-          client.insights.getEditorsLeaderboard({ month, repo }),
-          client.insights.getOpenPRs({ month, repo, limit: 20 }),
-        ]);
+        // Load sequentially to avoid connection pool exhaustion
+        const snap = await client.insights.getMonthlyStatusSnapshot({ month, repo });
         setSnapshot(snap);
-        setStatusFlow(flow);
-        setDeadlineVol(dl);
+
+        const eds = await client.insights.getEditorsLeaderboard({ month, repo });
         setEditors(eds);
+
+        const prs = await client.insights.getOpenPRs({ month, repo, limit: 20 });
         setOpenPRs(prs);
+
+        // Charts can load after critical data is shown
+        const flow = await client.insights.getStatusFlowOverTime({ repo });
+        setStatusFlow(flow);
+
+        const dl = await client.insights.getDeadlineVolatility({ repo });
+        setDeadlineVol(dl);
       } catch (err) { console.error("Error:", err); }
       finally { setLoading(false); }
     };

@@ -35,15 +35,17 @@ export default function GovernanceProcessPage() {
     const load = async () => {
       setLoading(true);
       try {
-        const [f, g, t, h] = await Promise.all([
-          client.insights.getPRLifecycleFunnel({ repo: repoFilter }),
-          client.insights.getGovernanceStatesOverTime({ repo: repoFilter }),
-          client.insights.getTimeToDecision({ repo: repoFilter }),
-          client.insights.getBottleneckHeatmap({ repo: repoFilter }),
-        ]);
+        // Sequential to avoid connection pool exhaustion
+        const f = await client.insights.getPRLifecycleFunnel({ repo: repoFilter });
         setFunnel(f);
+
+        const g = await client.insights.getGovernanceStatesOverTime({ repo: repoFilter });
         setGovStates(g);
+
+        const t = await client.insights.getTimeToDecision({ repo: repoFilter });
         setTtd(t);
+
+        const h = await client.insights.getBottleneckHeatmap({ repo: repoFilter });
         setHeatmap(h);
       } catch (err) { console.error(err); }
       finally { setLoading(false); }

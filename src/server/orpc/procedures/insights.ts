@@ -6,9 +6,19 @@ const repoFilterSchema = z.object({
   repo: z.enum(['eips', 'ercs', 'rips']).optional(),
 })
 
+// Helper: resolve repo filter to repository IDs (avoids SPLIT_PART in every query)
+async function getRepoIds(repo?: string): Promise<number[] | null> {
+  if (!repo) return null;
+  const rows = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
+    `SELECT id FROM repositories WHERE LOWER(type) = LOWER($1)`,
+    repo === 'eips' ? 'EIPS' : repo === 'ercs' ? 'ERCS' : 'RIPS'
+  );
+  return rows.map((r) => r.id);
+}
+
 export const insightsProcedures = {
   // ──── 1) Monthly Status Snapshot ────
-  // Uses eip_snapshots (current state) and counts transitions in the selected month for delta
+  // Uses eip_snapshots (current state — fast) + monthly transition counts for delta
   getMonthlyStatusSnapshot: os
     .$context<Ctx>()
     .input(z.object({
@@ -17,26 +27,27 @@ export const insightsProcedures = {
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
-      // Current snapshot from eip_snapshots (fast — small table)
+      // Current counts from eip_snapshots (small table, very fast)
       const currentCounts = await prisma.$queryRawUnsafe<Array<{
         status: string;
-        repo_short: string;
+        repo_type: string;
         count: bigint;
       }>>(
         `SELECT
           s.status,
-          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+          COALESCE(LOWER(r.type), 'unknown') AS repo_type,
           COUNT(*)::bigint AS count
         FROM eip_snapshots s
         LEFT JOIN repositories r ON s.repository_id = r.id
-        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY s.status, LOWER(SPLIT_PART(r.name, '/', 2))
+        WHERE ($1::int[] IS NULL OR s.repository_id = ANY($1))
+        GROUP BY s.status, COALESCE(LOWER(r.type), 'unknown')
         ORDER BY s.status`,
-        input.repo ?? null
+        repoIds
       );
 
-      // Delta: count transitions that happened in the selected month
+      // Transition counts for the selected month (arrivals into each status)
       const monthStart = `${input.month}-01`;
       const [y, m] = input.month.split('-').map(Number);
       const nextDate = new Date(y, m, 1);
@@ -44,35 +55,32 @@ export const insightsProcedures = {
 
       const deltas = await prisma.$queryRawUnsafe<Array<{
         to_status: string;
-        repo_short: string;
+        repo_type: string;
         arrivals: bigint;
-        departures: bigint;
       }>>(
         `SELECT
           e.to_status,
-          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
-          COUNT(*)::bigint AS arrivals,
-          0::bigint AS departures
+          COALESCE(LOWER(r.type), 'unknown') AS repo_type,
+          COUNT(*)::bigint AS arrivals
         FROM eip_status_events e
         LEFT JOIN repositories r ON e.repository_id = r.id
         WHERE e.changed_at >= $1::date AND e.changed_at < $2::date
-          AND ($3::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($3))
-        GROUP BY e.to_status, LOWER(SPLIT_PART(r.name, '/', 2))`,
+          AND ($3::int[] IS NULL OR e.repository_id = ANY($3))
+        GROUP BY e.to_status, COALESCE(LOWER(r.type), 'unknown')`,
         monthStart,
         monthEnd,
-        input.repo ?? null
+        repoIds
       );
 
-      // Build delta lookup (net arrivals for each status in that month)
       const deltaLookup: Record<string, Record<string, number>> = {};
       for (const d of deltas) {
-        const repo = d.repo_short || 'unknown';
+        const repo = d.repo_type || 'unknown';
         if (!deltaLookup[d.to_status]) deltaLookup[d.to_status] = {};
-        deltaLookup[d.to_status][repo] = (deltaLookup[d.to_status][repo] ?? 0) + Number(d.arrivals);
+        deltaLookup[d.to_status][repo] = Number(d.arrivals);
       }
 
       return currentCounts.map((r) => {
-        const repo = r.repo_short || 'unknown';
+        const repo = r.repo_type || 'unknown';
         const delta = deltaLookup[r.status]?.[repo] ?? 0;
         return {
           status: r.status,
@@ -84,13 +92,14 @@ export const insightsProcedures = {
       });
     }),
 
-  // ──── 2) Status Flow Over Time (stacked area data) ────
-  // Counts transitions per month — bounded to last 36 months for performance
+  // ──── 2) Status Flow Over Time (stacked area) ────
+  // Counts transition events per month (last 24 months for speed)
   getStatusFlowOverTime: os
     .$context<Ctx>()
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -102,12 +111,11 @@ export const insightsProcedures = {
           e.to_status AS status,
           COUNT(*)::bigint AS count
         FROM eip_status_events e
-        LEFT JOIN repositories r ON e.repository_id = r.id
-        WHERE e.changed_at >= (NOW() - INTERVAL '36 months')
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', e.changed_at), e.to_status
-        ORDER BY month ASC, status`,
-        input.repo ?? null
+        WHERE e.changed_at >= (NOW() - INTERVAL '24 months')
+          AND ($1::int[] IS NULL OR e.repository_id = ANY($1))
+        GROUP BY 1, 2
+        ORDER BY 1, 2`,
+        repoIds
       );
 
       return results.map((r) => ({
@@ -123,6 +131,7 @@ export const insightsProcedures = {
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -132,11 +141,10 @@ export const insightsProcedures = {
           TO_CHAR(date_trunc('month', d.changed_at), 'YYYY-MM') AS month,
           COUNT(*)::bigint AS changes
         FROM eip_deadline_events d
-        LEFT JOIN repositories r ON d.repository_id = r.id
-        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', d.changed_at)
-        ORDER BY month ASC`,
-        input.repo ?? null
+        WHERE ($1::int[] IS NULL OR d.repository_id = ANY($1))
+        GROUP BY 1
+        ORDER BY 1`,
+        repoIds
       );
 
       return results.map((r) => ({
@@ -145,7 +153,7 @@ export const insightsProcedures = {
       }));
     }),
 
-  // ──── 4) Editors Leaderboard for a month ────
+  // ──── 4) Editors Leaderboard ────
   getEditorsLeaderboard: os
     .$context<Ctx>()
     .input(z.object({
@@ -154,10 +162,13 @@ export const insightsProcedures = {
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
-      const monthFilter = input.month
-        ? `AND pe.created_at >= '${input.month}-01'::date AND pe.created_at < ('${input.month}-01'::date + INTERVAL '1 month')`
-        : '';
+      const monthStart = input.month ? `${input.month}-01` : null;
+      const monthEnd = input.month ? (() => {
+        const [y, m] = input.month!.split('-').map(Number);
+        return new Date(y, m, 1).toISOString().split('T')[0];
+      })() : null;
 
       const results = await prisma.$queryRawUnsafe<Array<{
         editor: string;
@@ -171,14 +182,16 @@ export const insightsProcedures = {
           COUNT(DISTINCT pe.pr_number)::bigint AS prs_touched,
           COUNT(*) FILTER (WHERE pe.event_type IN ('commented', 'issue_comment'))::bigint AS comments
         FROM pr_events pe
-        LEFT JOIN repositories r ON pe.repository_id = r.id
         WHERE pe.actor_role = 'EDITOR'
-          ${monthFilter}
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          AND ($1::date IS NULL OR pe.created_at >= $1::date)
+          AND ($2::date IS NULL OR pe.created_at < $2::date)
+          AND ($3::int[] IS NULL OR pe.repository_id = ANY($3))
         GROUP BY pe.actor
         ORDER BY reviews DESC
         LIMIT 20`,
-        input.repo ?? null
+        monthStart,
+        monthEnd,
+        repoIds
       );
 
       return results.map((r) => ({
@@ -189,7 +202,7 @@ export const insightsProcedures = {
       }));
     }),
 
-  // ──── 5) Open PRs for a month ────
+  // ──── 5) Open PRs ────
   getOpenPRs: os
     .$context<Ctx>()
     .input(z.object({
@@ -199,6 +212,7 @@ export const insightsProcedures = {
     }))
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -225,10 +239,10 @@ export const insightsProcedures = {
         LEFT JOIN repositories r ON p.repository_id = r.id
         LEFT JOIN pr_governance_state g ON g.pr_number = p.pr_number AND g.repository_id = p.repository_id
         WHERE p.state = 'open'
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          AND ($1::int[] IS NULL OR p.repository_id = ANY($1))
         ORDER BY days_waiting DESC NULLS LAST
         LIMIT $2`,
-        input.repo ?? null,
+        repoIds,
         input.limit ?? 50
       );
 
@@ -251,6 +265,7 @@ export const insightsProcedures = {
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         total_opened: bigint;
@@ -264,9 +279,8 @@ export const insightsProcedures = {
           COUNT(*) FILTER (WHERE p.merged_at IS NOT NULL)::bigint AS merged,
           COUNT(*) FILTER (WHERE p.state = 'closed' AND p.merged_at IS NULL)::bigint AS closed_unmerged
         FROM pull_requests p
-        LEFT JOIN repositories r ON p.repository_id = r.id
-        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))`,
-        input.repo ?? null
+        WHERE ($1::int[] IS NULL OR p.repository_id = ANY($1))`,
+        repoIds
       );
 
       const row = results[0];
@@ -278,14 +292,14 @@ export const insightsProcedures = {
       };
     }),
 
-  // ──── 7) Governance Waiting States Over Time ────
+  // ──── 7) Governance State Distribution ────
   getGovernanceStatesOverTime: os
     .$context<Ctx>()
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
-      // Use current governance state distribution
       const results = await prisma.$queryRawUnsafe<Array<{
         current_state: string;
         count: bigint;
@@ -294,11 +308,10 @@ export const insightsProcedures = {
           g.current_state,
           COUNT(*)::bigint AS count
         FROM pr_governance_state g
-        LEFT JOIN repositories r ON g.repository_id = r.id
-        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        WHERE ($1::int[] IS NULL OR g.repository_id = ANY($1))
         GROUP BY g.current_state
         ORDER BY count DESC`,
-        input.repo ?? null
+        repoIds
       );
 
       return results.map((r) => ({
@@ -307,22 +320,23 @@ export const insightsProcedures = {
       }));
     }),
 
-  // ──── 8) Time-to-Decision (merged/closed PRs) ────
+  // ──── 8) Time-to-Decision ────
   getTimeToDecision: os
     .$context<Ctx>()
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
-        repo_short: string;
+        repo_type: string;
         outcome: string;
         median_days: number;
         avg_days: number;
         count: bigint;
       }>>(
         `SELECT
-          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+          COALESCE(LOWER(r.type), 'unknown') AS repo_type,
           CASE WHEN p.merged_at IS NOT NULL THEN 'merged' ELSE 'closed' END AS outcome,
           PERCENTILE_CONT(0.5) WITHIN GROUP (
             ORDER BY EXTRACT(EPOCH FROM (COALESCE(p.merged_at, p.closed_at) - p.created_at)) / 86400
@@ -333,14 +347,14 @@ export const insightsProcedures = {
         LEFT JOIN repositories r ON p.repository_id = r.id
         WHERE (p.merged_at IS NOT NULL OR p.closed_at IS NOT NULL)
           AND p.created_at IS NOT NULL
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY LOWER(SPLIT_PART(r.name, '/', 2)), CASE WHEN p.merged_at IS NOT NULL THEN 'merged' ELSE 'closed' END
-        ORDER BY repo_short, outcome`,
-        input.repo ?? null
+          AND ($1::int[] IS NULL OR p.repository_id = ANY($1))
+        GROUP BY 1, 2
+        ORDER BY 1, 2`,
+        repoIds
       );
 
       return results.map((r) => ({
-        repo: r.repo_short || 'unknown',
+        repo: r.repo_type || 'unknown',
         outcome: r.outcome,
         medianDays: Number(r.median_days),
         avgDays: Number(r.avg_days),
@@ -348,14 +362,14 @@ export const insightsProcedures = {
       }));
     }),
 
-  // ──── 9) Bottleneck Heatmap (monthly governance states) ────
+  // ──── 9) Bottleneck Heatmap ────
   getBottleneckHeatmap: os
     .$context<Ctx>()
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
+      const repoIds = await getRepoIds(input.repo);
 
-      // Approximate monthly bottlenecks using PR events that set governance states
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         state: string;
@@ -366,13 +380,12 @@ export const insightsProcedures = {
           g.current_state AS state,
           COUNT(*)::bigint AS count
         FROM pr_governance_state g
-        LEFT JOIN repositories r ON g.repository_id = r.id
         WHERE g.updated_at IS NOT NULL
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', g.updated_at), g.current_state
-        ORDER BY month DESC, count DESC
+          AND ($1::int[] IS NULL OR g.repository_id = ANY($1))
+        GROUP BY 1, 2
+        ORDER BY 1 DESC, 3 DESC
         LIMIT 200`,
-        input.repo ?? null
+        repoIds
       );
 
       return results.map((r) => ({
@@ -441,8 +454,8 @@ export const insightsProcedures = {
         JOIN upgrades u ON e.upgrade_id = u.id
         WHERE e.commit_date IS NOT NULL
           AND ($1::int IS NULL OR e.upgrade_id = $1)
-        GROUP BY date_trunc('month', e.commit_date), COALESCE(u.name, u.slug), e.event_type
-        ORDER BY month ASC`,
+        GROUP BY 1, 2, 3
+        ORDER BY 1`,
         input.upgradeId ?? null
       );
 
@@ -454,7 +467,7 @@ export const insightsProcedures = {
       }));
     }),
 
-  // ──── 12) EIP Progress Timeline (for editorial) ────
+  // ──── 12) EIP Progress Timeline (editorial) ────
   getEIPTimeline: os
     .$context<Ctx>()
     .input(z.object({
@@ -463,90 +476,92 @@ export const insightsProcedures = {
     .handler(async ({ context, input }) => {
       await checkAPIToken(context.headers);
 
-      // Get all events for this EIP
-      const [statusEvents, categoryEvents, deadlineEvents, snapshot, linkedPRs] = await Promise.all([
-        prisma.$queryRawUnsafe<Array<{
-          from_status: string | null;
-          to_status: string;
-          changed_at: string;
-          pr_number: number | null;
-        }>>(
-          `SELECT e.from_status, e.to_status, TO_CHAR(e.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at, e.pr_number
-           FROM eip_status_events e
-           JOIN eips ei ON e.eip_id = ei.id
-           WHERE ei.eip_number = $1
-           ORDER BY e.changed_at ASC`,
-          input.eipNumber
-        ),
-        prisma.$queryRawUnsafe<Array<{
-          from_category: string | null;
-          to_category: string;
-          changed_at: string;
-        }>>(
-          `SELECT e.from_category, e.to_category, TO_CHAR(e.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at
-           FROM eip_category_events e
-           JOIN eips ei ON e.eip_id = ei.id
-           WHERE ei.eip_number = $1
-           ORDER BY e.changed_at ASC`,
-          input.eipNumber
-        ),
-        prisma.$queryRawUnsafe<Array<{
-          previous_deadline: string | null;
-          new_deadline: string | null;
-          changed_at: string;
-        }>>(
-          `SELECT TO_CHAR(d.previous_deadline, 'YYYY-MM-DD') AS previous_deadline,
-                  TO_CHAR(d.new_deadline, 'YYYY-MM-DD') AS new_deadline,
-                  TO_CHAR(d.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at
-           FROM eip_deadline_events d
-           JOIN eips ei ON d.eip_id = ei.id
-           WHERE ei.eip_number = $1
-           ORDER BY d.changed_at ASC`,
-          input.eipNumber
-        ),
-        prisma.$queryRawUnsafe<Array<{
-          status: string;
-          type: string | null;
-          category: string | null;
-          deadline: string | null;
-          updated_at: string;
-          title: string | null;
-          author: string | null;
-          created_at: string | null;
-        }>>(
-          `SELECT s.status, s.type, s.category,
-                  TO_CHAR(s.deadline, 'YYYY-MM-DD') AS deadline,
-                  TO_CHAR(s.updated_at, 'YYYY-MM-DD') AS updated_at,
-                  ei.title, ei.author, TO_CHAR(ei.created_at, 'YYYY-MM-DD') AS created_at
-           FROM eip_snapshots s
-           JOIN eips ei ON s.eip_id = ei.id
-           WHERE ei.eip_number = $1`,
-          input.eipNumber
-        ),
-        prisma.$queryRawUnsafe<Array<{
-          pr_number: number;
-          title: string | null;
-          author: string | null;
-          state: string | null;
-          merged_at: string | null;
-          num_comments: number | null;
-          num_reviews: number | null;
-          num_commits: number | null;
-          num_files: number | null;
-          created_at: string | null;
-        }>>(
-          `SELECT p.pr_number, p.title, p.author, p.state,
-                  TO_CHAR(p.merged_at, 'YYYY-MM-DD') AS merged_at,
-                  p.num_comments, p.num_reviews, p.num_commits, p.num_files,
-                  TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at
-           FROM pull_requests p
-           JOIN pull_request_eips pre ON pre.pr_id = p.id
-           JOIN eips ei ON pre.eip_id = ei.id
-           WHERE ei.eip_number = $1
-           ORDER BY p.created_at ASC`,
-          input.eipNumber
-        ),
-      ]);
+      // Sequential queries to avoid connection pool pressure
+      const snapshot = await prisma.$queryRawUnsafe<Array<{
+        status: string;
+        type: string | null;
+        category: string | null;
+        deadline: string | null;
+        updated_at: string;
+        title: string | null;
+        author: string | null;
+        created_at: string | null;
+      }>>(
+        `SELECT s.status, s.type, s.category,
+                TO_CHAR(s.deadline, 'YYYY-MM-DD') AS deadline,
+                TO_CHAR(s.updated_at, 'YYYY-MM-DD') AS updated_at,
+                ei.title, ei.author, TO_CHAR(ei.created_at, 'YYYY-MM-DD') AS created_at
+         FROM eip_snapshots s
+         JOIN eips ei ON s.eip_id = ei.id
+         WHERE ei.eip_number = $1`,
+        input.eipNumber
+      );
+
+      const statusEvents = await prisma.$queryRawUnsafe<Array<{
+        from_status: string | null;
+        to_status: string;
+        changed_at: string;
+        pr_number: number | null;
+      }>>(
+        `SELECT e.from_status, e.to_status, TO_CHAR(e.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at, e.pr_number
+         FROM eip_status_events e
+         JOIN eips ei ON e.eip_id = ei.id
+         WHERE ei.eip_number = $1
+         ORDER BY e.changed_at ASC`,
+        input.eipNumber
+      );
+
+      const categoryEvents = await prisma.$queryRawUnsafe<Array<{
+        from_category: string | null;
+        to_category: string;
+        changed_at: string;
+      }>>(
+        `SELECT e.from_category, e.to_category, TO_CHAR(e.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at
+         FROM eip_category_events e
+         JOIN eips ei ON e.eip_id = ei.id
+         WHERE ei.eip_number = $1
+         ORDER BY e.changed_at ASC`,
+        input.eipNumber
+      );
+
+      const deadlineEvents = await prisma.$queryRawUnsafe<Array<{
+        previous_deadline: string | null;
+        new_deadline: string | null;
+        changed_at: string;
+      }>>(
+        `SELECT TO_CHAR(d.previous_deadline, 'YYYY-MM-DD') AS previous_deadline,
+                TO_CHAR(d.new_deadline, 'YYYY-MM-DD') AS new_deadline,
+                TO_CHAR(d.changed_at, 'YYYY-MM-DD HH24:MI') AS changed_at
+         FROM eip_deadline_events d
+         JOIN eips ei ON d.eip_id = ei.id
+         WHERE ei.eip_number = $1
+         ORDER BY d.changed_at ASC`,
+        input.eipNumber
+      );
+
+      const linkedPRs = await prisma.$queryRawUnsafe<Array<{
+        pr_number: number;
+        title: string | null;
+        author: string | null;
+        state: string | null;
+        merged_at: string | null;
+        num_comments: number | null;
+        num_reviews: number | null;
+        num_commits: number | null;
+        num_files: number | null;
+        created_at: string | null;
+      }>>(
+        `SELECT p.pr_number, p.title, p.author, p.state,
+                TO_CHAR(p.merged_at, 'YYYY-MM-DD') AS merged_at,
+                p.num_comments, p.num_reviews, p.num_commits, p.num_files,
+                TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at
+         FROM pull_requests p
+         JOIN pull_request_eips pre ON pre.pr_id = p.id
+         JOIN eips ei ON pre.eip_id = ei.id
+         WHERE ei.eip_number = $1
+         ORDER BY p.created_at ASC`,
+        input.eipNumber
+      );
 
       const snap = snapshot[0] ?? null;
 
@@ -597,11 +612,16 @@ export const insightsProcedures = {
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
 
+      // Use eip_snapshots updated_at for speed instead of scanning eip_status_events
       const results = await prisma.$queryRawUnsafe<Array<{ month: string }>>(
-        `SELECT DISTINCT TO_CHAR(date_trunc('month', changed_at), 'YYYY-MM') AS month
-         FROM eip_status_events
+        `SELECT DISTINCT TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM') AS month
+         FROM eip_snapshots s
+         UNION
+         SELECT DISTINCT TO_CHAR(date_trunc('month', e.changed_at), 'YYYY-MM') AS month
+         FROM eip_status_events e
+         WHERE e.changed_at >= (NOW() - INTERVAL '36 months')
          ORDER BY month DESC
-         LIMIT 120`
+         LIMIT 60`
       );
 
       return results.map((r) => r.month);
