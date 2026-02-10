@@ -137,7 +137,8 @@ export function useSyncPersonaWithServer() {
   }) => {
     // Server preferences override local if they exist
     if (serverPreferences.persona && isValidPersona(serverPreferences.persona)) {
-      setPersona(serverPreferences.persona, false); // Don't redirect on sync
+      // Don't redirect or re-sync to server when applying server preferences locally
+      setPersona(serverPreferences.persona, { redirect: false, syncToServer: false });
     }
     if (serverPreferences.default_view) {
       setDefaultView(serverPreferences.default_view);

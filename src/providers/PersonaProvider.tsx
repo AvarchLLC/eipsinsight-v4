@@ -49,11 +49,14 @@ export function PersonaProvider({ children }: PersonaProviderProps) {
   // Initialize server sync
   usePersonaSync();
 
+  // Fallback to a sensible default persona when none is set yet
+  const effectivePersona: Persona = (persona ?? "developer") as Persona;
+
   const value = React.useMemo<PersonaContextValue>(
     () => ({
       // State
-      persona,
-      personaMeta: getPersonaMeta(persona),
+      persona: effectivePersona,
+      personaMeta: getPersonaMeta(effectivePersona),
       isOnboarded,
       isHydrated,
 
@@ -72,7 +75,7 @@ export function PersonaProvider({ children }: PersonaProviderProps) {
       // Computed
       getDefaultRoute,
     }),
-    [persona, isOnboarded, isHydrated, setPersona, getDefaultRoute]
+    [effectivePersona, isOnboarded, isHydrated, setPersona, getDefaultRoute]
   );
 
   return (

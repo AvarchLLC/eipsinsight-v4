@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useMemo } from "react";
+import React, { createContext, useContext, useState, useMemo, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download, Calendar, Database } from "lucide-react";
 import Link from "next/link";
@@ -55,7 +55,7 @@ const navItems = [
   { href: "/analytics/contributors", label: "Contributors" },
 ];
 
-export default function AnalyticsLayout({
+function AnalyticsLayoutInner({
   children,
 }: {
   children: React.ReactNode;
@@ -218,5 +218,23 @@ export default function AnalyticsLayout({
         </div>
       </div>
     </AnalyticsContext.Provider>
+  );
+}
+
+export default function AnalyticsLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center text-slate-400 text-sm">
+          Loading analytics…
+        </div>
+      }
+    >
+      <AnalyticsLayoutInner>{children}</AnalyticsLayoutInner>
+    </Suspense>
   );
 }

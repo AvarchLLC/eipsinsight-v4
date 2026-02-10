@@ -23,6 +23,12 @@ interface AuthorResult {
   kind: 'author';
   name: string;
   contributionCount: number;
+  role?: string | null;
+  eipCount?: number;
+  prCount?: number;
+  issueCount?: number;
+  reviewCount?: number;
+  lastActivity?: string | null;
 }
 
 interface PRResult {
@@ -87,8 +93,17 @@ export function SearchBar() {
             // Map repo string to allowed values ("eip" | "erc" | "rip"), fallback to "eip" if unknown
             repo: (["eip", "erc", "rip"].includes(p.repo) ? p.repo : "eip") as "eip" | "erc" | "rip"
           })),
-          authors,
-          prs
+          authors: authors.map((a) => ({
+            ...a,
+            // Derive a contributionCount if not provided by the backend
+            contributionCount:
+              (a as any).contributionCount ??
+              (((a as any).eipCount ?? 0) +
+                ((a as any).prCount ?? 0) +
+                ((a as any).issueCount ?? 0) +
+                ((a as any).reviewCount ?? 0)),
+          })),
+          prs,
         });
         setShowDropdown(true);
         setSelectedIndex(0);

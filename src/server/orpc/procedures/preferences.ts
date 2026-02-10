@@ -66,7 +66,8 @@ export const preferencesProcedures = {
         create: {
           user_id: session.user.id,
           persona: input.persona ?? null,
-          default_view: input.default_view ?? null,
+          // For JSON columns, use undefined instead of null to respect Prisma's input types
+          default_view: input.default_view ?? undefined,
         },
         update: {
           ...(input.persona !== undefined && { persona: input.persona }),

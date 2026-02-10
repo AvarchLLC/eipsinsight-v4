@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Search as SearchIcon, Filter, Loader2, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { client } from "@/lib/orpc";
@@ -110,7 +110,7 @@ function useQueryState() {
   };
 }
 
-export default function SearchPage() {
+function SearchPageContent() {
   const { q, scope, tab, setQuery, setScope, setTab } = useQueryState();
   const [inputValue, setInputValue] = useState(q);
   const [loading, setLoading] = useState(false);
@@ -941,6 +941,20 @@ export default function SearchPage() {
         </div>
       </div>
     </TooltipProvider>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
+        </div>
+      }
+    >
+      <SearchPageContent />
+    </Suspense>
   );
 }
 

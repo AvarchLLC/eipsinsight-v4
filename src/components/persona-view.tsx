@@ -234,6 +234,10 @@ export function PersonaContent<T>({
     return render(fallback);
   }
 
+  if (!persona) {
+    return render(fallback);
+  }
+
   const personaContent = content[persona] ?? fallback;
   return render(personaContent);
 }
@@ -260,6 +264,10 @@ export function usePersonaContentHook<T>(
   const { persona, isHydrated } = usePersonaStore();
 
   if (!isHydrated) {
+    return fallback;
+  }
+
+  if (!persona) {
     return fallback;
   }
 
