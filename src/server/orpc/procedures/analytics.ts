@@ -617,7 +617,7 @@ const getEditorsLeaderboardCached = unstable_cache(
         SELECT ca.actor, ca.pr_number, ca.repository_id, ca.occurred_at
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE ca.role = 'editor'
+        WHERE UPPER(ca.role) = 'EDITOR'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
           AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
@@ -669,7 +669,7 @@ const getReviewersLeaderboardCached = unstable_cache(
         SELECT ca.actor, ca.pr_number, ca.repository_id, ca.occurred_at
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (ca.role = 'reviewer' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR ca.role != 'editor')))
+        WHERE (UPPER(ca.role) = 'REVIEWER' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR UPPER(ca.role) != 'EDITOR')))
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
           AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
@@ -708,8 +708,21 @@ const getReviewersLeaderboardCached = unstable_cache(
   { tags: ['analytics-reviewers-leaderboard'], revalidate: 600 }
 );
 
+// Official EIP editor assignments per category (governance-defined).
+// Used as the canonical source because pull_request_eips may be empty.
+const OFFICIAL_EDITORS_BY_CATEGORY: Record<string, string[]> = {
+  governance: ['lightclient', 'SamWilsn', 'xinbenlv', 'g11tech', 'jochem-brouwer'],
+  core: ['lightclient', 'SamWilsn', 'g11tech', 'jochem-brouwer'],
+  erc: ['SamWilsn', 'xinbenlv'],
+  networking: ['lightclient', 'SamWilsn', 'g11tech', 'jochem-brouwer'],
+  interface: ['lightclient', 'SamWilsn', 'g11tech', 'jochem-brouwer'],
+  meta: ['lightclient', 'SamWilsn', 'xinbenlv', 'g11tech', 'jochem-brouwer'],
+  informational: ['lightclient', 'SamWilsn', 'xinbenlv', 'g11tech', 'jochem-brouwer'],
+};
+
 const getEditorsByCategoryCached = unstable_cache(
   async (repo: string | null) => {
+    // Try activity-based derivation first (requires populated pull_request_eips)
     const results = await prisma.$queryRawUnsafe<Array<{
       category: string;
       actor: string;
@@ -727,7 +740,7 @@ const getEditorsByCategoryCached = unstable_cache(
         JOIN pr_eip pe ON pe.pr_number = ca.pr_number AND pe.repository_id = ca.repository_id
         JOIN eip_snapshots es ON es.eip_id = pe.eip_id
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (ca.role = 'editor' OR ca.action_type = 'reviewed')
+        WHERE (UPPER(ca.role) = 'EDITOR' OR ca.action_type = 'reviewed')
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
       ),
       ranked AS (
@@ -740,14 +753,21 @@ const getEditorsByCategoryCached = unstable_cache(
     `,
       repo
     );
+
     const byCategory: Record<string, string[]> = {};
     for (const r of results) {
       const cat = r.category === 'unknown' ? 'informational' : r.category;
       if (!byCategory[cat]) byCategory[cat] = [];
       byCategory[cat].push(r.actor);
     }
+
+    // If activity data is empty (pull_request_eips not populated yet),
+    // fall back to the official governance-defined editor assignments.
+    const hasActivityData = Object.values(byCategory).some((arr) => arr.length > 0);
+    const source = hasActivityData ? byCategory : OFFICIAL_EDITORS_BY_CATEGORY;
+
     const order = ['governance', 'core', 'erc', 'networking', 'interface', 'meta', 'informational'];
-    return order.map((category) => ({ category, actors: byCategory[category] ?? [] }));
+    return order.map((category) => ({ category, actors: source[category] ?? [] }));
   },
   ['analytics-getEditorsByCategory'],
   { tags: ['analytics-editors-by-category'], revalidate: 600 }
@@ -761,7 +781,7 @@ const getEditorsRepoDistributionCached = unstable_cache(
         SELECT ca.actor, COALESCE(r.name, 'Unknown') AS repo
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE ca.role = 'editor'
+        WHERE UPPER(ca.role) = 'EDITOR'
           AND ($1::text IS NULL OR ca.actor = $1)
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
           AND ($3::text IS NULL OR ca.occurred_at >= $3::timestamp)
@@ -795,7 +815,7 @@ const getReviewersRepoDistributionCached = unstable_cache(
         SELECT ca.actor, COALESCE(r.name, 'Unknown') AS repo
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (ca.role = 'reviewer' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR ca.role != 'editor')))
+        WHERE (UPPER(ca.role) = 'REVIEWER' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR UPPER(ca.role) != 'EDITOR')))
           AND ($1::text IS NULL OR ca.actor = $1)
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
           AND ($3::text IS NULL OR ca.occurred_at >= $3::timestamp)
@@ -2240,7 +2260,7 @@ export const analyticsProcedures = {
           COUNT(*)::bigint as count
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE ca.role = 'editor'
+        WHERE UPPER(ca.role) = 'EDITOR'
           AND ca.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         GROUP BY date_trunc('month', ca.occurred_at), ca.actor
@@ -2293,7 +2313,7 @@ export const analyticsProcedures = {
           COUNT(*)::bigint as count
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (ca.role = 'reviewer' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR ca.role != 'editor')))
+        WHERE (UPPER(ca.role) = 'REVIEWER' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR UPPER(ca.role) != 'EDITOR')))
           AND ca.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         GROUP BY date_trunc('month', ca.occurred_at), ca.actor
@@ -2345,7 +2365,7 @@ export const analyticsProcedures = {
             COUNT(DISTINCT ca.actor) FILTER (WHERE ca.action_type = 'reviewed') as review_cycles
           FROM contributor_activity ca
           LEFT JOIN repositories r ON r.id = ca.repository_id
-          WHERE (ca.role = 'reviewer' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR ca.role != 'editor')))
+          WHERE (UPPER(ca.role) = 'REVIEWER' OR (ca.action_type = 'reviewed' AND (ca.role IS NULL OR UPPER(ca.role) != 'EDITOR')))
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           GROUP BY ca.pr_number, ca.repository_id
         )
@@ -2381,7 +2401,7 @@ export const analyticsProcedures = {
         SELECT TO_CHAR(date_trunc('month', ca.occurred_at), 'YYYY-MM') AS month, COUNT(*)::bigint AS count
         FROM contributor_activity ca
         LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (ca.role = 'editor' OR ca.action_type = 'reviewed')
+        WHERE (UPPER(ca.role) = 'EDITOR' OR ca.action_type = 'reviewed')
           AND ($1::text IS NULL OR ca.actor = $1)
           AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
           AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)

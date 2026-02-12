@@ -149,14 +149,6 @@ export default function ReviewersAnalyticsPage() {
     ];
   }, [repoDistribution]);
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-      </div>
-    );
-  }
-
   // Get unique actors from monthly trend for legend
   const trendActors = useMemo(() => {
     if (monthlyTrend.length === 0) return [];
@@ -170,6 +162,14 @@ export default function ReviewersAnalyticsPage() {
     });
     return Array.from(actors).slice(0, 8); // Limit to 8 for readability
   }, [monthlyTrend]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
