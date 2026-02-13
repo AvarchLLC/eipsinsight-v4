@@ -397,18 +397,14 @@ const getPRTimeToOutcomeCached = unstable_cache(
           pr.created_at,
           pr.merged_at,
           pr.closed_at,
-          (SELECT MIN(occurred_at) FROM contributor_activity ca 
-           WHERE ca.pr_number = pr.pr_number 
-             AND ca.repository_id = pr.repository_id
-             AND ca.action_type = 'reviewed') as first_review,
-          (SELECT MIN(occurred_at) FROM contributor_activity ca 
-           WHERE ca.pr_number = pr.pr_number 
-             AND ca.repository_id = pr.repository_id
-             AND ca.action_type IN ('commented', 'issue_comment')) as first_comment
+          MIN(CASE WHEN ca.action_type = 'reviewed' THEN ca.occurred_at END) AS first_review,
+          MIN(CASE WHEN ca.action_type IN ('commented', 'issue_comment') THEN ca.occurred_at END) AS first_comment
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
+        LEFT JOIN contributor_activity ca ON ca.pr_number = pr.pr_number AND ca.repository_id = pr.repository_id
         WHERE pr.created_at >= '2015-01-01'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        GROUP BY pr.pr_number, r.name, pr.created_at, pr.merged_at, pr.closed_at
       )
       SELECT 
         'first_review' as metric,
@@ -730,15 +726,16 @@ const getEditorsByCategoryCached = unstable_cache(
     }>>(
       `
       WITH pr_eip AS (
-        SELECT pr.id AS pr_id, pr.pr_number, pr.repository_id, pre.eip_id
+        SELECT pr.id AS pr_id, pr.pr_number, pr.repository_id, pre.eip_number
         FROM pull_requests pr
-        JOIN pull_request_eips pre ON pre.pr_id = pr.id
+        JOIN pull_request_eips pre ON pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id
       ),
       review_with_category AS (
         SELECT ca.actor, COALESCE(LOWER(TRIM(es.category)), 'unknown') AS category
         FROM contributor_activity ca
         JOIN pr_eip pe ON pe.pr_number = ca.pr_number AND pe.repository_id = ca.repository_id
-        JOIN eip_snapshots es ON es.eip_id = pe.eip_id
+        JOIN eips e ON e.eip_number = pe.eip_number AND e.repository_id = pe.repository_id
+        JOIN eip_snapshots es ON es.eip_id = e.id
         LEFT JOIN repositories r ON r.id = ca.repository_id
         WHERE (UPPER(ca.role) = 'EDITOR' OR ca.action_type = 'reviewed')
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
@@ -1651,13 +1648,15 @@ export const analyticsProcedures = {
                 OR LOWER(COALESCE(op.title, '')) LIKE '%editorial%' OR LOWER(COALESCE(op.title, '')) LIKE '%grammar%' THEN 'TYPO'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eip_snapshots s ON s.eip_id = pre.eip_id
-                WHERE pre.pr_id = op.pr_id AND s.status = 'Draft'
+                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eip_snapshots s ON s.eip_id = e.id
+                WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id AND s.status = 'Draft'
               ) THEN 'NEW_EIP'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eip_status_events ese ON ese.eip_id = pre.eip_id AND ese.pr_number = op.pr_number
-                WHERE pre.pr_id = op.pr_id
+                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eip_status_events ese ON ese.eip_id = e.id AND ese.pr_number = op.pr_number
+                WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id
               ) THEN 'STATUS_CHANGE'
               ELSE 'OTHER'
             END AS category
@@ -1765,7 +1764,7 @@ export const analyticsProcedures = {
                COALESCE(gs.current_state, 'NO_STATE') AS state,
                TO_CHAR(gs.waiting_since, 'YYYY-MM-DD') AS waiting_since,
                gs.last_event_type,
-               (SELECT STRING_AGG(e.eip_number::text, ',') FROM pull_request_eips pre JOIN eips e ON e.id = pre.eip_id WHERE pre.pr_id = pr.id) AS linked_eips
+               (SELECT STRING_AGG(pre.eip_number::text, ',') FROM pull_request_eips pre WHERE pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id) AS linked_eips
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
         LEFT JOIN pr_governance_state gs ON pr.pr_number = gs.pr_number AND pr.repository_id = gs.repository_id

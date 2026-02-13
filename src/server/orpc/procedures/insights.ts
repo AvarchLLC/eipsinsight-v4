@@ -556,9 +556,8 @@ export const insightsProcedures = {
                 p.num_comments, p.num_reviews, p.num_commits, p.num_files,
                 TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at
          FROM pull_requests p
-         JOIN pull_request_eips pre ON pre.pr_id = p.id
-         JOIN eips ei ON pre.eip_id = ei.id
-         WHERE ei.eip_number = $1
+         JOIN pull_request_eips pre ON pre.pr_number = p.pr_number AND pre.repository_id = p.repository_id
+         WHERE pre.eip_number = $1
          ORDER BY p.created_at ASC`,
         input.eipNumber
       );

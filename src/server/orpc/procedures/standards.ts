@@ -191,12 +191,21 @@ export const standardsProcedures = {
       }>>(
         `
         SELECT
-          COALESCE(s.category, s.type, 'Other') AS category,
+          CASE
+            WHEN s.category IS NOT NULL AND TRIM(s.category) <> '' THEN s.category
+            WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type
+            ELSE 'Other'
+          END AS category,
           COUNT(*)::bigint AS count
         FROM eip_snapshots s
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY COALESCE(s.category, s.type, 'Other')
+        GROUP BY
+          CASE
+            WHEN s.category IS NOT NULL AND TRIM(s.category) <> '' THEN s.category
+            WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type
+            ELSE 'Other'
+          END
         ORDER BY count DESC
       `,
         input.repo ?? null
@@ -376,7 +385,7 @@ export const standardsProcedures = {
             EXTRACT(DAY FROM (NOW() - s.updated_at))::int,
             0
           ) AS days_in_status,
-          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_id = e.id) AS linked_pr_count
+          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = COALESCE(s.repository_id, r.id)) AS linked_pr_count
         FROM eip_snapshots s
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id
@@ -620,7 +629,7 @@ export const standardsProcedures = {
           s.category,
           TO_CHAR(e.created_at, 'YYYY-MM-DD') AS created_at,
           TO_CHAR(s.updated_at, 'YYYY-MM-DD') AS updated_at,
-          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_id = e.id) AS linked_prs
+          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = COALESCE(s.repository_id, r.id)) AS linked_prs
         FROM eip_snapshots s
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id

@@ -258,10 +258,9 @@ export const toolsProcedures = {
                 p.num_commits, p.num_files,
                 COALESCE(r.name, 'unknown') AS repo_name
          FROM pull_requests p
-         JOIN pull_request_eips pre ON pre.pr_id = p.id
-         JOIN eips ei ON pre.eip_id = ei.id
+         JOIN pull_request_eips pre ON pre.pr_number = p.pr_number AND pre.repository_id = p.repository_id
          LEFT JOIN repositories r ON p.repository_id = r.id
-         WHERE ei.eip_number = $1
+         WHERE pre.eip_number = $1
          ORDER BY p.created_at ASC`,
         input.eipNumber
       );

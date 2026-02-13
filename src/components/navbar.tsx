@@ -193,7 +193,7 @@ export default function Navbar() {
             {!session?.user ? (
               <Button
                 size="sm"
-                className="rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-black hover:from-emerald-400 hover:to-cyan-400 h-8 px-3 text-xs"
+                className="rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 text-black hover:from-emerald-400 hover:to-cyan-400 h-8 px-3 text-xs"
                 asChild
               >
                 <Link href="/login">Sign in</Link>
@@ -210,7 +210,7 @@ export default function Navbar() {
                   className="w-64 overflow-hidden border-cyan-400/30 bg-slate-950/95 p-0 shadow-[0_15px_60px_rgba(6,182,212,0.18)] backdrop-blur-xl"
                 >
                   {/* Header */}
-                  <div className="relative border-b border-cyan-300/20 bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-emerald-500/10 px-4 py-3">
+                  <div className="relative border-b border-cyan-300/20 bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-emerald-500/10 px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ProfileAvatar user={session.user} size="md" />
                       <div className="flex flex-col min-w-0">
@@ -378,7 +378,7 @@ export default function Navbar() {
               {!session?.user ? (
                 <Button
                   size="sm"
-                  className="rounded-lg bg-gradient-to-r from-emerald-500 to-cyan-500 text-black h-8 px-3 text-xs"
+                  className="rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 text-black h-8 px-3 text-xs"
                   asChild
                 >
                   <Link href="/login">Sign in</Link>

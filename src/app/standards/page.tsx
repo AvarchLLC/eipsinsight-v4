@@ -49,6 +49,7 @@ import {
   Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { PageHeader } from "@/components/header";
 
 // ──────── Types ────────
 type RepoTab = "all" | "eips" | "ercs" | "rips";
@@ -133,15 +134,24 @@ const REPO_COLORS: Record<string, string> = {
   unknown: "#94a3b8",
 };
 
+const CATEGORY_COLOR_MAP: Record<string, string> = {
+  Core: "#60a5fa",
+  Interface: "#f472b6",
+  Networking: "#fb923c",
+  ERC: "#34d399",
+  Informational: "#a78bfa",
+  Meta: "#9f7aea",
+  Other: "#94a3b8",
+};
+
 const CATEGORY_COLORS = [
-  "#34d399",
   "#60a5fa",
-  "#a78bfa",
   "#f472b6",
-  "#fbbf24",
-  "#94a3b8",
   "#fb923c",
-  "#22d3ee",
+  "#34d399",
+  "#a78bfa",
+  "#9f7aea",
+  "#94a3b8",
 ];
 
 // ──────── Page Content ────────
@@ -161,6 +171,11 @@ function StandardsPageContent() {
   const [yearTo, setYearTo] = useState<number | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  
+  // ── Column search state ──
+  const [columnSearch, setColumnSearch] = useState<Record<string, string>>({});
+  // export progress state
+  const [exportingId, setExportingId] = useState<string | null>(null);
 
   // ── Sort + Pagination ──
   const [sortBy, setSortBy] = useState<string>("number");
@@ -225,7 +240,7 @@ function StandardsPageContent() {
         setSortBy('number');
       }
     }
-  }, [isRIP]);
+  }, [isRIP, sortBy]);
 
   // ── Fetch filter options ──
   useEffect(() => {
@@ -320,7 +335,17 @@ function StandardsPageContent() {
     pageSize,
   ]);
 
-  // ── CSV Download ──
+  // ── CSV Download Helpers ──
+  const downloadCSV = (filename: string, csvContent: string) => {
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleCSVDownload = useCallback(async () => {
     try {
       const result = await client.standards.exportCSV({
@@ -329,13 +354,7 @@ function StandardsPageContent() {
         type: selectedTypes.length > 0 ? selectedTypes : undefined,
         category: selectedCategories.length > 0 ? selectedCategories : undefined,
       });
-      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadCSV(result.filename, result.csv);
     } catch (err) {
       console.error("CSV export failed:", err);
     }
@@ -380,21 +399,171 @@ function StandardsPageContent() {
     );
   };
 
+  // ── Column-filtered table data ──
+  const filteredTableData = useMemo(() => {
+    if (!tableData.length) return tableData;
+    return tableData.filter(row => {
+      return Object.entries(columnSearch).every(([col, search]) => {
+        if (!search) return true;
+        const value = String(row[col as keyof TableRow] ?? '').toLowerCase();
+        return value.includes(search.toLowerCase());
+      });
+    });
+  }, [tableData, columnSearch]);
+
+  const filteredRipTableData = useMemo(() => {
+    if (!ripTableData.length) return ripTableData;
+    return ripTableData.filter(row => {
+      return Object.entries(columnSearch).every(([col, search]) => {
+        if (!search) return true;
+        const value = String(row[col as keyof RIPRow] ?? '').toLowerCase();
+        return value.includes(search.toLowerCase());
+      });
+    });
+  }, [ripTableData, columnSearch]);
+
   // ── Chart Data Transforms ──
   const stackedStatusData = useMemo(() => {
+    if (!statusDist || statusDist.length === 0) return [];
+
     const byStatus: Record<string, Record<string, number>> = {};
+    const reposSeen = new Set<string>();
     for (const d of statusDist) {
+      reposSeen.add(d.repo);
       if (!byStatus[d.status]) byStatus[d.status] = {};
       byStatus[d.status][d.repo] = d.count;
     }
-    return Object.entries(byStatus).map(([status, repos]) => ({
-      status,
-      eips: repos.eips ?? 0,
-      ercs: repos.ercs ?? 0,
-      rips: repos.rips ?? 0,
-      total: (repos.eips ?? 0) + (repos.ercs ?? 0) + (repos.rips ?? 0),
-    }));
+
+    const result = Object.entries(byStatus).map(([status, repos]) => {
+      const entry: { status: string; [key: string]: number | string } = { status };
+      let total = 0;
+      for (const [repoKey, cnt] of Object.entries(repos)) {
+        entry[repoKey] = Number(cnt || 0);
+        total += Number(cnt || 0);
+      }
+      entry.total = total;
+      return entry;
+    }).filter((d) => Number(d.total) > 0);
+
+    // Attach repo order for rendering
+    return result;
   }, [statusDist]);
+
+  const handleSegmentDownload = useCallback(async (segmentRepo: string, status: string) => {
+    const exportRepo = repo === "all" ? segmentRepo : repo;
+    const id = `seg-${exportRepo}-${status}`;
+    setExportingId(id);
+    try {
+      const result = await client.standards.exportCSV({
+        repo: exportRepo === "all" ? undefined : (exportRepo as "eips" | "ercs" | "rips"),
+        status: [status],
+      });
+      downloadCSV(result.filename.replace(".csv", `-${exportRepo}-${status}.csv`), result.csv);
+    } catch (err) {
+      console.error("Segment CSV export failed:", err);
+    } finally {
+      setExportingId((cur) => (cur === id ? null : cur));
+    }
+  }, [repo, repoParam]);
+
+  // repo keys present in statusDist, ordered by preferred order
+  const stackedRepoOrder = useMemo(() => {
+    const seen = new Set<string>(statusDist.map((d) => d.repo));
+    const pref = ["eips", "ercs", "rips", "unknown"];
+    const ordered = pref.filter((p) => seen.has(p));
+    // any other repos appended
+    for (const s of Array.from(seen)) {
+      if (!ordered.includes(s)) ordered.push(s);
+    }
+    return ordered;
+  }, [statusDist]);
+ 
+
+  const barsNodes = useMemo(() => {
+    if (repo === "all") {
+      return stackedRepoOrder.map((repoKey) => (
+        <Bar
+          key={repoKey}
+          dataKey={repoKey}
+          stackId="a"
+          fill={REPO_COLORS[repoKey] ?? REPO_COLORS.unknown}
+          name={repoKey.toUpperCase()}
+          radius={[
+            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
+            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
+            0,
+            0,
+          ]}
+          onClick={(data: { payload?: { status?: string } }) => {
+            const status = data?.payload?.status;
+            if (status) handleSegmentDownload(repoKey, status);
+          }}
+        />
+      ));
+    }
+    return (
+      <Bar
+        dataKey="total"
+        fill={REPO_COLORS[repo] ?? "#34d399"}
+        radius={[4, 4, 0, 0]}
+        name="Count"
+        onClick={(payload) => {
+          if (payload && payload.status) handleSegmentDownload(repo, payload.status);
+        }}
+      />
+    );
+  }, [repo, stackedRepoOrder, handleSegmentDownload]);
+
+  // Normalize category names (use type when category empty) and normalize casing
+  const normalizedCategoryData = useMemo(() => {
+    if (!categoryData || categoryData.length === 0) return [];
+    const normalize = (raw: string | null) => {
+      const s = (raw ?? "").trim();
+      if (!s) return "Other";
+      const low = s.toLowerCase();
+      if (low === "erc" || low === "ercs") return "ERC";
+      if (low === "eip" || low === "eips") return "EIP";
+      if (low === "core") return "Core";
+      if (low === "interface") return "Interface";
+      if (low === "networking") return "Networking";
+      if (low === "informational") return "Informational";
+      if (low === "meta") return "Meta";
+      // Title case fallback
+      return s
+        .split(/\s+/)
+        .map((w) => w[0]?.toUpperCase() + w.slice(1).toLowerCase())
+        .join(" ");
+    };
+
+    // Map and aggregate counts if normalization causes duplicates
+    const map: Record<string, number> = {};
+    for (const d of categoryData) {
+      const cat = normalize(d.category);
+      map[cat] = (map[cat] || 0) + Number(d.count);
+    }
+    return Object.entries(map).map(([category, count]) => ({ category, count }));
+  }, [categoryData]);
+
+  // Category visibility toggles (legend filters)
+  const [disabledCategories, setDisabledCategories] = useState<string[]>([]);
+  const allCategories = useMemo(() => normalizedCategoryData.map((d) => d.category), [normalizedCategoryData]);
+  const includedCategories = useMemo(() => {
+    if (!allCategories || allCategories.length === 0) return [];
+    return allCategories.filter((c) => !disabledCategories.includes(c));
+  }, [allCategories, disabledCategories]);
+  const categoryDataToRender = useMemo(() => {
+    if (!normalizedCategoryData) return [];
+    if (includedCategories.length === 0) return normalizedCategoryData;
+    return normalizedCategoryData.filter((d) => includedCategories.includes(d.category));
+  }, [normalizedCategoryData, includedCategories]);
+  const categoryTotalCount = useMemo(() => categoryDataToRender.reduce((s, d) => s + Number(d.count), 0), [categoryDataToRender]);
+
+  const toggleCategory = useCallback((cat: string) => {
+    setDisabledCategories((prev) => {
+      if (prev.includes(cat)) return prev.filter((p) => p !== cat);
+      return [...prev, cat];
+    });
+  }, []);
 
   const trendLineData = useMemo(() => {
     const byYear: Record<number, Record<string, number>> = {};
@@ -423,6 +592,69 @@ function StandardsPageContent() {
     }));
   }, [statusDist]);
 
+  // ── CSV Handlers for detailed data (must come after data transforms) ──
+  const handleStatusDistCSV = useCallback(async (status?: string) => {
+    const id = `status-${status || "all"}-${repoParam ?? "all"}`;
+    setExportingId(id);
+    try {
+      const result = await client.standards.exportCSV({
+        repo: repoParam,
+        status: status ? [status] : undefined,
+        type: undefined,
+        category: undefined,
+      });
+      downloadCSV(result.filename.replace(".csv", `-status-${status || "all"}.csv`), result.csv);
+    } catch (err) {
+      console.error("Status distribution CSV export failed:", err);
+    } finally {
+      setExportingId((cur) => (cur === id ? null : cur));
+    }
+  }, [repoParam]);
+
+  const handleCategoryCSV = useCallback(async (category?: string) => {
+    const id = `category-${category || "all"}-${repoParam ?? "all"}`;
+    setExportingId(id);
+    try {
+      const categoriesToSend = category
+        ? [category]
+        : (includedCategories.length > 0 && includedCategories.length !== allCategories.length
+            ? includedCategories
+            : undefined);
+
+      const result = await client.standards.exportCSV({
+        repo: repoParam,
+        status: undefined,
+        type: undefined,
+        category: categoriesToSend,
+      });
+      downloadCSV(result.filename.replace(".csv", `-category-${category || "all"}.csv`), result.csv);
+    } catch (err) {
+      console.error("Category CSV export failed:", err);
+    } finally {
+      setExportingId((cur) => (cur === id ? null : cur));
+    }
+  }, [repoParam]);
+
+  const handleTrendsCSV = useCallback(async () => {
+    const id = `trends-${repoParam ?? "all"}`;
+    setExportingId(id);
+    try {
+      const result = await client.standards.exportCSV({
+        repo: repoParam,
+        status: undefined,
+        type: undefined,
+        category: undefined,
+      });
+      downloadCSV(result.filename.replace(".csv", "-all-standards.csv"), result.csv);
+    } catch (err) {
+      console.error("Trends CSV export failed:", err);
+    } finally {
+      setExportingId((cur) => (cur === id ? null : cur));
+    }
+  }, [repoParam]);
+
+ 
+
   // ── Render helpers ──
   const StatusBadge = ({ status }: { status: string }) => (
     <span
@@ -450,33 +682,17 @@ function StandardsPageContent() {
   return (
     <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* ── Page Header ── */}
-      <div className="border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-sm sticky top-0 z-40">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-white">
-                Standards Explorer
-              </h1>
-              <p className="text-sm text-slate-400 mt-1">
-                Browse, filter, and analyze Ethereum standards across
-                repositories.
-              </p>
-            </div>
-            <button
-              onClick={handleCSVDownload}
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-300 bg-slate-800/50 border border-slate-700/50 rounded-lg hover:bg-slate-700/50 hover:text-white transition-colors"
-            >
-              <Download className="h-4 w-4" />
-              Download CSV
-            </button>
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="Standards Explorer"
+        description="Browse, filter, and analyze Ethereum standards across repositories with advanced search and filtering capabilities."
+        indicator={{ icon: "chart", label: "Standards", pulse: false }}
+        className="border-b border-slate-800/50"
+      />
 
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* ── Repo Tabs ── */}
-        <div className="flex items-center gap-2 flex-wrap">
-          {(
+        <div className="flex items-center gap-3 flex-wrap">
+        {(
             [
               { value: "all", label: "All Standards" },
               { value: "eips", label: "EIPs" },
@@ -488,10 +704,10 @@ function StandardsPageContent() {
               key={tab.value}
               onClick={() => setRepo(tab.value)}
               className={cn(
-                "px-4 py-2 text-sm font-medium rounded-lg border transition-all duration-200",
+                "inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all duration-150",
                 repo === tab.value
-                  ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40 shadow-[0_0_12px_rgba(34,211,238,0.15)]"
-                  : "bg-slate-800/30 text-slate-400 border-slate-700/50 hover:text-white hover:border-slate-600"
+                  ? "bg-linear-to-r from-cyan-700/10 to-emerald-700/10 text-cyan-300 border-cyan-500/40 shadow-md"
+                  : "bg-slate-800/30 text-slate-400 border-slate-700/40 hover:bg-slate-700/40 hover:text-slate-300"
               )}
             >
               {tab.label}
@@ -782,76 +998,62 @@ function StandardsPageContent() {
               <div id="standards-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Status Distribution */}
                 <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Status Distribution
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white">
+                      Status Distribution
+                    </h3>
+                    {stackedStatusData.length > 0 && (
+                      <button
+                        onClick={() => handleStatusDistCSV()}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
+                        title="Download detailed EIP data with all metadata"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        Detailed CSV
+                      </button>
+                    )}
+                  </div>
                   {stackedStatusData.length > 0 ? (
-                    <ChartContainer
-                      config={
-                        {
-                          eips: {
-                            label: "EIPs",
-                            color: REPO_COLORS.eips,
-                          },
-                          ercs: {
-                            label: "ERCs",
-                            color: REPO_COLORS.ercs,
-                          },
-                          rips: {
-                            label: "RIPs",
-                            color: REPO_COLORS.rips,
-                          },
-                        } satisfies ChartConfig
-                      }
-                      className="h-[300px] w-full"
-                    >
-                      <BarChart data={stackedStatusData}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="#334155"
-                        />
-                        <XAxis
-                          dataKey="status"
-                          tick={{ fill: "#94a3b8", fontSize: 11 }}
-                        />
-                        <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Legend
-                          wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
-                        />
-                        {repo === "all" ? (
-                          <>
-                            <Bar
-                              dataKey="eips"
-                              stackId="a"
-                              fill={REPO_COLORS.eips}
-                              radius={[0, 0, 0, 0]}
-                              name="EIPs"
-                            />
-                            <Bar
-                              dataKey="ercs"
-                              stackId="a"
-                              fill={REPO_COLORS.ercs}
-                              name="ERCs"
-                            />
-                            <Bar
-                              dataKey="rips"
-                              stackId="a"
-                              fill={REPO_COLORS.rips}
-                              radius={[4, 4, 0, 0]}
-                              name="RIPs"
-                            />
-                          </>
-                        ) : (
-                          <Bar
-                            dataKey="total"
-                            fill={REPO_COLORS[repo] ?? "#34d399"}
-                            radius={[4, 4, 0, 0]}
-                            name="Count"
+                    <>
+                      <ChartContainer
+                        config={
+                          {
+                            eips: {
+                              label: "EIPs",
+                              color: REPO_COLORS.eips,
+                            },
+                            ercs: {
+                              label: "ERCs",
+                              color: REPO_COLORS.ercs,
+                            },
+                            rips: {
+                              label: "RIPs",
+                              color: REPO_COLORS.rips,
+                            },
+                          } satisfies ChartConfig
+                        }
+                        className="h-[300px] w-full"
+                      >
+                        <BarChart data={stackedStatusData}>
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#334155"
                           />
-                        )}
-                      </BarChart>
-                    </ChartContainer>
+                          <XAxis
+                            dataKey="status"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                          />
+                          <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend
+                            wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+                          />
+                        {barsNodes}
+                        </BarChart>
+                      </ChartContainer>
+
+                  
+                    </>
                   ) : (
                     <p className="text-slate-400 text-sm">No data available</p>
                   )}
@@ -917,9 +1119,20 @@ function StandardsPageContent() {
                 ) : (
                   /* Trends Over Time */
                   <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                      Standards Created Over Time
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-white">
+                        Standards Created Over Time
+                      </h3>
+                      {trendLineData.length > 0 && (
+                        <button
+                          onClick={handleTrendsCSV}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          CSV
+                        </button>
+                      )}
+                    </div>
                     {trendLineData.length > 0 ? (
                       <ChartContainer
                         config={
@@ -997,53 +1210,107 @@ function StandardsPageContent() {
 
                 {/* Category Breakdown (always shown for non-RIP) */}
                 <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm lg:col-span-2">
-                  <h3 className="text-lg font-semibold text-white mb-4">
-                    Category Breakdown
-                  </h3>
-                  {categoryData.length > 0 ? (
-                    <ChartContainer
-                      config={
-                        Object.fromEntries(
-                          categoryData.map((d, i) => [
-                            d.category,
-                            {
-                              label: d.category,
-                              color:
-                                CATEGORY_COLORS[i % CATEGORY_COLORS.length],
-                            },
-                          ])
-                        ) as ChartConfig
-                      }
-                      className="h-[300px] w-full"
-                    >
-                      <BarChart data={categoryData} layout="vertical">
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          stroke="#334155"
-                        />
-                        <XAxis
-                          type="number"
-                          tick={{ fill: "#94a3b8", fontSize: 11 }}
-                        />
-                        <YAxis
-                          dataKey="category"
-                          type="category"
-                          width={120}
-                          tick={{ fill: "#94a3b8", fontSize: 11 }}
-                        />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Count">
-                          {categoryData.map((_, i) => (
-                            <Cell
-                              key={`cat-${i}`}
-                              fill={
-                                CATEGORY_COLORS[i % CATEGORY_COLORS.length]
-                              }
-                            />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ChartContainer>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <h3 className="text-lg font-semibold text-white">
+                        Category Breakdown
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-1">
+                        Core, Interface, Networking are part of Standards Track
+                      </p>
+                    </div>
+                    <div>
+                      {normalizedCategoryData.length > 0 && (
+                        <button
+                          onClick={() => handleCategoryCSV()}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/50 hover:text-white transition-colors"
+                          title="Download detailed EIP data with all metadata (applies current legend filters)"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Detailed CSV
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {normalizedCategoryData.length > 0 ? (
+                    <>
+                      <ChartContainer
+                        config={
+                          Object.fromEntries(
+                            categoryDataToRender.map((d, i) => [
+                              d.category,
+                              {
+                                label: d.category,
+                                color:
+                                  CATEGORY_COLOR_MAP[d.category] ??
+                                  CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                              },
+                            ])
+                          ) as ChartConfig
+                        }
+                        className="h-[300px] w-full"
+                      >
+                        <BarChart data={categoryDataToRender} layout="vertical">
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#334155"
+                          />
+                          <XAxis
+                            type="number"
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                          />
+                          <YAxis
+                            dataKey="category"
+                            type="category"
+                            width={120}
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                          />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Count">
+                            {categoryDataToRender.map((d, i) => (
+                              <Cell
+                                key={`cat-${i}`}
+                                fill={
+                                  CATEGORY_COLOR_MAP[d.category] ??
+                                  CATEGORY_COLORS[i % CATEGORY_COLORS.length]
+                                }
+                              />
+                            ))}
+                          </Bar>
+                        </BarChart>
+                      </ChartContainer>
+
+                      {/* Bottom controls: legend filters, CSV, total */}
+                      <div className="mt-4 flex items-center justify-between gap-4 px-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-sm text-slate-300 mr-2">Show:</div>
+                          {normalizedCategoryData.map((d) => {
+                            const disabled = disabledCategories.includes(d.category);
+                            return (
+                              <button
+                                key={d.category}
+                                onClick={() => toggleCategory(d.category)}
+                                className={cn(
+                                  "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all",
+                                  disabled
+                                    ? "bg-slate-800/30 text-slate-500 border border-slate-700/40"
+                                    : "bg-slate-800/60 text-white border border-slate-600/40 shadow-sm"
+                                )}
+                                title={disabled ? `Show ${d.category}` : `Hide ${d.category}`}
+                              >
+                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLOR_MAP[d.category] ?? CATEGORY_COLORS[0] }} />
+                                {d.category}
+                              </button>
+                            );
+                          })}
+                        </div>
+
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-slate-400">Total: {categoryTotalCount}</span>
+                    </div>
+                      </div>
+                    </>
                   ) : (
                     <p className="text-slate-400 text-sm">No data available</p>
                   )}
@@ -1052,9 +1319,21 @@ function StandardsPageContent() {
                 {/* Trends Over Time (for single-repo view) */}
                 {repo !== "all" && (
                   <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm lg:col-span-2">
-                    <h3 className="text-lg font-semibold text-white mb-4">
-                      Standards Created Over Time
-                    </h3>
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-lg font-semibold text-white">
+                        Standards Created Over Time
+                      </h3>
+                      {trendLineData.length > 0 && (
+                        <button
+                          onClick={handleTrendsCSV}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
+                          title="Download detailed EIP data with all metadata"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          Detailed CSV
+                        </button>
+                      )}
+                    </div>
                     {trendLineData.length > 0 ? (
                       <ChartContainer
                         config={
@@ -1104,14 +1383,17 @@ function StandardsPageContent() {
             )}
 
             {/* ────── Table ────── */}
-            <div id="standards-table" className="rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-slate-700/50 flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white">
+            <div id="standards-table" className="rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-sm overflow-hidden shadow-xl shadow-slate-950/20">
+              <div className="px-6 py-5 border-b border-slate-700/50 bg-linear-to-r from-slate-800/50 to-slate-900/30">
+                <h3 className="text-lg font-bold text-white">
                   {isRIP ? "RIPs" : "Standards"}{" "}
-                  <span className="text-sm font-normal text-slate-400">
-                    ({totalRows.toLocaleString()} results)
+                  <span className="text-sm font-normal text-slate-400 ml-2">
+                    Showing {(isRIP ? filteredRipTableData : filteredTableData).length.toLocaleString()} of {totalRows.toLocaleString()} results
                   </span>
                 </h3>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  Use the filter inputs below each column header to search within specific columns
+                </p>
               </div>
 
               <div className="overflow-x-auto">
@@ -1169,9 +1451,22 @@ function StandardsPageContent() {
                           onSort={handleSort}
                         />
                       </tr>
+                      <tr className="bg-slate-800/30 border-b border-slate-700/50">
+                        {['number', 'title', 'status', 'author', 'created_at', 'last_commit', 'commits'].map(col => (
+                          <td key={col} className="px-4 py-2">
+                            <input
+                              type="text"
+                              placeholder={`Filter...`}
+                              value={columnSearch[col] || ''}
+                              onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
+                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                            />
+                          </td>
+                        ))}
+                      </tr>
                     </thead>
                     <tbody>
-                      {ripTableData.length === 0 ? (
+                      {filteredRipTableData.length === 0 ? (
                         <tr>
                           <td
                             colSpan={7}
@@ -1181,7 +1476,7 @@ function StandardsPageContent() {
                           </td>
                         </tr>
                       ) : (
-                        ripTableData.map((row) => (
+                        filteredRipTableData.map((row) => (
                           <tr
                             key={row.number}
                             className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
@@ -1295,9 +1590,34 @@ function StandardsPageContent() {
                         />
                         <th className="px-4 py-3 text-xs font-medium text-slate-400"></th>
                       </tr>
+                      <tr className="bg-slate-800/30 border-b border-slate-700/50">
+                        {repo === "all" && (
+                          <td className="px-4 py-2">
+                            <input
+                              type="text"
+                              placeholder="Filter..."
+                              value={columnSearch.repo || ''}
+                              onChange={(e) => setColumnSearch({...columnSearch, repo: e.target.value})}
+                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                            />
+                          </td>
+                        )}
+                        {['number', 'title', 'status', 'type', 'category', 'createdAt', 'updatedAt', 'daysInStatus', 'linkedPRs'].map(col => (
+                          <td key={col} className="px-4 py-2">
+                            <input
+                              type="text"
+                              placeholder="Filter..."
+                              value={columnSearch[col] || ''}
+                              onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
+                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                            />
+                          </td>
+                        ))}
+                        <td className="px-4 py-2"></td>
+                      </tr>
                     </thead>
                     <tbody>
-                      {tableData.length === 0 ? (
+                      {filteredTableData.length === 0 ? (
                         <tr>
                           <td
                             colSpan={repo === "all" ? 11 : 10}
@@ -1307,7 +1627,7 @@ function StandardsPageContent() {
                           </td>
                         </tr>
                       ) : (
-                        tableData.map((row) => {
+                        filteredTableData.map((row) => {
                           const repoShort = row.repo
                             .split("/")
                             .pop()

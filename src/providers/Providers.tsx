@@ -2,7 +2,9 @@
 
 import * as React from "react";
 import { PersonaProvider } from "@/providers/PersonaProvider";
+import { ThemeProvider } from "@/providers/ThemeProvider";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
+import { ThemeLoading } from "@/components/theme-loading";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -14,9 +16,12 @@ interface ProvidersProps {
  */
 export function Providers({ children }: ProvidersProps) {
   return (
-    <PersonaProvider>
-      <OnboardingRedirect />
-      {children}
-    </PersonaProvider>
+    <ThemeProvider>
+      <ThemeLoading />
+      <PersonaProvider>
+        <OnboardingRedirect />
+        {children}
+      </PersonaProvider>
+    </ThemeProvider>
   );
 }

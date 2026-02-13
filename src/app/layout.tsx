@@ -102,7 +102,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="scroll-smooth dark">
+    <html lang="en" className="scroll-smooth" suppressHydrationWarning>
       <body
         className={`${Libre_Baskerville.variable} ${Space_Grotesk.variable} antialiased`}
       >

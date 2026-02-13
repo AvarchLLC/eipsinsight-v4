@@ -710,20 +710,22 @@ export const exploreProcedures = {
       }>>`
         WITH recent_pr_events AS (
           SELECT 
-            pre.eip_id,
+            e.id as eip_id,
             COUNT(*) as pr_events_count
           FROM pull_request_eips pre
-          JOIN pr_events pe ON pre.pr_id = pe.pr_number
+          JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+          JOIN pr_events pe ON pre.pr_number = pe.pr_number AND pre.repository_id = pe.repository_id
           WHERE pe.created_at >= ${sevenDaysAgo}
-          GROUP BY pre.eip_id
+          GROUP BY e.id
         ),
         pr_comments AS (
           SELECT 
-            pre.eip_id,
+            e.id as eip_id,
             SUM(COALESCE(pr.num_comments, 0)) as comments_count
           FROM pull_request_eips pre
-          JOIN pull_requests pr ON pre.pr_id = pr.id
-          GROUP BY pre.eip_id
+          JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+          JOIN pull_requests pr ON pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id
+          GROUP BY e.id
         ),
         recent_status_changes AS (
           SELECT DISTINCT eip_id
