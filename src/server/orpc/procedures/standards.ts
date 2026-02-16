@@ -540,6 +540,37 @@ export const standardsProcedures = {
       }));
     }),
 
+  // ——— Status × Group Matrix (for homepage) ———
+  getStatusMatrix: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        status: string;
+        group_name: string;
+        count: bigint;
+      }>>(
+        `SELECT
+          s.status,
+          CASE
+            WHEN s.category = 'ERC' OR LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' THEN 'ERCs'
+            ELSE 'EIPs'
+          END AS group_name,
+          COUNT(*)::bigint AS count
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        GROUP BY s.status, group_name
+        ORDER BY count DESC`
+      );
+
+      return results.map(r => ({
+        status: r.status,
+        group: r.group_name,
+        count: Number(r.count),
+      }));
+    }),
+
   // ——— CSV Export (EIPs/ERCs) ———
   exportCSV: os
     .$context<Ctx>()
