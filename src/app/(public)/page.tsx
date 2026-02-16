@@ -9,6 +9,7 @@ import {
   Download, Loader2, FileText, Layers, Info, Code, FileCode2,
   Cpu, Network, Boxes, Eye, Bell, CheckCircle2, Zap, Pause,
   XCircle, GitCommitHorizontal, LayoutGrid, BarChart3,
+  Activity, TrendingUp, Timer, Users, ArrowRight, ChevronDown,
 } from 'lucide-react';
 
 // ────────────────────────────────────────────────────────────────
@@ -18,12 +19,9 @@ import {
 type ViewMode = 'type' | 'status';
 
 interface TabDef {
-  id: string;
-  label: string;
+  id: string; label: string;
   filter?: { category?: string[]; type?: string[]; status?: string[] };
-  isRip?: boolean;
-  description: string;
-  icon: React.ReactNode;
+  isRip?: boolean; description: string; icon: React.ReactNode;
 }
 
 const TYPE_TABS: TabDef[] = [
@@ -62,6 +60,10 @@ const STATUS_DOT_COLORS: Record<string, string> = {
 const STATUS_TEXT_COLORS: Record<string, string> = {
   Draft: 'text-slate-300', Review: 'text-amber-300', 'Last Call': 'text-orange-300',
   Final: 'text-emerald-400', Living: 'text-cyan-300', Stagnant: 'text-gray-400', Withdrawn: 'text-red-300',
+};
+const FUNNEL_COLORS: Record<string, string> = {
+  Draft: 'bg-slate-500', Review: 'bg-amber-500', 'Last Call': 'bg-orange-500', Final: 'bg-emerald-500',
+  Stagnant: 'bg-gray-600', Withdrawn: 'bg-red-500',
 };
 const MATRIX_STATUS_ORDER = ['Draft', 'Review', 'Last Call', 'Final', 'Living', 'Stagnant', 'Withdrawn'];
 
@@ -125,6 +127,28 @@ function TableSkeleton({ cols = 6 }: { cols?: number }) {
   );
 }
 
+function SectionCard({ title, icon, children, className = '' }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <div className={`rounded-xl border border-slate-800/80 bg-slate-900/50 ${className}`}>
+      <div className="flex items-center gap-2 border-b border-slate-800/60 px-4 py-2.5">
+        <span className="text-slate-500">{icon}</span>
+        <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">{title}</span>
+      </div>
+      <div className="p-4">{children}</div>
+    </div>
+  );
+}
+
+function SkeletonPulse({ rows = 4 }: { rows?: number }) {
+  return (
+    <div className="space-y-2">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="h-5 animate-pulse rounded bg-slate-800/40" style={{ width: `${60 + (i * 17 % 40)}%` }} />
+      ))}
+    </div>
+  );
+}
+
 // ────────────────────────────────────────────────────────────────
 // MAIN PAGE
 // ────────────────────────────────────────────────────────────────
@@ -137,6 +161,7 @@ export default function EIPsHomePage() {
   const [sortBy, setSortBy] = useState<string>('number');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
 
+  // Core data
   const [eipData, setEipData] = useState<{
     total: number; page: number; pageSize: number; totalPages: number;
     rows: Array<{ repo: string; number: number; title: string | null; author: string | null; status: string; type: string | null; category: string | null; createdAt: string | null; updatedAt: string | null }>;
@@ -145,7 +170,6 @@ export default function EIPsHomePage() {
     total: number; page: number; pageSize: number; totalPages: number;
     rows: Array<{ number: number; title: string | null; status: string | null; author: string | null; createdAt: string | null; lastCommit: string | null; commits: number }>;
   } | null>(null);
-
   const [tableLoading, setTableLoading] = useState(true);
   const [kpis, setKpis] = useState<{ total: number; inReview: number; finalized: number; newThisYear: number } | null>(null);
   const [ripKpis, setRipKpis] = useState<{ total: number; active: number } | null>(null);
@@ -153,6 +177,17 @@ export default function EIPsHomePage() {
   const [statusDist, setStatusDist] = useState<Array<{ status: string; count: number }>>([]);
   const [matrixRaw, setMatrixRaw] = useState<Array<{ status: string; group: string; count: number }>>([]);
   const [exporting, setExporting] = useState(false);
+
+  // Insight data (new sections)
+  const [recentChanges, setRecentChanges] = useState<Array<{ eip: string; eip_type: string; title: string; from: string; to: string; days: number; statusColor: string; changed_at: Date }> | null>(null);
+  const [upgradeImpact, setUpgradeImpact] = useState<Array<{ name: string; slug: string; total: number; finalized: number; inReview: number; draft: number; lastCall: number }> | null>(null);
+  const [lifecycleFunnel, setLifecycleFunnel] = useState<Array<{ status: string; count: number }> | null>(null);
+  const [repoDist, setRepoDist] = useState<Array<{ repo: string; proposals: number; activePRs: number; finals: number }> | null>(null);
+  const [decisionVelocity, setDecisionVelocity] = useState<{ transitions: Array<{ from: string; to: string; medianDays: number | null; count: number }>; draftToFinalMedian: number } | null>(null);
+  const [monthlyDelta, setMonthlyDelta] = useState<Array<{ status: string; count: number }> | null>(null);
+  const [editors, setEditors] = useState<Array<{ actor: string; totalReviews: number; prsTouched: number; medianResponseDays: number | null }> | null>(null);
+  const [reviewers, setReviewers] = useState<Array<{ actor: string; totalReviews: number; prsTouched: number; medianResponseDays: number | null }> | null>(null);
+  const [govStates, setGovStates] = useState<Array<{ state: string; label: string; count: number; medianWaitDays: number | null }> | null>(null);
 
   const isRipMode = activeTab === 'rips';
   const currentTabs = viewMode === 'type' ? TYPE_TABS : STATUS_TABS;
@@ -166,13 +201,12 @@ export default function EIPsHomePage() {
     if (activeTab !== 'rips') setActiveTab('all');
     setPage(1); setColumnSearch({});
   }, [viewMode]); // eslint-disable-line react-hooks/exhaustive-deps
-
   useEffect(() => {
     if (isRipMode && !(RIP_SORT_FIELDS as readonly string[]).includes(sortBy)) setSortBy('number');
     else if (!isRipMode && !(EIP_SORT_FIELDS as readonly string[]).includes(sortBy)) setSortBy('number');
   }, [isRipMode, sortBy]);
 
-  // Fetch overview
+  // Fetch core overview
   useEffect(() => {
     (async () => {
       try {
@@ -191,6 +225,34 @@ export default function EIPsHomePage() {
         statusRes.forEach((r: { status: string; count: number }) => statusMap.set(r.status, (statusMap.get(r.status) || 0) + r.count));
         setStatusDist(Array.from(statusMap.entries()).map(([status, count]) => ({ status, count })).sort((a, b) => b.count - a.count));
       } catch (err) { console.error('Failed to load overview data:', err); }
+    })();
+  }, []);
+
+  // Fetch insight data (non-blocking, loads after core)
+  useEffect(() => {
+    (async () => {
+      try {
+        const [rcRes, upRes, lfRes, rdRes, dvRes, mdRes, edRes, rvRes, gsRes] = await Promise.all([
+          client.analytics.getRecentChanges({ limit: 12 }),
+          client.standards.getUpgradeImpact(),
+          client.explore.getStatusFlow(),
+          client.standards.getRepoDistribution(),
+          client.analytics.getDecisionVelocity({}),
+          client.standards.getMonthlyDelta(),
+          client.analytics.getEditorsLeaderboard({ limit: 5 }),
+          client.analytics.getReviewersLeaderboard({ limit: 5 }),
+          client.analytics.getPRGovernanceWaitingState({}),
+        ]);
+        setRecentChanges(rcRes as typeof recentChanges);
+        setUpgradeImpact(upRes);
+        setLifecycleFunnel(lfRes);
+        setRepoDist(rdRes);
+        setDecisionVelocity(dvRes);
+        setMonthlyDelta(mdRes);
+        setEditors(edRes);
+        setReviewers(rvRes);
+        setGovStates(gsRes.map(g => ({ ...g, count: Number(g.count), medianWaitDays: g.medianWaitDays != null ? Number(g.medianWaitDays) : null })));
+      } catch (err) { console.error('Failed to load insights:', err); }
     })();
   }, []);
 
@@ -277,7 +339,6 @@ export default function EIPsHomePage() {
   const standardsTrackTotal = useMemo(() => categoryBreakdown.filter((c) => ['core', 'networking', 'interface', 'erc'].includes(c.category.toLowerCase())).reduce((s, c) => s + c.count, 0), [categoryBreakdown]);
   const getCatCount = useCallback((name: string) => categoryBreakdown.find((c) => c.category.toLowerCase() === name.toLowerCase())?.count || 0, [categoryBreakdown]);
 
-  // Matrix: uses getStatusMatrix (groups by category logic: EIPs vs ERCs)
   const matrixData = useMemo(() => {
     const groups = [...new Set(matrixRaw.map((d) => d.group))].sort();
     return {
@@ -285,21 +346,18 @@ export default function EIPsHomePage() {
       rows: MATRIX_STATUS_ORDER.map((status) => {
         const cells: Record<string, number> = {};
         let total = 0;
-        groups.forEach((g) => {
-          const match = matrixRaw.find((d) => d.status === status && d.group === g);
-          const c = match?.count || 0;
-          cells[g] = c; total += c;
-        });
+        groups.forEach((g) => { const m = matrixRaw.find((d) => d.status === status && d.group === g); const c = m?.count || 0; cells[g] = c; total += c; });
         return { status, cells, total };
       }).filter((r) => r.total > 0),
     };
   }, [matrixRaw]);
-
   const matrixGrandTotal = useMemo(() => matrixData.rows.reduce((s, r) => s + r.total, 0), [matrixData]);
 
   const statusSummary = useMemo(() => MATRIX_STATUS_ORDER.map((s) => ({
     status: s, count: statusDist.find((d) => d.status === s)?.count || 0,
   })).filter((s) => s.count > 0), [statusDist]);
+
+  const funnelMax = useMemo(() => lifecycleFunnel ? Math.max(...lifecycleFunnel.map(f => f.count), 1) : 1, [lifecycleFunnel]);
 
   const pageRange = useMemo(() => {
     const range: number[] = []; const max = 5;
@@ -323,60 +381,108 @@ export default function EIPsHomePage() {
   ];
   const columns = isRipMode ? ripCols : eipCols;
 
+  const waitingOnEditor = govStates?.find(g => g.state === 'WAITING_ON_EDITOR');
+
   // ─── Render ────────────────────────────────────────────────
   return (
     <div className="relative min-h-screen">
-      {/* Subtle background */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.04),transparent_60%)]" />
 
       <div className="relative mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
 
         {/* ─── 1. Header ──────────────────────────────────── */}
-        <motion.header
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6"
-        >
+        <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
           <h1 className="dec-title bg-linear-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl">
             Ethereum Improvement Proposals
           </h1>
           <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-400">
-            Real-time analytics on proposal lifecycle, categories, and governance activity.
-            Powered by{' '}
-            <span className="text-slate-300">EIPsInsight</span>.
+            Real-time governance analytics — proposal lifecycle, upgrade progress, and editorial workload.
+            Powered by <span className="text-slate-300">EIPsInsight</span>.
           </p>
         </motion.header>
 
         {/* ─── 2. Global Metrics Bar ──────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.05 }}
-          className="mb-6 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50"
-        >
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
+          className="mb-6 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
           <div className="grid min-w-max grid-flow-col divide-x divide-slate-800/80">
             <MetricCell label="Total" value={kpis?.total || 0} color="text-white" />
             {statusSummary.map((s) => (
-              <MetricCell
-                key={s.status} label={s.status} value={s.count}
-                color={STATUS_TEXT_COLORS[s.status] || 'text-slate-300'}
-                onClick={() => { setViewMode('status'); setActiveTab(STATUS_TABS.find((t) => t.filter?.status?.[0] === s.status)?.id || 'all'); }}
-              />
+              <MetricCell key={s.status} label={s.status} value={s.count} color={STATUS_TEXT_COLORS[s.status] || 'text-slate-300'}
+                onClick={() => { setViewMode('status'); setActiveTab(STATUS_TABS.find((t) => t.filter?.status?.[0] === s.status)?.id || 'all'); }} />
             ))}
             <MetricCell label="RIPs" value={ripKpis?.total || 0} color="text-violet-300" onClick={() => setActiveTab('rips')} />
             <MetricCell label={`New ${new Date().getFullYear()}`} value={kpis?.newThisYear || 0} color="text-emerald-300" />
           </div>
         </motion.div>
 
-        {/* ─── 3. Matrix + Category Breakdown ─────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.1 }}
-          className="mb-6 grid gap-4 lg:grid-cols-5"
-        >
-          {/* Status × EIPs/ERCs Matrix */}
+        {/* ─── 3. Recent Governance Activity ───────────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.08 }} className="mb-6">
+          <SectionCard title="Recent Governance Activity" icon={<Activity className="h-3.5 w-3.5" />}>
+            {!recentChanges ? <SkeletonPulse rows={5} /> : recentChanges.length === 0 ? (
+              <p className="text-sm text-slate-600">No status changes in the last 7 days.</p>
+            ) : (
+              <div className="space-y-1.5">
+                {recentChanges.map((e, i) => (
+                  <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-slate-800/30">
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[e.to] || 'bg-slate-500'}`} />
+                    <Link href={`/${e.eip_type === 'RIP' ? 'rip' : e.eip_type === 'ERC' ? 'erc' : 'eip'}/${e.eip}`}
+                      className="shrink-0 font-mono text-sm font-semibold text-cyan-400 hover:text-cyan-300">
+                      {e.eip_type}-{e.eip}
+                    </Link>
+                    <span className="flex items-center gap-1.5 text-slate-500">
+                      {e.from ? <><span className="text-slate-500">{e.from}</span><ArrowRight className="h-3 w-3 text-slate-700" /></> : 'entered '}
+                      <span className={STATUS_TEXT_COLORS[e.to] || 'text-slate-300'}>{e.to}</span>
+                    </span>
+                    <span className="ml-auto shrink-0 text-xs tabular-nums text-slate-600">
+                      {e.days === 0 ? 'today' : e.days === 1 ? '1 day ago' : `${e.days}d ago`}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </motion.div>
+
+        {/* ─── 4. Upgrade Impact Snapshot ──────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }} className="mb-6">
+          <SectionCard title="Upgrade Impact Snapshot" icon={<TrendingUp className="h-3.5 w-3.5" />}>
+            {!upgradeImpact ? <SkeletonPulse rows={3} /> : upgradeImpact.length === 0 ? (
+              <p className="text-sm text-slate-600">No upgrade data available.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-slate-500">
+                      <th className="pb-2 text-left font-medium">Upgrade</th>
+                      <th className="pb-2 text-right font-medium">Final</th>
+                      <th className="pb-2 text-right font-medium">Review</th>
+                      <th className="pb-2 text-right font-medium">Last Call</th>
+                      <th className="pb-2 text-right font-medium">Draft</th>
+                      <th className="pb-2 text-right font-medium">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {upgradeImpact.map((u) => (
+                      <tr key={u.slug} className="border-t border-slate-800/30 transition-colors hover:bg-slate-800/20">
+                        <td className="py-1.5 font-medium text-slate-200 capitalize">{u.name}</td>
+                        <td className="py-1.5 text-right tabular-nums text-emerald-400">{u.finalized || <span className="text-slate-700">—</span>}</td>
+                        <td className="py-1.5 text-right tabular-nums text-amber-300">{u.inReview || <span className="text-slate-700">—</span>}</td>
+                        <td className="py-1.5 text-right tabular-nums text-orange-300">{u.lastCall || <span className="text-slate-700">—</span>}</td>
+                        <td className="py-1.5 text-right tabular-nums text-slate-400">{u.draft || <span className="text-slate-700">—</span>}</td>
+                        <td className="py-1.5 text-right tabular-nums font-medium text-white">{u.total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </SectionCard>
+        </motion.div>
+
+        {/* ─── 5. Matrix + Category Breakdown ─────────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.12 }}
+          className="mb-6 grid gap-4 lg:grid-cols-5">
+          {/* Status Distribution Matrix */}
           <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
             <div className="px-4 py-2.5 border-b border-slate-800/60">
               <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Status Distribution</span>
@@ -385,9 +491,7 @@ export default function EIPsHomePage() {
               <thead>
                 <tr className="border-b border-slate-800/50">
                   <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">Status</th>
-                  {matrixData.groups.map((g) => (
-                    <th key={g} className="px-4 py-2 text-right text-xs font-medium text-slate-500">{g}</th>
-                  ))}
+                  {matrixData.groups.map((g) => <th key={g} className="px-4 py-2 text-right text-xs font-medium text-slate-500">{g}</th>)}
                   <th className="px-4 py-2 text-right text-xs font-semibold text-slate-400">Total</th>
                 </tr>
               </thead>
@@ -395,10 +499,8 @@ export default function EIPsHomePage() {
                 {matrixData.rows.map((row) => (
                   <tr key={row.status} className="border-b border-slate-800/30 transition-colors hover:bg-slate-800/20">
                     <td className="px-4 py-2">
-                      <button
-                        onClick={() => { setViewMode('status'); setActiveTab(STATUS_TABS.find((t) => t.filter?.status?.[0] === row.status)?.id || 'all'); }}
-                        className="flex items-center gap-2 transition-colors hover:text-white"
-                      >
+                      <button onClick={() => { setViewMode('status'); setActiveTab(STATUS_TABS.find((t) => t.filter?.status?.[0] === row.status)?.id || 'all'); }}
+                        className="flex items-center gap-2 transition-colors hover:text-white">
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[row.status] || 'bg-slate-500'}`} />
                         <span className={`text-sm ${STATUS_TEXT_COLORS[row.status] || 'text-slate-300'}`}>{row.status}</span>
                       </button>
@@ -460,13 +562,108 @@ export default function EIPsHomePage() {
           </div>
         </motion.div>
 
-        {/* ─── 4. View Switch + Tabs ──────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.15 }}
-          className="mb-4"
-        >
+        {/* ─── 6. Lifecycle Funnel + Repo Distribution ─────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
+          className="mb-6 grid gap-4 lg:grid-cols-2">
+          {/* Lifecycle Funnel */}
+          <SectionCard title="Lifecycle Funnel" icon={<ArrowRight className="h-3.5 w-3.5" />}>
+            {!lifecycleFunnel ? <SkeletonPulse rows={4} /> : (
+              <div className="space-y-2">
+                {lifecycleFunnel.filter(f => f.count > 0).map((f) => (
+                  <div key={f.status} className="group flex items-center gap-3">
+                    <span className="w-16 shrink-0 text-right text-xs text-slate-500">{f.status}</span>
+                    <div className="relative flex-1 h-6 rounded bg-slate-800/50 overflow-hidden">
+                      <div
+                        className={`h-full rounded transition-all duration-500 ${FUNNEL_COLORS[f.status] || 'bg-slate-600'}`}
+                        style={{ width: `${Math.max((f.count / funnelMax) * 100, 2)}%` }}
+                      />
+                      <span className="absolute inset-y-0 left-2 flex items-center text-xs font-medium tabular-nums text-white/80">
+                        {f.count.toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Repo Distribution */}
+          <SectionCard title="Repository Distribution" icon={<Layers className="h-3.5 w-3.5" />}>
+            {!repoDist ? <SkeletonPulse rows={3} /> : (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-slate-500">
+                    <th className="pb-2 text-left font-medium">Repository</th>
+                    <th className="pb-2 text-right font-medium">Proposals</th>
+                    <th className="pb-2 text-right font-medium">Open PRs</th>
+                    <th className="pb-2 text-right font-medium">Final</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {repoDist.map((r) => (
+                    <tr key={r.repo} className="border-t border-slate-800/30">
+                      <td className="py-1.5 font-medium text-slate-300">{r.repo}</td>
+                      <td className="py-1.5 text-right tabular-nums text-slate-400">{r.proposals.toLocaleString()}</td>
+                      <td className="py-1.5 text-right tabular-nums text-amber-300">{r.activePRs.toLocaleString()}</td>
+                      <td className="py-1.5 text-right tabular-nums text-emerald-400">{r.finals.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </SectionCard>
+        </motion.div>
+
+        {/* ─── 7. Governance Efficiency + Monthly Delta ────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.16 }}
+          className="mb-6 grid gap-4 lg:grid-cols-2">
+          {/* Governance Efficiency */}
+          <SectionCard title="Governance Efficiency" icon={<Timer className="h-3.5 w-3.5" />}>
+            {!decisionVelocity ? <SkeletonPulse rows={4} /> : (
+              <div className="space-y-2">
+                {decisionVelocity.transitions.map((t) => (
+                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-800/20">
+                    <span className="text-sm text-slate-400">
+                      {t.from} <ArrowRight className="mx-1 inline h-3 w-3 text-slate-600" /> {t.to}
+                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm tabular-nums font-medium text-slate-200">{t.medianDays != null ? `${t.medianDays}d` : '—'}</span>
+                      <span className="text-xs tabular-nums text-slate-600">({t.count})</span>
+                    </div>
+                  </div>
+                ))}
+                {decisionVelocity.draftToFinalMedian > 0 && (
+                  <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                    <span className="text-sm font-medium text-emerald-300">Draft to Final (end-to-end)</span>
+                    <span className="text-sm tabular-nums font-bold text-emerald-400">{decisionVelocity.draftToFinalMedian}d median</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </SectionCard>
+
+          {/* Monthly Delta */}
+          <SectionCard title={`${new Date().toLocaleString('en', { month: 'long' })} Governance Delta`} icon={<Activity className="h-3.5 w-3.5" />}>
+            {!monthlyDelta ? <SkeletonPulse rows={5} /> : monthlyDelta.length === 0 ? (
+              <p className="text-sm text-slate-600">No status changes this month yet.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {monthlyDelta.map((d) => (
+                  <div key={d.status} className="flex items-center gap-2 rounded-lg bg-slate-800/30 px-3 py-2">
+                    <span className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[d.status] || 'bg-slate-500'}`} />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-slate-500">{d.status}</div>
+                      <div className="text-lg tabular-nums font-bold text-slate-200">{d.count}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </motion.div>
+
+        {/* ─── 8. View Switch + Tabs ──────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.18 }} className="mb-4">
           <div className="mb-2.5 flex items-center justify-between">
             <div className="inline-flex items-center rounded-lg border border-slate-800/80 bg-slate-900/60 p-0.5">
               <button onClick={() => setViewMode('type')}
@@ -518,13 +715,9 @@ export default function EIPsHomePage() {
           {activeTabDef?.description && <p className="mt-2 text-xs text-slate-500">{activeTabDef.description}</p>}
         </motion.div>
 
-        {/* ─── 5. Main Table ──────────────────────────────── */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.35, delay: 0.2 }}
-          className="mb-8 overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/30"
-        >
+        {/* ─── 9. Main Table ──────────────────────────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.2 }}
+          className="mb-8 overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/30">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -593,7 +786,69 @@ export default function EIPsHomePage() {
           )}
         </motion.div>
 
-        {/* ─── 6. Reference Panels ────────────────────────── */}
+        {/* ─── 10. Editors & Reviewers Snapshot ───────────── */}
+        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-8">
+          <SectionCard title="Editors & Reviewers" icon={<Users className="h-3.5 w-3.5" />}>
+            {!editors ? <SkeletonPulse rows={5} /> : (
+              <div className="grid gap-6 lg:grid-cols-3">
+                {/* Waiting on Editor Summary */}
+                <div>
+                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">PR Governance</h4>
+                  <div className="space-y-1.5">
+                    {govStates?.map((g) => (
+                      <div key={g.state} className="flex items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
+                        <span className="text-slate-400">{g.label}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="tabular-nums font-medium text-slate-200">{g.count}</span>
+                          {g.medianWaitDays != null && <span className="text-xs tabular-nums text-slate-600">~{g.medianWaitDays}d</span>}
+                        </div>
+                      </div>
+                    ))}
+                    {waitingOnEditor && (
+                      <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm">
+                        <span className="text-amber-200">{waitingOnEditor.count} PRs</span>
+                        <span className="text-slate-500"> waiting on editor</span>
+                        {waitingOnEditor.medianWaitDays != null && <span className="text-slate-500"> (~{waitingOnEditor.medianWaitDays}d median)</span>}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Top Editors */}
+                <div>
+                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">Top Editors</h4>
+                  <div className="space-y-1">
+                    {editors.map((e, i) => (
+                      <div key={e.actor} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
+                        <span className="w-4 text-right text-xs tabular-nums text-slate-600">{i + 1}</span>
+                        <span className="flex-1 truncate text-slate-300">{e.actor}</span>
+                        <span className="tabular-nums text-xs text-slate-500">{e.prsTouched} PRs</span>
+                        {e.medianResponseDays != null && <span className="tabular-nums text-xs text-slate-600">~{e.medianResponseDays}d</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Top Reviewers */}
+                <div>
+                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">Top Reviewers</h4>
+                  <div className="space-y-1">
+                    {reviewers?.map((r, i) => (
+                      <div key={r.actor} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
+                        <span className="w-4 text-right text-xs tabular-nums text-slate-600">{i + 1}</span>
+                        <span className="flex-1 truncate text-slate-300">{r.actor}</span>
+                        <span className="tabular-nums text-xs text-slate-500">{r.prsTouched} PRs</span>
+                        {r.medianResponseDays != null && <span className="tabular-nums text-xs text-slate-600">~{r.medianResponseDays}d</span>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </SectionCard>
+        </motion.div>
+
+        {/* ─── 11. Reference Panels ───────────────────────── */}
         <div className="space-y-4 mb-8">
           <RefPanel title="EIP Types">
             {TYPE_INFO.map((type) => (
@@ -680,7 +935,7 @@ function RefPanel({ title, children }: { title: string; children: React.ReactNod
     <details className="group rounded-xl border border-slate-800/80 bg-slate-900/30">
       <summary className="flex cursor-pointer items-center justify-between px-5 py-3 text-sm font-semibold text-slate-200 hover:text-white">
         {title}
-        <span className="text-xs text-slate-600 transition-transform group-open:rotate-180">&#9660;</span>
+        <ChevronDown className="h-4 w-4 text-slate-600 transition-transform group-open:rotate-180" />
       </summary>
       <div className="border-t border-slate-800/60 px-5 py-4">{children}</div>
     </details>

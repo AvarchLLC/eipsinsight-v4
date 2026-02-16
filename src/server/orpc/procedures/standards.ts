@@ -571,6 +571,114 @@ export const standardsProcedures = {
       }));
     }),
 
+  // ——— Upgrade Impact Snapshot (for homepage) ———
+  getUpgradeImpact: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        upgrade_name: string;
+        slug: string;
+        total: bigint;
+        finalized: bigint;
+        in_review: bigint;
+        draft: bigint;
+        last_call: bigint;
+      }>>(
+        `SELECT
+          u.name AS upgrade_name,
+          u.slug,
+          COUNT(*)::bigint AS total,
+          COUNT(*) FILTER (WHERE s.status = 'Final')::bigint AS finalized,
+          COUNT(*) FILTER (WHERE s.status = 'Review')::bigint AS in_review,
+          COUNT(*) FILTER (WHERE s.status = 'Draft')::bigint AS draft,
+          COUNT(*) FILTER (WHERE s.status = 'Last Call')::bigint AS last_call
+        FROM upgrades u
+        JOIN upgrade_composition_current ucc ON ucc.upgrade_id = u.id
+        JOIN eips e ON e.eip_number = ucc.eip_number
+        JOIN eip_snapshots s ON s.eip_id = e.id
+        GROUP BY u.id, u.name, u.slug
+        ORDER BY u.id DESC
+        LIMIT 6`
+      );
+
+      return results.map(r => ({
+        name: r.upgrade_name || r.slug,
+        slug: r.slug,
+        total: Number(r.total),
+        finalized: Number(r.finalized),
+        inReview: Number(r.in_review),
+        draft: Number(r.draft),
+        lastCall: Number(r.last_call),
+      }));
+    }),
+
+  // ——— Monthly Governance Delta (for homepage) ———
+  getMonthlyDelta: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        to_status: string;
+        count: bigint;
+      }>>(
+        `SELECT
+          se.to_status,
+          COUNT(*)::bigint AS count
+        FROM eip_status_events se
+        WHERE se.changed_at >= date_trunc('month', CURRENT_DATE)
+        GROUP BY se.to_status
+        ORDER BY count DESC`
+      );
+
+      return results.map(r => ({
+        status: r.to_status,
+        count: Number(r.count),
+      }));
+    }),
+
+  // ——— Repo Distribution (for homepage) ———
+  getRepoDistribution: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRawUnsafe<Array<{
+        repo_name: string;
+        proposals: bigint;
+        active_prs: bigint;
+        finals: bigint;
+      }>>(
+        `SELECT
+          r.name AS repo_name,
+          COALESCE(snap.proposals, 0)::bigint AS proposals,
+          COALESCE(prs.active_prs, 0)::bigint AS active_prs,
+          COALESCE(snap.finals, 0)::bigint AS finals
+        FROM repositories r
+        LEFT JOIN (
+          SELECT repository_id,
+            COUNT(*)::bigint AS proposals,
+            COUNT(*) FILTER (WHERE status = 'Final')::bigint AS finals
+          FROM eip_snapshots GROUP BY repository_id
+        ) snap ON snap.repository_id = r.id
+        LEFT JOIN (
+          SELECT repository_id, COUNT(*)::bigint AS active_prs
+          FROM pull_requests WHERE state = 'open' GROUP BY repository_id
+        ) prs ON prs.repository_id = r.id
+        WHERE r.active = true AND COALESCE(snap.proposals, 0) > 0
+        ORDER BY snap.proposals DESC`
+      );
+
+      return results.map(r => ({
+        repo: r.repo_name,
+        proposals: Number(r.proposals),
+        activePRs: Number(r.active_prs),
+        finals: Number(r.finals),
+      }));
+    }),
+
   // ——— CSV Export (EIPs/ERCs) ———
   exportCSV: os
     .$context<Ctx>()
