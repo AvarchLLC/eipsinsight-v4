@@ -427,7 +427,7 @@ export default function EIPsHomePage() {
         </motion.header>
 
         {/* ─── 2. Global Metrics Bar ──────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
+        <motion.div id="kpi-overview" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
           className="mb-6 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
           <div className="grid min-w-max grid-flow-col divide-x divide-slate-800/80">
             <MetricCell label="Total" value={kpis?.total || 0} color="text-white" onClick={() => { clearOverlay(); tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
@@ -441,7 +441,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── 3. Matrix + Category Breakdown ─────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.12 }}
+        <motion.div id="status-distribution" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.12 }}
           className="mb-6 grid gap-4 lg:grid-cols-5">
           {/* Status Distribution Matrix */}
           <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
@@ -508,7 +508,7 @@ export default function EIPsHomePage() {
           </div>
 
           {/* Category Breakdown */}
-          <div className="lg:col-span-2 rounded-xl border border-slate-800/80 bg-slate-900/50 p-4">
+          <div id="category-breakdown" className="lg:col-span-2 rounded-xl border border-slate-800/80 bg-slate-900/50 p-4">
             <div className="mb-3">
               <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Category Breakdown</span>
             </div>
@@ -545,7 +545,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── 6. Lifecycle Funnel + Repo Distribution ─────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
+        <motion.div id="intelligence" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
           className="mb-6 grid gap-4 lg:grid-cols-2">
           {/* Lifecycle Funnel */}
           <SectionCard title="Lifecycle Funnel" icon={<ArrowRight className="h-3.5 w-3.5" />}>
@@ -657,7 +657,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── 8. View Switch + Tabs ──────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.18 }} className="mb-4">
+        <motion.div id="proposals-table" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.18 }} className="mb-4">
           <div className="mb-2.5 flex items-center justify-between">
             <div className="inline-flex items-center rounded-lg border border-slate-800/80 bg-slate-900/60 p-0.5">
               <button onClick={() => setViewMode('type')}
@@ -794,7 +794,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── Recent Governance Activity ──────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-6">
+        <motion.div id="governance-activity" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-6">
           <SectionCard title="Recent Governance Activity" icon={<Activity className="h-3.5 w-3.5" />}>
             {!recentChanges ? <SkeletonPulse rows={5} /> : recentChanges.length === 0 ? (
               <p className="text-sm text-slate-600">No status changes in the last 7 days.</p>
@@ -822,7 +822,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── Upgrade Impact Snapshot ─────────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.24 }} className="mb-6">
+        <motion.div id="upgrade-impact" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.24 }} className="mb-6">
           <SectionCard title="Upgrade Impact Snapshot" icon={<TrendingUp className="h-3.5 w-3.5" />}>
             {!upgradeImpact ? <SkeletonPulse rows={3} /> : upgradeImpact.length === 0 ? (
               <p className="text-sm text-slate-600">No upgrade data available.</p>
@@ -864,7 +864,7 @@ export default function EIPsHomePage() {
         </motion.div>
 
         {/* ─── Editors & Reviewers Snapshot ────────────────── */}
-        <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-8">
+        <motion.div id="editors-reviewers" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-8">
           <SectionCard title="Editors & Reviewers" icon={<Users className="h-3.5 w-3.5" />}>
             {!editors ? <SkeletonPulse rows={5} /> : (
               <div className="grid gap-6 lg:grid-cols-3">

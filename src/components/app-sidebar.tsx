@@ -21,6 +21,7 @@ import {
   Compass,
   Search,
   Wrench,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -78,13 +79,14 @@ interface SidebarSection {
 // ============================================================================
 
 const homeSections: SidebarSubItem[] = [
-  { title: "Protocol Bento", href: "/#protocol-bento", sectionId: "protocol-bento" },
-  { title: "Governance Over Time", href: "/#governance-over-time", sectionId: "governance-over-time" },
-  { title: "Trending Proposals", href: "/#trending-proposals", sectionId: "trending-proposals" },
-  { title: "Our Tools", href: "/#our-tools", sectionId: "our-tools" },
-  { title: "What We Track", href: "/#what-we-track", sectionId: "what-we-track" },
-  { title: "Latest Updates", href: "/#latest-updates", sectionId: "latest-updates" },
-  { title: "FAQs", href: "/#faqs", sectionId: "faqs" },
+  { title: "KPI Overview", href: "/#kpi-overview", sectionId: "kpi-overview" },
+  { title: "Status Distribution", href: "/#status-distribution", sectionId: "status-distribution" },
+  { title: "Category Breakdown", href: "/#category-breakdown", sectionId: "category-breakdown" },
+  { title: "Proposals Table", href: "/#proposals-table", sectionId: "proposals-table" },
+  { title: "Governance Activity", href: "/#governance-activity", sectionId: "governance-activity" },
+  { title: "Upgrade Impact", href: "/#upgrade-impact", sectionId: "upgrade-impact" },
+  { title: "Intelligence", href: "/#intelligence", sectionId: "intelligence" },
+  { title: "Editors & Reviewers", href: "/#editors-reviewers", sectionId: "editors-reviewers" },
 ];
 
 // ============================================================================
@@ -96,6 +98,11 @@ const sidebarSections: SidebarSection[] = [
     id: "main",
     label: "",
     items: [
+      {
+        title: "Landing",
+        icon: Globe,
+        href: "/",
+      },
       {
         title: "Home",
         icon: Home,
@@ -140,6 +147,13 @@ const sidebarSections: SidebarSection[] = [
         title: "Upgrades",
         icon: Package,
         href: "/upgrade",
+        items: [
+          { title: "Previous Upgrades", href: "/upgrade" },
+          { title: "Pectra", href: "/upgrade/pectra" },
+          { title: "Fusaka", href: "/upgrade/fusaka" },
+          { title: "Glamsterdam", href: "/upgrade/glamsterdam" },
+          { title: "Hegotá", href: "/upgrade/hegota" },
+        ],
       },
     ],
   },
@@ -154,6 +168,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "EIPs", href: "/analytics/eips" },
           { title: "PRs", href: "/analytics/prs" },
+          { title: "Board", href: "/tools/board" },
           { title: "Editors", href: "/analytics/editors" },
           { title: "Reviewers", href: "/analytics/reviewers" },
           { title: "Authors", href: "/analytics/authors" },
@@ -185,7 +200,6 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Overview", href: "/tools" },
           { title: "EIP Builder", href: "/tools/eip-builder" },
-          { title: "Board", href: "/tools/board" },
           { title: "Dependencies", href: "/tools/dependencies" },
           { title: "Timeline", href: "/tools/timeline" },
         ],
@@ -297,6 +311,7 @@ function getActiveItemTitle(pathname: string): string | null {
     return "Standards";
   if (pathname.startsWith("/explore")) return "Explore";
   if (pathname.startsWith("/upgrade")) return "Upgrades";
+  if (pathname === "/tools/board") return "Analytics";
   if (pathname.startsWith("/analytics")) return "Analytics";
   if (pathname.startsWith("/tools")) return "Tools";
   if (pathname.startsWith("/insights")) return "Insights";
