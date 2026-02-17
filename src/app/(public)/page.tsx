@@ -237,6 +237,8 @@ export default function EIPsHomePage() {
   useEffect(() => {
     (async () => {
       try {
+        const _now = new Date();
+        const monthFrom = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-01`;
         const [rcRes, upRes, lfRes, rdRes, dvRes, mdRes, edRes, rvRes, gsRes] = await Promise.all([
           client.analytics.getRecentChanges({ limit: 12 }),
           client.standards.getUpgradeImpact(),
@@ -244,8 +246,8 @@ export default function EIPsHomePage() {
           client.standards.getRepoDistribution(),
           client.analytics.getDecisionVelocity({}),
           client.standards.getMonthlyDelta(),
-          client.analytics.getEditorsLeaderboard({ limit: 5 }),
-          client.analytics.getReviewersLeaderboard({ limit: 5 }),
+          client.analytics.getEditorsLeaderboard({ limit: 10, from: monthFrom }),
+          client.analytics.getReviewersLeaderboard({ limit: 5, from: monthFrom }),
           client.analytics.getPRGovernanceWaitingState({}),
         ]);
         setRecentChanges(rcRes as typeof recentChanges);
@@ -863,63 +865,95 @@ export default function EIPsHomePage() {
           </SectionCard>
         </motion.div>
 
-        {/* ─── Editors & Reviewers Snapshot ────────────────── */}
+        {/* ─── Editor Leaderboard ────────────────────────── */}
         <motion.div id="editors-reviewers" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-8">
-          <SectionCard title="Editors & Reviewers" icon={<Users className="h-3.5 w-3.5" />}>
-            {!editors ? <SkeletonPulse rows={5} /> : (
-              <div className="grid gap-6 lg:grid-cols-3">
-                {/* Waiting on Editor Summary */}
-                <div>
-                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">PR Governance</h4>
-                  <div className="space-y-1.5">
-                    {govStates?.map((g) => (
-                      <div key={g.state} className="flex items-center justify-between rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
-                        <span className="text-slate-400">{g.label}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="tabular-nums font-medium text-slate-200">{g.count}</span>
-                          {g.medianWaitDays != null && <span className="text-xs tabular-nums text-slate-600">~{g.medianWaitDays}d</span>}
+          <SectionCard title={`Editor Leaderboard — ${new Date().toLocaleString('en', { month: 'long', year: 'numeric' })}`} icon={<Users className="h-3.5 w-3.5" />}>
+            {!editors ? <SkeletonPulse rows={5} /> : editors.length === 0 ? (
+              <p className="py-6 text-center text-sm text-slate-600">No editor activity this month yet.</p>
+            ) : (
+              <div className="space-y-5">
+                {/* ── Podium: Top 3 ── */}
+                {editors.length >= 3 && (
+                  <div className="grid grid-cols-3 items-end gap-3">
+                    {/* #2 Silver */}
+                    <div className="flex flex-col items-center rounded-xl border border-slate-500/20 bg-slate-800/30 p-3 pt-5">
+                      <div className="relative">
+                        <img src={`https://github.com/${editors[1].actor}.png`} alt={editors[1].actor}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[1].actor)}&background=1e293b&color=94a3b8&size=80`; }}
+                          className="h-14 w-14 rounded-full border-2 border-slate-400/40 object-cover" />
+                        <span className="absolute -top-2 -right-2 text-lg">🥈</span>
+                      </div>
+                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-200">{editors[1].actor}</span>
+                      <span className="text-xs tabular-nums text-slate-500">{editors[1].prsTouched} PRs</span>
+                      {editors[1].medianResponseDays != null && (
+                        <span className="text-[10px] tabular-nums text-slate-600">~{editors[1].medianResponseDays}d avg</span>
+                      )}
+                    </div>
+                    {/* #1 Gold - Champion */}
+                    <div className="flex flex-col items-center rounded-xl border border-amber-500/30 bg-linear-to-b from-amber-500/10 via-amber-500/5 to-transparent p-3 pt-4 -mt-3">
+                      <div className="relative">
+                        <img src={`https://github.com/${editors[0].actor}.png`} alt={editors[0].actor}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[0].actor)}&background=78350f&color=fbbf24&size=80`; }}
+                          className="h-16 w-16 rounded-full border-2 border-amber-400/50 ring-4 ring-amber-500/15 object-cover" />
+                        <span className="absolute -top-3 -right-3 text-2xl">🥇</span>
+                      </div>
+                      <span className="mt-2 max-w-full truncate text-sm font-bold text-white">{editors[0].actor}</span>
+                      <span className="text-xs tabular-nums font-medium text-amber-300">{editors[0].prsTouched} PRs reviewed</span>
+                      {editors[0].medianResponseDays != null && (
+                        <span className="text-[10px] tabular-nums text-amber-400/60">~{editors[0].medianResponseDays}d avg response</span>
+                      )}
+                    </div>
+                    {/* #3 Bronze */}
+                    <div className="flex flex-col items-center rounded-xl border border-orange-500/20 bg-slate-800/30 p-3 pt-5">
+                      <div className="relative">
+                        <img src={`https://github.com/${editors[2].actor}.png`} alt={editors[2].actor}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[2].actor)}&background=431407&color=fb923c&size=80`; }}
+                          className="h-14 w-14 rounded-full border-2 border-orange-400/40 object-cover" />
+                        <span className="absolute -top-2 -right-2 text-lg">🥉</span>
+                      </div>
+                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-200">{editors[2].actor}</span>
+                      <span className="text-xs tabular-nums text-slate-500">{editors[2].prsTouched} PRs</span>
+                      {editors[2].medianResponseDays != null && (
+                        <span className="text-[10px] tabular-nums text-slate-600">~{editors[2].medianResponseDays}d avg</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Remaining editors ── */}
+                {editors.length > 3 && (
+                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/30 divide-y divide-slate-800/40">
+                    {editors.slice(3).map((ed, i) => (
+                      <div key={ed.actor} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800/20">
+                        <span className="w-5 text-right text-xs tabular-nums font-semibold text-slate-600">{i + 4}</span>
+                        <img src={`https://github.com/${ed.actor}.png`} alt={ed.actor}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ed.actor)}&background=1e293b&color=94a3b8&size=48`; }}
+                          className="h-8 w-8 rounded-full border border-slate-700/50 object-cover" />
+                        <span className="flex-1 truncate text-sm font-medium text-slate-300">{ed.actor}</span>
+                        <span className="text-xs tabular-nums text-slate-500">{ed.prsTouched} PRs</span>
+                        {ed.medianResponseDays != null && (
+                          <span className="text-xs tabular-nums text-slate-600">~{ed.medianResponseDays}d</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* ── PR Governance Summary ── */}
+                {govStates && govStates.length > 0 && (
+                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/20 p-4">
+                    <h4 className="mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">PR Governance Overview</h4>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
+                      {govStates.map((g) => (
+                        <div key={g.state} className="rounded-lg bg-slate-800/30 px-3 py-2 text-center">
+                          <div className="text-lg tabular-nums font-bold text-slate-200">{g.count}</div>
+                          <div className="text-[10px] text-slate-500">{g.label}</div>
+                          {g.medianWaitDays != null && <div className="text-[10px] tabular-nums text-slate-600">~{g.medianWaitDays}d wait</div>}
                         </div>
-                      </div>
-                    ))}
-                    {waitingOnEditor && (
-                      <div className="mt-2 rounded-lg border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-sm">
-                        <span className="text-amber-200">{waitingOnEditor.count} PRs</span>
-                        <span className="text-slate-500"> waiting on editor</span>
-                        {waitingOnEditor.medianWaitDays != null && <span className="text-slate-500"> (~{waitingOnEditor.medianWaitDays}d median)</span>}
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                </div>
-
-                {/* Top Editors */}
-                <div>
-                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">Top Editors</h4>
-                  <div className="space-y-1">
-                    {editors.map((e, i) => (
-                      <div key={e.actor} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
-                        <span className="w-4 text-right text-xs tabular-nums text-slate-600">{i + 1}</span>
-                        <span className="flex-1 truncate text-slate-300">{e.actor}</span>
-                        <span className="tabular-nums text-xs text-slate-500">{e.prsTouched} PRs</span>
-                        {e.medianResponseDays != null && <span className="tabular-nums text-xs text-slate-600">~{e.medianResponseDays}d</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Top Reviewers */}
-                <div>
-                  <h4 className="mb-2 text-xs font-semibold text-slate-500 uppercase">Top Reviewers</h4>
-                  <div className="space-y-1">
-                    {reviewers?.map((r, i) => (
-                      <div key={r.actor} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm hover:bg-slate-800/20">
-                        <span className="w-4 text-right text-xs tabular-nums text-slate-600">{i + 1}</span>
-                        <span className="flex-1 truncate text-slate-300">{r.actor}</span>
-                        <span className="tabular-nums text-xs text-slate-500">{r.prsTouched} PRs</span>
-                        {r.medianResponseDays != null && <span className="tabular-nums text-xs text-slate-600">~{r.medianResponseDays}d</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                )}
               </div>
             )}
           </SectionCard>

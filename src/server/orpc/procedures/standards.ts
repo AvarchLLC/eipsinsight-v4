@@ -785,4 +785,39 @@ export const standardsProcedures = {
       const repoLabel = input.repo ?? 'all';
       return { csv: [header, ...csvRows].join('\n'), filename: `${repoLabel}-standards.csv` };
     }),
+
+  // ——— Category × Status cross-tab (for dashboard) ———
+  getCategoryStatusCrosstab: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        category: string; status: string; repo_group: string; count: bigint;
+      }>>(`
+        SELECT
+          COALESCE(NULLIF(s.category, ''), s.type, 'Unknown') AS category,
+          s.status,
+          CASE
+            WHEN s.category = 'ERC' OR LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' THEN 'ERCs'
+            WHEN LOWER(SPLIT_PART(r.name, '/', 2)) = 'rips' THEN 'RIPs'
+            ELSE 'EIPs'
+          END AS repo_group,
+          COUNT(*)::bigint AS count
+        FROM eip_snapshots s
+        LEFT JOIN repositories r ON s.repository_id = r.id
+        GROUP BY COALESCE(NULLIF(s.category, ''), s.type, 'Unknown'), s.status,
+          CASE
+            WHEN s.category = 'ERC' OR LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' THEN 'ERCs'
+            WHEN LOWER(SPLIT_PART(r.name, '/', 2)) = 'rips' THEN 'RIPs'
+            ELSE 'EIPs'
+          END
+        ORDER BY 1, 2
+      `);
+      return results.map(r => ({
+        category: r.category,
+        status: r.status,
+        repo: r.repo_group,
+        count: Number(r.count),
+      }));
+    }),
 };

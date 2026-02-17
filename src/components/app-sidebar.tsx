@@ -21,7 +21,7 @@ import {
   Compass,
   Search,
   Wrench,
-  Globe,
+  LayoutDashboard,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -78,17 +78,6 @@ interface SidebarSection {
 // Homepage sections (scroll spy)
 // ============================================================================
 
-const homeSections: SidebarSubItem[] = [
-  { title: "KPI Overview", href: "/#kpi-overview", sectionId: "kpi-overview" },
-  { title: "Status Distribution", href: "/#status-distribution", sectionId: "status-distribution" },
-  { title: "Category Breakdown", href: "/#category-breakdown", sectionId: "category-breakdown" },
-  { title: "Proposals Table", href: "/#proposals-table", sectionId: "proposals-table" },
-  { title: "Governance Activity", href: "/#governance-activity", sectionId: "governance-activity" },
-  { title: "Upgrade Impact", href: "/#upgrade-impact", sectionId: "upgrade-impact" },
-  { title: "Intelligence", href: "/#intelligence", sectionId: "intelligence" },
-  { title: "Editors & Reviewers", href: "/#editors-reviewers", sectionId: "editors-reviewers" },
-];
-
 // ============================================================================
 // Sidebar sections definition
 // ============================================================================
@@ -99,15 +88,14 @@ const sidebarSections: SidebarSection[] = [
     label: "",
     items: [
       {
-        title: "Landing",
-        icon: Globe,
-        href: "/",
-      },
-      {
         title: "Home",
         icon: Home,
         href: "/",
-        items: homeSections,
+      },
+      {
+        title: "Dashboard",
+        icon: LayoutDashboard,
+        href: "/dashboard",
       },
       {
         title: "Search",
@@ -300,6 +288,7 @@ function getOrderedSections(persona: Persona | null): SidebarSection[] {
  */
 function getActiveItemTitle(pathname: string): string | null {
   if (pathname === "/") return "Home";
+  if (pathname.startsWith("/dashboard")) return "Dashboard";
   if (pathname.startsWith("/search")) return "Search";
   if (
     pathname.startsWith("/standards") ||
@@ -339,7 +328,7 @@ function AppSidebarContent() {
   });
   const rememberedOpen = React.useRef<string[]>(openItems);
 
-  // Scroll spy state (homepage only)
+  // Scroll spy state (kept for future use)
   const [activeSection, setActiveSection] = React.useState("");
 
   // Get persona-ordered sections
@@ -416,31 +405,32 @@ function AppSidebarContent() {
   }, [pathname]);
 
   // ========================================================================
-  // Scroll spy — scroll-event based (homepage only)
-  //
-  // Uses requestAnimationFrame-throttled scroll listener with
-  // getBoundingClientRect() for reliable, real-time section tracking.
-  // This replaces the previous IntersectionObserver approach which had
-  // stale-entry bugs (showing wrong section as active).
+  // Scroll spy — collects sectionId entries from all sidebar sub-items
   // ========================================================================
 
+  const sectionIds = React.useMemo(() => {
+    const ids: string[] = [];
+    for (const section of orderedSections) {
+      for (const item of section.items) {
+        if (item.items) {
+          for (const sub of item.items) {
+            if (sub.sectionId) ids.push(sub.sectionId);
+          }
+        }
+      }
+    }
+    return ids;
+  }, [orderedSections]);
+
   React.useEffect(() => {
-    if (pathname !== "/") {
+    if (pathname !== "/" || sectionIds.length === 0) {
       setActiveSection("");
       return;
     }
 
-    const sectionIds = homeSections
-      .map((s) => s.sectionId)
-      .filter((id): id is string => !!id);
-
-    if (sectionIds.length === 0) return;
-
     let rafHandle = 0;
 
     const updateActiveSection = () => {
-      // The "threshold line" — 30% down from the top of the viewport.
-      // The last section whose top has scrolled past this line is "active".
       const threshold = window.innerHeight * 0.3;
       let currentActive = "";
 
@@ -449,11 +439,10 @@ function AppSidebarContent() {
         if (!el) continue;
         const rect = el.getBoundingClientRect();
         if (rect.top <= threshold) {
-          currentActive = id; // Keep overwriting — last one past threshold wins
+          currentActive = id;
         }
       }
 
-      // Edge case: at the very bottom of the page, activate the last section
       if (
         window.innerHeight + window.scrollY >=
         document.documentElement.scrollHeight - 50
@@ -461,7 +450,6 @@ function AppSidebarContent() {
         currentActive = sectionIds[sectionIds.length - 1];
       }
 
-      // Edge case: nothing past threshold yet — use first visible section
       if (!currentActive) {
         for (const id of sectionIds) {
           const el = document.getElementById(id);
@@ -483,7 +471,6 @@ function AppSidebarContent() {
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
-    // Initial calculation (small delay to ensure DOM is painted)
     const initTimer = setTimeout(updateActiveSection, 150);
 
     return () => {
@@ -491,7 +478,7 @@ function AppSidebarContent() {
       cancelAnimationFrame(rafHandle);
       clearTimeout(initTimer);
     };
-  }, [pathname]);
+  }, [pathname, sectionIds]);
 
   // ========================================================================
   // Active state helpers
