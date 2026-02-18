@@ -1,6 +1,9 @@
-🗺️ EIPsInsight — Site Map Diagram
+# EIPsInsight — Site Map Diagram
 
 > **See [TASKS.md](./TASKS.md)** for remaining tasks, advanced blogging (admin-only editing), and implementation status.
+
+## Site Map
+
 EIPsInsight
 │
 ├── Home
@@ -14,7 +17,7 @@ EIPsInsight
 │   │   └── All Years
 │   ├── By Status & Category
 │   │   ├── All Status & Categories
-│   │   └── Individual Status/Category Views
+│   │   ├── Individual Status/Category Views
 │   │   └── Individual EIP Views
 │   ├── By Role
 │   │   ├── Editors
@@ -34,7 +37,7 @@ EIPsInsight
 │   ├── PRs & Issues Analytics
 │   ├── Editors Analytics
 │   ├── Reviewers Analytics
-│   └── Authors Analytics
+│   ├── Authors Analytics
 │   └── Contributors Analytics
 │
 ├── Standards by repo
@@ -67,11 +70,13 @@ EIPsInsight
     │   ├── Hegotá
     │   ├── Glamsterdam
     │   ├── Fusaka
-    │   └── Dencun
+    │   └── Dencun (Earlier)
     ├── Earlier Upgrades
     └── Upgrade Archive
 
-Persona Alignment (EIPsInsight-first thinking)
+---
+
+## Persona Alignment (EIPsInsight-first thinking)
 Protocol Developers & Client Teams
 Primary:
 Standards
@@ -137,8 +142,9 @@ Home
 Secondary:
 Insights
 
+---
 
-EIPsInsight Branding Alignment
+## EIPsInsight Branding Alignment
 EIPsInsight is not “just EIPs” — it is:
 Observability + Context + Coordination for Ethereum standards
 Branding principles reflected in the sitemap:
@@ -156,8 +162,7 @@ Upgrade-centric storytelling (dedicated Network Upgrades section)
 
 Role-aware navigation (Editors, Reviewers, Enterprises)
 
-
-Naming consistency
+**Naming consistency**
 “Network Upgrades” instead of “N/w Upgrades”
 
 

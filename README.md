@@ -1,38 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EIPsInsight
+
+Observability + context + coordination for Ethereum standards. Explore EIPs, ERCs, RIPs, analytics, network upgrades, and governance insights.
+
+## Features
+
+- **Explore** — Browse proposals by year, status, category, and role (Editors, Reviewers, Contributors)
+- **Search** — EIPs, PRs, issues, authors
+- **Analytics** — EIPs, PRs, Editors, Reviewers, Authors, Contributors
+- **Insights** — Year-month analysis, governance, upgrade insights, editorial commentary
+- **Tools** — EIP Builder, Board, Dependencies, Timeline
+- **Resources** — FAQ, Blogs, Videos, News, Documentation
+- **Network Upgrades** — Pectra, Fusaka, Glamsterdam, Hegotá
 
 ## Getting Started
 
-First, run the development server:
-
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Copy `.env.example` to `.env` and set:
 
-## Learn More
+- `DATABASE_URL` — PostgreSQL connection string
+- `BETTER_AUTH_URL` — App URL (e.g. `http://localhost:3000`)
+- `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` — OAuth
+- `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` — OAuth
+- `CLOUDINARY_URL` — Image uploads (blogs)
+- Other vars as required
 
-To learn more about Next.js, take a look at the following resources:
+## Database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+npx prisma generate
+npx prisma migrate deploy   # or: npx prisma db execute --file <migration.sql>
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Docs
 
-## Deploy on Vercel
+- [Site Map & Personas](docs/README.md)
+- [Remaining Tasks](docs/TASKS.md)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
-
-
+Vercel, Railway, or any Node.js host. Ensure `DATABASE_URL` and auth env vars are set.
