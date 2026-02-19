@@ -137,34 +137,23 @@ export default function DashboardPage() {
 
   const toggle = (key: string) => setCollapsed(p => ({ ...p, [key]: !p[key] }));
 
-  // ── Fetch all data ──
+  // ── Fetch all data (single batch to reduce DB connections) ──
   useEffect(() => {
     (async () => {
       try {
-        const [kRes, ctRes, sdRes, cbRes, fRes, rdRes, mdRes, upRes, vRes, ripRes] = await Promise.all([
-          client.standards.getKPIs({}),
-          client.standards.getCategoryStatusCrosstab(),
-          client.standards.getStatusDistribution({}),
-          client.standards.getCategoryBreakdown({}),
-          client.explore.getStatusFlow(),
-          client.standards.getRepoDistribution(),
-          client.standards.getMonthlyDelta(),
-          client.standards.getUpgradeImpact(),
-          client.analytics.getDecisionVelocity({}),
-          client.standards.getRIPKPIs(),
-        ]);
-        setKpis(kRes);
-        setCrossTab(ctRes);
+        const data = await client.dashboard.getDashboardOverview({});
+        setKpis(data.kpis);
+        setCrossTab(data.categoryStatusCrosstab);
         const sMap = new Map<string, number>();
-        sdRes.forEach((r: StatusRow) => sMap.set(r.status, (sMap.get(r.status) || 0) + r.count));
+        data.statusDistribution.forEach((r: StatusRow & { repo?: string }) => sMap.set(r.status, (sMap.get(r.status) || 0) + r.count));
         setStatusDist(Array.from(sMap.entries()).map(([status, count]) => ({ status, count })));
-        setCatBreakdown(cbRes);
-        setFunnel(fRes);
-        setRepoDist(rdRes);
-        setMonthlyDelta(mdRes);
-        setUpgrades(upRes);
-        setVelocity(vRes);
-        setRipKpis({ total: ripRes.total, active: ripRes.active });
+        setCatBreakdown(data.categoryBreakdown);
+        setFunnel(data.statusFlow);
+        setRepoDist(data.repoDistribution);
+        setMonthlyDelta(data.monthlyDelta);
+        setUpgrades(data.upgradeImpact);
+        setVelocity(data.decisionVelocity);
+        setRipKpis(data.ripKpis);
       } catch (err) { console.error('Dashboard fetch error:', err); }
     })();
   }, []);

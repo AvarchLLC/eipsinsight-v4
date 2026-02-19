@@ -1,7 +1,5 @@
 
-import { requireScope } from "./types"
-import { API_SCOPES } from "@/lib/apiScopes"
-import { os, checkAPIToken, requireAuth,protectedProcedure, type Ctx } from './types'
+import { os, checkAPIToken, requireAuth, protectedProcedure, publicProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 import { unstable_cache } from 'next/cache'
@@ -209,7 +207,7 @@ const getContributorKPIsCached = unstable_cache(
   { tags: ['analytics-contributors-kpis'], revalidate: 300 }
 );
 
-const getLifecycleDataCached = unstable_cache(
+export const getLifecycleDataCached = unstable_cache(
   async (repo: string | null) => {
     const results = await prisma.$queryRawUnsafe<Array<{
       stage: string;
@@ -252,7 +250,7 @@ const getLifecycleDataCached = unstable_cache(
   { tags: ['analytics-eips-lifecycle'], revalidate: 600 }
 );
 
-const getStandardsCompositionCached = unstable_cache(
+export const getStandardsCompositionCached = unstable_cache(
   async (repo: string | null) => {
     const results = await prisma.$queryRawUnsafe<Array<{
       type: string;
@@ -842,13 +840,9 @@ const getReviewersRepoDistributionCached = unstable_cache(
 );
 
 export const analyticsProcedures = {
-  getActiveProposals: protectedProcedure
+  getActiveProposals: publicProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-     
-requireScope(context, API_SCOPES.ANALYTICS_READ)
-
-
+    .handler(async ({ input }) => {
       const result = await prisma.$queryRawUnsafe<Array<{
         draft: bigint;
         review: bigint;

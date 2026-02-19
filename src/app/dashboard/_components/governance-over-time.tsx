@@ -73,12 +73,9 @@ export default function GovernanceOverTime() {
     async function fetchData() {
       setLoading(true);
       try {
-        const [categoryResults, statusResults] = await Promise.all([
-          client.governanceTimeline.getTimelineByCategory({ includeRIPs }),
-          client.governanceTimeline.getTimelineByStatus({ includeRIPs }),
-        ]);
-        setCategoryData(categoryResults || []);
-        setStatusData(statusResults || []);
+        const data = await client.dashboard.getGovernanceTimelineData({ includeRIPs });
+        setCategoryData(data.timelineByCategory || []);
+        setStatusData(data.timelineByStatus || []);
       } catch (error) {
         console.error('Failed to fetch timeline data:', error);
         setCategoryData([]);

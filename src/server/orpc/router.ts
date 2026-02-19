@@ -1,5 +1,6 @@
 import { authProcedures } from './procedures/auth'
 import { analyticsProcedures } from './procedures/analytics'
+import { dashboardProcedures } from './procedures/dashboard'
 import { governanceProcedures } from './procedures/governance'
 import { governanceTimelineProcedures } from './procedures/governanceTimeline'
 import { historicalProcedures } from './procedures/historical'
@@ -17,6 +18,7 @@ import { blogProcedures } from './procedures/blog'
 export const router = {
   auth: authProcedures,
   analytics: analyticsProcedures,
+  dashboard: dashboardProcedures,
   governance: governanceProcedures,
   governanceTimeline: governanceTimelineProcedures,
   historical: historicalProcedures,

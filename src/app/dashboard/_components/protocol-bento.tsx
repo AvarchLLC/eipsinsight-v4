@@ -171,37 +171,20 @@ export default function ProtocolBento() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const repoArg = repoParam ? { repo: repoParam } : {};
+        const data = await client.dashboard.getProtocolBentoData({
+          repo: repoParam,
+          recentChangesLimit: 20,
+          recentPRsLimit: 3,
+        });
 
-        // Fetch all data in parallel with optional repository filter
-        const [
-          activeProposalsData,
-          lifecycleDataRes,
-          standardsMixData,
-          recentChangesData,
-          decisionVelocityData,
-          momentumDataRes,
-          prsDataRes,
-          lastCallData
-        ] = await Promise.all([
-          client.analytics.getActiveProposals(repoArg),
-          client.analytics.getLifecycleData(repoArg),
-          client.analytics.getStandardsComposition(repoArg),
-          client.analytics.getRecentChanges({ limit: 20, ...repoArg }),
-          client.analytics.getDecisionVelocity(repoArg),
-          client.analytics.getMomentumData({ months: 12, ...repoArg }),
-          client.analytics.getRecentPRs({ limit: 3, ...repoArg }),
-          client.analytics.getLastCallWatchlist(repoArg)
-        ]);
-
-        setActiveProposals(activeProposalsData);
-        setLifecycleData(lifecycleDataRes);
-        setStandardsMix(standardsMixData);
-        setRecentChanges(recentChangesData);
-        setDecisionVelocity(decisionVelocityData);
-        setMomentumData(momentumDataRes);
-        setPrsData(prsDataRes);
-        setLastCallWatchlist(lastCallData);
+        setActiveProposals(data.activeProposals);
+        setLifecycleData(data.lifecycleData);
+        setStandardsMix(data.standardsComposition);
+        setRecentChanges(data.recentChanges);
+        setDecisionVelocity(data.decisionVelocity);
+        setMomentumData(data.momentumData);
+        setPrsData(data.recentPRs);
+        setLastCallWatchlist(data.lastCallWatchlist);
       } catch (error) {
         console.error("Failed to fetch analytics data:", error);
         // Keep default/empty data on error

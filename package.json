@@ -3,9 +3,9 @@
   "version": "0.4.0",
   "private": true,
   "scripts": {
-    "dev": "NODE_EXTRA_CA_CERTS=./certs/ca.pem next dev",
-    "build": "NODE_EXTRA_CA_CERTS=./certs/ca.pem next build",
-    "start": "NODE_EXTRA_CA_CERTS=./certs/ca.pem next start",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
     "postinstall": "prisma generate",
     "lint": "eslint"
   },

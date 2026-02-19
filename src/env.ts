@@ -3,7 +3,8 @@ import { z } from "zod";
 
 export const env = createEnv({
   server: {
-    DATABASE_URL: z.string().url(),
+    DATABASE_URL: z.string().min(1),
+    DIRECT_DATABASE_URL: z.string().min(1).optional(),
     BETTER_AUTH_SECRET: z.string().min(32),
     BETTER_AUTH_URL: z.string().url().default(
       process.env.VERCEL_PROJECT_PRODUCTION_URL
