@@ -19,7 +19,7 @@ import { DashboardPageHeader } from '@/app/dashboard/_components/dashboard-page-
 // ────────────────────────────────────────────────────────────────
 
 type CrossTabRow = { category: string; status: string; repo: string; count: number };
-type KPI = { total: number; draft: number; review: number; lastCall: number; final: number; stagnant: number; withdrawn: number; living: number; newThisYear: number };
+type KPI = { total: number; inReview: number; finalized: number; newThisYear: number };
 type StatusRow = { status: string; count: number };
 type CategoryRow = { category: string; count: number };
 type FunnelRow = { status: string; count: number };
