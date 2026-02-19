@@ -30,14 +30,14 @@ type VelocityData = { transitions: { from: string; to: string; medianDays: numbe
 
 const STATUSES = ['Draft', 'Review', 'Last Call', 'Final', 'Living', 'Stagnant', 'Withdrawn'];
 const STATUS_COLORS: Record<string, string> = {
-  Draft: 'bg-slate-500/20 text-slate-300', Review: 'bg-amber-500/20 text-amber-300',
-  'Last Call': 'bg-orange-500/20 text-orange-300', Final: 'bg-emerald-500/20 text-emerald-300',
-  Living: 'bg-cyan-500/20 text-cyan-300', Stagnant: 'bg-gray-500/20 text-gray-400',
-  Withdrawn: 'bg-red-500/20 text-red-300',
+  Draft: 'bg-slate-500/20 text-slate-600 dark:text-slate-300', Review: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
+  'Last Call': 'bg-orange-500/20 text-orange-700 dark:text-orange-300', Final: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300',
+  Living: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300', Stagnant: 'bg-gray-500/20 text-gray-600 dark:text-gray-400',
+  Withdrawn: 'bg-red-500/20 text-red-700 dark:text-red-300',
 };
 const STATUS_TEXT_COLORS: Record<string, string> = {
-  Draft: 'text-slate-300', Review: 'text-amber-300', 'Last Call': 'text-orange-300',
-  Final: 'text-emerald-300', Living: 'text-cyan-300', Stagnant: 'text-gray-400', Withdrawn: 'text-red-300',
+  Draft: 'text-slate-600 dark:text-slate-300', Review: 'text-amber-600 dark:text-amber-300', 'Last Call': 'text-orange-600 dark:text-orange-300',
+  Final: 'text-emerald-600 dark:text-emerald-300', Living: 'text-cyan-600 dark:text-cyan-300', Stagnant: 'text-gray-600 dark:text-gray-400', Withdrawn: 'text-red-600 dark:text-red-300',
 };
 const STATUS_DOT_COLORS: Record<string, string> = {
   Draft: 'bg-slate-400', Review: 'bg-amber-400', 'Last Call': 'bg-orange-400', Final: 'bg-emerald-400',
@@ -64,7 +64,7 @@ function downloadCSV(headers: string[], rows: string[][], filename: string) {
 function CSVBtn({ onClick, label = 'CSV' }: { onClick: () => void; label?: string }) {
   return (
     <button onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-md border border-slate-700/50 bg-slate-800/40 px-2.5 py-1 text-xs font-medium text-slate-400 transition-colors hover:border-cyan-500/40 hover:text-slate-200">
+      className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/40 px-2.5 py-1 text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors hover:border-slate-400 dark:hover:border-cyan-500/40 hover:text-slate-800 dark:hover:text-slate-200">
       <Download className="h-3 w-3" /> {label}
     </button>
   );
@@ -76,20 +76,20 @@ function DashCard({ title, icon, action, children, className = '' }: {
 }) {
   return (
     <div className={cn(
-      'rounded-xl border border-slate-700/60 bg-slate-900/40 overflow-hidden',
-      'shadow-lg shadow-slate-950/30 transition-all hover:border-slate-700/80 hover:shadow-xl hover:shadow-slate-950/40',
+      'rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 overflow-hidden',
+      'shadow-md dark:shadow-lg dark:shadow-slate-950/30 transition-all hover:border-slate-300 dark:hover:border-slate-700/80 hover:shadow-lg dark:hover:shadow-xl dark:hover:shadow-slate-950/40',
       className
     )}>
-      <div className="flex items-center justify-between border-b border-slate-700/50 bg-slate-800/20 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 px-4 py-3">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-400/20">
-            <span className="text-cyan-400">{icon}</span>
+          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-200 dark:bg-cyan-500/10 border border-slate-300 dark:border-cyan-400/20">
+            <span className="text-slate-600 dark:text-cyan-400">{icon}</span>
           </div>
-          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{title}</span>
+          <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">{title}</span>
         </div>
         {action}
       </div>
-      <div className="p-4 bg-slate-900/20">{children}</div>
+      <div className="p-4 bg-slate-50/50 dark:bg-slate-900/20">{children}</div>
     </div>
   );
 }
@@ -98,7 +98,7 @@ function Skeleton({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-4 rounded bg-slate-800/50 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />
+        <div key={i} className="h-4 rounded bg-slate-200 dark:bg-slate-800/50 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />
       ))}
     </div>
   );
@@ -106,7 +106,7 @@ function Skeleton({ rows = 4 }: { rows?: number }) {
 
 function MetricCell({ label, value, color, dot }: { label: string; value: number | string; color: string; dot?: string }) {
   return (
-    <div className="flex flex-col items-center gap-1.5 px-5 py-4 transition-colors hover:bg-slate-800/30">
+    <div className="flex flex-col items-center gap-1.5 px-5 py-4 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/30">
       <span className={cn('text-lg font-bold tabular-nums', color)}>
         {typeof value === 'number' ? value.toLocaleString() : value}
       </span>
@@ -260,7 +260,7 @@ export default function DashboardPage() {
     <div className="relative min-h-screen w-full overflow-hidden bg-background">
       {/* Subtle background accent (matches public page) */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.03),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
       </div>
 
       <div className="relative z-10 w-full max-w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
@@ -269,20 +269,20 @@ export default function DashboardPage() {
           <DashboardPageHeader />
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 2. KPI Overview Bar ─────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
-          className="mb-6 overflow-x-auto rounded-xl border border-slate-700/60 bg-slate-900/40 shadow-lg shadow-slate-950/50">
+          className="mb-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 shadow-md dark:shadow-lg dark:shadow-slate-950/50">
           {loading ? (
             <div className="flex items-center gap-6 px-6 py-5">
               {Array.from({ length: 9 }).map((_, i) => (
-                <div key={i} className="h-10 w-20 animate-pulse rounded-lg bg-slate-800/50" />
+                <div key={i} className="h-10 w-20 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800/50" />
               ))}
             </div>
           ) : (
-            <div className="grid min-w-max grid-flow-col divide-x divide-slate-700/50">
-              <MetricCell label="Total" value={kpis!.total} color="text-white" />
+            <div className="grid min-w-max grid-flow-col divide-x divide-slate-200 dark:divide-slate-700/50">
+              <MetricCell label="Total" value={kpis!.total} color="text-slate-900 dark:text-white" />
               <MetricCell label="Draft" value={statusDist?.find(s => s.status === 'Draft')?.count ?? 0} color={STATUS_TEXT_COLORS.Draft} dot={STATUS_DOT_COLORS.Draft} />
               <MetricCell label="Review" value={statusDist?.find(s => s.status === 'Review')?.count ?? 0} color={STATUS_TEXT_COLORS.Review} dot={STATUS_DOT_COLORS.Review} />
               <MetricCell label="Last Call" value={statusDist?.find(s => s.status === 'Last Call')?.count ?? 0} color={STATUS_TEXT_COLORS['Last Call']} dot={STATUS_DOT_COLORS['Last Call']} />
@@ -290,12 +290,12 @@ export default function DashboardPage() {
               <MetricCell label="Living" value={statusDist?.find(s => s.status === 'Living')?.count ?? 0} color={STATUS_TEXT_COLORS.Living} dot={STATUS_DOT_COLORS.Living} />
               <MetricCell label="Stagnant" value={statusDist?.find(s => s.status === 'Stagnant')?.count ?? 0} color={STATUS_TEXT_COLORS.Stagnant} dot={STATUS_DOT_COLORS.Stagnant} />
               <MetricCell label="Withdrawn" value={statusDist?.find(s => s.status === 'Withdrawn')?.count ?? 0} color={STATUS_TEXT_COLORS.Withdrawn} dot={STATUS_DOT_COLORS.Withdrawn} />
-              <MetricCell label="RIPs" value={ripKpis?.total ?? 0} color="text-violet-300" dot="bg-violet-400" />
+              <MetricCell label="RIPs" value={ripKpis?.total ?? 0} color="text-violet-600 dark:text-violet-300" dot="bg-violet-400" />
             </div>
           )}
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 3. Protocol Bento ────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.08 }}
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           <ProtocolBento />
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 4. Category × Status Matrix ─────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.1 }}
@@ -314,18 +314,18 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800/50">
-                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-500 uppercase">Category</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Category</th>
                       {STATUSES.map(s => (
-                        <th key={s} className="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase">{s}</th>
-                      ))}
-                      <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">Total</th>
+                      <th key={s} className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">{s}</th>
+                    ))}
+                      <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {categories.map(cat => (
-                      <tr key={cat} className="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors">
-                        <td className="px-3 py-2 font-medium text-slate-200">{cat}</td>
+                      <tr key={cat} className="border-b border-slate-200 dark:border-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                        <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{cat}</td>
                         {STATUSES.map(s => {
                           const val = matrixData.matrix[cat]?.[s] || 0;
                           return (
@@ -334,20 +334,20 @@ export default function DashboardPage() {
                                 <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-medium', STATUS_COLORS[s] || 'text-slate-400')}>
                                   {val.toLocaleString()}
                                 </span>
-                              ) : <span className="text-slate-700">—</span>}
+                              ) : <span className="text-slate-500 dark:text-slate-700">—</span>}
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-200">{(matrixData.catTotals[cat] || 0).toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-slate-200">{(matrixData.catTotals[cat] || 0).toLocaleString()}</td>
                       </tr>
                     ))}
                     {/* Totals row */}
-                    <tr className="border-t-2 border-slate-700/50 bg-slate-800/20">
-                      <td className="px-3 py-2 font-bold text-slate-300">Total</td>
+                    <tr className="border-t-2 border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/20">
+                      <td className="px-3 py-2 font-bold text-slate-700 dark:text-slate-300">Total</td>
                       {STATUSES.map(s => (
-                        <td key={s} className="px-3 py-2 text-right tabular-nums font-bold text-slate-300">{(matrixData.statusTotals[s] || 0).toLocaleString()}</td>
+                        <td key={s} className="px-3 py-2 text-right tabular-nums font-bold text-slate-700 dark:text-slate-300">{(matrixData.statusTotals[s] || 0).toLocaleString()}</td>
                       ))}
-                      <td className="px-3 py-2 text-right tabular-nums font-bold text-white">{matrixData.grandTotal.toLocaleString()}</td>
+                      <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-900 dark:text-white">{matrixData.grandTotal.toLocaleString()}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -356,7 +356,7 @@ export default function DashboardPage() {
           </DashCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 5. Repo × Status Breakdown ───────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.12 }}
@@ -367,26 +367,26 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800/50">
-                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-500 uppercase">Repo</th>
-                      {STATUSES.map(s => <th key={s} className="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase">{s}</th>)}
-                      <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-400 uppercase">Total</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Repo</th>
+                      {STATUSES.map(s => <th key={s} className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">{s}</th>)}
+                      <th className="px-3 py-2 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {repoBreakdown.map(r => (
-                      <tr key={r.repo} className="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors">
-                        <td className="px-3 py-2 font-medium text-slate-200">{r.repo}</td>
+                      <tr key={r.repo} className="border-b border-slate-200 dark:border-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                        <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{r.repo}</td>
                         {STATUSES.map(s => {
                           const val = r.byStatus[s] || 0;
                           return (
                             <td key={s} className="px-3 py-2 text-right tabular-nums">
                               {val > 0 ? <span className={cn('inline-block rounded px-1.5 py-0.5 text-[10px] font-medium', STATUS_COLORS[s])}>{val.toLocaleString()}</span>
-                                : <span className="text-slate-700">—</span>}
+                                : <span className="text-slate-500 dark:text-slate-700">—</span>}
                             </td>
                           );
                         })}
-                        <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-200">{r.total.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-800 dark:text-slate-200">{r.total.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -396,7 +396,7 @@ export default function DashboardPage() {
             </DashCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 6. Category & Status Breakdown ───────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
@@ -409,13 +409,13 @@ export default function DashboardPage() {
                 {catBreakdown.sort((a, b) => b.count - a.count).map(c => {
                   const pct = kpis ? (c.count / kpis.total * 100) : 0;
                   return (
-                    <div key={c.category} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-800/20">
-                      <span className="w-28 shrink-0 text-sm text-slate-300 truncate">{c.category}</span>
-                      <div className="relative flex-1 h-5 rounded bg-slate-800/50 overflow-hidden">
-                        <div className="absolute inset-y-0 left-0 rounded bg-cyan-500/25" style={{ width: `${pct}%` }} />
-                        <span className="relative z-10 px-2 text-[10px] tabular-nums font-medium text-slate-300 leading-5">{c.count.toLocaleString()}</span>
+                    <div key={c.category} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                      <span className="w-28 shrink-0 text-sm text-slate-700 dark:text-slate-300 truncate">{c.category}</span>
+                      <div className="relative flex-1 h-5 rounded bg-slate-200 dark:bg-slate-800/50 overflow-hidden">
+                        <div className="absolute inset-y-0 left-0 rounded bg-slate-400 dark:bg-cyan-500/25" style={{ width: `${pct}%` }} />
+                        <span className="relative z-10 px-2 text-[10px] tabular-nums font-medium text-slate-700 dark:text-slate-300 leading-5">{c.count.toLocaleString()}</span>
                       </div>
-                      <span className="w-12 text-right text-[10px] tabular-nums text-slate-600">{pct.toFixed(1)}%</span>
+                      <span className="w-12 text-right text-[10px] tabular-nums text-slate-500 dark:text-slate-600">{pct.toFixed(1)}%</span>
                     </div>
                   );
                 })}
@@ -431,14 +431,14 @@ export default function DashboardPage() {
                 {statusDist.sort((a, b) => b.count - a.count).map(s => {
                   const pct = kpis ? (s.count / kpis.total * 100) : 0;
                   return (
-                    <div key={s.status} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-800/20">
-                      <span className="w-24 shrink-0 text-sm text-slate-300">{s.status}</span>
-                      <div className="relative flex-1 h-5 rounded bg-slate-800/50 overflow-hidden">
+                    <div key={s.status} className="group flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                      <span className="w-24 shrink-0 text-sm text-slate-700 dark:text-slate-300">{s.status}</span>
+                      <div className="relative flex-1 h-5 rounded bg-slate-200 dark:bg-slate-800/50 overflow-hidden">
                         <div className={cn('absolute inset-y-0 left-0 rounded', STATUS_COLORS[s.status]?.split(' ')[0] || 'bg-slate-500/30')}
                           style={{ width: `${pct}%` }} />
-                        <span className="relative z-10 px-2 text-[10px] tabular-nums font-medium text-slate-300 leading-5">{s.count.toLocaleString()}</span>
+                        <span className="relative z-10 px-2 text-[10px] tabular-nums font-medium text-slate-700 dark:text-slate-300 leading-5">{s.count.toLocaleString()}</span>
                       </div>
-                      <span className="w-12 text-right text-[10px] tabular-nums text-slate-600">{pct.toFixed(1)}%</span>
+                      <span className="w-12 text-right text-[10px] tabular-nums text-slate-500 dark:text-slate-600">{pct.toFixed(1)}%</span>
                     </div>
                   );
                 })}
@@ -447,7 +447,7 @@ export default function DashboardPage() {
           </DashCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 7. Lifecycle Funnel + Governance Velocity ───── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.16 }}
@@ -461,11 +461,11 @@ export default function DashboardPage() {
                   const pct = maxCount > 0 ? (f.count / maxCount * 100) : 0;
                   return (
                     <div key={f.status} className="flex items-center gap-3">
-                      <span className="w-20 shrink-0 text-right text-xs text-slate-500">{f.status}</span>
-                      <div className="relative flex-1 h-7 rounded-lg bg-slate-800/50 overflow-hidden">
-                        <div className={cn('absolute inset-y-0 left-0 rounded-lg transition-all', STATUS_COLORS[f.status]?.split(' ')[0] || 'bg-cyan-500/20')}
+                      <span className="w-20 shrink-0 text-right text-xs text-slate-600 dark:text-slate-500">{f.status}</span>
+                      <div className="relative flex-1 h-7 rounded-lg bg-slate-200 dark:bg-slate-800/50 overflow-hidden">
+                        <div className={cn('absolute inset-y-0 left-0 rounded-lg transition-all', STATUS_COLORS[f.status]?.split(' ')[0] || 'bg-slate-400 dark:bg-cyan-500/20')}
                           style={{ width: `${pct}%` }} />
-                        <span className="relative z-10 flex h-full items-center px-3 text-xs tabular-nums font-bold text-slate-200">{f.count.toLocaleString()}</span>
+                        <span className="relative z-10 flex h-full items-center px-3 text-xs tabular-nums font-bold text-slate-800 dark:text-slate-200">{f.count.toLocaleString()}</span>
                       </div>
                     </div>
                   );
@@ -479,18 +479,18 @@ export default function DashboardPage() {
             {!velocity ? <Skeleton rows={4} /> : (
               <div className="space-y-2">
                 {velocity.transitions.map(t => (
-                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-800/20">
-                    <span className="text-sm text-slate-400">{t.from} <ArrowRight className="mx-1 inline h-3 w-3 text-slate-600" /> {t.to}</span>
+                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-3 py-2 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">{t.from} <ArrowRight className="mx-1 inline h-3 w-3 text-slate-500 dark:text-slate-600" /> {t.to}</span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums font-medium text-slate-200">{t.medianDays != null ? `${t.medianDays}d` : '—'}</span>
-                      <span className="text-xs tabular-nums text-slate-600">({t.count})</span>
+                      <span className="text-sm tabular-nums font-medium text-slate-800 dark:text-slate-200">{t.medianDays != null ? `${t.medianDays}d` : '—'}</span>
+                      <span className="text-xs tabular-nums text-slate-500 dark:text-slate-600">({t.count})</span>
                     </div>
                   </div>
                 ))}
                 {velocity.draftToFinalMedian > 0 && (
                   <div className="mt-3 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 flex items-center justify-between">
-                    <span className="text-sm font-medium text-emerald-300">Draft → Final (end-to-end)</span>
-                    <span className="text-sm tabular-nums font-bold text-emerald-400">{velocity.draftToFinalMedian}d median</span>
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Draft → Final (end-to-end)</span>
+                    <span className="text-sm tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{velocity.draftToFinalMedian}d median</span>
                   </div>
                 )}
               </div>
@@ -498,7 +498,7 @@ export default function DashboardPage() {
           </DashCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 8. Upgrade Impact + Monthly Delta ─────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.18 }}
@@ -510,24 +510,24 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800/50">
-                      <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-500">Upgrade</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-500">Final</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-500">Review</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-500">LC</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-500">Draft</th>
-                      <th className="px-2 py-1.5 text-right text-[10px] font-bold text-slate-400">Total</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                      <th className="px-2 py-1.5 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-500">Upgrade</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500">Final</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500">Review</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500">LC</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500">Draft</th>
+                      <th className="px-2 py-1.5 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400">Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {upgrades.map(u => (
-                      <tr key={u.slug} className="border-b border-slate-800/30 hover:bg-slate-800/20">
-                        <td className="px-2 py-1.5"><Link href={`/upgrade/${u.slug}`} className="font-medium text-cyan-300 hover:text-cyan-200">{u.name}</Link></td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-emerald-300">{u.finalized || '—'}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-amber-300">{u.inReview || '—'}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-orange-300">{u.lastCall || '—'}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{u.draft || '—'}</td>
-                        <td className="px-2 py-1.5 text-right tabular-nums font-bold text-slate-200">{u.total}</td>
+                      <tr key={u.slug} className="border-b border-slate-200 dark:border-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                        <td className="px-2 py-1.5"><Link href={`/upgrade/${u.slug}`} className="font-medium text-slate-700 dark:text-cyan-300 hover:text-slate-900 dark:hover:text-cyan-200">{u.name}</Link></td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-emerald-600 dark:text-emerald-300">{u.finalized || '—'}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-amber-600 dark:text-amber-300">{u.inReview || '—'}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-orange-600 dark:text-orange-300">{u.lastCall || '—'}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums text-slate-600 dark:text-slate-400">{u.draft || '—'}</td>
+                        <td className="px-2 py-1.5 text-right tabular-nums font-bold text-slate-800 dark:text-slate-200">{u.total}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -544,9 +544,9 @@ export default function DashboardPage() {
             ) : (
               <div className="grid grid-cols-2 gap-3">
                 {monthlyDelta.map(d => (
-                  <div key={d.status} className="rounded-md bg-slate-800/20 border border-slate-800/30 px-3 py-2">
-                    <div className="text-2xl tabular-nums font-bold text-slate-200">{d.count}</div>
-                    <div className="text-[11px] text-slate-500">{d.status}</div>
+                  <div key={d.status} className="rounded-md bg-slate-100 dark:bg-slate-800/20 border border-slate-200 dark:border-slate-800/30 px-3 py-2">
+                    <div className="text-2xl tabular-nums font-bold text-slate-800 dark:text-slate-200">{d.count}</div>
+                    <div className="text-[11px] text-slate-600 dark:text-slate-500">{d.status}</div>
                   </div>
                 ))}
               </div>
@@ -554,7 +554,7 @@ export default function DashboardPage() {
           </DashCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 9. Governance Over Time ──────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.2 }}
@@ -562,7 +562,7 @@ export default function DashboardPage() {
           <GovernanceOverTime />
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 10. Repo Distribution ────────────────────────── */}
         {repoDist && repoDist.length > 0 && (
@@ -572,20 +572,20 @@ export default function DashboardPage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-slate-800/50">
-                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-500 uppercase">Repository</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase">Proposals</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase">Active PRs</th>
-                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-500 uppercase">Finals</th>
+                    <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                      <th className="px-3 py-2 text-left text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Repository</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Proposals</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Active PRs</th>
+                      <th className="px-3 py-2 text-right text-[10px] font-semibold text-slate-600 dark:text-slate-500 uppercase">Finals</th>
                     </tr>
                   </thead>
                   <tbody>
                     {repoDist.map(r => (
-                      <tr key={r.repo} className="border-b border-slate-800/30 hover:bg-slate-800/20 transition-colors">
-                        <td className="px-3 py-2 font-medium text-slate-200">{r.repo}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-slate-300">{r.proposals.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-cyan-300">{r.activePRs.toLocaleString()}</td>
-                        <td className="px-3 py-2 text-right tabular-nums text-emerald-300">{r.finals.toLocaleString()}</td>
+                      <tr key={r.repo} className="border-b border-slate-200 dark:border-slate-800/30 hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
+                        <td className="px-3 py-2 font-medium text-slate-800 dark:text-slate-200">{r.repo}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-slate-700 dark:text-slate-300">{r.proposals.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-amber-600 dark:text-cyan-300">{r.activePRs.toLocaleString()}</td>
+                        <td className="px-3 py-2 text-right tabular-nums text-emerald-600 dark:text-emerald-300">{r.finals.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -595,7 +595,7 @@ export default function DashboardPage() {
           </motion.div>
         )}
 
-        {repoDist && repoDist.length > 0 && <hr className="border-slate-800/50 mb-6" />}
+        {repoDist && repoDist.length > 0 && <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />}
 
         {/* ─── 11. Trending Proposals ───────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.24 }}
@@ -603,11 +603,11 @@ export default function DashboardPage() {
           <TrendingProposals />
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 12. Export Hub ───────────────────────────────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.26 }}>
-          <div className="rounded-xl border border-slate-700/60 bg-slate-900/40 p-4 shadow-lg shadow-slate-950/30">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-md dark:shadow-lg dark:shadow-slate-950/30">
             <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Download any breakdown as CSV</p>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               <ExportCard label="Category × Status Matrix" desc="Full cross-tab of all categories and statuses" onClick={exportCrossTab} disabled={!matrixData} />
@@ -632,12 +632,12 @@ function ExportCard({ label, desc, onClick, disabled }: { label: string; desc: s
       className={cn(
         'flex flex-col items-start rounded-xl border p-3 text-left transition-all',
         disabled
-          ? 'border-slate-800/40 bg-slate-900/20 opacity-50 cursor-not-allowed'
-          : 'border-slate-700/50 bg-slate-900/40 hover:border-cyan-500/40 hover:bg-slate-800/40',
+          ? 'border-slate-200 dark:border-slate-800/40 bg-slate-100 dark:bg-slate-900/20 opacity-50 cursor-not-allowed'
+          : 'border-slate-300 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/40 hover:border-slate-400 dark:hover:border-cyan-500/40 hover:bg-slate-100 dark:hover:bg-slate-800/40',
       )}>
-      <Download className={cn('h-3.5 w-3.5 mb-1.5 shrink-0', disabled ? 'text-slate-600' : 'text-cyan-400')} />
-      <span className="text-sm font-semibold text-slate-200">{label}</span>
-      <span className="mt-0.5 text-xs text-slate-500 leading-tight">{desc}</span>
+      <Download className={cn('h-3.5 w-3.5 mb-1.5 shrink-0', disabled ? 'text-slate-400 dark:text-slate-600' : 'text-slate-600 dark:text-cyan-400')} />
+      <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{label}</span>
+      <span className="mt-0.5 text-xs text-slate-600 dark:text-slate-500 leading-tight">{desc}</span>
     </button>
   );
 }

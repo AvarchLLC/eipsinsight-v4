@@ -228,7 +228,7 @@ export default function ProtocolBento() {
       <section className="relative overflow-hidden py-16">
         <div className="relative w-full max-w-full px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="flex items-center justify-center py-20">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" />
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-300 dark:border-cyan-400 border-t-transparent" />
           </div>
         </div>
       </section>
@@ -239,10 +239,10 @@ export default function ProtocolBento() {
     <TooltipProvider>
       <section id="protocol-bento" className="relative overflow-hidden pt-2 pb-4">
         <header className="mb-4">
-          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-200 sm:text-2xl">
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-2xl">
             Ethereum Proposal Snapshot
           </h2>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">
             Real-time analytics across EIPs, ERCs, and RIPs
           </p>
         </header>
@@ -259,8 +259,8 @@ export default function ProtocolBento() {
                 onClick={() => setRepoFilter(opt.value)}
                 className={`rounded-lg px-4 py-2 text-xs font-medium transition-all ${
                   repoFilter === opt.value
-                    ? 'bg-cyan-500/20 text-cyan-300 border-2 border-cyan-400/40 shadow-lg shadow-cyan-500/20'
-                    : 'text-slate-400 border-2 border-slate-700/30 hover:text-slate-200 hover:bg-slate-800/50 hover:border-slate-600/50'
+                    ? 'bg-slate-200 dark:bg-cyan-500/20 text-slate-800 dark:text-cyan-300 border-2 border-slate-300 dark:border-cyan-400/40 dark:shadow-lg dark:shadow-cyan-500/20'
+                    : 'text-slate-600 dark:text-slate-400 border-2 border-slate-300 dark:border-slate-700/30 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:border-slate-400 dark:hover:border-slate-600/50'
                 }`}
               >
                 {opt.label}
@@ -290,23 +290,23 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.1 }}
-            className="group relative col-span-1 order-2 overflow-hidden rounded-2xl border border-cyan-400/30 bg-linear-to-b from-cyan-500/10 via-cyan-500/5 to-transparent p-5 sm:p-6 shadow-xl backdrop-blur transition-all hover:border-cyan-400/50 hover:shadow-2xl hover:shadow-cyan-500/30 md:col-span-2 lg:col-span-2 lg:col-start-2 lg:row-start-1 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 order-2 overflow-hidden rounded-2xl border border-slate-200 dark:border-cyan-400/30 bg-white dark:bg-slate-900/70 p-5 sm:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-cyan-400/50 md:col-span-2 lg:col-span-2 lg:col-start-2 lg:row-start-1 bg-dot-white/[0.02] dark:bg-dot-white/[0.02]"
           >
-            {/* Subtle inner glow */}
-            <div className="absolute inset-0 bg-linear-to-br from-cyan-400/5 via-transparent to-blue-500/5" />
+            {/* Subtle inner glow - dark mode only */}
+            <div className="absolute inset-0 dark:bg-linear-to-br dark:from-cyan-400/5 dark:via-transparent dark:to-blue-500/5 pointer-events-none" />
             
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-cyan-300">
                       Active Proposals
                     </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="cursor-help">
-                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-cyan-300" />
+                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-cyan-600 dark:hover:text-cyan-300" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -323,7 +323,7 @@ export default function ProtocolBento() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button 
-                        className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 transition-all hover:border-cyan-400/40 hover:bg-cyan-500/20"
+                        className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 dark:border-cyan-400/20 bg-slate-100 dark:bg-cyan-500/10 transition-all hover:border-slate-300 dark:hover:border-cyan-400/40 hover:bg-slate-200 dark:hover:bg-cyan-500/20"
                         onClick={async () => {
                           try {
                             const data = await client.analytics.getActiveProposalsDetailed(repoParam ? { repo: repoParam } : {});
@@ -372,7 +372,7 @@ export default function ProtocolBento() {
                           }
                         }}
                       >
-                        <Download className="h-3.5 w-3.5 text-cyan-300" />
+                        <Download className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -385,7 +385,7 @@ export default function ProtocolBento() {
                       transition={{ duration: 2, repeat: Infinity, repeatType: "loop" }}
                       className="h-2 w-2 rounded-full bg-emerald-400 shadow-lg shadow-emerald-400/50 motion-reduce:animate-none motion-reduce:opacity-100"
                     />
-                    <span className="text-xs font-medium text-emerald-300">LIVE</span>
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-300">LIVE</span>
                   </div>
                 </div>
               </div>
@@ -396,7 +396,7 @@ export default function ProtocolBento() {
                 <div className="flex flex-col gap-3">
                   {/* Total Count Display */}
                   <div className="text-center space-y-0.5">
-                    <div className="text-4xl sm:text-5xl font-bold text-cyan-300 tabular-nums drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
+                    <div className="text-4xl sm:text-5xl font-bold text-slate-800 dark:text-cyan-300 tabular-nums dark:drop-shadow-[0_0_20px_rgba(34,211,238,0.4)]">
                       {(selectedActiveStatuses.has('draft') ? activeProposals.draft : 0) +
                        (selectedActiveStatuses.has('review') ? activeProposals.review : 0) +
                        (selectedActiveStatuses.has('lastCall') ? activeProposals.lastCall : 0)}
@@ -406,7 +406,7 @@ export default function ProtocolBento() {
 
                   {/* Compact Stacked Progress Bar */}
                   <div className="relative space-y-3">
-                    <div className="h-10 w-full rounded-xl overflow-hidden bg-slate-900/80 border border-slate-700/40 flex shadow-inner backdrop-blur-sm">
+                    <div className="h-10 w-full rounded-xl overflow-hidden bg-slate-200 dark:bg-slate-900/80 border border-slate-300 dark:border-slate-700/40 flex shadow-inner backdrop-blur-sm">
                       {selectedActiveStatuses.has('draft') && activeProposals.draft > 0 && (
                         <motion.div
                           initial={{ width: 0 }}
@@ -501,12 +501,12 @@ export default function ProtocolBento() {
                         }}
                         className={`group flex items-center gap-1.5 rounded-full px-2.5 py-1 text-left transition-all cursor-pointer ${
                           isSelected
-                            ? `bg-slate-800/60 border ${colors.border} shadow-sm hover:shadow-md`
-                            : 'bg-slate-900/40 border border-slate-700/30 opacity-40 hover:opacity-70 hover:border-slate-600/50'
+                            ? `bg-slate-200 dark:bg-slate-800/60 border ${colors.border} shadow-sm`
+                            : 'bg-slate-100 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-700/30 opacity-60 dark:opacity-40 hover:opacity-80 dark:hover:opacity-70 hover:border-slate-300 dark:hover:border-slate-600/50'
                         }`}
                       >
                         <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${isSelected ? colors.bg : 'bg-slate-600'} ${isSelected ? 'shadow-sm shadow-' + status.color + '-400/50' : ''}`} />
-                        <span className={`text-[10px] font-semibold whitespace-nowrap ${isSelected ? 'text-slate-200' : 'text-slate-500'}`}>
+                        <span className={`text-[10px] font-semibold whitespace-nowrap ${isSelected ? 'text-slate-700 dark:text-slate-200' : 'text-slate-500'}`}>
                           {status.label}
                         </span>
                         <span className={`text-xs font-bold tabular-nums ${isSelected ? colors.text : 'text-slate-600'}`}>
@@ -533,19 +533,19 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.25 }}
-            className="group relative col-span-1 order-5 overflow-hidden rounded-2xl border border-emerald-400/20 bg-linear-to-br from-emerald-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-2 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 order-5 overflow-hidden rounded-2xl border border-slate-200 dark:border-emerald-400/20 bg-white dark:bg-slate-900/70 p-4 sm:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-emerald-400/40 lg:col-start-2 lg:row-start-4 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full min-h-0 flex-col">
               {/* Header - compact */}
               <div className="mb-2 flex shrink-0 items-center justify-between">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                     Proposal Lifecycle
                   </h3>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button className="cursor-help">
-                        <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-300" />
+                        <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -558,7 +558,7 @@ export default function ProtocolBento() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
-                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-emerald-400/20 bg-emerald-500/10 transition-all hover:border-emerald-400/40 hover:bg-emerald-500/20"
+                      className="flex h-9 w-9 shrink-0 touch-manipulation items-center justify-center rounded-lg border border-slate-200 dark:border-emerald-400/20 bg-slate-100 dark:bg-emerald-500/10 transition-all hover:border-slate-300 dark:hover:border-emerald-400/40 hover:bg-slate-200 dark:hover:bg-emerald-500/20"
                       onClick={async () => {
                         try {
                           const data = await client.analytics.getLifecycleDetailed(repoParam ? { repo: repoParam } : {});
@@ -581,7 +581,7 @@ export default function ProtocolBento() {
                         }
                       }}
                     >
-                      <Download className="h-3.5 w-3.5 text-emerald-300" />
+                      <Download className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-300" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -629,20 +629,20 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.3 }}
-            className="group relative col-span-1 md:col-span-2 order-6 overflow-hidden rounded-2xl border border-blue-400/20 bg-linear-to-br from-blue-500/5 to-transparent p-4 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-blue-400/40 hover:shadow-xl hover:shadow-blue-500/20 lg:col-span-2 lg:col-start-2 lg:row-start-2 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 md:col-span-2 order-6 overflow-hidden rounded-2xl border border-slate-200 dark:border-blue-400/20 bg-white dark:bg-slate-900/70 p-4 sm:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-blue-400/40 lg:col-span-2 lg:col-start-2 lg:row-start-2 lg:row-span-2 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-6 flex items-center justify-between">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-300">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-blue-700 dark:text-blue-300">
                       EIP Types
                     </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="cursor-help">
-                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-blue-300" />
+                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-blue-600 dark:hover:text-blue-300" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent className="max-w-sm">
@@ -660,7 +660,7 @@ export default function ProtocolBento() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
-                      className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-blue-400/20 bg-blue-500/10 transition-all hover:border-blue-400/40 hover:bg-blue-500/20"
+                      className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 dark:border-blue-400/20 bg-slate-100 dark:bg-blue-500/10 transition-all hover:border-slate-300 dark:hover:border-blue-400/40 hover:bg-slate-200 dark:hover:bg-blue-500/20"
                       onClick={async () => {
                         try {
                           const data = await client.analytics.getStandardsCompositionDetailed(repoParam ? { repo: repoParam } : {});
@@ -742,7 +742,7 @@ export default function ProtocolBento() {
                         }
                       }}
                     >
-                      <Download className="h-3.5 w-3.5 text-blue-300" />
+                      <Download className="h-3.5 w-3.5 text-blue-600 dark:text-blue-300" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -979,20 +979,20 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.2 }}
-            className="group relative col-span-1 order-4 overflow-hidden rounded-2xl border border-violet-400/20 bg-linear-to-br from-violet-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-violet-400/40 hover:shadow-xl hover:shadow-violet-500/20 lg:col-start-4 lg:row-start-3 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
+            className="group relative col-span-1 order-4 overflow-hidden rounded-2xl border border-slate-200 dark:border-violet-400/20 bg-white dark:bg-slate-900/70 p-4 sm:p-5 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-violet-400/40 lg:col-start-4 lg:row-start-3 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-300">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
                       Momentum
                     </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="cursor-help">
-                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-violet-300" />
+                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-violet-600 dark:hover:text-violet-300" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1006,7 +1006,7 @@ export default function ProtocolBento() {
                 </div>
                 <div className="flex items-center gap-1">
                   <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-xs font-bold text-emerald-400">
+                  <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
                     {momentumData.length >= 2 ? 
                       `${momentumData[momentumData.length - 1] > momentumData[momentumData.length - 2] ? '+' : ''}${Math.round(((momentumData[momentumData.length - 1] - momentumData[momentumData.length - 2]) / momentumData[momentumData.length - 2]) * 100)}%` 
                       : '+0%'}
@@ -1088,20 +1088,20 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.05 }}
-            className="group relative col-span-1 order-1 overflow-hidden rounded-2xl border border-cyan-400/20 bg-linear-to-br from-cyan-500/5 to-transparent p-5 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-cyan-400/40 hover:shadow-xl hover:shadow-cyan-500/20 lg:col-start-1 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 order-1 overflow-hidden rounded-2xl border border-slate-200 dark:border-cyan-400/20 bg-white dark:bg-slate-900/70 p-5 sm:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-cyan-400/40 lg:col-start-1 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-700 dark:text-cyan-300">
                       Recent Changes
                     </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="cursor-help">
-                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-cyan-300" />
+                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-cyan-600 dark:hover:text-cyan-300" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1117,7 +1117,7 @@ export default function ProtocolBento() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button 
-                        className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-cyan-400/20 bg-cyan-500/10 transition-all hover:border-cyan-400/40 hover:bg-cyan-500/20"
+                        className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 dark:border-cyan-400/20 bg-slate-100 dark:bg-cyan-500/10 transition-all hover:border-slate-300 dark:hover:border-cyan-400/40 hover:bg-slate-200 dark:hover:bg-cyan-500/20"
                         onClick={() => {
                           try {
                             const csvData = recentChanges.map((d, index) => {
@@ -1151,7 +1151,7 @@ export default function ProtocolBento() {
                           }
                         }}
                       >
-                        <Download className="h-3.5 w-3.5 text-cyan-300" />
+                        <Download className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1173,10 +1173,11 @@ export default function ProtocolBento() {
               <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[260px] lg:max-h-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-800/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-cyan-500/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-cyan-500/60">
                 {recentChanges.slice(0, isMobile ? 5 : 10).map((change, index) => {
                   const statusColors = {
-                    emerald: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
-                    blue: "bg-blue-500/20 text-blue-300 border-blue-400/30",
-                    amber: "bg-amber-500/20 text-amber-300 border-amber-400/30",
-                    slate: "bg-slate-500/20 text-slate-300 border-slate-400/30",
+                    emerald: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/30",
+                    blue: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-400/30",
+                    amber: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/30",
+                    slate: "bg-slate-200 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-400/30",
+                    cyan: "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-400/30",
                   };
                   const eipLink = change.repository === 'ethereum/RIPs' 
                     ? `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${change.eip}.md`
@@ -1191,12 +1192,12 @@ export default function ProtocolBento() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                       transition={{ duration: 0.4, delay: Math.min(index * 0.05, 0.5) }}
-                      className="group/item block cursor-pointer rounded-lg border border-slate-700/50 bg-slate-900/30 p-2.5 transition-all hover:border-cyan-400/40 hover:bg-slate-900/50"
+                      className="group/item block cursor-pointer rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/30 p-2.5 transition-all hover:border-slate-300 dark:hover:border-cyan-400/40 hover:bg-slate-100 dark:hover:bg-slate-900/50"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono text-xs font-bold text-cyan-300">{change.eip_type}-{change.eip}</span>
+                            <span className="font-mono text-xs font-bold text-slate-700 dark:text-cyan-300">{change.eip_type}-{change.eip}</span>
                             <span className="text-[10px] text-slate-500">{change.from}</span>
                             <ArrowRight className="h-2.5 w-2.5 text-slate-600" />
                             <span className={`rounded-md border px-1 py-0.5 text-[9px] font-semibold ${statusColors[change.statusColor as keyof typeof statusColors]}`}>
@@ -1213,7 +1214,7 @@ export default function ProtocolBento() {
               </div>
               
               {/* Footer */}
-              <div className="mt-5 pt-4 border-t border-cyan-400/10">
+              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-cyan-400/10">
                 <p className="text-xs text-slate-500 font-medium">Last 7 days · {recentChanges.length} changes tracked</p>
               </div>
             </div>
@@ -1225,20 +1226,19 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.4 }}
-            className="group relative col-span-1 md:col-span-2 order-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-emerald-400/30 bg-linear-to-br from-emerald-500/10 via-emerald-500/5 to-transparent p-5 sm:p-6 lg:p-6 shadow-2xl backdrop-blur transition-all hover:border-emerald-400/50 hover:shadow-[0_20px_70px_rgba(16,185,129,0.3)] lg:col-span-2 lg:col-start-3 lg:row-start-4 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 md:col-span-2 order-8 overflow-hidden rounded-2xl sm:rounded-3xl border border-slate-200 dark:border-emerald-400/30 bg-white dark:bg-slate-900/70 p-5 sm:p-6 lg:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-emerald-400/50 lg:col-span-2 lg:col-start-3 lg:row-start-4 bg-dot-white/[0.02]"
           >
-            <div className="absolute inset-0 bg-linear-to-tr from-emerald-400/5 via-transparent to-cyan-500/5" />
             <div className="relative z-10 flex h-full min-h-0 flex-col">
               {/* Header - compact + toggle */}
               <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                     Decision Velocity
                   </h3>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <button className="cursor-help">
-                        <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-300" />
+                        <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300" />
                       </button>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -1248,11 +1248,11 @@ export default function ProtocolBento() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-                <div className="flex rounded-lg border border-slate-700/50 bg-slate-900/40 p-0.5">
+                <div className="flex rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900/40 p-0.5">
                   <button
                     type="button"
                     onClick={() => setVelocityChartMode("bars")}
-                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${velocityChartMode === "bars" ? "bg-emerald-500/20 text-emerald-300" : "text-slate-400 hover:text-slate-200"}`}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${velocityChartMode === "bars" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
                     title="Bar view"
                   >
                     <BarChart3 className="h-3 w-3" />
@@ -1261,7 +1261,7 @@ export default function ProtocolBento() {
                   <button
                     type="button"
                     onClick={() => setVelocityChartMode("line")}
-                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${velocityChartMode === "line" ? "bg-emerald-500/20 text-emerald-300" : "text-slate-400 hover:text-slate-200"}`}
+                    className={`flex items-center gap-1 rounded-md px-2 py-1 text-[10px] font-medium transition-colors ${velocityChartMode === "line" ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"}`}
                     title="Line chart"
                   >
                     <LineChartIcon className="h-3 w-3" />
@@ -1297,10 +1297,10 @@ export default function ProtocolBento() {
                 ) : (
                   <>
                     {decisionVelocity.draftToFinalMedian > 0 && (
-                      <div className="shrink-0 mb-1.5 rounded-lg border border-emerald-400/20 bg-emerald-500/10 px-2 py-1">
+                      <div className="shrink-0 mb-1.5 rounded-lg border border-slate-200 dark:border-emerald-400/20 bg-slate-50 dark:bg-emerald-500/10 px-2 py-1">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[10px] font-medium text-emerald-300">Draft → Final</span>
-                          <span className="text-sm font-bold tabular-nums text-emerald-300">{decisionVelocity.draftToFinalMedian}d</span>
+                          <span className="text-[10px] font-medium text-emerald-700 dark:text-emerald-300">Draft → Final</span>
+                          <span className="text-sm font-bold tabular-nums text-emerald-700 dark:text-emerald-300">{decisionVelocity.draftToFinalMedian}d</span>
                         </div>
                       </div>
                     )}
@@ -1322,7 +1322,7 @@ export default function ProtocolBento() {
                                 className="h-full rounded-full bg-emerald-400/80"
                               />
                             </div>
-                            <span className="w-10 shrink-0 text-right text-[10px] font-semibold tabular-nums text-emerald-300">
+                            <span className="w-10 shrink-0 text-right text-[10px] font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">
                               {t.medianDays != null ? `${t.medianDays}d` : "—"}
                             </span>
                             <span className="w-6 shrink-0 text-right text-[10px] text-slate-500">n{t.count}</span>
@@ -1334,7 +1334,7 @@ export default function ProtocolBento() {
                 )}
               </div>
 
-              <p className="shrink-0 border-t border-emerald-400/10 pt-2 text-center text-[10px] text-slate-500">
+              <p className="shrink-0 border-t border-slate-200 dark:border-emerald-400/10 pt-2 text-center text-[10px] text-slate-500">
                 Last 365 days · median days
               </p>
             </div>
@@ -1346,20 +1346,20 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.15 }}
-            className="group relative col-span-1 order-3 overflow-hidden rounded-2xl border border-amber-400/30 bg-linear-to-br from-amber-500/10 to-transparent p-5 sm:p-6 shadow-lg backdrop-blur transition-all hover:border-amber-400/50 hover:shadow-xl hover:shadow-amber-500/20 lg:col-start-4 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.01]"
+            className="group relative col-span-1 order-3 overflow-hidden rounded-2xl border border-slate-200 dark:border-amber-400/30 bg-white dark:bg-slate-900/70 p-5 sm:p-6 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-amber-400/50 lg:col-start-4 lg:row-start-1 lg:row-span-2 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-5 flex items-center justify-between">
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-amber-300">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
                       Last Call Watchlist
                     </h3>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <button className="cursor-help">
-                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-amber-300" />
+                          <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-amber-600 dark:hover:text-amber-300" />
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1374,7 +1374,7 @@ export default function ProtocolBento() {
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button 
-                      className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-amber-400/20 bg-amber-500/10 transition-all hover:border-amber-400/40 hover:bg-amber-500/20"
+                      className="flex h-11 w-11 min-h-11 min-w-11 touch-manipulation items-center justify-center rounded-lg border border-slate-200 dark:border-amber-400/20 bg-slate-100 dark:bg-amber-500/10 transition-all hover:border-slate-300 dark:hover:border-amber-400/40 hover:bg-slate-200 dark:hover:bg-amber-500/20"
                       onClick={() => {
                         try {
                           const csvData = lastCallWatchlist.map((d, index) => {
@@ -1407,7 +1407,7 @@ export default function ProtocolBento() {
                         }
                       }}
                     >
-                      <Download className="h-3.5 w-3.5 text-amber-300" />
+                      <Download className="h-3.5 w-3.5 text-amber-600 dark:text-amber-300" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -1417,7 +1417,7 @@ export default function ProtocolBento() {
               </div>
               
               {/* Content - Scrollable with custom scrollbar */}
-              <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[320px] lg:max-h-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-800/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-amber-500/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-amber-500/60">
+              <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[320px] lg:max-h-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-200 dark:bg-slate-800/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400 dark:bg-amber-500/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-500 dark:hover:bg-amber-500/60">
                 {lastCallWatchlist.slice(0, 8).map((item, index) => {
                   const urgency = item.daysRemaining <= 7 ? "urgent" : "normal";
                   const eipLink = item.repository === 'ethereum/RIPs'
@@ -1435,23 +1435,23 @@ export default function ProtocolBento() {
                       transition={{ duration: 0.3 }}
                       className={`group/item block rounded-lg border p-3 transition-all ${
                         urgency === "urgent"
-                          ? "border-red-400/30 bg-red-500/10 hover:border-red-400/50 hover:bg-red-500/15"
-                          : "border-amber-400/20 bg-amber-500/5 hover:border-amber-400/40 hover:bg-amber-500/10"
+                          ? "border-red-200 dark:border-red-400/30 bg-red-50 dark:bg-red-500/10 hover:border-red-300 dark:hover:border-red-400/50 hover:bg-red-100 dark:hover:bg-red-500/15"
+                          : "border-slate-200 dark:border-amber-400/20 bg-slate-50 dark:bg-amber-500/5 hover:border-slate-300 dark:hover:border-amber-400/40 hover:bg-slate-100 dark:hover:bg-amber-500/10"
                       }`}
                     >
                       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-6">
                         <div className="flex-1 min-w-0 w-full sm:w-auto">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="font-mono text-sm font-bold text-amber-300">{item.eip_type || 'EIP'}-{item.eip}</span>
-                            <span className={`text-[10px] font-bold ${urgency === "urgent" ? "text-red-400" : "text-amber-400"}`}>
+                            <span className="font-mono text-sm font-bold text-amber-700 dark:text-amber-300">{item.eip_type || 'EIP'}-{item.eip}</span>
+                            <span className={`text-[10px] font-bold ${urgency === "urgent" ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400"}`}>
                               {Math.abs(item.daysRemaining)}d {item.daysRemaining < 0 ? 'overdue' : 'left'}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-400 line-clamp-2">{item.title}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2">{item.title}</p>
                         </div>
                         <div className="shrink-0 text-left sm:text-right">
                           <span className="text-[10px] text-slate-500 block">Deadline</span>
-                          <span className="text-xs text-amber-300 font-medium">{new Date(item.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
+                          <span className="text-xs text-amber-700 dark:text-amber-300 font-medium">{new Date(item.deadline).toLocaleDateString("en-US", { month: "short", day: "numeric" })}</span>
                         </div>
                       </div>
                     </motion.a>
@@ -1460,7 +1460,7 @@ export default function ProtocolBento() {
               </div>
               
               {/* Footer */}
-              <div className="mt-5 pt-4 border-t border-amber-400/10">
+              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-amber-400/10">
                 <p className="text-xs text-slate-500 font-medium">Review window closing soon</p>
               </div>
             </div>
@@ -1522,18 +1522,18 @@ export default function ProtocolBento() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
             transition={{ duration: 0.4, delay: 0.4 }}
-            className="group relative col-span-1 order-9 overflow-hidden rounded-2xl border border-emerald-400/20 bg-linear-to-br from-emerald-500/5 to-transparent p-4 sm:p-5 shadow-lg backdrop-blur transition-all hover:border-emerald-400/40 hover:shadow-xl hover:shadow-emerald-500/20 lg:col-start-1 lg:row-start-3 lg:row-span-2 bg-dot-white/[0.02] lg:hover:scale-[1.02]"
+            className="group relative col-span-1 order-9 overflow-hidden rounded-2xl border border-slate-200 dark:border-emerald-400/20 bg-white dark:bg-slate-900/70 p-4 sm:p-5 shadow-md backdrop-blur transition-all hover:border-slate-300 dark:hover:border-emerald-400/40 lg:col-start-1 lg:row-start-3 lg:row-span-2 bg-dot-white/[0.02]"
           >
             <div className="relative z-10 flex h-full flex-col">
               {/* Header */}
               <div className="mb-3 flex items-center gap-1.5">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                   Recent PRs
                 </h3>
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <button className="cursor-help">
-                      <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-300" />
+                      <Info className="h-3 w-3 text-slate-400 transition-colors hover:text-emerald-600 dark:hover:text-emerald-300" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent>
@@ -1545,11 +1545,11 @@ export default function ProtocolBento() {
               </div>
               
               {/* Content - Scrollable with custom scrollbar */}
-              <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[320px] lg:max-h-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-800/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-emerald-500/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-emerald-500/60">
+              <div className="flex-1 space-y-2.5 overflow-y-auto pr-1 max-h-[320px] lg:max-h-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-slate-200 dark:bg-slate-800/30 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-400 dark:bg-emerald-500/40 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:hover:bg-slate-500 dark:hover:bg-emerald-500/60">
                 {prsData.slice(0, isMobile ? 2 : prsData.length).map((pr, index) => {
                   const statusColors = {
-                    merged: "bg-violet-500/20 text-violet-300 border-violet-400/30",
-                    open: "bg-emerald-500/20 text-emerald-300 border-emerald-400/30",
+                    merged: "bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-400/30",
+                    open: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/30",
                   };
                   const prUrl = `https://github.com/ethereum/EIPs/pull/${pr.number}`;
                   return (
@@ -1562,21 +1562,21 @@ export default function ProtocolBento() {
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
-                      className="group/item block rounded-lg border border-slate-700/50 bg-slate-900/30 p-3 transition-all hover:border-emerald-400/40 hover:bg-slate-900/50 hover:shadow-lg hover:shadow-emerald-500/10"
+                      className="group/item block rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-900/30 p-3 transition-all hover:border-emerald-400/40 hover:bg-slate-100 dark:hover:bg-slate-900/50"
                     >
                       <div className="flex items-center justify-between gap-3 mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs font-bold text-emerald-300">#{pr.number}</span>
+                          <span className="font-mono text-xs font-bold text-emerald-700 dark:text-emerald-300">#{pr.number}</span>
                           <span className={`rounded-md border px-1.5 py-0.5 text-[9px] font-semibold ${statusColors[pr.status as keyof typeof statusColors]}`}>
                             {pr.status}
                           </span>
                         </div>
                         <span className="text-[10px] text-slate-500 shrink-0 font-medium">{pr.days}d</span>
                       </div>
-                      <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed mb-2 group-hover/item:text-white transition-colors">{pr.title}</p>
+                      <p className="text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed mb-2 group-hover/item:text-slate-900 dark:group-hover/item:text-white transition-colors">{pr.title}</p>
                       <div className="flex items-center gap-1">
                         <span className="text-[10px] text-slate-500">by</span>
-                        <span className="text-[10px] font-medium text-emerald-400">{pr.author}</span>
+                        <span className="text-[10px] font-medium text-emerald-600 dark:text-emerald-400">{pr.author}</span>
                       </div>
                     </motion.a>
                   );
@@ -1584,7 +1584,7 @@ export default function ProtocolBento() {
               </div>
               
               {/* Footer */}
-              <div className="mt-5 pt-4 border-t border-emerald-400/10">
+              <div className="mt-5 pt-4 border-t border-slate-200 dark:border-emerald-400/10">
                 <p className="text-xs text-slate-500 font-medium">Latest GitHub activity</p>
               </div>
             </div>
@@ -1610,41 +1610,41 @@ export default function ProtocolBento() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, amount: 0.05, margin: "0px 0px 80px 0px" }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-6 overflow-hidden rounded-2xl border border-cyan-400/20 bg-linear-to-br from-cyan-500/5 via-transparent to-blue-500/5 p-6 backdrop-blur lg:p-8"
+          className="mt-6 overflow-hidden rounded-2xl border border-slate-200 dark:border-cyan-400/20 bg-slate-50 dark:bg-slate-900/70 p-6 backdrop-blur lg:p-8"
         >
           <div className="flex flex-col items-start gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex-1">
-              <h3 className="mb-2 text-lg font-bold text-cyan-300">
+              <h3 className="mb-2 text-lg font-bold text-slate-800 dark:text-cyan-300">
                 Want to shape Ethereum&apos;s future?
               </h3>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Anyone can propose an EIP. Here&apos;s how to get started:
               </p>
               <div className="mt-4 grid gap-3 sm:grid-cols-3">
                 <div className="flex items-start gap-2">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-300">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-300 dark:bg-cyan-500/20 text-xs font-bold text-slate-700 dark:text-cyan-300">
                     1
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-300">Read EIP-1</p>
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Read EIP-1</p>
                     <p className="text-[10px] text-slate-500">Understand the process</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-300">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-300 dark:bg-cyan-500/20 text-xs font-bold text-slate-700 dark:text-cyan-300">
                     2
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-300">Use the template</p>
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Use the template</p>
                     <p className="text-[10px] text-slate-500">Fork ethereum/EIPs repo</p>
                   </div>
                 </div>
                 <div className="flex items-start gap-2">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-500/20 text-xs font-bold text-cyan-300">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-300 dark:bg-cyan-500/20 text-xs font-bold text-slate-700 dark:text-cyan-300">
                     3
                   </div>
                   <div>
-                    <p className="text-xs font-semibold text-slate-300">Submit PR</p>
+                    <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">Submit PR</p>
                     <p className="text-[10px] text-slate-500">Open for community review</p>
                   </div>
                 </div>
@@ -1654,7 +1654,7 @@ export default function ProtocolBento() {
               href="https://github.com/ethereum/EIPs"
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-cyan-300 transition-all hover:border-cyan-400/50 hover:bg-cyan-500/20 hover:shadow-lg hover:shadow-cyan-500/20"
+              className="group flex items-center gap-2 rounded-full border border-slate-300 dark:border-cyan-400/30 bg-slate-200 dark:bg-cyan-500/10 px-5 py-2.5 text-sm font-semibold text-slate-800 dark:text-cyan-300 transition-all hover:border-slate-400 dark:hover:border-cyan-400/50 hover:bg-slate-300 dark:hover:bg-cyan-500/20"
             >
               View on GitHub
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

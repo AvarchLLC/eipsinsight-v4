@@ -13,6 +13,7 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
       attribute="class"
       defaultTheme="dark"
       enableSystem={false}
+      storageKey="eipsinsight-theme"
       disableTransitionOnChange={false}
     >
       {children}

@@ -561,10 +561,10 @@ function AppSidebarContent() {
           isActive={isActive}
           className={cn(
             "rounded-md py-1.5 transition-all duration-200",
-            "hover:bg-cyan-500/10 hover:text-white hover:translate-x-0.5",
-            "border border-transparent hover:border-cyan-400/20",
+            "hover:bg-slate-100 dark:hover:bg-cyan-500/10 hover:text-slate-900 dark:hover:text-white hover:translate-x-0.5",
+            "border border-transparent hover:border-slate-200 dark:hover:border-cyan-400/20",
             isActive &&
-              "bg-linear-to-r from-emerald-400/15 via-cyan-400/15 to-blue-400/15 text-white font-medium shadow-[0_0_12px_rgba(34,211,238,0.15)] border-cyan-400/30"
+              "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-400/15 dark:via-cyan-400/15 dark:to-blue-400/15 text-slate-900 dark:text-white font-medium dark:shadow-[0_0_12px_rgba(34,211,238,0.15)] border-slate-200 dark:border-cyan-400/30"
           )}
         >
           <Link
@@ -610,11 +610,11 @@ function AppSidebarContent() {
                 tooltip={state === "collapsed" ? item.title : undefined}
                 className={cn(
                   "group relative overflow-hidden rounded-lg transition-all duration-300",
-                  "hover:bg-linear-to-r hover:from-emerald-500/15 hover:via-cyan-500/15 hover:to-blue-500/15",
-                  "hover:shadow-[0_0_15px_rgba(34,211,238,0.1)]",
+                  "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
+                  "dark:hover:shadow-[0_0_15px_rgba(34,211,238,0.1)]",
                   "border border-transparent",
                   (isItemOpen || isHighlighted) &&
-                    "bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border-cyan-400/20",
+                    "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-500/10 dark:via-cyan-500/10 dark:to-blue-500/10 border-slate-200 dark:border-cyan-400/20",
                   state === "collapsed" &&
                     "w-11 h-11 p-0 flex items-center justify-center"
                 )}
@@ -623,8 +623,8 @@ function AppSidebarContent() {
                   className={cn(
                     "h-5 w-5 transition-all duration-300",
                     isHighlighted
-                      ? "text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-                      : "text-cyan-300 group-hover:text-emerald-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]",
+                      ? "text-emerald-600 dark:text-emerald-300 dark:drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                      : "text-slate-500 dark:text-cyan-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 dark:group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]",
                     state === "collapsed" && "shrink-0"
                   )}
                 />
@@ -634,16 +634,16 @@ function AppSidebarContent() {
                       className={cn(
                         "flex-1 text-sm font-medium transition-colors",
                         isHighlighted
-                          ? "text-white"
-                          : "text-slate-100 group-hover:text-white"
+                          ? "text-slate-900 dark:text-white"
+                          : "text-slate-600 dark:text-slate-100 group-hover:text-slate-900 dark:group-hover:text-white"
                       )}
                     >
                       {item.title}
                     </span>
                     <ChevronRight
                       className={cn(
-                        "h-3.5 w-3.5 text-cyan-400/50 transition-all duration-300",
-                        isItemOpen && "rotate-90 text-emerald-400"
+                        "h-3.5 w-3.5 text-slate-400 dark:text-cyan-400/50 transition-all duration-300",
+                        isItemOpen && "rotate-90 text-emerald-600 dark:text-emerald-400"
                       )}
                     />
                   </>
@@ -652,7 +652,7 @@ function AppSidebarContent() {
             </CollapsibleTrigger>
             {state === "expanded" && (
               <CollapsibleContent>
-                <SidebarMenuSub className="ml-0 border-l-2 border-cyan-400/10 pl-6 pt-2">
+                <SidebarMenuSub className="ml-0 border-l-2 border-slate-200 dark:border-cyan-400/10 pl-6 pt-2">
                   {item.items?.map(renderSubItem)}
                 </SidebarMenuSub>
               </CollapsibleContent>
@@ -671,11 +671,11 @@ function AppSidebarContent() {
           tooltip={state === "collapsed" ? item.title : undefined}
           className={cn(
             "group relative overflow-hidden rounded-lg transition-all duration-300",
-            "hover:bg-linear-to-r hover:from-emerald-500/15 hover:via-cyan-500/15 hover:to-blue-500/15",
-            "hover:shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:translate-x-0.5",
+            "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
+            "dark:hover:shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:translate-x-0.5",
             "border border-transparent",
             isActive &&
-              "bg-linear-to-r from-emerald-500/20 via-cyan-500/20 to-blue-500/20 shadow-[0_0_20px_rgba(34,211,238,0.2)] border-cyan-400/40",
+              "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-500/20 dark:via-cyan-500/20 dark:to-blue-500/20 dark:shadow-[0_0_20px_rgba(34,211,238,0.2)] border-slate-200 dark:border-cyan-400/40",
             state === "collapsed" &&
               "w-11 h-11 p-0 flex items-center justify-center"
           )}
@@ -691,8 +691,8 @@ function AppSidebarContent() {
               className={cn(
                 "h-5 w-5 transition-all duration-300",
                 isActive
-                  ? "text-emerald-300 drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
-                  : "text-cyan-300 group-hover:text-emerald-300 group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]",
+                  ? "text-emerald-600 dark:text-emerald-300 dark:drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]"
+                  : "text-slate-500 dark:text-cyan-300 group-hover:text-emerald-600 dark:group-hover:text-emerald-300 dark:group-hover:drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]",
                 state === "collapsed" && "shrink-0"
               )}
             />
@@ -701,8 +701,8 @@ function AppSidebarContent() {
                 className={cn(
                   "text-sm transition-colors",
                   isActive
-                    ? "text-white font-semibold"
-                    : "text-slate-100 font-medium group-hover:text-white"
+                    ? "text-slate-900 dark:text-white font-semibold"
+                    : "text-slate-600 dark:text-slate-100 font-medium group-hover:text-slate-900 dark:group-hover:text-white"
                 )}
               >
                 {item.title}
@@ -717,12 +717,12 @@ function AppSidebarContent() {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-cyan-300/20 bg-slate-950/95 backdrop-blur-xl"
+      className="border-r border-slate-200 dark:border-cyan-300/20 bg-white dark:bg-slate-950/95 backdrop-blur-xl"
     >
       {/* Header with Toggle Button — matches navbar h-14 */}
       <SidebarHeader
         className={cn(
-          "h-14 border-b border-cyan-300/20 bg-slate-950/80 transition-all duration-300 flex items-center",
+          "h-14 border-b border-slate-200 dark:border-cyan-300/20 bg-white/95 dark:bg-slate-950/80 transition-all duration-300 flex items-center",
           state === "expanded" ? "px-2" : "justify-center px-1"
         )}
       >
@@ -730,22 +730,23 @@ function AppSidebarContent() {
           onClick={handleToggle}
           className={cn(
             "group flex items-center justify-center gap-2 rounded-lg transition-all duration-300",
-            "hover:bg-linear-to-r hover:from-emerald-500/15 hover:via-cyan-500/15 hover:to-blue-500/15",
-            "hover:shadow-[0_0_12px_rgba(34,211,238,0.15)] border border-cyan-400/20 hover:border-cyan-400/40",
-            "bg-slate-900/50",
+            "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
+            "border border-slate-200 dark:border-cyan-400/20 hover:border-slate-300 dark:hover:border-cyan-400/40",
+            "dark:hover:shadow-[0_0_12px_rgba(34,211,238,0.15)]",
+            "bg-slate-100 dark:bg-slate-900/50",
             state === "expanded" ? "w-full h-10 px-3" : "w-10 h-10"
           )}
           title={state === "expanded" ? "Collapse sidebar" : "Expand sidebar"}
         >
           {state === "expanded" ? (
             <>
-              <PanelLeft className="h-4 w-4 text-cyan-300 transition-colors group-hover:text-emerald-300 shrink-0" />
-              <span className="text-sm font-medium text-slate-200 group-hover:text-white transition-colors">
+              <PanelLeft className="h-4 w-4 text-slate-600 dark:text-cyan-300 transition-colors group-hover:text-slate-900 dark:group-hover:text-emerald-300 shrink-0" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
                 Collapse
               </span>
             </>
           ) : (
-            <PanelLeftOpen className="h-4 w-4 text-cyan-300 transition-colors group-hover:text-emerald-300" />
+            <PanelLeftOpen className="h-4 w-4 text-slate-600 dark:text-cyan-300 transition-colors group-hover:text-slate-900 dark:group-hover:text-emerald-300" />
           )}
         </button>
       </SidebarHeader>
@@ -760,12 +761,12 @@ function AppSidebarContent() {
           <SidebarGroup key={section.id} className="py-0">
             {/* Section label (expanded) or separator line (collapsed) */}
             {state === "expanded" && section.label && (
-              <SidebarGroupLabel className="px-4 pb-1.5 pt-4 text-[11px] font-bold uppercase tracking-widest text-cyan-300/50">
+              <SidebarGroupLabel className="px-4 pb-1.5 pt-4 text-[11px] font-bold uppercase tracking-widest text-slate-500 dark:text-cyan-300/50">
                 {section.label}
               </SidebarGroupLabel>
             )}
             {state === "collapsed" && section.label && (
-              <div className="my-2 h-px w-6 bg-cyan-400/15" />
+              <div className="my-2 h-px w-6 bg-slate-300 dark:bg-cyan-400/15" />
             )}
             <SidebarGroupContent
               className={cn(
@@ -787,14 +788,14 @@ function AppSidebarContent() {
       </SidebarContent>
 
       {/* Footer */}
-      <SidebarFooter className="border-t border-cyan-300/20 bg-slate-950/80 p-3">
+      <SidebarFooter className="border-t border-slate-200 dark:border-cyan-300/20 bg-slate-50 dark:bg-slate-950/80 p-3">
         {state === "expanded" ? (
           <Link href="/premium">
-            <div className="flex items-center gap-2 rounded-lg bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 p-3 shadow-[0_0_15px_rgba(34,211,238,0.08)] border border-cyan-400/20 transition hover:border-cyan-300/40 hover:shadow-[0_0_20px_rgba(34,211,238,0.18)]">
-              <Sparkles className="h-4 w-4 text-emerald-300 drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
+            <div className="flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-linear-to-r dark:from-emerald-500/10 dark:via-cyan-500/10 dark:to-blue-500/10 p-3 border border-slate-200 dark:border-cyan-400/20 transition hover:border-slate-300 dark:hover:border-cyan-300/40 dark:shadow-[0_0_15px_rgba(34,211,238,0.08)] dark:hover:shadow-[0_0_20px_rgba(34,211,238,0.18)]">
+              <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-300 dark:drop-shadow-[0_0_6px_rgba(52,211,153,0.6)]" />
               <div className="flex-1">
-                <p className="text-xs font-semibold text-white">Pro Version</p>
-                <p className="text-[10px] text-cyan-200/60">
+                <p className="text-xs font-semibold text-slate-900 dark:text-white">Pro Version</p>
+                <p className="text-[10px] text-slate-600 dark:text-cyan-200/60">
                   Unlock all features
                 </p>
               </div>
@@ -803,10 +804,10 @@ function AppSidebarContent() {
         ) : (
           <Link
             href="/premium"
-            className="flex items-center justify-center p-2 rounded-lg hover:bg-cyan-500/10 transition-colors"
+            className="flex items-center justify-center p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-cyan-500/10 transition-colors"
             title="Pro Version"
           >
-            <Crown className="h-5 w-5 text-emerald-300" />
+            <Crown className="h-5 w-5 text-emerald-600 dark:text-emerald-300" />
           </Link>
         )}
       </SidebarFooter>

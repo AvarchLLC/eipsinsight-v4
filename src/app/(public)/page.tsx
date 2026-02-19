@@ -52,18 +52,18 @@ const STATUS_TABS: TabDef[] = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  Draft: 'bg-slate-500/20 text-slate-300 border-slate-500/30', Review: 'bg-amber-500/20 text-amber-200 border-amber-500/30',
-  'Last Call': 'bg-orange-500/20 text-orange-200 border-orange-500/30', Final: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  Stagnant: 'bg-gray-500/20 text-gray-400 border-gray-500/30', Withdrawn: 'bg-red-500/20 text-red-300 border-red-500/30',
-  Living: 'bg-cyan-500/20 text-cyan-300 border-cyan-500/30',
+  Draft: 'bg-slate-500/20 text-slate-600 dark:text-slate-300 border-slate-500/30', Review: 'bg-amber-500/20 text-amber-700 dark:text-amber-200 border-amber-500/30',
+  'Last Call': 'bg-orange-500/20 text-orange-700 dark:text-orange-200 border-orange-500/30', Final: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+  Stagnant: 'bg-gray-500/20 text-gray-600 dark:text-gray-400 border-gray-500/30', Withdrawn: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
+  Living: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
 };
 const STATUS_DOT_COLORS: Record<string, string> = {
   Draft: 'bg-slate-400', Review: 'bg-amber-400', 'Last Call': 'bg-orange-400', Final: 'bg-emerald-400',
   Stagnant: 'bg-gray-500', Withdrawn: 'bg-red-400', Living: 'bg-cyan-400',
 };
 const STATUS_TEXT_COLORS: Record<string, string> = {
-  Draft: 'text-slate-300', Review: 'text-amber-300', 'Last Call': 'text-orange-300',
-  Final: 'text-emerald-400', Living: 'text-cyan-300', Stagnant: 'text-gray-400', Withdrawn: 'text-red-300',
+  Draft: 'text-slate-600 dark:text-slate-300', Review: 'text-amber-600 dark:text-amber-300', 'Last Call': 'text-orange-600 dark:text-orange-300',
+  Final: 'text-emerald-600 dark:text-emerald-400', Living: 'text-cyan-600 dark:text-cyan-300', Stagnant: 'text-gray-600 dark:text-gray-400', Withdrawn: 'text-red-600 dark:text-red-300',
 };
 const FUNNEL_COLORS: Record<string, string> = {
   Draft: 'bg-slate-500', Review: 'bg-amber-500', 'Last Call': 'bg-orange-500', Final: 'bg-emerald-500',
@@ -96,8 +96,8 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function SortIcon({ column, current, dir }: { column: string; current: string; dir: string }) {
-  if (current !== column) return <ArrowUpDown className="ml-1 inline h-3 w-3 text-slate-700" />;
-  return dir === 'asc' ? <ArrowUp className="ml-1 inline h-3 w-3 text-cyan-400" /> : <ArrowDown className="ml-1 inline h-3 w-3 text-cyan-400" />;
+  if (current !== column) return <ArrowUpDown className="ml-1 inline h-3 w-3 text-slate-500 dark:text-slate-700" />;
+  return dir === 'asc' ? <ArrowUp className="ml-1 inline h-3 w-3 text-cyan-600 dark:text-cyan-400" /> : <ArrowDown className="ml-1 inline h-3 w-3 text-cyan-600 dark:text-cyan-400" />;
 }
 
 function TableSkeleton({ cols = 6 }: { cols?: number }) {
@@ -106,7 +106,7 @@ function TableSkeleton({ cols = 6 }: { cols?: number }) {
       {Array.from({ length: 12 }).map((_, i) => (
         <div key={i} className="flex gap-3">
           {Array.from({ length: cols }).map((_, j) => (
-            <div key={j} className={`h-7 animate-pulse rounded bg-slate-800/40 ${j === 1 ? 'flex-1' : 'w-20'}`} />
+            <div key={j} className={`h-7 animate-pulse rounded bg-slate-200 dark:bg-slate-800/40 ${j === 1 ? 'flex-1' : 'w-20'}`} />
           ))}
         </div>
       ))}
@@ -116,10 +116,10 @@ function TableSkeleton({ cols = 6 }: { cols?: number }) {
 
 function SectionCard({ title, icon, children, className = '' }: { title: string; icon: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`rounded-xl border border-slate-800/80 bg-slate-900/50 ${className}`}>
-      <div className="flex items-center gap-2 border-b border-slate-800/60 px-4 py-2.5">
-        <span className="text-cyan-400/50">{icon}</span>
-        <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</span>
+    <div className={`rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-sm ${className}`}>
+      <div className="flex items-center gap-2 border-b border-slate-200 dark:border-slate-800/60 px-4 py-2.5">
+        <span className="text-cyan-600 dark:text-cyan-400/50">{icon}</span>
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-500">{title}</span>
       </div>
       <div className="p-4">{children}</div>
     </div>
@@ -130,7 +130,7 @@ function SkeletonPulse({ rows = 4 }: { rows?: number }) {
   return (
     <div className="space-y-2">
       {Array.from({ length: rows }).map((_, i) => (
-        <div key={i} className="h-5 animate-pulse rounded bg-slate-800/40" style={{ width: `${60 + (i * 17 % 40)}%` }} />
+        <div key={i} className="h-5 animate-pulse rounded bg-slate-200 dark:bg-slate-800/40" style={{ width: `${60 + (i * 17 % 40)}%` }} />
       ))}
     </div>
   );
@@ -405,8 +405,8 @@ export default function EIPsHomePage() {
   return (
     <div className="bg-background relative min-h-screen w-full overflow-hidden">
       {/* Subtle background accent */}
-      <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.05),_transparent_70%)]" />
+        <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.03),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
       </div>
 
       <div className="relative z-10 w-full max-w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
@@ -416,19 +416,19 @@ export default function EIPsHomePage() {
           <EIPsPageHeader />
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 2. Global Metrics Bar ──────────────────────── */}
         <motion.div id="kpi-overview" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.05 }}
-          className="mb-6 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
-          <div className="grid min-w-max grid-flow-col divide-x divide-slate-800/80">
-            <MetricCell label="Total" value={kpis?.total || 0} color="text-white" onClick={() => { clearOverlay(); tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
+          className="mb-6 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 shadow-md dark:shadow-lg dark:shadow-slate-950/50">
+            <div className="grid min-w-max grid-flow-col divide-x divide-slate-200 dark:divide-slate-700/50">
+            <MetricCell label="Total" value={kpis?.total || 0} color="text-slate-900 dark:text-white" onClick={() => { clearOverlay(); tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} />
             {statusSummary.map((s) => (
-              <MetricCell key={s.status} label={s.status} value={s.count} color={STATUS_TEXT_COLORS[s.status] || 'text-slate-300'}
-                onClick={() => navigateToTable({ status: [s.status] }, s.status)} />
+              <MetricCell key={s.status} label={s.status} value={s.count} color={STATUS_TEXT_COLORS[s.status] || 'text-slate-600 dark:text-slate-300'}
+                dot={STATUS_DOT_COLORS[s.status] || 'bg-slate-400'} onClick={() => navigateToTable({ status: [s.status] }, s.status)} />
             ))}
-            <MetricCell label="RIPs" value={ripKpis?.total || 0} color="text-violet-300" onClick={() => setActiveTab('rips')} />
-            <MetricCell label={`New ${new Date().getFullYear()}`} value={kpis?.newThisYear || 0} color="text-emerald-300" />
+            <MetricCell label="RIPs" value={ripKpis?.total || 0} color="text-violet-600 dark:text-violet-300" dot="bg-violet-400" onClick={() => setActiveTab('rips')} />
+            <MetricCell label={`New ${new Date().getFullYear()}`} value={kpis?.newThisYear || 0} color="text-emerald-600 dark:text-emerald-300" dot="bg-emerald-400" />
           </div>
         </motion.div>
 
@@ -436,24 +436,24 @@ export default function EIPsHomePage() {
         <motion.div id="status-distribution" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.12 }}
           className="mb-6 grid gap-4 lg:grid-cols-5">
           {/* Status Distribution Matrix */}
-          <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/50">
-            <div className="px-4 py-2.5 border-b border-slate-800/60">
-              <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Status Distribution</span>
+          <div className="lg:col-span-3 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 shadow-md dark:shadow-lg">
+            <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-800/20">
+              <span className="text-xs font-semibold tracking-wider text-slate-600 dark:text-slate-400 uppercase">Status Distribution</span>
             </div>
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800/50">
-                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-500">Status</th>
-                  {matrixData.groups.map((g) => <th key={g} className="px-4 py-2 text-right text-xs font-medium text-slate-500">{g}</th>)}
-                  <th className="px-4 py-2 text-right text-xs font-semibold text-slate-400">Total</th>
+                <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                  <th className="px-4 py-2 text-left text-xs font-medium text-slate-600 dark:text-slate-500">Status</th>
+                  {matrixData.groups.map((g) => <th key={g} className="px-4 py-2 text-right text-xs font-medium text-slate-600 dark:text-slate-500">{g}</th>)}
+                  <th className="px-4 py-2 text-right text-xs font-semibold text-slate-600 dark:text-slate-400">Total</th>
                 </tr>
               </thead>
               <tbody>
                 {matrixData.rows.map((row) => (
-                  <tr key={row.status} className="border-b border-slate-800/30 transition-colors hover:bg-slate-800/20">
+                  <tr key={row.status} className="border-b border-slate-200 dark:border-slate-800/30 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/20">
                     <td className="px-4 py-2">
                       <button onClick={() => navigateToTable({ status: [row.status] }, row.status)}
-                        className="flex items-center gap-2 transition-colors hover:text-white">
+                        className="flex items-center gap-2 transition-colors hover:text-slate-900 dark:hover:text-white">
                         <span className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[row.status] || 'bg-slate-500'}`} />
                         <span className={`text-sm ${STATUS_TEXT_COLORS[row.status] || 'text-slate-300'}`}>{row.status}</span>
                       </button>
@@ -464,22 +464,22 @@ export default function EIPsHomePage() {
                           <button onClick={() => navigateToTable(
                             g === 'ERCs' ? { status: [row.status], category: ['ERC'] } : { status: [row.status] },
                             `${row.status} ${g}`
-                          )} className="text-sm tabular-nums text-slate-400 underline decoration-slate-700 underline-offset-2 hover:text-white hover:decoration-slate-500">
+                          )} className="text-sm tabular-nums text-slate-600 dark:text-slate-400 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white hover:decoration-slate-600 dark:hover:decoration-slate-500">
                             {row.cells[g].toLocaleString()}
                           </button>
-                        ) : <span className="text-sm text-slate-700">—</span>}
+                        ) : <span className="text-sm text-slate-400 dark:text-slate-700">—</span>}
                       </td>
                     ))}
                     <td className="px-4 py-2 text-right">
                       <button onClick={() => navigateToTable({ status: [row.status] }, `All ${row.status}`)}
-                        className="text-sm tabular-nums font-medium text-slate-200 underline decoration-slate-700 underline-offset-2 hover:text-white hover:decoration-slate-500">
+                        className="text-sm tabular-nums font-medium text-slate-700 dark:text-slate-200 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white hover:decoration-slate-600 dark:hover:decoration-slate-500">
                         {row.total.toLocaleString()}
                       </button>
                     </td>
                   </tr>
                 ))}
-                <tr className="bg-slate-800/20">
-                  <td className="px-4 py-2 text-sm font-medium text-slate-400">Total</td>
+                <tr className="bg-slate-100 dark:bg-slate-800/20">
+                  <td className="px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-400">Total</td>
                   {matrixData.groups.map((g) => {
                     const col = matrixData.rows.reduce((s, r) => s + (r.cells[g] || 0), 0);
                     return (
@@ -487,56 +487,56 @@ export default function EIPsHomePage() {
                         <button onClick={() => navigateToTable(
                           g === 'ERCs' ? { category: ['ERC'] } : {},
                           `All ${g}`
-                        )} className="text-sm tabular-nums font-medium text-slate-300 underline decoration-slate-700 underline-offset-2 hover:text-white hover:decoration-slate-500">
+                        )} className="text-sm tabular-nums font-medium text-slate-600 dark:text-slate-300 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white hover:decoration-slate-600 dark:hover:decoration-slate-500">
                           {col.toLocaleString()}
                         </button>
                       </td>
                     );
                   })}
-                  <td className="px-4 py-2 text-right text-sm tabular-nums font-bold text-white">{matrixGrandTotal.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right text-sm tabular-nums font-bold text-slate-900 dark:text-white">{matrixGrandTotal.toLocaleString()}</td>
                 </tr>
               </tbody>
             </table>
           </div>
 
           {/* Category Breakdown */}
-          <div id="category-breakdown" className="lg:col-span-2 rounded-xl border border-slate-800/80 bg-slate-900/50 p-4">
+          <div id="category-breakdown" className="lg:col-span-2 rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/50 p-4 shadow-md dark:shadow-lg">
             <div className="mb-3">
-              <span className="text-xs font-semibold tracking-wider text-slate-400 uppercase">Category Breakdown</span>
+              <span className="text-xs font-semibold tracking-wider text-slate-600 dark:text-slate-400 uppercase">Category Breakdown</span>
             </div>
             <div className="space-y-1">
               <div className="mb-3">
                 <div className="flex items-center justify-between px-1 py-1">
-                  <span className="text-sm font-medium text-slate-200">Standards Track</span>
-                  <span className="text-sm tabular-nums font-semibold text-slate-200">{standardsTrackTotal.toLocaleString()}</span>
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Standards Track</span>
+                  <span className="text-sm tabular-nums font-semibold text-slate-700 dark:text-slate-200">{standardsTrackTotal.toLocaleString()}</span>
                 </div>
                 <div className="ml-2 space-y-px">
                   {['Core', 'Networking', 'Interface', 'ERC'].map((cat) => (
                     <button key={cat} onClick={() => navigateToTable({ category: [cat] }, cat)}
-                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-800/60">
-                      <span className="text-slate-400">{cat}</span>
-                      <span className="tabular-nums text-slate-300 underline decoration-slate-700 underline-offset-2">{getCatCount(cat).toLocaleString()}</span>
+                      className="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                      <span className="text-slate-600 dark:text-slate-400">{cat}</span>
+                      <span className="tabular-nums text-slate-600 dark:text-slate-300 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2">{getCatCount(cat).toLocaleString()}</span>
                     </button>
                   ))}
                 </div>
               </div>
               {['Meta', 'Informational'].map((cat) => (
                 <button key={cat} onClick={() => navigateToTable({ category: [cat] }, cat)}
-                  className="flex w-full items-center justify-between rounded-md px-1 py-1.5 text-sm transition-colors hover:bg-slate-800/60">
-                  <span className="font-medium text-slate-200">{cat}</span>
-                  <span className="tabular-nums font-semibold text-slate-200 underline decoration-slate-700 underline-offset-2">{getCatCount(cat).toLocaleString()}</span>
+                  className="flex w-full items-center justify-between rounded-md px-1 py-1.5 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/60">
+                  <span className="font-medium text-slate-800 dark:text-slate-200">{cat}</span>
+                  <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2">{getCatCount(cat).toLocaleString()}</span>
                 </button>
               ))}
               <button onClick={() => setActiveTab('rips')}
                 className="flex w-full items-center justify-between rounded-md px-1 py-1.5 text-sm transition-colors hover:bg-violet-500/10">
-                <span className="font-medium text-violet-300">RIPs</span>
-                <span className="tabular-nums font-semibold text-violet-200">{(ripKpis?.total || 0).toLocaleString()}</span>
+                <span className="font-medium text-violet-600 dark:text-violet-300">RIPs</span>
+                <span className="tabular-nums font-semibold text-violet-600 dark:text-violet-200">{(ripKpis?.total || 0).toLocaleString()}</span>
               </button>
             </div>
           </div>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 6. Lifecycle Funnel + Repo Distribution ─────── */}
         <motion.div id="intelligence" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.14 }}
@@ -579,11 +579,11 @@ export default function EIPsHomePage() {
                     const pct = total > 0 ? (f.count / total * 100).toFixed(1) : '0';
                     return (
                       <button key={f.status} onClick={() => navigateToTable({ status: [f.status] }, f.status)}
-                        className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-800/20">
+                        className="group flex w-full items-center gap-2 rounded-lg px-2 py-1.5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/20">
                         <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[f.status] || 'bg-slate-500'}`} />
-                        <span className="flex-1 text-left text-xs text-slate-400 group-hover:text-slate-200">{f.status}</span>
-                        <span className="text-xs tabular-nums font-medium text-slate-300">{f.count.toLocaleString()}</span>
-                        <span className="text-[10px] tabular-nums text-slate-600">{pct}%</span>
+                        <span className="flex-1 text-left text-xs text-slate-600 dark:text-slate-400 group-hover:text-slate-900 dark:group-hover:text-slate-200">{f.status}</span>
+                        <span className="text-xs tabular-nums font-medium text-slate-700 dark:text-slate-300">{f.count.toLocaleString()}</span>
+                        <span className="text-[10px] tabular-nums text-slate-500 dark:text-slate-600">{pct}%</span>
                       </button>
                     );
                   })}
@@ -598,7 +598,7 @@ export default function EIPsHomePage() {
             {!repoDist ? <SkeletonPulse rows={3} /> : (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-xs text-slate-500">
+                  <tr className="text-xs text-slate-600 dark:text-slate-500">
                     <th className="pb-2 text-left font-medium">Repository</th>
                     <th className="pb-2 text-right font-medium">Proposals</th>
                     <th className="pb-2 text-right font-medium">Open PRs</th>
@@ -613,16 +613,16 @@ export default function EIPsHomePage() {
                     const navProposals = () => isRIPs ? navigateToRipsTable() : navigateToTable(catFilter, `${r.repo} proposals`);
                     const navFinals = () => isRIPs ? navigateToRipsTable() : navigateToTable({ ...catFilter, status: ['Final'] }, `${r.repo} Final`);
                     return (
-                      <tr key={r.repo} className="border-t border-slate-800/30">
-                        <td className="py-1.5 font-medium text-slate-300">{r.repo}</td>
+                      <tr key={r.repo} className="border-t border-slate-200 dark:border-slate-800/30">
+                        <td className="py-1.5 font-medium text-slate-700 dark:text-slate-300">{r.repo}</td>
                         <td className="py-1.5 text-right">
                           <button onClick={navProposals}
-                            className="tabular-nums text-slate-400 underline decoration-slate-700 underline-offset-2 hover:text-white">{r.proposals.toLocaleString()}</button>
+                            className="tabular-nums text-slate-600 dark:text-slate-400 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white">{r.proposals.toLocaleString()}</button>
                         </td>
-                        <td className="py-1.5 text-right tabular-nums text-amber-300">{r.activePRs.toLocaleString()}</td>
+                        <td className="py-1.5 text-right tabular-nums text-amber-600 dark:text-amber-300">{r.activePRs.toLocaleString()}</td>
                         <td className="py-1.5 text-right">
                           <button onClick={navFinals}
-                            className="tabular-nums text-emerald-400 underline decoration-slate-700 underline-offset-2 hover:text-white">{r.finals.toLocaleString()}</button>
+                            className="tabular-nums text-emerald-600 dark:text-emerald-400 underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white">{r.finals.toLocaleString()}</button>
                         </td>
                       </tr>
                     );
@@ -633,7 +633,7 @@ export default function EIPsHomePage() {
           </SectionCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 7. Governance Efficiency + Monthly Delta ────── */}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.16 }}
@@ -643,20 +643,20 @@ export default function EIPsHomePage() {
             {!decisionVelocity ? <SkeletonPulse rows={4} /> : (
               <div className="space-y-2">
                 {decisionVelocity.transitions.map((t) => (
-                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-800/20">
-                    <span className="text-sm text-slate-400">
-                      {t.from} <ArrowRight className="mx-1 inline h-3 w-3 text-slate-600" /> {t.to}
+                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-2 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/20">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {t.from} <ArrowRight className="mx-1 inline h-3 w-3 text-slate-500 dark:text-slate-600" /> {t.to}
                     </span>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums font-medium text-slate-200">{t.medianDays != null ? `${t.medianDays}d` : '—'}</span>
-                      <span className="text-xs tabular-nums text-slate-600">({t.count})</span>
+                      <span className="text-sm tabular-nums font-medium text-slate-800 dark:text-slate-200">{t.medianDays != null ? `${t.medianDays}d` : '—'}</span>
+                      <span className="text-xs tabular-nums text-slate-500 dark:text-slate-600">({t.count})</span>
                     </div>
                   </div>
                 ))}
                 {decisionVelocity.draftToFinalMedian > 0 && (
                   <div className="mt-2 flex items-center justify-between rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
-                    <span className="text-sm font-medium text-emerald-300">Draft to Final (end-to-end)</span>
-                    <span className="text-sm tabular-nums font-bold text-emerald-400">{decisionVelocity.draftToFinalMedian}d median</span>
+                    <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Draft to Final (end-to-end)</span>
+                    <span className="text-sm tabular-nums font-bold text-emerald-600 dark:text-emerald-400">{decisionVelocity.draftToFinalMedian}d median</span>
                   </div>
                 )}
               </div>
@@ -671,11 +671,11 @@ export default function EIPsHomePage() {
               <div className="grid grid-cols-2 gap-2">
                 {monthlyDelta.map((d) => (
                   <button key={d.status} onClick={() => navigateToTable({ status: [d.status] }, `${d.status} (this month)`)}
-                    className="flex items-center gap-2 rounded-lg bg-slate-800/30 px-3 py-2 text-left transition-colors hover:bg-slate-800/50">
+                    className="flex items-center gap-2 rounded-lg bg-slate-100 dark:bg-slate-800/30 px-3 py-2 text-left transition-colors hover:bg-slate-200 dark:hover:bg-slate-800/50">
                     <span className={`h-2 w-2 rounded-full ${STATUS_DOT_COLORS[d.status] || 'bg-slate-500'}`} />
                     <div className="min-w-0 flex-1">
-                      <div className="text-xs text-slate-500">{d.status}</div>
-                      <div className="text-lg tabular-nums font-bold text-slate-200">{d.count}</div>
+                      <div className="text-xs text-slate-600 dark:text-slate-500">{d.status}</div>
+                      <div className="text-lg tabular-nums font-bold text-slate-800 dark:text-slate-200">{d.count}</div>
                     </div>
                   </button>
                 ))}
@@ -684,28 +684,28 @@ export default function EIPsHomePage() {
           </SectionCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 mb-6" />
+        <hr className="border-slate-200 dark:border-slate-800/50 mb-6" />
 
         {/* ─── 8. View Switch + Tabs ──────────────────────── */}
         <motion.div id="proposals-table" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.18 }} className="mb-4">
           <div className="mb-2.5 flex items-center justify-between">
-            <div className="inline-flex items-center rounded-lg border border-slate-800/80 bg-slate-900/60 p-0.5">
+            <div className="inline-flex items-center rounded-lg border border-slate-200 dark:border-slate-800/80 bg-slate-100 dark:bg-slate-900/60 p-0.5">
               <button onClick={() => setViewMode('type')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === 'type' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === 'type' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>
                 <LayoutGrid className="h-3 w-3" /> By Category
               </button>
               <button onClick={() => setViewMode('status')}
-                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === 'status' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-500 hover:text-slate-300'}`}>
+                className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${viewMode === 'status' ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-slate-300'}`}>
                 <BarChart3 className="h-3 w-3" /> By Lifecycle
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <span className="text-xs tabular-nums text-slate-500">
+              <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">
                 {hasColumnFilter ? `${filteredCount} of ${pageRowCount}` : `${totalRows.toLocaleString()} ${isRipMode ? 'RIPs' : 'proposals'}`}
               </span>
-              {hasColumnFilter && <button onClick={() => setColumnSearch({})} className="text-xs text-slate-600 underline hover:text-slate-400">Clear</button>}
+              {hasColumnFilter && <button onClick={() => setColumnSearch({})} className="text-xs text-slate-600 underline hover:text-slate-800 dark:hover:text-slate-400">Clear</button>}
               <button onClick={handleExportCSV} disabled={exporting}
-                className="flex items-center gap-1.5 rounded-lg border border-slate-800 bg-slate-900/50 px-2.5 py-1.5 text-xs font-medium text-slate-400 transition-colors hover:border-slate-700 hover:text-slate-300 disabled:opacity-40">
+                className="flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 transition-colors hover:border-slate-400 hover:text-slate-800 dark:hover:border-slate-700 dark:hover:text-slate-300 disabled:opacity-40">
                 {exporting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />} CSV
               </button>
             </div>
@@ -713,7 +713,7 @@ export default function EIPsHomePage() {
 
           <AnimatePresence mode="wait">
             <motion.div key={viewMode} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}
-              className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-800/80 bg-slate-900/40 p-1.5 scrollbar-thin">
+              className="flex items-center gap-1 overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-900/40 p-1.5 scrollbar-thin">
               {currentTabs.map((tab) => {
                 const count = getTabCount(tab.id, currentTabs);
                 const isActive = activeTab === tab.id;
@@ -721,13 +721,13 @@ export default function EIPsHomePage() {
                 return (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     className={`group flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium transition-all ${
-                      isActive ? (isRip ? 'bg-violet-500/15 text-violet-200' : 'bg-slate-800 text-white shadow-sm') :
-                      (isRip ? 'text-violet-400/50 hover:text-violet-300' : 'text-slate-400 hover:bg-slate-800/50 hover:text-slate-200')
+                      isActive ? (isRip ? 'bg-violet-100 dark:bg-violet-500/15 text-violet-700 dark:text-violet-200' : 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-sm') :
+                      (isRip ? 'text-violet-600 dark:text-violet-400/50 hover:text-violet-700 dark:hover:text-violet-300' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-slate-200')
                     }`}>
-                    <span className={isActive ? (isRip ? 'text-violet-400' : 'text-cyan-400') : 'text-slate-600 group-hover:text-slate-400'}>{tab.icon}</span>
+                    <span className={isActive ? (isRip ? 'text-violet-400' : 'text-cyan-600 dark:text-cyan-400') : 'text-slate-500 dark:text-slate-600 group-hover:text-slate-700 dark:group-hover:text-slate-400'}>{tab.icon}</span>
                     {tab.label}
                     {count > 0 && (
-                      <span className={`text-xs tabular-nums ${isActive ? (isRip ? 'text-violet-300/70' : 'text-slate-400') : 'text-slate-600'}`}>
+                      <span className={`text-xs tabular-nums ${isActive ? (isRip ? 'text-violet-600 dark:text-violet-300/70' : 'text-slate-500 dark:text-slate-400') : 'text-slate-500 dark:text-slate-600'}`}>
                         {count.toLocaleString()}
                       </span>
                     )}
@@ -736,38 +736,38 @@ export default function EIPsHomePage() {
               })}
             </motion.div>
           </AnimatePresence>
-          {activeTabDef?.description && <p className="mt-2 text-xs text-slate-500">{activeTabDef.description}</p>}
+          {activeTabDef?.description && <p className="mt-2 text-xs text-slate-600 dark:text-slate-500">{activeTabDef.description}</p>}
         </motion.div>
 
         {/* ─── 9. Main Table ──────────────────────────────── */}
         <div ref={tableRef} />
         {overlayFilters && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}
-            className="mb-3 flex items-center gap-2 rounded-lg border border-cyan-500/20 bg-cyan-500/5 px-4 py-2">
-            <span className="text-xs text-slate-400">Showing:</span>
-            <span className="rounded-md bg-cyan-500/15 px-2 py-0.5 text-sm font-medium text-cyan-300">{overlayFilters.label}</span>
+            className="mb-3 flex items-center gap-2 rounded-lg border border-cyan-500/30 dark:border-cyan-500/20 bg-cyan-50 dark:bg-cyan-500/5 px-4 py-2">
+            <span className="text-xs text-slate-600 dark:text-slate-400">Showing:</span>
+            <span className="rounded-md bg-cyan-100 dark:bg-cyan-500/15 px-2 py-0.5 text-sm font-medium text-cyan-700 dark:text-cyan-300">{overlayFilters.label}</span>
             {overlayFilters.status && <span className="text-xs text-slate-600">status: {overlayFilters.status.join(', ')}</span>}
             {overlayFilters.category && <span className="text-xs text-slate-600">category: {overlayFilters.category.join(', ')}</span>}
-            <button onClick={clearOverlay} className="ml-auto flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-slate-500 transition-colors hover:bg-slate-800 hover:text-white">
+            <button onClick={clearOverlay} className="ml-auto flex items-center gap-1 rounded-md px-2 py-0.5 text-xs text-slate-600 dark:text-slate-500 transition-colors hover:bg-slate-200 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white">
               <X className="h-3 w-3" /> Clear filter
             </button>
           </motion.div>
         )}
         <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.2 }}
-          className="mb-8 overflow-hidden rounded-xl border border-slate-800/80 bg-slate-900/30">
+          className="mb-8 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800/80 bg-white dark:bg-slate-900/30 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-slate-800/80">
+                <tr className="border-b border-slate-200 dark:border-slate-800/80 bg-slate-50 dark:bg-slate-800/30">
                   {columns.map((col) => (
                     <th key={col.key} className={`px-4 py-2 text-left ${col.w}`}>
-                      <div className="flex cursor-pointer select-none items-center text-xs font-semibold tracking-wider text-slate-500 uppercase hover:text-slate-300" onClick={() => handleSort(col.key)}>
+                      <div className="flex cursor-pointer select-none items-center text-xs font-semibold tracking-wider text-slate-600 dark:text-slate-500 uppercase hover:text-slate-900 dark:hover:text-slate-300" onClick={() => handleSort(col.key)}>
                         {col.label}<SortIcon column={col.key} current={sortBy} dir={sortDir} />
                       </div>
                       <input type="text" value={columnSearch[col.key] || ''}
                         onChange={(e) => setColumnSearch((p) => ({ ...p, [col.key]: e.target.value }))}
                         onClick={(e) => e.stopPropagation()} placeholder="Filter..."
-                        className="mt-1 w-full rounded border border-slate-800/50 bg-transparent px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-slate-400 placeholder-slate-700 outline-none focus:border-slate-700 focus:text-slate-200" />
+                        className="mt-1 w-full rounded border border-slate-200 dark:border-slate-800/50 bg-white dark:bg-transparent px-2 py-0.5 text-xs font-normal normal-case tracking-normal text-slate-700 dark:text-slate-400 placeholder-slate-500 dark:placeholder-slate-700 outline-none focus:border-slate-400 dark:focus:border-slate-700 focus:text-slate-900 dark:focus:text-slate-200" />
                     </th>
                   ))}
                 </tr>
@@ -779,14 +779,14 @@ export default function EIPsHomePage() {
                   !filteredRipRows.length ? (
                     <tr><td colSpan={columns.length} className="px-4 py-12 text-center text-sm text-slate-600">No RIPs match your filters.</td></tr>
                   ) : filteredRipRows.map((row) => (
-                    <tr key={`rip-${row.number}`} className="border-b border-slate-800/20 transition-colors hover:bg-slate-800/20">
-                      <td className="px-4 py-2"><Link href={`/rip/${row.number}`} className="font-mono text-sm font-semibold text-violet-400 hover:text-violet-300">RIP-{row.number}</Link></td>
-                      <td className="px-4 py-2"><Link href={`/rip/${row.number}`} className="line-clamp-1 text-sm text-slate-300 hover:text-white">{row.title || 'Untitled'}</Link></td>
-                      <td className="px-4 py-2 text-sm text-slate-500">{row.author ? row.author.split(',')[0].trim().replace(/^"|"$/g, '') : '—'}</td>
+                    <tr key={`rip-${row.number}`} className="border-b border-slate-200 dark:border-slate-800/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                      <td className="px-4 py-2"><Link href={`/rip/${row.number}`} className="font-mono text-sm font-semibold text-violet-600 dark:text-violet-400 hover:text-violet-700 dark:hover:text-violet-300">RIP-{row.number}</Link></td>
+                      <td className="px-4 py-2"><Link href={`/rip/${row.number}`} className="line-clamp-1 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">{row.title || 'Untitled'}</Link></td>
+                      <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-500">{row.author ? row.author.split(',')[0].trim().replace(/^"|"$/g, '') : '—'}</td>
                       <td className="px-4 py-2"><StatusBadge status={row.status || 'Draft'} /></td>
-                      <td className="px-4 py-2 tabular-nums text-sm text-slate-500">{row.createdAt || '—'}</td>
-                      <td className="px-4 py-2 tabular-nums text-sm text-slate-500">{row.lastCommit || '—'}</td>
-                      <td className="px-4 py-2 tabular-nums text-sm text-slate-400">{row.commits}</td>
+                      <td className="px-4 py-2 tabular-nums text-sm text-slate-600 dark:text-slate-500">{row.createdAt || '—'}</td>
+                      <td className="px-4 py-2 tabular-nums text-sm text-slate-600 dark:text-slate-500">{row.lastCommit || '—'}</td>
+                      <td className="px-4 py-2 tabular-nums text-sm text-slate-500 dark:text-slate-400">{row.commits}</td>
                     </tr>
                   ))
                 ) : (
@@ -795,12 +795,12 @@ export default function EIPsHomePage() {
                   ) : filteredEipRows.map((row) => {
                     const url = getProposalUrl(row.repo, row.number);
                     return (
-                      <tr key={`${row.repo}-${row.number}`} className="border-b border-slate-800/20 transition-colors hover:bg-slate-800/20">
-                        <td className="px-4 py-2"><Link href={url} className="font-mono text-sm font-semibold text-cyan-400 hover:text-cyan-300">{getProposalPrefix(row.repo)}-{row.number}</Link></td>
-                        <td className="px-4 py-2"><Link href={url} className="line-clamp-1 text-sm text-slate-300 hover:text-white">{row.title || 'Untitled'}</Link></td>
-                        <td className="px-4 py-2 text-sm text-slate-500">{row.author ? row.author.split(',')[0].trim().replace(/^"|"$/g, '') : '—'}</td>
-                        <td className="px-4 py-2 text-sm text-slate-500">{row.type || '—'}</td>
-                        <td className="px-4 py-2 text-sm text-slate-500">{row.category || '—'}</td>
+                      <tr key={`${row.repo}-${row.number}`} className="border-b border-slate-200 dark:border-slate-800/20 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                        <td className="px-4 py-2"><Link href={url} className="font-mono text-sm font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300">{getProposalPrefix(row.repo)}-{row.number}</Link></td>
+                        <td className="px-4 py-2"><Link href={url} className="line-clamp-1 text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">{row.title || 'Untitled'}</Link></td>
+                        <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-500">{row.author ? row.author.split(',')[0].trim().replace(/^"|"$/g, '') : '—'}</td>
+                        <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-500">{row.type || '—'}</td>
+                        <td className="px-4 py-2 text-sm text-slate-600 dark:text-slate-500">{row.category || '—'}</td>
                         <td className="px-4 py-2"><StatusBadge status={row.status} /></td>
                       </tr>
                     );
@@ -810,20 +810,20 @@ export default function EIPsHomePage() {
             </table>
           </div>
           {totalPages > 1 && (
-            <div className="flex items-center justify-between border-t border-slate-800/60 px-4 py-2.5">
-              <span className="text-xs tabular-nums text-slate-600">Page {page} of {totalPages}</span>
+            <div className="flex items-center justify-between border-t border-slate-200 dark:border-slate-800/60 px-4 py-2.5 bg-slate-50 dark:bg-slate-900/20">
+              <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">Page {page} of {totalPages}</span>
               <div className="flex items-center gap-0.5">
                 <PgBtn onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-3.5 w-3.5" /></PgBtn>
-                {pageRange[0] > 1 && <><PgBtn onClick={() => setPage(1)}>1</PgBtn>{pageRange[0] > 2 && <span className="px-1 text-xs text-slate-700">…</span>}</>}
+                {pageRange[0] > 1 && <><PgBtn onClick={() => setPage(1)}>1</PgBtn>{pageRange[0] > 2 && <span className="px-1 text-xs text-slate-500 dark:text-slate-700">…</span>}</>}
                 {pageRange.map((p) => <PgBtn key={p} onClick={() => setPage(p)} active={p === page}>{p}</PgBtn>)}
-                {pageRange[pageRange.length - 1] < totalPages && <>{pageRange[pageRange.length - 1] < totalPages - 1 && <span className="px-1 text-xs text-slate-700">…</span>}<PgBtn onClick={() => setPage(totalPages)}>{totalPages}</PgBtn></>}
+                {pageRange[pageRange.length - 1] < totalPages && <>{pageRange[pageRange.length - 1] < totalPages - 1 && <span className="px-1 text-xs text-slate-500 dark:text-slate-700">…</span>}<PgBtn onClick={() => setPage(totalPages)}>{totalPages}</PgBtn></>}
                 <PgBtn onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><ChevronRight className="h-3.5 w-3.5" /></PgBtn>
               </div>
             </div>
           )}
         </motion.div>
 
-        <hr className="border-slate-800/50 my-8" />
+        <hr className="border-slate-200 dark:border-slate-800/50 my-8" />
 
         {/* ─── Recent Governance Activity ──────────────────── */}
         <motion.div id="governance-activity" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }} className="mb-6">
@@ -833,17 +833,17 @@ export default function EIPsHomePage() {
             ) : (
               <div className="space-y-1.5">
                 {recentChanges.map((e, i) => (
-                  <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-slate-800/30">
+                  <div key={i} className="flex items-center gap-3 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/30">
                     <span className={`h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[e.to] || 'bg-slate-500'}`} />
                     <Link href={`/${e.eip_type === 'RIP' ? 'rip' : e.eip_type === 'ERC' ? 'erc' : 'eip'}/${e.eip}`}
-                      className="shrink-0 font-mono text-sm font-semibold text-cyan-400 hover:text-cyan-300">
+                      className="shrink-0 font-mono text-sm font-semibold text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300">
                       {e.eip_type}-{e.eip}
                     </Link>
-                    <span className="flex items-center gap-1.5 text-slate-500">
-                      {e.from ? <><span className="text-slate-500">{e.from}</span><ArrowRight className="h-3 w-3 text-slate-700" /></> : 'entered '}
-                      <span className={STATUS_TEXT_COLORS[e.to] || 'text-slate-300'}>{e.to}</span>
+                    <span className="flex items-center gap-1.5 text-slate-600 dark:text-slate-500">
+                      {e.from ? <><span className="text-slate-500 dark:text-slate-500">{e.from}</span><ArrowRight className="h-3 w-3 text-slate-500 dark:text-slate-700" /></> : 'entered '}
+                      <span className={STATUS_TEXT_COLORS[e.to] || 'text-slate-600 dark:text-slate-300'}>{e.to}</span>
                     </span>
-                    <span className="ml-auto shrink-0 text-xs tabular-nums text-slate-600">
+                    <span className="ml-auto shrink-0 text-xs tabular-nums text-slate-500 dark:text-slate-600">
                       {e.days === 0 ? 'today' : e.days === 1 ? '1 day ago' : `${e.days}d ago`}
                     </span>
                   </div>
@@ -862,7 +862,7 @@ export default function EIPsHomePage() {
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="text-xs text-slate-500">
+                    <tr className="text-xs text-slate-600 dark:text-slate-500">
                       <th className="pb-2 text-left font-medium">Upgrade</th>
                       <th className="pb-2 text-right font-medium">Final</th>
                       <th className="pb-2 text-right font-medium">Review</th>
@@ -873,19 +873,19 @@ export default function EIPsHomePage() {
                   </thead>
                   <tbody>
                     {upgradeImpact.map((u) => (
-                      <tr key={u.slug} className="border-t border-slate-800/30 transition-colors hover:bg-slate-800/20">
-                        <td className="py-1.5 font-medium text-slate-200 capitalize">{u.name}</td>
-                        {([['finalized', 'Final', 'text-emerald-400'], ['inReview', 'Review', 'text-amber-300'], ['lastCall', 'Last Call', 'text-orange-300'], ['draft', 'Draft', 'text-slate-400']] as const).map(([key, status, color]) => (
+                      <tr key={u.slug} className="border-t border-slate-200 dark:border-slate-800/30 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                        <td className="py-1.5 font-medium text-slate-800 dark:text-slate-200 capitalize">{u.name}</td>
+                        {([['finalized', 'Final', 'text-emerald-600 dark:text-emerald-400'], ['inReview', 'Review', 'text-amber-600 dark:text-amber-300'], ['lastCall', 'Last Call', 'text-orange-600 dark:text-orange-300'], ['draft', 'Draft', 'text-slate-600 dark:text-slate-400']] as const).map(([key, status, color]) => (
                           <td key={key} className="py-1.5 text-right">
                             {u[key as keyof typeof u] ? (
                               <button onClick={() => navigateToTable({ status: [status] }, `${u.name} — ${status}`)}
-                                className={`tabular-nums ${color} underline decoration-slate-700 underline-offset-2 hover:text-white`}>
+                                className={`tabular-nums ${color} underline decoration-slate-400 dark:decoration-slate-700 underline-offset-2 hover:text-slate-900 dark:hover:text-white`}>
                                 {(u[key as keyof typeof u] as number).toLocaleString()}
                               </button>
-                            ) : <span className="text-slate-700">—</span>}
+                            ) : <span className="text-slate-500 dark:text-slate-700">—</span>}
                           </td>
                         ))}
-                        <td className="py-1.5 text-right tabular-nums font-medium text-white">{u.total}</td>
+                        <td className="py-1.5 text-right tabular-nums font-medium text-slate-900 dark:text-white">{u.total}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -906,52 +906,52 @@ export default function EIPsHomePage() {
                 {editors.length >= 3 && (
                   <div className="grid grid-cols-3 items-end gap-3">
                     {/* #2 Silver */}
-                    <div className="flex flex-col items-center rounded-xl border border-slate-500/20 bg-slate-800/30 p-3 pt-5">
+                    <div className="flex flex-col items-center rounded-xl border border-slate-300 dark:border-slate-500/20 bg-slate-100 dark:bg-slate-800/30 p-3 pt-5">
                       <div className="relative">
                         <img src={`https://github.com/${editors[1].actor}.png`} alt={editors[1].actor}
-                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[1].actor)}&background=1e293b&color=94a3b8&size=80`; }}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[1].actor)}&background=94a3b8&color=1e293b&size=80`; }}
                           className="h-14 w-14 rounded-full border-2 border-slate-400/40 object-cover" />
                         <span className="absolute -top-2 -right-2 text-lg">🥈</span>
                       </div>
-                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-200">{editors[1].actor}</span>
-                      <span className="text-xs tabular-nums text-slate-500">{editors[1].prsTouched} PRs handled</span>
+                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{editors[1].actor}</span>
+                      <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">{editors[1].prsTouched} PRs handled</span>
                     </div>
                     {/* #1 Gold - Champion */}
-                    <div className="flex flex-col items-center rounded-xl border border-amber-500/30 bg-linear-to-b from-amber-500/10 via-amber-500/5 to-transparent p-3 pt-4 -mt-3">
+                    <div className="flex flex-col items-center rounded-xl border border-amber-400/50 dark:border-amber-500/30 bg-linear-to-b from-amber-100 via-amber-50 to-transparent dark:from-amber-500/10 dark:via-amber-500/5 dark:to-transparent p-3 pt-4 -mt-3">
                       <div className="relative">
                         <img src={`https://github.com/${editors[0].actor}.png`} alt={editors[0].actor}
-                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[0].actor)}&background=78350f&color=fbbf24&size=80`; }}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[0].actor)}&background=fbbf24&color=78350f&size=80`; }}
                           className="h-16 w-16 rounded-full border-2 border-amber-400/50 ring-4 ring-amber-500/15 object-cover" />
                         <span className="absolute -top-3 -right-3 text-2xl">🥇</span>
                       </div>
-                      <span className="mt-2 max-w-full truncate text-sm font-bold text-white">{editors[0].actor}</span>
-                      <span className="text-xs tabular-nums font-medium text-amber-300">{editors[0].prsTouched} PRs handled</span>
+                      <span className="mt-2 max-w-full truncate text-sm font-bold text-slate-900 dark:text-white">{editors[0].actor}</span>
+                      <span className="text-xs tabular-nums font-medium text-amber-700 dark:text-amber-300">{editors[0].prsTouched} PRs handled</span>
                     </div>
                     {/* #3 Bronze */}
-                    <div className="flex flex-col items-center rounded-xl border border-orange-500/20 bg-slate-800/30 p-3 pt-5">
+                    <div className="flex flex-col items-center rounded-xl border border-orange-400/40 dark:border-orange-500/20 bg-slate-100 dark:bg-slate-800/30 p-3 pt-5">
                       <div className="relative">
                         <img src={`https://github.com/${editors[2].actor}.png`} alt={editors[2].actor}
-                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[2].actor)}&background=431407&color=fb923c&size=80`; }}
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(editors[2].actor)}&background=fb923c&color=431407&size=80`; }}
                           className="h-14 w-14 rounded-full border-2 border-orange-400/40 object-cover" />
                         <span className="absolute -top-2 -right-2 text-lg">🥉</span>
                       </div>
-                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-200">{editors[2].actor}</span>
-                      <span className="text-xs tabular-nums text-slate-500">{editors[2].prsTouched} PRs handled</span>
+                      <span className="mt-2 max-w-full truncate text-sm font-semibold text-slate-800 dark:text-slate-200">{editors[2].actor}</span>
+                      <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">{editors[2].prsTouched} PRs handled</span>
                     </div>
                   </div>
                 )}
 
                 {/* ── Remaining editors ── */}
                 {editors.length > 3 && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/30 divide-y divide-slate-800/40">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900/30 divide-y divide-slate-200 dark:divide-slate-800/40">
                     {editors.slice(3).map((ed, i) => (
-                      <div key={ed.actor} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-800/20">
+                      <div key={ed.actor} className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/20">
                         <span className="w-5 text-right text-xs tabular-nums font-semibold text-slate-600">{i + 4}</span>
                         <img src={`https://github.com/${ed.actor}.png`} alt={ed.actor}
-                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ed.actor)}&background=1e293b&color=94a3b8&size=48`; }}
-                          className="h-8 w-8 rounded-full border border-slate-700/50 object-cover" />
-                        <span className="flex-1 truncate text-sm font-medium text-slate-300">{ed.actor}</span>
-                        <span className="text-xs tabular-nums text-slate-500">{ed.prsTouched} PRs</span>
+                          onError={(ev) => { (ev.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ed.actor)}&background=94a3b8&color=1e293b&size=48`; }}
+                          className="h-8 w-8 rounded-full border border-slate-300 dark:border-slate-700/50 object-cover" />
+                        <span className="flex-1 truncate text-sm font-medium text-slate-700 dark:text-slate-300">{ed.actor}</span>
+                        <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">{ed.prsTouched} PRs</span>
                       </div>
                     ))}
                   </div>
@@ -959,14 +959,14 @@ export default function EIPsHomePage() {
 
                 {/* ── PR Governance Summary ── */}
                 {govStates && govStates.length > 0 && (
-                  <div className="rounded-xl border border-slate-800/60 bg-slate-900/20 p-4">
-                    <h4 className="mb-2 text-[10px] font-semibold tracking-wider text-slate-500 uppercase">PR Governance Overview</h4>
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-900/20 p-4">
+                    <h4 className="mb-2 text-[10px] font-semibold tracking-wider text-slate-600 dark:text-slate-500 uppercase">PR Governance Overview</h4>
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
                       {govStates.map((g) => (
-                        <div key={g.state} className="rounded-lg bg-slate-800/30 px-3 py-2 text-center">
-                          <div className="text-lg tabular-nums font-bold text-slate-200">{g.count}</div>
-                          <div className="text-[10px] text-slate-500">{g.label}</div>
-                          {g.medianWaitDays != null && <div className="text-[10px] tabular-nums text-slate-600">~{g.medianWaitDays}d wait</div>}
+                        <div key={g.state} className="rounded-lg bg-slate-100 dark:bg-slate-800/30 px-3 py-2 text-center">
+                          <div className="text-lg tabular-nums font-bold text-slate-800 dark:text-slate-200">{g.count}</div>
+                          <div className="text-[10px] text-slate-600 dark:text-slate-500">{g.label}</div>
+                          {g.medianWaitDays != null && <div className="text-[10px] tabular-nums text-slate-500 dark:text-slate-600">~{g.medianWaitDays}d wait</div>}
                         </div>
                       ))}
                     </div>
@@ -977,7 +977,7 @@ export default function EIPsHomePage() {
           </SectionCard>
         </motion.div>
 
-        <hr className="border-slate-800/50 my-8" />
+        <hr className="border-slate-200 dark:border-slate-800/50 my-8" />
 
         {/* ─── 11. Reference (EIP Types, Status Terms, Contributing) ── */}
         <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.22 }}>
@@ -992,12 +992,15 @@ export default function EIPsHomePage() {
 // SMALL COMPONENTS & UTILS
 // ────────────────────────────────────────────────────────────────
 
-function MetricCell({ label, value, color, onClick }: { label: string; value: number | string; color: string; onClick?: () => void }) {
+function MetricCell({ label, value, color, onClick, dot }: { label: string; value: number | string; color: string; onClick?: () => void; dot?: string }) {
   const Tag = onClick ? 'button' : 'div';
   return (
-    <Tag onClick={onClick} className={`flex flex-col items-center gap-0.5 px-4 py-2.5 ${onClick ? 'cursor-pointer transition-colors hover:bg-slate-800/40' : ''}`}>
-      <span className={`text-base font-bold tabular-nums ${color}`}>{typeof value === 'number' ? value.toLocaleString() : value}</span>
-      <span className="text-[10px] font-medium tracking-wider text-slate-500 uppercase">{label}</span>
+    <Tag onClick={onClick} className={`flex flex-col items-center gap-1.5 px-5 py-4 ${onClick ? 'cursor-pointer transition-colors hover:bg-slate-100 dark:hover:bg-slate-800/40' : ''}`}>
+      <span className={`text-lg font-bold tabular-nums ${color}`}>{typeof value === 'number' ? value.toLocaleString() : value}</span>
+      <div className="flex items-center gap-1.5">
+        {dot && <span className={`h-2 w-2 shrink-0 rounded-full ${dot}`} />}
+        <span className="text-[10px] font-semibold tracking-wider text-slate-500 dark:text-slate-500 uppercase">{label}</span>
+      </div>
     </Tag>
   );
 }
@@ -1006,7 +1009,7 @@ function PgBtn({ children, onClick, disabled, active }: { children: React.ReactN
   return (
     <button onClick={onClick} disabled={disabled}
       className={`flex h-7 min-w-[28px] items-center justify-center rounded-md text-xs font-medium transition-colors ${
-        active ? 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-300' : 'text-slate-500 hover:text-white disabled:opacity-20'
+        active ? 'border border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' : 'text-slate-600 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white disabled:opacity-20'
       }`}>{children}</button>
   );
 }

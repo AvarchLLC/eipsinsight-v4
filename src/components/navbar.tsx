@@ -25,6 +25,7 @@ import { authClient } from "@/lib/auth-client";
 import { useSession } from "@/hooks/useSession";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { SearchBar } from "@/components/search-bar";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { usePersonaStore } from "@/stores/personaStore";
 import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
 import { PERSONAS, PERSONA_LIST, type Persona } from "@/lib/persona";
@@ -90,9 +91,11 @@ export default function Navbar() {
       className={cn(
         "w-full transition-all duration-300",
         "border-b backdrop-blur-xl",
+        "dark:border-cyan-300/20 dark:bg-slate-950/90",
+        "border-slate-200/80 bg-white/95",
         scrolled
-          ? "border-cyan-300/30 bg-slate-950/95 shadow-[0_4px_30px_rgba(6,182,212,0.12)]"
-          : "border-cyan-300/20 bg-slate-950/90 shadow-[0_4px_20px_rgba(6,182,212,0.08)]"
+          ? "dark:border-cyan-300/30 dark:bg-slate-950/95 dark:shadow-[0_4px_30px_rgba(6,182,212,0.12)] shadow-[0_4px_20px_rgba(0,0,0,0.06)]"
+          : "dark:shadow-[0_4px_20px_rgba(6,182,212,0.08)] shadow-[0_2px_10px_rgba(0,0,0,0.04)]"
       )}
     >
       <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 xl:px-12">
@@ -111,7 +114,7 @@ export default function Navbar() {
                 unoptimized
               />
             </div>
-            <span className="dec-title font-semibold text-white group-hover:text-cyan-100 transition-colors">
+            <span className="dec-title font-semibold text-slate-900 dark:text-white group-hover:text-cyan-600 dark:group-hover:text-cyan-100 transition-colors">
               EIPsInsight
             </span>
           </Link>
@@ -123,8 +126,9 @@ export default function Navbar() {
             </div>
           </div>
 
-          {/* RIGHT: Persona + Profile (Desktop) */}
+          {/* RIGHT: Theme + Persona + Profile (Desktop) */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
+            <ThemeToggle variant="switch" className="shrink-0" />
             {/* Compact Persona Switcher */}
             {FEATURES.PERSONA_SWITCHER && isHydrated && (
               <DropdownMenu>
@@ -132,12 +136,13 @@ export default function Navbar() {
                   <button
                     className={cn(
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg transition-all",
-                      "border hover:border-cyan-400/30",
-                      "hover:bg-slate-800/50",
-                      "text-sm hover:text-white",
+                      "border",
+                      "dark:hover:border-cyan-400/30 dark:hover:bg-slate-800/50 dark:hover:text-white",
+                      "hover:border-cyan-500/40 hover:bg-slate-100",
+                      "text-sm",
                       hasPersona 
-                        ? "border-slate-700/50 bg-slate-800/30 text-slate-300"
-                        : "border-cyan-400/40 bg-cyan-500/10 text-cyan-300 animate-pulse"
+                        ? "border-slate-300 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300"
+                        : "border-cyan-400/40 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 animate-pulse"
                     )}
                   >
                     {hasPersona && PersonaIcon ? (
@@ -153,10 +158,10 @@ export default function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-64 bg-slate-900/95 backdrop-blur-xl border-slate-700/50 p-1"
+                  className="w-64 bg-white dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700/50 p-1"
                 >
                   {!hasPersona && (
-                    <div className="px-2 py-2 mb-1 text-xs text-slate-400 border-b border-slate-700/50">
+                    <div className="px-2 py-2 mb-1 text-xs text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700/50">
                       Choose how you use EIPsInsight
                     </div>
                   )}
@@ -170,15 +175,15 @@ export default function Navbar() {
                         onClick={() => handlePersonaChange(personaId)}
                         className={cn(
                           "flex items-center gap-2 cursor-pointer rounded-md",
-                          isSelected && "bg-cyan-500/10"
+                          isSelected && "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"
                         )}
                       >
                         <Icon className={cn("h-4 w-4 shrink-0", isSelected ? "text-cyan-400" : "text-slate-400")} />
                         <div className="flex flex-col">
-                          <span className={cn("text-sm", isSelected ? "text-white" : "text-slate-300")}>
+                          <span className={cn("text-sm", isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300")}>
                             {meta.shortLabel}
                           </span>
-                          <span className="text-[10px] text-slate-500 leading-tight">
+                          <span className="text-[10px] text-slate-500 dark:text-slate-500 leading-tight">
                             {meta.description.slice(0, 50)}...
                           </span>
                         </div>
@@ -201,20 +206,20 @@ export default function Navbar() {
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="rounded-full border border-slate-700/50 hover:border-cyan-400/30 p-0.5 transition-all hover:shadow-[0_0_12px_rgba(6,182,212,0.15)]">
+                  <button className="rounded-full border border-slate-300 dark:border-slate-700/50 hover:border-cyan-500/50 dark:hover:border-cyan-400/30 p-0.5 transition-all hover:shadow-[0_0_12px_rgba(6,182,212,0.15)]">
                     <ProfileAvatar user={session.user} size="sm" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-64 overflow-hidden border-cyan-400/30 bg-slate-950/95 p-0 shadow-[0_15px_60px_rgba(6,182,212,0.18)] backdrop-blur-xl"
+                  className="w-64 overflow-hidden border-slate-200 dark:border-cyan-400/30 bg-white dark:bg-slate-950/95 p-0 shadow-xl dark:shadow-[0_15px_60px_rgba(6,182,212,0.18)] backdrop-blur-xl"
                 >
                   {/* Header */}
-                  <div className="relative border-b border-cyan-300/20 bg-linear-to-r from-emerald-500/10 via-cyan-500/10 to-emerald-500/10 px-4 py-3">
+                  <div className="relative border-b border-slate-200 dark:border-cyan-300/20 bg-slate-50 dark:bg-[linear-gradient(to_right,rgba(16,185,129,0.1),rgba(34,211,238,0.1),rgba(16,185,129,0.1))] px-4 py-3">
                     <div className="flex items-center gap-3">
                       <ProfileAvatar user={session.user} size="md" />
                       <div className="flex flex-col min-w-0">
-                        <span className="text-sm font-medium text-slate-50 truncate">
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-50 truncate">
                           {userName}
                         </span>
                         <span className="text-xs text-slate-400">
@@ -227,20 +232,20 @@ export default function Navbar() {
                   {/* Menu Items */}
                   <div className="py-1">
                     <DropdownMenuItem asChild>
-                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-slate-100">
-                        <User className="h-4 w-4 text-emerald-300" />
+                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-100">
+                        <User className="h-4 w-4 text-emerald-600 dark:text-emerald-300" />
                         <span className="text-sm">Profile</span>
                       </Link>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-slate-100">
-                        <Settings2 className="h-4 w-4 text-cyan-300" />
+                      <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-100">
+                        <Settings2 className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                         <span className="text-sm">Settings</span>
                       </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuSeparator className="mx-2 my-1 border-cyan-300/20" />
+                    <DropdownMenuSeparator className="mx-2 my-1 border-slate-200 dark:border-cyan-300/20" />
                     <DropdownMenuItem
-                      className="flex items-center gap-2 px-4 py-2 text-slate-100"
+                      className="flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-100"
                       onClick={async () => {
                         await authClient.signOut();
                         window.location.href = "/";
@@ -266,29 +271,31 @@ export default function Navbar() {
                 height={24}
                 unoptimized
               />
-              <span className="dec-title font-semibold text-white text-sm">
+              <span className="dec-title font-semibold text-slate-900 dark:text-white text-sm">
                 EIPsInsight
               </span>
             </Link>
 
-            {/* Mobile Menu Toggle */}
+            <div className="flex items-center gap-1">
+              <ThemeToggle variant="icon" />
             <button
               onClick={() => setMobileOpen(!mobileOpen)}
               className={cn(
                 "inline-flex items-center justify-center rounded-lg p-2 transition-colors",
-                "text-slate-200 hover:bg-slate-800/50 hover:text-white",
-                mobileOpen && "bg-slate-800/50"
+                "text-slate-600 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white",
+                mobileOpen && "bg-slate-100 dark:bg-slate-800/50"
               )}
             >
               {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* MOBILE PANEL */}
       {mobileOpen && (
-        <div className="border-t border-cyan-300/20 bg-slate-950/98 backdrop-blur-xl md:hidden">
+        <div className="border-t border-slate-200 dark:border-cyan-300/20 bg-white dark:bg-slate-950/98 backdrop-blur-xl md:hidden">
           <div className="space-y-3 px-4 py-4">
             {/* Mobile Search */}
             <div className="relative">
@@ -297,9 +304,9 @@ export default function Navbar() {
                 type="search"
                 placeholder="Search EIPs, ERCs, authors…"
                 className={cn(
-                  "w-full rounded-lg border border-cyan-300/30 bg-black/40",
-                  "pl-10 pr-4 py-2.5 text-sm text-slate-200",
-                  "placeholder:text-slate-400",
+                  "w-full rounded-lg border border-slate-300 dark:border-cyan-300/30 bg-slate-50 dark:bg-black/40",
+                  "pl-10 pr-4 py-2.5 text-sm text-slate-900 dark:text-slate-200",
+                  "placeholder:text-slate-500 dark:placeholder:text-slate-400",
                   "focus:outline-none focus:ring-2 focus:ring-emerald-400/40"
                 )}
               />
@@ -318,11 +325,11 @@ export default function Navbar() {
                       "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-all",
                       "border",
                       isActive
-                        ? "border-cyan-400/40 bg-cyan-500/10 text-white font-medium"
-                        : "border-slate-700/50 bg-slate-900/50 text-slate-300 hover:border-cyan-400/30 hover:bg-slate-800/50"
+                        ? "border-cyan-500/50 bg-cyan-500/10 text-cyan-700 dark:text-white font-medium"
+                        : "border-slate-300 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300 hover:border-cyan-500/40 dark:hover:border-cyan-400/30 hover:bg-slate-200 dark:hover:bg-slate-800/50"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4", isActive ? "text-emerald-400" : "text-cyan-400")} />
+                    <Icon className={cn("h-4 w-4", isActive ? "text-emerald-600 dark:text-emerald-400" : "text-cyan-600 dark:text-cyan-400")} />
                     {item.title}
                   </Link>
                 );
@@ -330,7 +337,7 @@ export default function Navbar() {
             </nav>
 
             {/* Mobile Persona + Auth Row */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-700/50">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-slate-700/50">
               {/* Persona */}
               {FEATURES.PERSONA_SWITCHER && isHydrated && (
                 <DropdownMenu>
@@ -339,8 +346,8 @@ export default function Navbar() {
                       className={cn(
                         "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm",
                         hasPersona
-                          ? "border-slate-700/50 bg-slate-800/30 text-slate-300"
-                          : "border-cyan-400/40 bg-cyan-500/10 text-cyan-300"
+                          ? "border-slate-300 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30 text-slate-600 dark:text-slate-300"
+                          : "border-cyan-400/40 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300"
                       )}
                     >
                       {hasPersona && PersonaIcon ? (
@@ -354,7 +361,7 @@ export default function Navbar() {
                       <ChevronDown className="h-3 w-3 text-slate-500" />
                     </button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48 bg-slate-900/95 backdrop-blur-xl border-slate-700/50">
+                  <DropdownMenuContent className="w-48 bg-white dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700/50">
                     {PERSONA_LIST.map((personaId) => {
                       const meta = PERSONAS[personaId];
                       const Icon = meta.icon;
@@ -363,10 +370,10 @@ export default function Navbar() {
                         <DropdownMenuItem
                           key={personaId}
                           onClick={() => handlePersonaChange(personaId)}
-                          className={cn("flex items-center gap-2", isSelected && "bg-cyan-500/10")}
+                          className={cn("flex items-center gap-2", isSelected && "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300")}
                         >
                           <Icon className={cn("h-4 w-4", isSelected ? "text-cyan-400" : "text-slate-400")} />
-                          <span className={isSelected ? "text-white" : "text-slate-300"}>{meta.shortLabel}</span>
+                          <span className={isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}>{meta.shortLabel}</span>
                         </DropdownMenuItem>
                       );
                     })}
@@ -385,7 +392,7 @@ export default function Navbar() {
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link href="/profile" className="flex items-center gap-2 text-sm text-slate-300 hover:text-white">
+                  <Link href="/profile" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                     <ProfileAvatar user={session.user} size="sm" />
                     <span className="truncate max-w-[80px]">{session.user.name || "Profile"}</span>
                   </Link>

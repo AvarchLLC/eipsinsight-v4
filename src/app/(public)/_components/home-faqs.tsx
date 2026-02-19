@@ -21,14 +21,14 @@ const TYPE_INFO = [
 ];
 
 const STATUS_TERMS = [
-  { name: 'Idea', description: 'An idea that is pre-draft. This is not tracked within the EIP Repository.', color: 'text-purple-300' },
-  { name: 'Draft', description: 'The first formally tracked stage of an EIP in development.', color: 'text-slate-300' },
-  { name: 'Review', description: "An EIP Author marks an EIP as ready for and requesting Peer Review.", color: 'text-amber-300' },
-  { name: 'Last Call', description: 'The final review window for an EIP before moving to Final, typically 14 days.', color: 'text-orange-300' },
-  { name: 'Final', description: 'The final standard. Should only be updated to correct errata.', color: 'text-emerald-300' },
-  { name: 'Stagnant', description: 'Inactive for 6 months or greater. Can be resurrected by moving back to Draft.', color: 'text-gray-400' },
-  { name: 'Withdrawn', description: 'Author has withdrawn the proposal. This state has finality.', color: 'text-red-300' },
-  { name: 'Living', description: 'Continually updated and not designed to reach finality. Notably EIP-1.', color: 'text-cyan-300' },
+  { name: 'Idea', description: 'An idea that is pre-draft. This is not tracked within the EIP Repository.', color: 'text-purple-600 dark:text-purple-300' },
+  { name: 'Draft', description: 'The first formally tracked stage of an EIP in development.', color: 'text-slate-600 dark:text-slate-300' },
+  { name: 'Review', description: "An EIP Author marks an EIP as ready for and requesting Peer Review.", color: 'text-amber-600 dark:text-amber-300' },
+  { name: 'Last Call', description: 'The final review window for an EIP before moving to Final, typically 14 days.', color: 'text-orange-600 dark:text-orange-300' },
+  { name: 'Final', description: 'The final standard. Should only be updated to correct errata.', color: 'text-emerald-600 dark:text-emerald-300' },
+  { name: 'Stagnant', description: 'Inactive for 6 months or greater. Can be resurrected by moving back to Draft.', color: 'text-gray-600 dark:text-gray-400' },
+  { name: 'Withdrawn', description: 'Author has withdrawn the proposal. This state has finality.', color: 'text-red-600 dark:text-red-300' },
+  { name: 'Living', description: 'Continually updated and not designed to reach finality. Notably EIP-1.', color: 'text-cyan-600 dark:text-cyan-300' },
 ];
 
 const STATUS_DOT_COLORS: Record<string, string> = {
@@ -59,19 +59,19 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
         <div className="space-y-0">
           {TYPE_INFO.map((type, i) => (
             <div key={type.name}>
-              {i > 0 && <hr className="border-slate-700/40 my-4" />}
+              {i > 0 && <hr className="border-slate-200 dark:border-slate-700/40 my-4" />}
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-200">{type.name}</span>
-                <span className="text-xs tabular-nums text-slate-500">
+                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{type.name}</span>
+                <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">
                   ({type.name === 'Standards Track' ? standardsTrackTotal.toLocaleString() : getCatCount(type.name).toLocaleString()})
                 </span>
               </div>
-              <p className="mt-0.5 text-sm text-slate-500">{type.description}</p>
+              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">{type.description}</p>
               {'subcategories' in type && type.subcategories && (
                 <div className="mt-2 ml-4 space-y-1.5">
                   {type.subcategories.map((sub) => (
                     <div key={sub.name} className="text-sm">
-                      <span className="font-medium text-slate-400">{sub.name}</span>
+                      <span className="font-medium text-slate-600 dark:text-slate-400">{sub.name}</span>
                       <span className="ml-1 text-xs tabular-nums text-slate-600">
                         ({getCatCount(sub.name).toLocaleString()})
                       </span>
@@ -93,7 +93,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
         <div className="space-y-0">
           {STATUS_TERMS.map((term, i) => (
             <div key={term.name}>
-              {i > 0 && <hr className="border-slate-700/40 my-3" />}
+              {i > 0 && <hr className="border-slate-200 dark:border-slate-700/40 my-3" />}
               <div className="flex gap-2.5">
                 <span
                   className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[term.name] || 'bg-purple-400'}`}
@@ -105,7 +105,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
                       ({getStatusCount(term.name).toLocaleString()})
                     </span>
                   )}
-                  <p className="mt-0.5 text-sm text-slate-500">{term.description}</p>
+                  <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">{term.description}</p>
                 </div>
               </div>
             </div>
@@ -117,15 +117,15 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
       id: 'contributing',
       icon: BookOpen,
       title: 'Contributing',
-      content: (
-        <p className="text-sm leading-relaxed text-slate-300">
-          First review <Link href="/eip/1" className="text-cyan-400 hover:text-cyan-300">EIP-1</Link>.
+        content: (
+        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+          First review <Link href="/eip/1" className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300">EIP-1</Link>.
           Then clone the repository and add your EIP. There is a{' '}
           <a
             href="https://github.com/ethereum/EIPs/blob/master/eip-template.md?plain=1"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300"
+            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
           >
             template EIP here
           </a>
@@ -134,7 +134,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
             href="https://github.com/ethereum/EIPs"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300"
+            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
           >
             EIPs repository
           </a>
@@ -157,10 +157,10 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
               transition={{ duration: 0.4 }}
               className="sticky top-24"
             >
-              <h2 className="dec-title text-lg font-semibold tracking-tight text-slate-200 sm:text-xl">
+              <h2 className="dec-title text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-xl">
                 Reference
               </h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-500">
+              <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-500">
                 EIP types, status terms, and how to contribute.
               </p>
             </motion.div>
@@ -181,14 +181,14 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
                   >
                     <AccordionItem
                       value={item.id}
-                      className="rounded-xl border border-slate-700/40 bg-slate-900/40 px-4 shadow-sm transition-colors hover:border-slate-700/60"
+                      className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/40 px-4 shadow-sm transition-colors hover:border-slate-300 dark:hover:border-slate-700/60"
                     >
-                      <AccordionTrigger className="cursor-pointer items-center py-4 hover:no-underline data-[state=open]:border-b data-[state=open]:border-slate-700/40 data-[state=open]:pb-4">
+                      <AccordionTrigger className="cursor-pointer items-center py-4 hover:no-underline data-[state=open]:border-b data-[state=open]:border-slate-200 dark:data-[state=open]:border-slate-700/40 data-[state=open]:pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-600/50 bg-slate-800/50">
-                            <IconComponent className="h-4 w-4 text-slate-300" />
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600/50 bg-slate-100 dark:bg-slate-800/50">
+                            <IconComponent className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                           </div>
-                          <span className="text-sm font-semibold text-slate-200">{item.title}</span>
+                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-5 pt-0">

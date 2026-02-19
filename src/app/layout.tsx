@@ -113,8 +113,8 @@ export default function RootLayout({
               <div className="shrink-0">
                 <Navbar />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                <main className="min-h-full">{children}</main>
+              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+                <main className="min-h-full w-full">{children}</main>
                 <Footer />
               </div>
             </SidebarInset>
