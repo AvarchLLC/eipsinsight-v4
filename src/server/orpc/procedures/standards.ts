@@ -515,6 +515,32 @@ export const standardsProcedures = {
       };
     }),
 
+  // ——— RIP Creation Trends (by year, for analytics charts) ———
+  getRIPCreationTrends: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      await checkAPIToken(context.headers);
+
+      const results = await prisma.$queryRaw<Array<{
+        year: number;
+        count: bigint;
+      }>>`
+        SELECT 
+          EXTRACT(YEAR FROM created_at)::int AS year,
+          COUNT(*)::bigint AS count
+        FROM rips
+        WHERE created_at IS NOT NULL
+        GROUP BY EXTRACT(YEAR FROM created_at)
+        ORDER BY year ASC
+      `;
+
+      return results.map(r => ({
+        year: r.year,
+        repo: 'rips',
+        count: Number(r.count),
+      }));
+    }),
+
   // ——— RIP Activity Over Time ———
   getRIPActivity: os
     .$context<Ctx>()

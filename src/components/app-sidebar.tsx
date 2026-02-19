@@ -561,10 +561,10 @@ function AppSidebarContent() {
           isActive={isActive}
           className={cn(
             "rounded-md py-1.5 transition-all duration-200",
-            "hover:bg-slate-100 dark:hover:bg-cyan-500/10 hover:text-slate-900 dark:hover:text-white hover:translate-x-0.5",
+            "hover:bg-slate-100 dark:hover:bg-slate-800/70 hover:text-slate-900 dark:hover:text-slate-100 hover:translate-x-0.5",
             "border border-transparent hover:border-slate-200 dark:hover:border-cyan-400/20",
             isActive &&
-              "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-400/15 dark:via-cyan-400/15 dark:to-blue-400/15 text-slate-900 dark:text-white font-medium dark:shadow-[0_0_12px_rgba(34,211,238,0.15)] border-slate-200 dark:border-cyan-400/30"
+              "bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 font-medium border-slate-200 dark:border-cyan-400/30"
           )}
         >
           <Link
@@ -610,11 +610,10 @@ function AppSidebarContent() {
                 tooltip={state === "collapsed" ? item.title : undefined}
                 className={cn(
                   "group relative overflow-hidden rounded-lg transition-all duration-300",
-                  "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
-                  "dark:hover:shadow-[0_0_15px_rgba(34,211,238,0.1)]",
+                  "hover:bg-slate-100 dark:hover:bg-slate-800/70 dark:hover:border-cyan-400/20",
                   "border border-transparent",
                   (isItemOpen || isHighlighted) &&
-                    "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-500/10 dark:via-cyan-500/10 dark:to-blue-500/10 border-slate-200 dark:border-cyan-400/20",
+                    "bg-slate-100 dark:bg-slate-800/80 dark:border-cyan-400/30",
                   state === "collapsed" &&
                     "w-11 h-11 p-0 flex items-center justify-center"
                 )}
@@ -671,11 +670,10 @@ function AppSidebarContent() {
           tooltip={state === "collapsed" ? item.title : undefined}
           className={cn(
             "group relative overflow-hidden rounded-lg transition-all duration-300",
-            "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
-            "dark:hover:shadow-[0_0_15px_rgba(34,211,238,0.1)] hover:translate-x-0.5",
+            "hover:bg-slate-100 dark:hover:bg-slate-800/70 dark:hover:border-cyan-400/20 hover:translate-x-0.5",
             "border border-transparent",
             isActive &&
-              "bg-slate-100 dark:bg-linear-to-r dark:from-emerald-500/20 dark:via-cyan-500/20 dark:to-blue-500/20 dark:shadow-[0_0_20px_rgba(34,211,238,0.2)] border-slate-200 dark:border-cyan-400/40",
+              "bg-slate-100 dark:bg-slate-800/80 dark:border-cyan-400/40",
             state === "collapsed" &&
               "w-11 h-11 p-0 flex items-center justify-center"
           )}
@@ -730,10 +728,9 @@ function AppSidebarContent() {
           onClick={handleToggle}
           className={cn(
             "group flex items-center justify-center gap-2 rounded-lg transition-all duration-300",
-            "hover:bg-slate-100 dark:hover:bg-linear-to-r dark:hover:from-emerald-500/15 dark:hover:via-cyan-500/15 dark:hover:to-blue-500/15",
-            "border border-slate-200 dark:border-cyan-400/20 hover:border-slate-300 dark:hover:border-cyan-400/40",
-            "dark:hover:shadow-[0_0_12px_rgba(34,211,238,0.15)]",
-            "bg-slate-100 dark:bg-slate-900/50",
+            "hover:bg-slate-100 dark:hover:bg-slate-800/70",
+            "border border-slate-200 dark:border-slate-700/50 hover:border-slate-300 dark:hover:border-cyan-400/30",
+            "bg-slate-100 dark:bg-slate-800/60",
             state === "expanded" ? "w-full h-10 px-3" : "w-10 h-10"
           )}
           title={state === "expanded" ? "Collapse sidebar" : "Expand sidebar"}
