@@ -13,8 +13,13 @@ const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-// SSL: Use DATABASE_CA_CERT when provided; otherwise accept self-signed certs
-// (e.g. Aiven, some managed Postgres). Vercel/production needs this for TLS.
+// SSL: pg v9+ treats sslmode=require as verify-full. Add uselibpqcompat=true so
+// sslmode=require allows self-signed certs (Aiven, etc). See prisma/prisma#29060.
+const connectionString = env.DATABASE_URL.includes("uselibpqcompat=")
+  ? env.DATABASE_URL
+  : env.DATABASE_URL + (env.DATABASE_URL.includes("?") ? "&" : "?") + "uselibpqcompat=true";
+
+// Also pass ssl config for Pool: accept self-signed when no CA cert provided.
 const sslConfig = process.env.DATABASE_CA_CERT
   ? { ca: process.env.DATABASE_CA_CERT }
   : { rejectUnauthorized: false };
@@ -22,7 +27,7 @@ const sslConfig = process.env.DATABASE_CA_CERT
 const pool =
   globalForPrisma.pool ??
   new Pool({
-    connectionString: env.DATABASE_URL,
+    connectionString,
     ssl: sslConfig,
     max: 3, // Aiven hobby tier ~20 slots; keep very low to avoid 53300
     min: 0, // Don't hold idle connections
