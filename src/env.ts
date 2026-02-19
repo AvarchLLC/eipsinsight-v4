@@ -36,9 +36,9 @@ export const env = createEnv({
 
   /**
    * The prefix that client-side variables must have. This is enforced both at
-   * a type-level and at runtime.
+   * a type-level and at runtime. Use NEXT_PUBLIC_ to match Next.js client env convention.
    */
-  clientPrefix: "PUBLIC_",
+  clientPrefix: "NEXT_PUBLIC_",
 
   client: {
     NEXT_PUBLIC_FEATURE_PERSONA_ONBOARDING: z
