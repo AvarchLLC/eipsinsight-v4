@@ -1,5 +1,8 @@
 
 import { os, checkAPIToken, requireAuth, protectedProcedure, publicProcedure, type Ctx } from './types'
+import { requireScope } from "./types"
+import { API_SCOPES } from "@/lib/apiScopes"
+
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 import { unstable_cache } from 'next/cache'
@@ -840,9 +843,9 @@ const getReviewersRepoDistributionCached = unstable_cache(
 );
 
 export const analyticsProcedures = {
-  getActiveProposals: publicProcedure
+  getActiveProposals: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
       const result = await prisma.$queryRawUnsafe<Array<{
         draft: bigint;
         review: bigint;
@@ -873,11 +876,9 @@ export const analyticsProcedures = {
       };
     }),
 
-  getActiveProposalsDetailed: os
-    .$context<Ctx>()
+  getActiveProposalsDetailed: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
@@ -910,19 +911,15 @@ export const analyticsProcedures = {
       return results;
     }),
 
-  getLifecycleData: os
-    .$context<Ctx>()
+  getLifecycleData: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getLifecycleDataCached(input.repo ?? null);
     }),
 
-  getLifecycleDetailed: os
-    .$context<Ctx>()
+  getLifecycleDetailed: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
@@ -954,19 +951,15 @@ export const analyticsProcedures = {
       return results;
     }),
 
-  getStandardsComposition: os
-    .$context<Ctx>()
+  getStandardsComposition: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getStandardsCompositionCached(input.repo ?? null);
     }),
 
-  getStandardsCompositionDetailed: os
-    .$context<Ctx>()
+  getStandardsCompositionDetailed: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         type: string;
@@ -1011,14 +1004,12 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getRecentChanges: os
-    .$context<Ctx>()
+  getRecentChanges: protectedProcedure
     .input(z.object({
       limit: z.number().optional().default(5),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
@@ -1066,11 +1057,9 @@ export const analyticsProcedures = {
       return results;
     }),
 
-  getDecisionVelocity: os
-    .$context<Ctx>()
+  getDecisionVelocity: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         from_status: string;
@@ -1158,14 +1147,12 @@ export const analyticsProcedures = {
       };
     }),
 
-  getMomentumData: os
-    .$context<Ctx>()
+  getMomentumData: protectedProcedure
     .input(z.object({
       months: z.number().optional().default(12),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -1188,14 +1175,12 @@ export const analyticsProcedures = {
       return results.map(r => Number(r.count));
     }),
 
-  getRecentPRs: os
-    .$context<Ctx>()
+  getRecentPRs: protectedProcedure
     .input(z.object({
       limit: z.number().optional().default(5),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         number: string;
@@ -1227,11 +1212,9 @@ export const analyticsProcedures = {
       return results;
     }),
 
-  getLastCallWatchlist: os
-    .$context<Ctx>()
+  getLastCallWatchlist: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
@@ -1269,15 +1252,13 @@ export const analyticsProcedures = {
     }),
 
   // PR Analytics Procedures
-  getPRMonthlyActivity: os
-    .$context<Ctx>()
+  getPRMonthlyActivity: protectedProcedure
     .input(z.object({
       from: z.string().optional(),
       to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       return getPRMonthlyActivityCached(
         input.repo ?? null,
@@ -1286,13 +1267,11 @@ export const analyticsProcedures = {
       );
     }),
 
-  getPROpenState: os
-    .$context<Ctx>()
+  getPROpenState: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const [stats, oldest] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{
@@ -1342,23 +1321,19 @@ export const analyticsProcedures = {
       };
     }),
 
-  getPRGovernanceStates: os
-    .$context<Ctx>()
+  getPRGovernanceStates: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getPRGovernanceStatesCached(input.repo ?? null);
     }),
 
-  getPRLabels: os
-    .$context<Ctx>()
+  getPRLabels: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         label: string;
@@ -1405,11 +1380,9 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getPRLifecycleFunnel: os
-    .$context<Ctx>()
+  getPRLifecycleFunnel: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         stage: string;
@@ -1454,34 +1427,28 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getPRTimeToOutcome: os
-    .$context<Ctx>()
+  getPRTimeToOutcome: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getPRTimeToOutcomeCached(input.repo ?? null);
     }),
 
-  getPRStaleness: os
-    .$context<Ctx>()
+  getPRStaleness: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getPRStalenessCached(input.repo ?? null);
     }),
 
-  getPRStaleHighRisk: os
-    .$context<Ctx>()
+  getPRStaleHighRisk: protectedProcedure
     .input(z.object({
       days: z.number().optional().default(30),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -1541,15 +1508,13 @@ export const analyticsProcedures = {
     }),
 
   // Month-scoped hero KPIs (end-of-period snapshot)
-  getPRMonthHeroKPIs: os
-    .$context<Ctx>()
+  getPRMonthHeroKPIs: protectedProcedure
     .input(z.object({
       year: z.number(),
       month: z.number(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const monthStr = `${input.year}-${String(input.month).padStart(2, '0')}`;
       const monthEndDate = `${monthStr}-01`; // last day computed in SQL as end of month
 
@@ -1619,13 +1584,11 @@ export const analyticsProcedures = {
     }),
 
   // Open PR classification (DRAFT, TYPO, NEW_EIP, STATUS_CHANGE, OTHER) — one bucket per PR
-  getPROpenClassification: os
-    .$context<Ctx>()
+  getPROpenClassification: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         category: string;
@@ -1672,13 +1635,11 @@ export const analyticsProcedures = {
     }),
 
   // Governance waiting state with median wait and oldest PR per bucket
-  getPRGovernanceWaitingState: os
-    .$context<Ctx>()
+  getPRGovernanceWaitingState: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         state: string;
@@ -1738,13 +1699,11 @@ export const analyticsProcedures = {
     }),
 
   // Export: open PRs with governance state (for CSV/JSON download)
-  getPROpenExport: os
-    .$context<Ctx>()
+  getPROpenExport: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -1785,23 +1744,19 @@ export const analyticsProcedures = {
     }),
 
   // ——— Contributors Analytics ———
-  getContributorKPIs: os
-    .$context<Ctx>()
+  getContributorKPIs: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
       return getContributorKPIsCached();
     }),
 
-  getContributorActivityByType: os
-    .$context<Ctx>()
+  getContributorActivityByType: protectedProcedure
     .input(z.object({
       from: z.string().optional(),
       to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getContributorActivityByTypeCached(
         input.repo ?? null,
         input.from ?? null,
@@ -1809,22 +1764,19 @@ export const analyticsProcedures = {
       );
     }),
 
-  getContributorActivityByRepo: os
-    .$context<Ctx>()
+  getContributorActivityByRepo: protectedProcedure
     .input(z.object({
       from: z.string().optional(),
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getContributorActivityByRepoCached(
         input.from ?? null,
         input.to ?? null
       );
     }),
 
-  getContributorRankings: os
-    .$context<Ctx>()
+  getContributorRankings: protectedProcedure
     .input(z.object({
       sortBy: z.enum(['total', 'reviews', 'status_changes', 'prs_authored', 'prs_reviewed']).optional().default('total'),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
@@ -1833,7 +1785,6 @@ export const analyticsProcedures = {
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         actor: string;
         total: bigint;
@@ -1883,11 +1834,9 @@ export const analyticsProcedures = {
       return rows;
     }),
 
-  getContributorProfile: os
-    .$context<Ctx>()
+  getContributorProfile: protectedProcedure
     .input(z.object({ actor: z.string(), limit: z.number().optional().default(100) }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const activities = await prisma.contributor_activity.findMany({
         where: { actor: input.actor },
         orderBy: { occurred_at: 'desc' },
@@ -1915,11 +1864,9 @@ export const analyticsProcedures = {
       };
     }),
 
-  getContributorLiveFeed: os
-    .$context<Ctx>()
+  getContributorLiveFeed: protectedProcedure
     .input(z.object({ hours: z.number().optional().default(48), limit: z.number().optional().default(50) }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const since = new Date(Date.now() - input.hours * 60 * 60 * 1000);
       const activities = await prisma.contributor_activity.findMany({
         where: { occurred_at: { gte: since } },
@@ -1937,15 +1884,13 @@ export const analyticsProcedures = {
     }),
 
   // ——— Authors Analytics ———
-  getAuthorKPIs: os
-    .$context<Ctx>()
+  getAuthorKPIs: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       from: z.string().optional(),
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const periodStart = input.from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       const [prStats, eipStats] = await Promise.all([
@@ -2007,14 +1952,12 @@ export const analyticsProcedures = {
       };
     }),
 
-  getAuthorActivityTimeline: os
-    .$context<Ctx>()
+  getAuthorActivityTimeline: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         active_authors: bigint;
@@ -2041,14 +1984,12 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getAuthorSuccessRates: os
-    .$context<Ctx>()
+  getAuthorSuccessRates: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       limit: z.number().optional().default(20),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         author: string;
         total_prs: bigint;
@@ -2104,8 +2045,7 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getTopAuthors: os
-    .$context<Ctx>()
+  getTopAuthors: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       from: z.string().optional(),
@@ -2113,7 +2053,6 @@ export const analyticsProcedures = {
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         author: string;
         prs_created: bigint;
@@ -2157,8 +2096,7 @@ export const analyticsProcedures = {
     }),
 
   // ——— Editors & Reviewers Analytics (cached) ———
-  getEditorsLeaderboard: os
-    .$context<Ctx>()
+  getEditorsLeaderboard: protectedProcedure
     .input(z.object({
       limit: z.number().optional().default(30),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
@@ -2166,7 +2104,6 @@ export const analyticsProcedures = {
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getEditorsLeaderboardCached(
         input.repo ?? null,
         input.from ?? null,
@@ -2175,15 +2112,13 @@ export const analyticsProcedures = {
       );
     }),
 
-  getEditorsLeaderboardExport: os
-    .$context<Ctx>()
+  getEditorsLeaderboardExport: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       from: z.string().optional(),
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const [summary, details] = await Promise.all([
         getEditorsLeaderboardCached(input.repo ?? null, input.from ?? null, input.to ?? null, 500),
@@ -2238,8 +2173,7 @@ export const analyticsProcedures = {
       return { csv, filename };
     }),
 
-  getReviewersLeaderboard: os
-    .$context<Ctx>()
+  getReviewersLeaderboard: protectedProcedure
     .input(z.object({
       limit: z.number().optional().default(30),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
@@ -2247,7 +2181,6 @@ export const analyticsProcedures = {
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getReviewersLeaderboardCached(
         input.repo ?? null,
         input.from ?? null,
@@ -2256,16 +2189,13 @@ export const analyticsProcedures = {
       );
     }),
 
-  getEditorsByCategory: os
-    .$context<Ctx>()
+  getEditorsByCategory: protectedProcedure
     .input(z.object({ repo: z.enum(['eips', 'ercs', 'rips']).optional() }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getEditorsByCategoryCached(input.repo ?? null);
     }),
 
-  getEditorsRepoDistribution: os
-    .$context<Ctx>()
+  getEditorsRepoDistribution: protectedProcedure
     .input(z.object({
       actor: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
@@ -2273,7 +2203,6 @@ export const analyticsProcedures = {
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getEditorsRepoDistributionCached(
         input.actor ?? null,
         input.repo ?? null,
@@ -2282,8 +2211,7 @@ export const analyticsProcedures = {
       );
     }),
 
-  getReviewersRepoDistribution: os
-    .$context<Ctx>()
+  getReviewersRepoDistribution: protectedProcedure
     .input(z.object({
       actor: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
@@ -2291,7 +2219,6 @@ export const analyticsProcedures = {
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getReviewersRepoDistributionCached(
         input.actor ?? null,
         input.repo ?? null,
@@ -2300,14 +2227,12 @@ export const analyticsProcedures = {
       );
     }),
 
-  getEditorsMonthlyTrend: os
-    .$context<Ctx>()
+  getEditorsMonthlyTrend: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         actor: string;
@@ -2353,14 +2278,12 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getReviewersMonthlyTrend: os
-    .$context<Ctx>()
+  getReviewersMonthlyTrend: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         actor: string;
@@ -2406,13 +2329,11 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getReviewerCyclesPerPR: os
-    .$context<Ctx>()
+  getReviewerCyclesPerPR: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{
         cycles: number;
         count: bigint;
@@ -2446,8 +2367,7 @@ export const analyticsProcedures = {
       }));
     }),
 
-  getMonthlyReviewTrend: os
-    .$context<Ctx>()
+  getMonthlyReviewTrend: protectedProcedure
     .input(z.object({
       actor: z.string().optional(),
       from: z.string().optional(),
@@ -2455,7 +2375,6 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const results = await prisma.$queryRawUnsafe<Array<{ month: string; count: bigint }>>(
         `
         SELECT TO_CHAR(date_trunc('month', ca.occurred_at), 'YYYY-MM') AS month, COUNT(*)::bigint AS count
@@ -2478,15 +2397,13 @@ export const analyticsProcedures = {
     }),
 
   // EIP Analytics Procedures
-  getEIPStatusTransitions: os
-    .$context<Ctx>()
+  getEIPStatusTransitions: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       from: z.string().optional(),
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       return getEIPStatusTransitionsCached(
         input.repo ?? null,
         input.from || null,
@@ -2494,27 +2411,23 @@ export const analyticsProcedures = {
       );
     }),
 
-  getEIPThroughput: os
-    .$context<Ctx>()
+  getEIPThroughput: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const monthsParam = input.months || 12;
       return getEIPThroughputCached(input.repo ?? null, monthsParam);
     }),
 
-  getEIPHeroKPIs: os
-    .$context<Ctx>()
+  getEIPHeroKPIs: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       from: z.string().optional(),
       to: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
 
       const periodStart =
         input.from ||
@@ -2528,11 +2441,9 @@ export const analyticsProcedures = {
   // ——— Monthly Editor Leaderboard ———
   // PRs where an official editor was last_actor (governance state) AND the PR was updated this month.
   // Conservative metric: only counts PRs that had governance-state-changing editor action this month.
-  getMonthlyEditorLeaderboard: os
-    .$context<Ctx>()
+  getMonthlyEditorLeaderboard: protectedProcedure
     .input(z.object({ limit: z.number().optional().default(10) }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const nextMonth = now.getMonth() === 11

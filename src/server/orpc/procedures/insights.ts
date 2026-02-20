@@ -1,4 +1,4 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -19,14 +19,12 @@ async function getRepoIds(repo?: string): Promise<number[] | null> {
 export const insightsProcedures = {
   // ──── 1) Monthly Status Snapshot ────
   // Uses eip_snapshots (current state — fast) + monthly transition counts for delta
-  getMonthlyStatusSnapshot: os
-    .$context<Ctx>()
+  getMonthlyStatusSnapshot: protectedProcedure
     .input(z.object({
       month: z.string().regex(/^\d{4}-\d{2}$/),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const repoIds = await getRepoIds(input.repo);
 
       // Current counts from eip_snapshots (small table, very fast)
@@ -94,12 +92,9 @@ export const insightsProcedures = {
 
   // ──── 2) Status Flow Over Time (stacked area) ────
   // Counts transition events per month (last 24 months for speed)
-  getStatusFlowOverTime: os
-    .$context<Ctx>()
+  getStatusFlowOverTime: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -126,12 +121,9 @@ export const insightsProcedures = {
     }),
 
   // ──── 3) Deadline Volatility ────
-  getDeadlineVolatility: os
-    .$context<Ctx>()
+  getDeadlineVolatility: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -154,15 +146,12 @@ export const insightsProcedures = {
     }),
 
   // ──── 4) Editors Leaderboard ────
-  getEditorsLeaderboard: os
-    .$context<Ctx>()
+  getEditorsLeaderboard: protectedProcedure
     .input(z.object({
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const monthStart = input.month ? `${input.month}-01` : null;
       const monthEnd = input.month ? (() => {
@@ -203,16 +192,13 @@ export const insightsProcedures = {
     }),
 
   // ──── 5) Open PRs ────
-  getOpenPRs: os
-    .$context<Ctx>()
+  getOpenPRs: protectedProcedure
     .input(z.object({
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       limit: z.number().optional().default(50),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -260,12 +246,9 @@ export const insightsProcedures = {
     }),
 
   // ──── 6) PR Lifecycle Funnel ────
-  getPRLifecycleFunnel: os
-    .$context<Ctx>()
+  getPRLifecycleFunnel: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         total_opened: bigint;
@@ -293,12 +276,9 @@ export const insightsProcedures = {
     }),
 
   // ──── 7) Governance State Distribution ────
-  getGovernanceStatesOverTime: os
-    .$context<Ctx>()
+  getGovernanceStatesOverTime: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         current_state: string;
@@ -321,12 +301,9 @@ export const insightsProcedures = {
     }),
 
   // ──── 8) Time-to-Decision ────
-  getTimeToDecision: os
-    .$context<Ctx>()
+  getTimeToDecision: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         repo_type: string;
@@ -363,12 +340,9 @@ export const insightsProcedures = {
     }),
 
   // ──── 9) Bottleneck Heatmap ────
-  getBottleneckHeatmap: os
-    .$context<Ctx>()
+  getBottleneckHeatmap: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+    .handler(async ({ context, input }) => {const repoIds = await getRepoIds(input.repo);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -396,12 +370,8 @@ export const insightsProcedures = {
     }),
 
   // ──── 10) Upgrade Timeline ────
-  getUpgradeTimeline: os
-    .$context<Ctx>()
-    .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+  getUpgradeTimeline: protectedProcedure
+    .handler(async ({ context }) => {const results = await prisma.$queryRawUnsafe<Array<{
         id: number;
         slug: string;
         name: string | null;
@@ -431,15 +401,11 @@ export const insightsProcedures = {
     }),
 
   // ──── 11) Upgrade Composition Changes ────
-  getUpgradeCompositionChanges: os
-    .$context<Ctx>()
+  getUpgradeCompositionChanges: protectedProcedure
     .input(z.object({
       upgradeId: z.number().optional(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+    .handler(async ({ context, input }) => {const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         upgrade_name: string;
         event_type: string;
@@ -468,15 +434,11 @@ export const insightsProcedures = {
     }),
 
   // ──── 12) EIP Progress Timeline (editorial) ────
-  getEIPTimeline: os
-    .$context<Ctx>()
+  getEIPTimeline: protectedProcedure
     .input(z.object({
       eipNumber: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Sequential queries to avoid connection pool pressure
+    .handler(async ({ context, input }) => {// Sequential queries to avoid connection pool pressure
       const snapshot = await prisma.$queryRawUnsafe<Array<{
         status: string;
         type: string | null;
@@ -606,12 +568,8 @@ export const insightsProcedures = {
     }),
 
   // ──── 13) Available months ────
-  getAvailableMonths: os
-    .$context<Ctx>()
-    .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      // Use eip_snapshots updated_at for speed instead of scanning eip_status_events
+  getAvailableMonths: protectedProcedure
+    .handler(async ({ context }) => {// Use eip_snapshots updated_at for speed instead of scanning eip_status_events
       const results = await prisma.$queryRawUnsafe<Array<{ month: string }>>(
         `SELECT DISTINCT TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM') AS month
          FROM eip_snapshots s
@@ -626,3 +584,4 @@ export const insightsProcedures = {
       return results.map((r) => r.month);
     }),
 };
+

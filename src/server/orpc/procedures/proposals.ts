@@ -1,19 +1,16 @@
-import { os, checkAPIToken, type Ctx, ORPCError } from './types'
+import { protectedProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const proposalsProcedures = {
   // A. Proposal Overview
-  getProposal: os
-    .$context<Ctx>()
+  getProposal: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Normalize repo name
+// Normalize repo name
       const repoName = input.repo.toLowerCase().replace(/s$/, '');
       const repoMap: Record<string, string> = {
         'eip': 'ethereum/EIPs',
@@ -75,16 +72,13 @@ export const proposalsProcedures = {
     }),
 
   // B. Status Timeline
-  getStatusEvents: os
-    .$context<Ctx>()
+  getStatusEvents: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const eip = await prisma.eips.findUnique({
+const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
@@ -114,16 +108,13 @@ export const proposalsProcedures = {
     }),
 
   // C. Type Timeline
-  getTypeEvents: os
-    .$context<Ctx>()
+  getTypeEvents: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const eip = await prisma.eips.findUnique({
+const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
@@ -151,16 +142,13 @@ export const proposalsProcedures = {
     }),
 
   // D. Upgrade Inclusion
-  getUpgrades: os
-    .$context<Ctx>()
+  getUpgrades: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
+// Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
       // Query directly by proposal number - no need to verify proposal exists first
       const events = await prisma.upgrade_composition_events.findMany({
         where: { 
@@ -217,16 +205,13 @@ export const proposalsProcedures = {
     }),
 
   // E. Markdown Content (placeholder - eip_files may contain this)
-  getContent: os
-    .$context<Ctx>()
+  getContent: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const eip = await prisma.eips.findUnique({
+const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
         include: {
           eip_files: {
@@ -252,16 +237,13 @@ export const proposalsProcedures = {
     }),
 
   // Governance Signals
-  getGovernanceState: os
-    .$context<Ctx>()
+  getGovernanceState: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const emptyState = {
+const emptyState = {
         current_pr_state: null as string | null,
         waiting_on: null as string | null,
         days_since_last_action: null as number | null,
@@ -324,3 +306,4 @@ export const proposalsProcedures = {
       };
     }),
 }
+

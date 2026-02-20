@@ -1,4 +1,4 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, publicProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -25,13 +25,10 @@ const tableInputSchema = z.object({
 
 export const standardsProcedures = {
   // ——— KPIs ———
-  getKPIs: os
-    .$context<Ctx>()
+  getKPIs: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         total: bigint;
         in_review: bigint;
         finalized: bigint;
@@ -61,12 +58,9 @@ export const standardsProcedures = {
     }),
 
   // ——— RIP-specific KPIs ———
-  getRIPKPIs: os
-    .$context<Ctx>()
+  getRIPKPIs: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         total: bigint;
         active: bigint;
         recent_commits: bigint;
@@ -111,13 +105,10 @@ export const standardsProcedures = {
     }),
 
   // ——— Status Distribution (stacked by repo) ———
-  getStatusDistribution: os
-    .$context<Ctx>()
+  getStatusDistribution: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         status: string;
         repo_short: string;
         count: bigint;
@@ -144,13 +135,10 @@ export const standardsProcedures = {
     }),
 
   // ——— Trends Over Time (standards created per year, by repo) ———
-  getCreationTrends: os
-    .$context<Ctx>()
+  getCreationTrends: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         year: number;
         repo_short: string;
         count: bigint;
@@ -179,13 +167,10 @@ export const standardsProcedures = {
     }),
 
   // ——— Category Breakdown ———
-  getCategoryBreakdown: os
-    .$context<Ctx>()
+  getCategoryBreakdown: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         category: string;
         count: bigint;
       }>>(
@@ -218,13 +203,10 @@ export const standardsProcedures = {
     }),
 
   // ——— Filter Options (for populating multi-selects) ———
-  getFilterOptions: os
-    .$context<Ctx>()
+  getFilterOptions: protectedProcedure
     .input(repoFilterSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const [statuses, types, categories] = await Promise.all([
+const [statuses, types, categories] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ value: string }>>(
           `SELECT DISTINCT s.status AS value FROM eip_snapshots s
            LEFT JOIN repositories r ON s.repository_id = r.id
@@ -259,13 +241,10 @@ export const standardsProcedures = {
     }),
 
   // ——— Main Table (EIPs/ERCs) ———
-  getTable: os
-    .$context<Ctx>()
+  getTable: protectedProcedure
     .input(tableInputSchema)
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const {
+const {
         repo, status, type, category, yearFrom, yearTo,
         search, sortBy, sortDir, page, pageSize,
       } = input;
@@ -417,8 +396,7 @@ export const standardsProcedures = {
     }),
 
   // ——— RIPs Table ———
-  getRIPsTable: os
-    .$context<Ctx>()
+  getRIPsTable: protectedProcedure
     .input(z.object({
       search: z.string().optional(),
       sortBy: z.enum(['number', 'title', 'status', 'author', 'created_at', 'last_commit', 'commits']).optional().default('number'),
@@ -427,9 +405,7 @@ export const standardsProcedures = {
       pageSize: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const { search, sortBy, sortDir, page, pageSize } = input;
+const { search, sortBy, sortDir, page, pageSize } = input;
       const offset = ((page ?? 1) - 1) * (pageSize ?? 50);
 
       const conditions: string[] = ['1=1'];
@@ -516,23 +492,20 @@ export const standardsProcedures = {
     }),
 
   // ——— RIP Creation Trends (by year, for analytics charts) ———
-  getRIPCreationTrends: os
-    .$context<Ctx>()
+   getRIPCreationTrends: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRaw<Array<{
+      const results = await prisma.$queryRawUnsafe<Array<{
         year: number;
         count: bigint;
-      }>>`
-        SELECT 
+      }>>(
+        `SELECT 
           EXTRACT(YEAR FROM created_at)::int AS year,
           COUNT(*)::bigint AS count
         FROM rips
         WHERE created_at IS NOT NULL
         GROUP BY EXTRACT(YEAR FROM created_at)
-        ORDER BY year ASC
-      `;
+        ORDER BY year ASC`
+      );
 
       return results.map(r => ({
         year: r.year,
@@ -541,13 +514,11 @@ export const standardsProcedures = {
       }));
     }),
 
-  // ——— RIP Activity Over Time ———
-  getRIPActivity: os
-    .$context<Ctx>()
-    .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
-      const results = await prisma.$queryRawUnsafe<Array<{
+  // ——— RIP Activity Over Time ———
+  getRIPActivity: protectedProcedure
+    .handler(async ({ context }) => {
+const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         count: bigint;
       }>>(
@@ -567,12 +538,9 @@ export const standardsProcedures = {
     }),
 
   // ——— Status × Group Matrix (for homepage) ———
-  getStatusMatrix: os
-    .$context<Ctx>()
+  getStatusMatrix: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         status: string;
         group_name: string;
         count: bigint;
@@ -598,12 +566,9 @@ export const standardsProcedures = {
     }),
 
   // ——— Upgrade Impact Snapshot (for homepage) ———
-  getUpgradeImpact: os
-    .$context<Ctx>()
+  getUpgradeImpact: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         upgrade_name: string;
         slug: string;
         total: bigint;
@@ -641,12 +606,9 @@ export const standardsProcedures = {
     }),
 
   // ——— Monthly Governance Delta (for homepage) ———
-  getMonthlyDelta: os
-    .$context<Ctx>()
+  getMonthlyDelta: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         to_status: string;
         count: bigint;
       }>>(
@@ -667,12 +629,9 @@ export const standardsProcedures = {
 
   // ——— Repo Distribution (for homepage) ———
   // Aligns with Category Breakdown: ethereum/EIPs = by repo, ethereum/ERCs = by category (ERC), ethereum/RIPs = rips table
-  getRepoDistribution: os
-    .$context<Ctx>()
+  getRepoDistribution: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-
-      // ethereum/EIPs: count by repository (EIPs repo only)
+// ethereum/EIPs: count by repository (EIPs repo only)
       const eipsResults = await prisma.$queryRawUnsafe<Array<{
         proposals: bigint;
         active_prs: bigint;
@@ -754,8 +713,7 @@ export const standardsProcedures = {
     }),
 
   // ——— CSV Export (EIPs/ERCs) ———
-  exportCSV: os
-    .$context<Ctx>()
+  exportCSV: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       status: z.array(z.string()).optional(),
@@ -763,9 +721,7 @@ export const standardsProcedures = {
       category: z.array(z.string()).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      if (input.repo === 'rips') {
+if (input.repo === 'rips') {
         const rows = await prisma.$queryRawUnsafe<Array<{
           rip_number: number;
           title: string | null;
@@ -861,11 +817,9 @@ export const standardsProcedures = {
     }),
 
   // ——— Category × Status cross-tab (for dashboard) ———
-  getCategoryStatusCrosstab: os
-    .$context<Ctx>()
+  getCategoryStatusCrosstab: protectedProcedure
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
-      const results = await prisma.$queryRawUnsafe<Array<{
+const results = await prisma.$queryRawUnsafe<Array<{
         category: string; status: string; repo_group: string; count: bigint;
       }>>(`
         SELECT
@@ -895,3 +849,4 @@ export const standardsProcedures = {
       }));
     }),
 };
+

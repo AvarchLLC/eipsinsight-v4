@@ -1,19 +1,16 @@
-import { os, checkAPIToken, type Ctx, ORPCError } from './types'
+import { protectedProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const searchProcedures = {
   // Search proposals (EIPs, ERCs, RIPs)
-  searchProposals: os
-    .$context<Ctx>()
+  searchProposals: protectedProcedure
     .input(z.object({
       query: z.string().min(1),
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const searchTerm = `%${input.query}%`;
+const searchTerm = `%${input.query}%`;
       const numericQuery = input.query.replace(/[^\d]/g, '');
       const exactNumber = numericQuery ? parseInt(numericQuery, 10) : null;
       const exactTitle = input.query.trim().toLowerCase();
@@ -111,16 +108,13 @@ export const searchProcedures = {
     }),
 
   // Search authors/people (from EIPs, PRs, Issues, and contributor_activity)
-  searchAuthors: os
-    .$context<Ctx>()
+  searchAuthors: protectedProcedure
     .input(z.object({
       query: z.string().min(1),
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const searchTerm = `%${input.query}%`;
+const searchTerm = `%${input.query}%`;
 
       // Get actors from PRs, Issues, and contributor_activity - simplified without EIP matching for now
       const results = await prisma.$queryRawUnsafe<Array<{
@@ -214,16 +208,13 @@ export const searchProcedures = {
     }),
 
   // Search pull requests
-  searchPRs: os
-    .$context<Ctx>()
+  searchPRs: protectedProcedure
     .input(z.object({
       query: z.string().min(1),
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const searchTerm = `%${input.query}%`;
+const searchTerm = `%${input.query}%`;
       const numericQuery = input.query.replace(/[^\d]/g, '');
 
       const results = await prisma.$queryRawUnsafe<Array<{
@@ -280,16 +271,13 @@ export const searchProcedures = {
     }),
 
   // Search issues
-  searchIssues: os
-    .$context<Ctx>()
+  searchIssues: protectedProcedure
     .input(z.object({
       query: z.string().min(1),
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const searchTerm = `%${input.query}%`;
+const searchTerm = `%${input.query}%`;
       const numericQuery = input.query.replace(/[^\d]/g, '');
 
       const results = await prisma.$queryRawUnsafe<Array<{
@@ -341,3 +329,4 @@ export const searchProcedures = {
       }));
     }),
 }
+

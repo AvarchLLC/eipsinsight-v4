@@ -1,13 +1,11 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const governanceProcedures = {
-  getWaitingStates: os
-    .$context<Ctx>()
+  getWaitingStates: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRaw<Array<{
         current_state: string;
@@ -31,11 +29,9 @@ export const governanceProcedures = {
       }));
     }),
 
-  getResponsibilityMetrics: os
-    .$context<Ctx>()
+  getResponsibilityMetrics: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const [editorMetrics, authorMetrics] = await Promise.all([
         // Editor metrics
@@ -84,11 +80,9 @@ export const governanceProcedures = {
       };
     }),
 
-  getWaitingTimeline: os
-    .$context<Ctx>()
+  getWaitingTimeline: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const results = await prisma.$queryRaw<Array<{
         bucket: string;
@@ -130,16 +124,12 @@ export const governanceProcedures = {
       });
     }),
 
-  getNeedsAttention: os
-    .$context<Ctx>()
+  getNeedsAttention: protectedProcedure
     .input(z.object({
       minDays: z.number().optional(),
       state: z.enum(['WAITING_AUTHOR', 'WAITING_EDITOR', 'WAITING_COMMUNITY', 'IDLE']).optional()
     }))
-    .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      // Build WHERE clause safely
+    .handler(async ({ input, context }) => {// Build WHERE clause safely
       const conditions: string[] = ['pgs.current_state IS NOT NULL'];
       
       if (input.minDays !== undefined) {
@@ -192,15 +182,11 @@ export const governanceProcedures = {
       }));
     }),
 
-  getLongestWaitingPR: os
-    .$context<Ctx>()
+  getLongestWaitingPR: protectedProcedure
     .input(z.object({
       state: z.enum(['WAITING_AUTHOR', 'WAITING_EDITOR']).optional()
     }))
-    .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      const stateCondition = input.state 
+    .handler(async ({ input, context }) => {const stateCondition = input.state 
         ? `pgs.current_state = '${input.state.replace(/'/g, "''")}'`
         : `pgs.current_state IN ('WAITING_AUTHOR', 'WAITING_EDITOR')`;
 
@@ -237,3 +223,4 @@ export const governanceProcedures = {
       };
     }),
 }
+

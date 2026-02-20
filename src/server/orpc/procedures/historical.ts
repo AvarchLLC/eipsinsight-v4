@@ -1,17 +1,15 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const historicalProcedures = {
-  getHistoricalGrowth: os
-    .$context<Ctx>()
+  getHistoricalGrowth: protectedProcedure
     .input(z.object({
       mode: z.enum(['category', 'status']).default('category'),
       includeRIPs: z.boolean().optional().default(true)
     }))
     .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-      let results;
+let results;
       if (input.mode === 'category') {
         results = await prisma.$queryRawUnsafe<Array<{
           year: number;
@@ -91,3 +89,4 @@ export const historicalProcedures = {
       return Array.from(timelineMap.values()).sort((a, b) => a.year - b.year);
     }),
 }
+

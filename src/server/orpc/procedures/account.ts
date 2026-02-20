@@ -2,13 +2,15 @@ import { os, ORPCError, type Ctx } from './types'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { uploadImageToCloudinary } from '@/lib/cloudinary'
+import { generateToken, hashToken, maskToken, getTokenAge } from '@/lib/token-utils'
+import { API_SCOPES, type ApiScope } from '@/lib/apiScopes'
 import * as z from 'zod'
 
 export const accountProcedures = {
   getMe: os
     .$context<Ctx>()
     .handler(async ({ context }) => {
-      const session = await auth.api.getSession({ headers: context.headers })
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
       if (!session?.user) {
         throw new ORPCError('UNAUTHORIZED')
       }
@@ -29,7 +31,7 @@ export const accountProcedures = {
       }),
     )
     .handler(async ({ input, context }) => {
-      const session = await auth.api.getSession({ headers: context.headers })
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
       if (!session?.user) {
         throw new ORPCError('UNAUTHORIZED')
       }
@@ -46,7 +48,7 @@ export const accountProcedures = {
     .$context<Ctx>()
     .input(z.object({ fileName: z.string(), base64Data: z.string() }))
     .handler(async ({ input, context }) => {
-      const session = await auth.api.getSession({ headers: context.headers })
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
       if (!session?.user) {
         throw new ORPCError('UNAUTHORIZED')
       }
@@ -64,4 +66,125 @@ export const accountProcedures = {
 
       return { url }
     }),
+  listTokens: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
+      if (!session?.user) {
+        throw new ORPCError('UNAUTHORIZED')
+      }
+
+      const tokens = await prisma.apiToken.findMany({
+        where: { userId: session.user.id },
+        select: {
+          id: true,
+          name: true,
+          scopes: true,
+          lastUsed: true,
+          expiresAt: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      })
+
+      return tokens.map((token) => ({
+        ...token,
+        masked: '••••••••' + (token.id.slice(-8) || '••••••••'),
+      }))
+    }),
+  createToken: os
+    .$context<Ctx>()
+    .input(
+      z.object({
+        name: z.string().min(1).max(100),
+        scopes: z.array(z.enum(Object.values(API_SCOPES) as [ApiScope, ...ApiScope[]])).min(1),
+        expiryDays: z.number().int().min(7).max(365).optional(),
+      }),
+    )
+    .handler(async ({ input, context }) => {
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
+      if (!session?.user) {
+        throw new ORPCError('UNAUTHORIZED')
+      }
+
+      // Generate secure token
+      const plainToken = generateToken()
+      const tokenHash = hashToken(plainToken)
+
+      // Calculate expiration date
+      const expiryDays = input.expiryDays || 90 // Default 90 days
+      const expiresAt = new Date()
+      expiresAt.setDate(expiresAt.getDate() + expiryDays)
+
+      // Create token in database
+      const token = await prisma.apiToken.create({
+        data: {
+          userId: session.user.id,
+          name: input.name,
+          tokenHash: tokenHash,
+          scopes: input.scopes,
+          expiresAt: expiresAt,
+        },
+      })
+
+      return {
+        id: token.id,
+        name: token.name,
+        plainToken: plainToken, // Only return this once at creation
+        createdAt: token.createdAt,
+        expiresAt: token.expiresAt,
+        scopes: token.scopes,
+      }
+    }),
+  revokeToken: os
+    .$context<Ctx>()
+    .input(z.object({ tokenId: z.string().cuid() }))
+    .handler(async ({ input, context }) => {
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
+      if (!session?.user) {
+        throw new ORPCError('UNAUTHORIZED')
+      }
+
+      const token = await prisma.apiToken.findUnique({
+        where: { id: input.tokenId },
+      })
+
+      if (!token) {
+        throw new ORPCError('NOT_FOUND', { message: 'Token not found' })
+      }
+
+      if (token.userId !== session.user.id) {
+        throw new ORPCError('FORBIDDEN', { message: 'Cannot revoke token of another user' })
+      }
+
+      await prisma.apiToken.delete({
+        where: { id: input.tokenId },
+      })
+
+      return { ok: true }
+    }),
+  getTokenStats: os
+    .$context<Ctx>()
+    .handler(async ({ context }) => {
+      const session = await auth.api.getSession({ headers: new Headers(context.headers) })
+      if (!session?.user) {
+        throw new ORPCError('UNAUTHORIZED')
+      }
+
+      const tokens = await prisma.apiToken.findMany({
+        where: { userId: session.user.id },
+      })
+
+      const active = tokens.filter((t) => !t.expiresAt || t.expiresAt > new Date()).length
+      const lastUsed = tokens
+        .filter((t) => t.lastUsed)
+        .sort((a, b) => (b.lastUsed?.getTime() || 0) - (a.lastUsed?.getTime() || 0))[0]
+
+      return {
+        total: tokens.length,
+        active: active,
+        lastUsed: lastUsed?.lastUsed || null,
+      }
+    }),
 }
+

@@ -1,7 +1,9 @@
 import { os, ORPCError } from '@orpc/server'
 import { prisma } from '@/lib/prisma'
+import { auth } from '@/lib/auth'  // 👈 import your better-auth instance
+import { headers as nextHeaders } from 'next/headers'
+import { hashToken } from '@/lib/token-utils'
 
-// Context carries headers as a plain record
 export type Ctx = {
   headers: Record<string, string>
   user?: {
@@ -14,15 +16,15 @@ export type Ctx = {
   }
 }
 
-
-// Helper to check API token authentication
 export async function checkAPIToken(headers: Record<string, string>) {
   const apiTokenValue = headers['x-api-token']
-
   if (!apiTokenValue) return null
 
+  // Hash the incoming token
+  const tokenHash = hashToken(apiTokenValue)
+
   const token = await prisma.apiToken.findUnique({
-    where: { token: apiTokenValue },
+    where: { tokenHash: tokenHash },
     include: { user: true },
   })
 
@@ -51,13 +53,28 @@ export async function checkAPIToken(headers: Record<string, string>) {
   }
 }
 
+// 👇 New: check better-auth session
+async function checkSession(headers: Record<string, string>) {
+  try {
+    const session = await auth.api.getSession({
+      headers: new Headers(headers),
+    })
+
+    if (!session?.user) return null
+
+    return {
+      id: session.user.id,
+      role: (session.user as any).role ?? 'user',
+    }
+  } catch {
+    return null
+  }
+}
+
 export function requireScope(ctx: Ctx, requiredScope: string) {
   if (!ctx.apiToken) {
-    throw new ORPCError('UNAUTHORIZED', {
-      message: 'API token required',
-    })
+    throw new ORPCError('UNAUTHORIZED', { message: 'API token required' })
   }
-
   if (!ctx.apiToken.scopes.includes(requiredScope)) {
     throw new ORPCError('FORBIDDEN', {
       message: `Missing required scope: ${requiredScope}`,
@@ -67,31 +84,32 @@ export function requireScope(ctx: Ctx, requiredScope: string) {
 
 export function requireAuth(ctx: Ctx) {
   if (!ctx.user && !ctx.apiToken) {
-    throw new ORPCError('UNAUTHORIZED', {
-      message: 'Authentication required',
-    })
+    throw new ORPCError('UNAUTHORIZED', { message: 'Authentication required' })
   }
 }
-
 
 export const publicProcedure = os.$context<Ctx>()
 
 export const protectedProcedure = os
   .$context<Ctx>()
   .use(async ({ context, next }) => {
-    const auth = await checkAPIToken(context.headers)
+    // 1. Try API token first
+    const tokenAuth = await checkAPIToken(context.headers)
+    if (tokenAuth) {
+      context.user = tokenAuth.user
+      context.apiToken = tokenAuth.apiToken
+    }
 
-    if (auth) {
-      context.user = auth.user
-      context.apiToken = auth.apiToken
+    // 2. Fall back to better-auth session 👇
+    if (!context.user) {
+      const sessionUser = await checkSession(context.headers)
+      if (sessionUser) {
+        context.user = sessionUser
+      }
     }
 
     requireAuth(context)
-
     return next({ context })
   })
 
-
-
-// Export os for use in procedures
 export { os, ORPCError }
