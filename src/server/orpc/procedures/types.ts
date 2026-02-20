@@ -2,6 +2,7 @@ import { os, ORPCError } from '@orpc/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'  // 👈 import your better-auth instance
 import { headers as nextHeaders } from 'next/headers'
+import { hashToken } from '@/lib/token-utils'
 
 export type Ctx = {
   headers: Record<string, string>
@@ -19,8 +20,11 @@ export async function checkAPIToken(headers: Record<string, string>) {
   const apiTokenValue = headers['x-api-token']
   if (!apiTokenValue) return null
 
+  // Hash the incoming token
+  const tokenHash = hashToken(apiTokenValue)
+
   const token = await prisma.apiToken.findUnique({
-    where: { token: apiTokenValue },
+    where: { tokenHash: tokenHash },
     include: { user: true },
   })
 
