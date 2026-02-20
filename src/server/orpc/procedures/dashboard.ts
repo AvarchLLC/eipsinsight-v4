@@ -20,19 +20,9 @@ export const dashboardProcedures = {
       await checkAPIToken(context.headers);
       const repo = input.repo ?? null;
 
-      const [
-        kpisRes,
-        crosstabRes,
-        statusDistRes,
-        categoryBreakdownRes,
-        statusFlowRes,
-        repoDistRes,
-        monthlyDeltaRes,
-        upgradeImpactRes,
-        decisionVelocityRes,
-        ripKpisRes,
-      ] = await Promise.all([
-        // getKPIs
+      try {
+      // Run in batches to avoid exhausting DB connection pool (max ~4 concurrent)
+      const [kpisRes, crosstabRes, statusDistRes, categoryBreakdownRes] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ total: bigint; in_review: bigint; finalized: bigint; new_this_year: bigint }>>(
           `SELECT COUNT(*)::bigint AS total,
             COUNT(*) FILTER (WHERE s.status IN ('Draft', 'Review', 'Last Call'))::bigint AS in_review,
@@ -42,7 +32,6 @@ export const dashboardProcedures = {
           WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))`,
           repo
         ),
-        // getCategoryStatusCrosstab
         prisma.$queryRawUnsafe<Array<{ category: string; status: string; repo_group: string; count: bigint }>>(
           `SELECT COALESCE(NULLIF(s.category, ''), s.type, 'Unknown') AS category, s.status,
             CASE WHEN s.category = 'ERC' OR LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' THEN 'ERCs'
@@ -54,7 +43,6 @@ export const dashboardProcedures = {
               WHEN LOWER(SPLIT_PART(r.name, '/', 2)) = 'rips' THEN 'RIPs' ELSE 'EIPs' END
           ORDER BY 1, 2`
         ),
-        // getStatusDistribution
         prisma.$queryRawUnsafe<Array<{ status: string; repo_short: string; count: bigint }>>(
           `SELECT s.status, LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short, COUNT(*)::bigint AS count
           FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
@@ -62,7 +50,6 @@ export const dashboardProcedures = {
           GROUP BY s.status, LOWER(SPLIT_PART(r.name, '/', 2)) ORDER BY count DESC`,
           repo
         ),
-        // getCategoryBreakdown
         prisma.$queryRawUnsafe<Array<{ category: string; count: bigint }>>(
           `SELECT CASE WHEN s.category IS NOT NULL AND TRIM(s.category) <> '' THEN s.category
             WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type ELSE 'Other' END AS category,
@@ -73,63 +60,74 @@ export const dashboardProcedures = {
             WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type ELSE 'Other' END ORDER BY count DESC`,
           repo
         ),
-        // getStatusFlow (explore)
+      ]);
+
+      const [statusFlowRes, repoDistRes, monthlyDeltaRes] = await Promise.all([
         prisma.eip_snapshots.groupBy({
           by: ['status'],
           _count: { status: true },
         }),
-        // getRepoDistribution
         (async () => {
-          const [eips, ercs, rips] = await Promise.all([
-            prisma.$queryRawUnsafe<Array<{ proposals: bigint; active_prs: bigint; finals: bigint }>>(
+          try {
+            const eips = await prisma.$queryRawUnsafe<Array<{ proposals: bigint; active_prs: bigint; finals: bigint }>>(
               `SELECT COUNT(DISTINCT s.eip_id)::bigint AS proposals,
                 (SELECT COUNT(*)::bigint FROM pull_requests pr JOIN repositories r2 ON pr.repository_id = r2.id
                  WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'eips')::bigint AS active_prs,
                 COUNT(DISTINCT s.eip_id) FILTER (WHERE s.status = 'Final')::bigint AS finals
               FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
               WHERE LOWER(SPLIT_PART(r.name, '/', 2)) = 'eips' AND r.active = true`
-            ),
-            prisma.$queryRawUnsafe<Array<{ proposals: bigint; active_prs: bigint; finals: bigint }>>(
+            );
+            const ercs = await prisma.$queryRawUnsafe<Array<{ proposals: bigint; active_prs: bigint; finals: bigint }>>(
               `SELECT COUNT(DISTINCT s.eip_id)::bigint AS proposals,
                 (SELECT COUNT(*)::bigint FROM pull_requests pr JOIN repositories r2 ON pr.repository_id = r2.id
                  WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'ercs')::bigint AS active_prs,
                 COUNT(DISTINCT s.eip_id) FILTER (WHERE s.status = 'Final')::bigint AS finals
               FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
               WHERE s.category = 'ERC' AND r.id IS NOT NULL`
-            ),
-            prisma.$queryRawUnsafe<Array<{ proposals: bigint; finals: bigint; active_prs: bigint }>>(
+            );
+            const rips = await prisma.$queryRawUnsafe<Array<{ proposals: bigint; finals: bigint; active_prs: bigint }>>(
               `SELECT (SELECT COUNT(*)::bigint FROM rips)::bigint AS proposals,
                 (SELECT COUNT(*) FILTER (WHERE status = 'Final')::bigint FROM rips)::bigint AS finals,
                 (SELECT COUNT(*)::bigint FROM pull_requests pr JOIN repositories r2 ON pr.repository_id = r2.id
                  WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'rips')::bigint AS active_prs`
-            ),
-          ]);
-          const rows: Array<{ repo: string; proposals: number; activePRs: number; finals: number }> = [
-            { repo: 'ethereum/EIPs', proposals: Number(eips[0]?.proposals ?? 0), activePRs: Number(eips[0]?.active_prs ?? 0), finals: Number(eips[0]?.finals ?? 0) },
-            { repo: 'ethereum/ERCs', proposals: Number(ercs[0]?.proposals ?? 0), activePRs: Number(ercs[0]?.active_prs ?? 0), finals: Number(ercs[0]?.finals ?? 0) },
-          ];
-          if (Number(rips[0]?.proposals ?? 0) > 0) {
-            rows.push({ repo: 'ethereum/RIPs', proposals: Number(rips[0]?.proposals ?? 0), activePRs: Number(rips[0]?.active_prs ?? 0), finals: Number(rips[0]?.finals ?? 0) });
+            );
+            const rows: Array<{ repo: string; proposals: number; activePRs: number; finals: number }> = [
+              { repo: 'ethereum/EIPs', proposals: Number(eips[0]?.proposals ?? 0), activePRs: Number(eips[0]?.active_prs ?? 0), finals: Number(eips[0]?.finals ?? 0) },
+              { repo: 'ethereum/ERCs', proposals: Number(ercs[0]?.proposals ?? 0), activePRs: Number(ercs[0]?.active_prs ?? 0), finals: Number(ercs[0]?.finals ?? 0) },
+            ];
+            if (Number(rips[0]?.proposals ?? 0) > 0) {
+              rows.push({ repo: 'ethereum/RIPs', proposals: Number(rips[0]?.proposals ?? 0), activePRs: Number(rips[0]?.active_prs ?? 0), finals: Number(rips[0]?.finals ?? 0) });
+            }
+            return rows;
+          } catch (e) {
+            console.warn('[getDashboardOverview] getRepoDistribution failed:', e);
+            return [];
           }
-          return rows;
         })(),
-        // getMonthlyDelta
         prisma.$queryRawUnsafe<Array<{ to_status: string; count: bigint }>>(
           `SELECT se.to_status, COUNT(*)::bigint AS count FROM eip_status_events se
            WHERE se.changed_at >= date_trunc('month', CURRENT_DATE) GROUP BY se.to_status ORDER BY count DESC`
         ),
-        // getUpgradeImpact
-        prisma.$queryRawUnsafe<Array<{ upgrade_name: string; slug: string; total: bigint; finalized: bigint; in_review: bigint; draft: bigint; last_call: bigint }>>(
-          `SELECT u.name AS upgrade_name, u.slug, COUNT(*)::bigint AS total,
-            COUNT(*) FILTER (WHERE s.status = 'Final')::bigint AS finalized,
-            COUNT(*) FILTER (WHERE s.status = 'Review')::bigint AS in_review,
-            COUNT(*) FILTER (WHERE s.status = 'Draft')::bigint AS draft,
-            COUNT(*) FILTER (WHERE s.status = 'Last Call')::bigint AS last_call
-          FROM upgrades u JOIN upgrade_composition_current ucc ON ucc.upgrade_id = u.id
-          JOIN eips e ON e.eip_number = ucc.eip_number JOIN eip_snapshots s ON s.eip_id = e.id
-          GROUP BY u.id, u.name, u.slug ORDER BY u.id DESC LIMIT 6`
-        ),
-        // getDecisionVelocity
+      ]);
+
+      const [upgradeImpactRes, decisionVelocityRes, ripKpisRes] = await Promise.all([
+        (async () => {
+          try {
+            return await prisma.$queryRawUnsafe<Array<{ upgrade_name: string; slug: string; total: bigint; finalized: bigint; in_review: bigint; draft: bigint; last_call: bigint }>>(
+              `SELECT u.name AS upgrade_name, u.slug, COUNT(*)::bigint AS total,
+                COUNT(*) FILTER (WHERE s.status = 'Final')::bigint AS finalized,
+                COUNT(*) FILTER (WHERE s.status = 'Review')::bigint AS in_review,
+                COUNT(*) FILTER (WHERE s.status = 'Draft')::bigint AS draft,
+                COUNT(*) FILTER (WHERE s.status = 'Last Call')::bigint AS last_call
+              FROM upgrades u JOIN upgrade_composition_current ucc ON ucc.upgrade_id = u.id
+              JOIN eips e ON e.eip_number = ucc.eip_number JOIN eip_snapshots s ON s.eip_id = e.id
+              GROUP BY u.id, u.name, u.slug ORDER BY u.id DESC LIMIT 6`
+            );
+          } catch (e) {
+            console.warn('[getDashboardOverview] getUpgradeImpact failed:', e);
+            return [];
+          }
+        })(),
         prisma.$queryRawUnsafe<Array<{ from_status: string; to_status: string; median_days: number | null; count: bigint }>>(
           `WITH repo_filtered AS (
             SELECT se.eip_id, se.repository_id, se.from_status, se.to_status, se.changed_at
@@ -169,7 +167,6 @@ export const dashboardProcedures = {
             CASE to_status WHEN 'Review' THEN 1 WHEN 'Last Call' THEN 2 WHEN 'Final' THEN 3 WHEN 'Withdrawn' THEN 4 ELSE 5 END`,
           repo
         ),
-        // getRIPKPIs
         prisma.$queryRawUnsafe<Array<{ total: bigint; active: bigint }>>(
           `SELECT (SELECT COUNT(*)::bigint FROM rips) AS total,
             (SELECT COUNT(*)::bigint FROM rips WHERE status NOT IN ('Withdrawn', 'Stagnant') OR status IS NULL) AS active`
@@ -229,6 +226,10 @@ export const dashboardProcedures = {
         },
         ripKpis: { total: Number(ripRow?.total ?? 0), active: Number(ripRow?.active ?? 0) },
       };
+      } catch (err) {
+        console.error('[getDashboardOverview]', err);
+        throw err;
+      }
     }),
 
   /** Batch: active proposals, lifecycle, standards composition, recent changes, decision velocity, momentum, recent PRs, last call watchlist */
@@ -414,6 +415,7 @@ export const dashboardProcedures = {
       await checkAPIToken(context.headers);
       const includeRIPs = input.includeRIPs ?? true;
 
+      try {
       const [categoryRes, statusRes] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ year: number | null; category: string; count: bigint }>>(
           `WITH CombinedProposals AS (
@@ -455,5 +457,9 @@ export const dashboardProcedures = {
         timelineByCategory: buildTimeline(categoryRes, 'category'),
         timelineByStatus: buildTimeline(statusRes, 'status'),
       };
+      } catch (err) {
+        console.error('[getGovernanceTimelineData]', err);
+        throw err;
+      }
     }),
 }

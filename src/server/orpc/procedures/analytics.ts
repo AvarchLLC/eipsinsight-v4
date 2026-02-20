@@ -1646,13 +1646,13 @@ export const analyticsProcedures = {
                 OR LOWER(COALESCE(op.title, '')) LIKE '%editorial%' OR LOWER(COALESCE(op.title, '')) LIKE '%grammar%' THEN 'TYPO'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eips e ON e.eip_number = pre.eip_number
                 JOIN eip_snapshots s ON s.eip_id = e.id
                 WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id AND s.status = 'Draft'
               ) THEN 'NEW_EIP'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eips e ON e.eip_number = pre.eip_number
                 JOIN eip_status_events ese ON ese.eip_id = e.id AND ese.pr_number = op.pr_number
                 WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id
               ) THEN 'STATUS_CHANGE'
