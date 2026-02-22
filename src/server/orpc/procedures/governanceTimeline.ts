@@ -1,17 +1,14 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const governanceTimelineProcedures = {
-  getTimelineByCategory: os
-    .$context<Ctx>()
+  getTimelineByCategory: protectedProcedure
     .input(z.object({
       includeRIPs: z.boolean().optional().default(true)
     }))
     .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      const sql = `
+const sql = `
         WITH CombinedProposals AS (
           -- EIPs joined with their Snapshot for Category
           SELECT 
@@ -71,15 +68,12 @@ export const governanceTimelineProcedures = {
       return final;
     }),
 
-  getTimelineByStatus: os
-    .$context<Ctx>()
+  getTimelineByStatus: protectedProcedure
     .input(z.object({
       includeRIPs: z.boolean().optional().default(true)
     }))
     .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      const sql = `
+const sql = `
         WITH CombinedProposals AS (
           -- EIPs
           SELECT 
@@ -134,16 +128,13 @@ export const governanceTimelineProcedures = {
       return final;
     }),
 
-  getDetailedDataByYear: os
-    .$context<Ctx>()
+  getDetailedDataByYear: protectedProcedure
     .input(z.object({
       year: z.number(),
       includeRIPs: z.boolean().optional().default(true)
     }))
     .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      const sql = `
+const sql = `
         WITH EIPData AS (
           SELECT 
             e.eip_number,
@@ -212,15 +203,12 @@ export const governanceTimelineProcedures = {
       }));
     }),
 
-  getTrendingProposals: os
-    .$context<Ctx>()
+  getTrendingProposals: protectedProcedure
     .input(z.object({
       limit: z.number().optional().default(6)
     }))
     .handler(async ({ input, context }) => {
-      await checkAPIToken(context.headers);
-
-      try {
+try {
         // Fetch latest topics from Ethereum Magicians
         const response = await fetch('https://ethereum-magicians.org/latest.json', {
           headers: {
@@ -404,3 +392,4 @@ export const governanceTimelineProcedures = {
       }
     }),
 }
+

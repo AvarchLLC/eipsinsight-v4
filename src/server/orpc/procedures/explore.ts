@@ -1,4 +1,4 @@
-import { os, checkAPIToken, type Ctx, ORPCError } from './types'
+import { protectedProcedure, publicProcedure, checkAPIToken } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 import { unstable_cache } from 'next/cache'
@@ -180,21 +180,18 @@ export const exploreProcedures = {
   // YEAR-BASED QUERIES
   // ============================================
 
-  getYearsOverview: os
-    .$context<Ctx>()
+  getYearsOverview: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       return getYearsOverviewCached();
     }),
 
   // Get monthly activity sparkline for a year
-  getYearSparkline: os
-    .$context<Ctx>()
+  getYearSparkline: protectedProcedure
     .input(z.object({
       year: z.number().min(2015).max(2030),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
+    .handler(async ({ input }) => {
 
       const startDate = new Date(`${input.year}-01-01`);
       const endDate = new Date(`${input.year}-12-31`);
@@ -224,8 +221,7 @@ export const exploreProcedures = {
       return result;
     }),
 
-  getYearStats: os
-    .$context<Ctx>()
+  getYearStats: publicProcedure
     .input(z.object({
       year: z.number().min(2015).max(2030),
     }))
@@ -235,17 +231,13 @@ export const exploreProcedures = {
     }),
 
   // Get EIPs created in a specific year
-  getEIPsByYear: os
-    .$context<Ctx>()
+  getEIPsByYear: protectedProcedure
     .input(z.object({
       year: z.number().min(2015).max(2030),
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const startDate = new Date(`${input.year}-01-01`);
+    .handler(async ({ input }) => {const startDate = new Date(`${input.year}-01-01`);
       const endDate = new Date(`${input.year}-12-31`);
 
       const [items, countResult] = await Promise.all([
@@ -285,8 +277,7 @@ export const exploreProcedures = {
       };
     }),
 
-  getYearActivityChart: os
-    .$context<Ctx>()
+  getYearActivityChart: publicProcedure
     .input(z.object({
       year: z.number().min(2015).max(2030),
     }))
@@ -299,23 +290,20 @@ export const exploreProcedures = {
   // STATUS-BASED QUERIES
   // ============================================
 
-  getStatusCounts: os
-    .$context<Ctx>()
+  getStatusCounts: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       return getStatusCountsCached();
     }),
 
-  getCategoryCounts: os
-    .$context<Ctx>()
+  getCategoryCounts: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       return getCategoryCountsCached();
     }),
 
   // Get EIPs by status with filters
-  getEIPsByStatus: os
-    .$context<Ctx>()
+  getEIPsByStatus: protectedProcedure
     .input(z.object({
       status: z.string().optional(),
       category: z.string().optional(),
@@ -323,10 +311,7 @@ export const exploreProcedures = {
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const where: {
+    .handler(async ({ input }) => {const where: {
         status?: string;
         category?: string;
         type?: string;
@@ -383,8 +368,7 @@ export const exploreProcedures = {
       };
     }),
 
-  getStatusFlow: os
-    .$context<Ctx>()
+  getStatusFlow: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       const statusOrder = ['Draft', 'Review', 'Last Call', 'Final', 'Stagnant', 'Withdrawn'];
@@ -398,23 +382,12 @@ export const exploreProcedures = {
   // ============================================
 
   // Get role leaderboard
-  getRoleLeaderboard: os
-    .$context<Ctx>()
+  getRoleLeaderboard: protectedProcedure
     .input(z.object({
       role: z.enum(['EDITOR', 'REVIEWER', 'CONTRIBUTOR']).optional(),
       limit: z.number().min(1).max(50).default(20),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Common bot patterns to exclude
-      const botExcludeCondition = `
-        AND actor NOT LIKE '%[bot]%'
-        AND actor NOT LIKE '%-bot'
-        AND actor NOT LIKE '%bot'
-        AND actor NOT IN ('dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot')
-      `;
-
+    .handler(async ({ input }) => {
       // Use contributor_activity for role-based stats (has proper role data)
       if (input.role) {
         const roleLeaderboard = await prisma.$queryRaw<Array<{
@@ -492,16 +465,12 @@ export const exploreProcedures = {
     }),
 
   // Get top actors by role
-  getTopActorsByRole: os
-    .$context<Ctx>()
+  getTopActorsByRole: protectedProcedure
     .input(z.object({
       role: z.enum(['EDITOR', 'REVIEWER', 'CONTRIBUTOR']),
       limit: z.number().min(1).max(10).default(3),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const topActors = await prisma.$queryRaw<Array<{
+    .handler(async ({ input }) => {const topActors = await prisma.$queryRaw<Array<{
         actor: string;
         actions: bigint;
       }>>`
@@ -521,16 +490,14 @@ export const exploreProcedures = {
       }));
     }),
 
-  getRoleCounts: os
-    .$context<Ctx>()
+  getRoleCounts: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       return getRoleCountsCached();
     }),
 
   // Get recent activity timeline for a role
-  getRoleActivityTimeline: os
-    .$context<Ctx>()
+  getRoleActivityTimeline: protectedProcedure
     .input(z.object({
       role: z.enum(['EDITOR', 'REVIEWER', 'CONTRIBUTOR']).optional(),
       limit: z.number().min(1).max(50).default(20),
@@ -569,15 +536,11 @@ export const exploreProcedures = {
     }),
 
   // Get role activity sparkline (last 6 months)
-  getRoleActivitySparkline: os
-    .$context<Ctx>()
+  getRoleActivitySparkline: protectedProcedure
     .input(z.object({
       role: z.enum(['EDITOR', 'REVIEWER', 'CONTRIBUTOR']).optional(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const sixMonthsAgo = new Date();
+    .handler(async ({ input }) => {const sixMonthsAgo = new Date();
       sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
       const monthlyData = input.role
@@ -617,15 +580,11 @@ export const exploreProcedures = {
   // ============================================
 
   // Get trending proposals
-  getTrendingProposals: os
-    .$context<Ctx>()
+  getTrendingProposals: protectedProcedure
     .input(z.object({
       limit: z.number().min(1).max(50).default(20),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const sevenDaysAgo = new Date();
+    .handler(async ({ input }) => {const sevenDaysAgo = new Date();
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
       // Calculate trending score:
@@ -690,7 +649,7 @@ export const exploreProcedures = {
       return trendingData.map(t => {
         const score = Number(t.pr_events_count) * 2 + Number(t.comments_count) + (t.had_status_change ? 10 : 0);
         
-        let trendingReason = [];
+        const trendingReason = [];
         if (Number(t.pr_events_count) > 0) {
           trendingReason.push(`${t.pr_events_count} PR events this week`);
         }
@@ -714,15 +673,11 @@ export const exploreProcedures = {
     }),
 
   // Get trending heatmap data (last 30 days)
-  getTrendingHeatmap: os
-    .$context<Ctx>()
+  getTrendingHeatmap: protectedProcedure
     .input(z.object({
       topN: z.number().min(5).max(20).default(10),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const thirtyDaysAgo = new Date();
+    .handler(async ({ input }) => {const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
       // Get top N most active EIPs in last 30 days
@@ -801,8 +756,7 @@ export const exploreProcedures = {
   // UTILITY QUERIES
   // ============================================
 
-  getTypes: os
-    .$context<Ctx>()
+  getTypes: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       const rows = await prisma.$queryRaw<Array<{ type: string; count: bigint }>>`
@@ -811,10 +765,10 @@ export const exploreProcedures = {
       return rows.map(t => ({ type: t.type, count: Number(t.count) }));
     }),
 
-  getCategories: os
-    .$context<Ctx>()
+  getCategories: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
       return getCategoryCountsCached();
     }),
 }
+

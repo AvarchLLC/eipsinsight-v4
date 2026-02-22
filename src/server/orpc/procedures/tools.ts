@@ -1,4 +1,4 @@
-import { os, checkAPIToken, type Ctx } from './types'
+import { protectedProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -24,8 +24,7 @@ END`;
 
 export const toolsProcedures = {
   // ──── Board: EIPs grouped by status (Kanban data) ────
-  getBoardData: os
-    .$context<Ctx>()
+  getBoardData: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       search: z.string().optional(),
@@ -33,7 +32,6 @@ export const toolsProcedures = {
       category: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const repoIds = await getRepoIds(input.repo);
 
       const searchFilter = input.search
@@ -102,14 +100,12 @@ export const toolsProcedures = {
     }),
 
   // ──── Dependencies: EIP requires graph ────
-  getDependencyGraph: os
-    .$context<Ctx>()
+  getDependencyGraph: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       eipNumber: z.number().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
       const repoIds = await getRepoIds(input.repo);
 
       // Get all EIPs with their requires field from eip_snapshots
@@ -174,15 +170,12 @@ export const toolsProcedures = {
     }),
 
   // ──── Timeline: Status events + commits for an EIP ────
-  getEIPFullTimeline: os
-    .$context<Ctx>()
+  getEIPFullTimeline: protectedProcedure
     .input(z.object({
       eipNumber: z.number(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Get EIP info
+// Get EIP info
       const info = await prisma.$queryRawUnsafe<Array<{
         title: string | null;
         author: string | null;
@@ -319,14 +312,12 @@ export const toolsProcedures = {
     }),
 
   // ──── Board filter options ────
-  getBoardFilterOptions: os
-    .$context<Ctx>()
+  getBoardFilterOptions: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const repoIds = await getRepoIds(input.repo);
+const repoIds = await getRepoIds(input.repo);
 
       const types = await prisma.$queryRawUnsafe<Array<{ val: string }>>(
         `SELECT DISTINCT s.type AS val FROM eip_snapshots s
@@ -349,8 +340,7 @@ export const toolsProcedures = {
     }),
 
   // ──── Open PRs Board: paginated list with governance state & classification ────
-  getOpenPRBoard: os
-    .$context<Ctx>()
+  getOpenPRBoard: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       govState: z.string().optional(),
@@ -360,8 +350,7 @@ export const toolsProcedures = {
       pageSize: z.number().default(10),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const { repo, govState, processType, search, page, pageSize } = input;
+const { repo, govState, processType, search, page, pageSize } = input;
       const offset = (page - 1) * pageSize;
 
       const results = await prisma.$queryRawUnsafe<Array<{
@@ -435,16 +424,14 @@ export const toolsProcedures = {
     }),
 
   // ──── Open PRs Board Stats: process type + governance state counts ────
-  getOpenPRBoardStats: os
-    .$context<Ctx>()
+  getOpenPRBoardStats: protectedProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       govState: z.string().optional(),
       search: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-      const { repo, govState, search } = input;
+const { repo, govState, search } = input;
 
       // Process type counts (filtered by govState + search, NOT by processType)
       const ptResults = await prisma.$queryRawUnsafe<Array<{
@@ -510,3 +497,4 @@ export const toolsProcedures = {
       };
     }),
 };
+

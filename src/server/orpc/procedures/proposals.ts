@@ -1,19 +1,16 @@
-import { os, checkAPIToken, type Ctx, ORPCError } from './types'
+import { protectedProcedure, publicProcedure, checkAPIToken, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const proposalsProcedures = {
   // A. Proposal Overview
-  getProposal: os
-    .$context<Ctx>()
+  getProposal: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Normalize repo name
+    .handler(async ({ input }) => {
+// Normalize repo name
       const repoName = input.repo.toLowerCase().replace(/s$/, '');
       const repoMap: Record<string, string> = {
         'eip': 'ethereum/EIPs',
@@ -52,7 +49,6 @@ export const proposalsProcedures = {
       }
 
       const snapshot = eip.eip_snapshots;
-      const repo = snapshot?.repositories;
 
       // Parse authors (assuming comma-separated in author field)
       const authors = eip.author 
@@ -75,16 +71,13 @@ export const proposalsProcedures = {
     }),
 
   // B. Status Timeline
-  getStatusEvents: os
-    .$context<Ctx>()
+  getStatusEvents: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const eip = await prisma.eips.findUnique({
+    .handler(async ({ input }) => {
+const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
@@ -114,16 +107,13 @@ export const proposalsProcedures = {
     }),
 
   // C. Type Timeline
-  getTypeEvents: os
-    .$context<Ctx>()
+  getTypeEvents: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const eip = await prisma.eips.findUnique({
+    .handler(async ({ input }) => {
+const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
@@ -151,16 +141,13 @@ export const proposalsProcedures = {
     }),
 
   // D. Upgrade Inclusion
-  getUpgrades: os
-    .$context<Ctx>()
+  getUpgrades: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      // Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
+    .handler(async ({ input }) => {
+// Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
       // Query directly by proposal number - no need to verify proposal exists first
       const events = await prisma.upgrade_composition_events.findMany({
         where: { 
@@ -217,8 +204,7 @@ export const proposalsProcedures = {
     }),
 
   // E. Markdown Content (fetched from GitHub raw)
-  getContent: os
-    .$context<Ctx>()
+  getContent: publicProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
@@ -227,29 +213,47 @@ export const proposalsProcedures = {
       await checkAPIToken(context.headers);
 
       const repoName = input.repo.toLowerCase().replace(/s$/, '');
-      const repoPath = repoName === 'eip' ? 'EIPs' : repoName === 'erc' ? 'ERCs' : 'RIPs';
-      const filePath = repoName === 'eip' ? 'EIPS' : repoName === 'erc' ? 'ERCS' : 'RIPS';
+      const repoPath =
+        repoName === 'eip' ? 'EIPs' :
+        repoName === 'erc' ? 'ERCs' :
+        'RIPs';
+
+      const filePath =
+        repoName === 'eip' ? 'EIPS' :
+        repoName === 'erc' ? 'ERCS' :
+        'RIPS';
+
       const fileName = `${repoName}-${input.number}.md`;
       const rawUrl = `https://raw.githubusercontent.com/ethereum/${repoPath}/master/${filePath}/${fileName}`;
 
       const res = await fetch(rawUrl);
       if (!res.ok) {
-        throw new ORPCError('NOT_FOUND', { message: `Proposal content not found` });
+        throw new ORPCError('NOT_FOUND', {
+          message: `Proposal content not found`,
+        });
       }
+
       const content = await res.text();
 
+      // Parse frontmatter
       let discussions_to: string | null = null;
       let requires: number[] = [];
+
       const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
       if (frontmatterMatch) {
         const fm = frontmatterMatch[1];
+
         const discussionsMatch = fm.match(/^discussions-to:\s*(.+)$/im);
         if (discussionsMatch) {
-          discussions_to = discussionsMatch[1].trim().replace(/^["']|["']$/g, '');
+          discussions_to = discussionsMatch[1]
+            .trim()
+            .replace(/^["']|["']$/g, '');
         }
+
         const requiresMatch = fm.match(/^requires:\s*(.+)$/im);
         if (requiresMatch) {
-          requires = requiresMatch[1].trim()
+          requires = requiresMatch[1]
+            .trim()
             .split(/[,\s\n\[\]]+/)
             .map((s) => parseInt(s, 10))
             .filter((n) => !Number.isNaN(n));
@@ -266,16 +270,13 @@ export const proposalsProcedures = {
     }),
 
   // Governance Signals
-  getGovernanceState: os
-    .$context<Ctx>()
+  getGovernanceState: protectedProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const emptyState = {
+    .handler(async ({ input }) => {
+const emptyState = {
         current_pr_state: null as string | null,
         waiting_on: null as string | null,
         days_since_last_action: null as number | null,
@@ -338,3 +339,4 @@ export const proposalsProcedures = {
       };
     }),
 }
+

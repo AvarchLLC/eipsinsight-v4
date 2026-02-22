@@ -1,14 +1,12 @@
-import { os, checkAPIToken, type Ctx, ORPCError } from './types'
+import { protectedProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
 export const upgradesProcedures = {
   // List all upgrades with statistics
-  listUpgrades: os
-    .$context<Ctx>()
+  listUpgrades: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const upgrades = await prisma.upgrades.findMany({
         orderBy: { created_at: 'desc' },
@@ -62,11 +60,9 @@ export const upgradesProcedures = {
     }),
 
   // Get aggregate statistics across all upgrades
-  getUpgradeStats: os
-    .$context<Ctx>()
+  getUpgradeStats: protectedProcedure
     .input(z.object({}))
     .handler(async ({ context }) => {
-      await checkAPIToken(context.headers);
 
       const [totalUpgrades, totalEIPs, executionUpgrades, consensusUpgrades, totalCoreEIPs] = await Promise.all([
         prisma.upgrades.count(),
@@ -99,15 +95,11 @@ export const upgradesProcedures = {
     }),
 
   // Get upgrade by slug
-  getUpgrade: os
-    .$context<Ctx>()
+  getUpgrade: protectedProcedure
     .input(z.object({
       slug: z.string(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const upgrade = await prisma.upgrades.findUnique({
+    .handler(async ({ context, input }) => {const upgrade = await prisma.upgrades.findUnique({
         where: { slug: input.slug },
       });
 
@@ -127,15 +119,11 @@ export const upgradesProcedures = {
     }),
 
   // Get current EIP composition for an upgrade
-  getUpgradeCompositionCurrent: os
-    .$context<Ctx>()
+  getUpgradeCompositionCurrent: protectedProcedure
     .input(z.object({
       slug: z.string(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const upgrade = await prisma.upgrades.findUnique({
+    .handler(async ({ context, input }) => {const upgrade = await prisma.upgrades.findUnique({
         where: { slug: input.slug },
       });
 
@@ -182,16 +170,12 @@ export const upgradesProcedures = {
     }),
 
   // Get upgrade composition events (activity feed)
-  getUpgradeCompositionEvents: os
-    .$context<Ctx>()
+  getUpgradeCompositionEvents: protectedProcedure
     .input(z.object({
       slug: z.string(),
       limit: z.number().optional().default(50),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const upgrade = await prisma.upgrades.findUnique({
+    .handler(async ({ context, input }) => {const upgrade = await prisma.upgrades.findUnique({
         where: { slug: input.slug },
       });
 
@@ -225,15 +209,11 @@ export const upgradesProcedures = {
     }),
 
   // Get timeline data for upgrade (grouped by date with bucket statuses)
-  getUpgradeTimeline: os
-    .$context<Ctx>()
+  getUpgradeTimeline: protectedProcedure
     .input(z.object({
       slug: z.string(),
     }))
-    .handler(async ({ context, input }) => {
-      await checkAPIToken(context.headers);
-
-      const upgrade = await prisma.upgrades.findUnique({
+    .handler(async ({ context, input }) => {const upgrade = await prisma.upgrades.findUnique({
         where: { slug: input.slug },
       });
 
@@ -361,3 +341,4 @@ export const upgradesProcedures = {
       return result;
     }),
 }
+
