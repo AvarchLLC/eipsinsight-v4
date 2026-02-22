@@ -1,7 +1,4 @@
-
-import { os, checkAPIToken, requireAuth, protectedProcedure, publicProcedure, type Ctx } from './types'
-import { requireScope } from "./types"
-import { API_SCOPES } from "@/lib/apiScopes"
+import { protectedProcedure } from './types'
 
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
@@ -842,10 +839,39 @@ const getReviewersRepoDistributionCached = unstable_cache(
   { tags: ['analytics-reviewers-repo-distribution'], revalidate: 600 }
 );
 
+const getRecentChangesCached = unstable_cache(
+  async (repo: string | null, limit: number) => {
+    const results = await prisma.$queryRawUnsafe<Array<{
+      eip: string; eip_type: string; title: string; from: string; to: string;
+      days: number; statusColor: string; repository: string; changed_at: Date;
+    }>>(
+      `SELECT e.eip_number::text as eip,
+         CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END as eip_type,
+         e.title, se.from_status as "from", se.to_status as "to",
+         EXTRACT(DAY FROM (NOW() - se.changed_at))::int as days,
+         CASE WHEN se.to_status = 'Final' THEN 'emerald'
+              WHEN se.to_status IN ('Review', 'Last Call') THEN 'blue' ELSE 'slate' END as "statusColor",
+         r.name as repository, se.changed_at
+       FROM eip_status_events se
+       JOIN eips e ON se.eip_id = e.id
+       LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+       LEFT JOIN repositories r ON se.repository_id = r.id
+       WHERE se.changed_at >= NOW() - INTERVAL '7 days'
+         AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+       ORDER BY se.changed_at DESC LIMIT $2`,
+      repo,
+      limit
+    );
+    return results;
+  },
+  ['analytics-getRecentChanges'],
+  { revalidate: 120 }
+);
+
 export const analyticsProcedures = {
   getActiveProposals: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const result = await prisma.$queryRawUnsafe<Array<{
         draft: bigint;
         review: bigint;
@@ -878,7 +904,7 @@ export const analyticsProcedures = {
 
   getActiveProposalsDetailed: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
@@ -913,13 +939,13 @@ export const analyticsProcedures = {
 
   getLifecycleData: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getLifecycleDataCached(input.repo ?? null);
     }),
 
   getLifecycleDetailed: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
@@ -953,13 +979,13 @@ export const analyticsProcedures = {
 
   getStandardsComposition: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getStandardsCompositionCached(input.repo ?? null);
     }),
 
   getStandardsCompositionDetailed: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         type: string;
@@ -1009,57 +1035,13 @@ export const analyticsProcedures = {
       limit: z.number().optional().default(5),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
-
-      const results = await prisma.$queryRawUnsafe<Array<{
-        eip: string;
-        eip_type: string;
-        title: string;
-        from: string;
-        to: string;
-        days: number;
-        statusColor: string;
-        repository: string;
-        changed_at: Date;
-      }>>(
-        `
-        SELECT
-          e.eip_number::text as eip,
-          CASE 
-            WHEN s.category = 'ERC' THEN 'ERC'
-            WHEN r.name LIKE '%RIPs%' THEN 'RIP'
-            ELSE 'EIP'
-          END as eip_type,
-          e.title,
-          se.from_status as "from",
-          se.to_status as "to",
-          EXTRACT(DAY FROM (NOW() - se.changed_at))::int as days,
-          CASE 
-            WHEN se.to_status = 'Final' THEN 'emerald'
-            WHEN se.to_status IN ('Review', 'Last Call') THEN 'blue'
-            ELSE 'slate'
-          END as "statusColor",
-          r.name as repository,
-          se.changed_at
-        FROM eip_status_events se
-        JOIN eips e ON se.eip_id = e.id
-        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
-        LEFT JOIN repositories r ON se.repository_id = r.id
-        WHERE se.changed_at >= NOW() - INTERVAL '7 days'
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        ORDER BY se.changed_at DESC
-        LIMIT $2
-      `,
-        input.repo ?? null,
-        input.limit
-      );
-
-      return results;
+    .handler(async ({ input }) => {
+      return getRecentChangesCached(input.repo ?? null, input.limit);
     }),
 
   getDecisionVelocity: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         from_status: string;
@@ -1152,7 +1134,7 @@ export const analyticsProcedures = {
       months: z.number().optional().default(12),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
@@ -1180,7 +1162,7 @@ export const analyticsProcedures = {
       limit: z.number().optional().default(5),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         number: string;
@@ -1214,7 +1196,7 @@ export const analyticsProcedures = {
 
   getLastCallWatchlist: protectedProcedure
     .input(repoFilterSchema)
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         eip: string;
@@ -1258,7 +1240,7 @@ export const analyticsProcedures = {
       to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       return getPRMonthlyActivityCached(
         input.repo ?? null,
@@ -1271,7 +1253,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const [stats, oldest] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{
@@ -1325,7 +1307,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getPRGovernanceStatesCached(input.repo ?? null);
     }),
 
@@ -1333,7 +1315,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         label: string;
@@ -1382,7 +1364,7 @@ export const analyticsProcedures = {
 
   getPRLifecycleFunnel: protectedProcedure
     .input(z.object({}))
-    .handler(async ({ context }) => {
+    .handler(async () => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         stage: string;
@@ -1431,7 +1413,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getPRTimeToOutcomeCached(input.repo ?? null);
     }),
 
@@ -1439,7 +1421,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getPRStalenessCached(input.repo ?? null);
     }),
 
@@ -1448,7 +1430,7 @@ export const analyticsProcedures = {
       days: z.number().optional().default(30),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -1514,9 +1496,8 @@ export const analyticsProcedures = {
       month: z.number(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const monthStr = `${input.year}-${String(input.month).padStart(2, '0')}`;
-      const monthEndDate = `${monthStr}-01`; // last day computed in SQL as end of month
 
       const results = await prisma.$queryRawUnsafe<Array<{
         open_prs: bigint;
@@ -1588,7 +1569,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         category: string;
@@ -1609,13 +1590,13 @@ export const analyticsProcedures = {
                 OR LOWER(COALESCE(op.title, '')) LIKE '%editorial%' OR LOWER(COALESCE(op.title, '')) LIKE '%grammar%' THEN 'TYPO'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eips e ON e.eip_number = pre.eip_number
                 JOIN eip_snapshots s ON s.eip_id = e.id
                 WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id AND s.status = 'Draft'
               ) THEN 'NEW_EIP'
               WHEN EXISTS (
                 SELECT 1 FROM pull_request_eips pre
-                JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+                JOIN eips e ON e.eip_number = pre.eip_number
                 JOIN eip_status_events ese ON ese.eip_id = e.id AND ese.pr_number = op.pr_number
                 WHERE pre.pr_number = op.pr_number AND pre.repository_id = op.repository_id
               ) THEN 'STATUS_CHANGE'
@@ -1639,7 +1620,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const results = await prisma.$queryRawUnsafe<Array<{
         state: string;
@@ -1703,7 +1684,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -1728,6 +1709,7 @@ export const analyticsProcedures = {
         WHERE pr.state = 'open'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         ORDER BY pr.created_at ASC
+        LIMIT 5000
       `, input.repo || null);
 
       return rows.map(r => ({
@@ -1746,7 +1728,7 @@ export const analyticsProcedures = {
   // ——— Contributors Analytics ———
   getContributorKPIs: protectedProcedure
     .input(z.object({}))
-    .handler(async ({ context }) => {
+    .handler(async () => {
       return getContributorKPIsCached();
     }),
 
@@ -1756,7 +1738,7 @@ export const analyticsProcedures = {
       to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getContributorActivityByTypeCached(
         input.repo ?? null,
         input.from ?? null,
@@ -1769,7 +1751,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getContributorActivityByRepoCached(
         input.from ?? null,
         input.to ?? null
@@ -1784,7 +1766,7 @@ export const analyticsProcedures = {
       to: z.string().optional(),
       limit: z.number().optional().default(50),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         actor: string;
         total: bigint;
@@ -1836,7 +1818,7 @@ export const analyticsProcedures = {
 
   getContributorProfile: protectedProcedure
     .input(z.object({ actor: z.string(), limit: z.number().optional().default(100) }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const activities = await prisma.contributor_activity.findMany({
         where: { actor: input.actor },
         orderBy: { occurred_at: 'desc' },
@@ -1866,7 +1848,7 @@ export const analyticsProcedures = {
 
   getContributorLiveFeed: protectedProcedure
     .input(z.object({ hours: z.number().optional().default(48), limit: z.number().optional().default(50) }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const since = new Date(Date.now() - input.hours * 60 * 60 * 1000);
       const activities = await prisma.contributor_activity.findMany({
         where: { occurred_at: { gte: since } },
@@ -1890,7 +1872,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const periodStart = input.from || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       
       const [prStats, eipStats] = await Promise.all([
@@ -1957,7 +1939,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         active_authors: bigint;
@@ -1989,7 +1971,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       limit: z.number().optional().default(20),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         author: string;
         total_prs: bigint;
@@ -2052,7 +2034,7 @@ export const analyticsProcedures = {
       to: z.string().optional(),
       limit: z.number().optional().default(50),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         author: string;
         prs_created: bigint;
@@ -2103,7 +2085,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getEditorsLeaderboardCached(
         input.repo ?? null,
         input.from ?? null,
@@ -2118,7 +2100,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const [summary, details] = await Promise.all([
         getEditorsLeaderboardCached(input.repo ?? null, input.from ?? null, input.to ?? null, 500),
@@ -2140,6 +2122,7 @@ export const analyticsProcedures = {
             AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
             AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
           ORDER BY ca.actor, ca.occurred_at ASC
+          LIMIT 10000
           `,
           input.repo ?? null,
           input.from ?? null,
@@ -2180,7 +2163,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getReviewersLeaderboardCached(
         input.repo ?? null,
         input.from ?? null,
@@ -2191,7 +2174,7 @@ export const analyticsProcedures = {
 
   getEditorsByCategory: protectedProcedure
     .input(z.object({ repo: z.enum(['eips', 'ercs', 'rips']).optional() }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getEditorsByCategoryCached(input.repo ?? null);
     }),
 
@@ -2202,7 +2185,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getEditorsRepoDistributionCached(
         input.actor ?? null,
         input.repo ?? null,
@@ -2218,7 +2201,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getReviewersRepoDistributionCached(
         input.actor ?? null,
         input.repo ?? null,
@@ -2232,7 +2215,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         actor: string;
@@ -2283,7 +2266,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         actor: string;
@@ -2333,7 +2316,7 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{
         cycles: number;
         count: bigint;
@@ -2374,7 +2357,7 @@ export const analyticsProcedures = {
       to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{ month: string; count: bigint }>>(
         `
         SELECT TO_CHAR(date_trunc('month', ca.occurred_at), 'YYYY-MM') AS month, COUNT(*)::bigint AS count
@@ -2403,7 +2386,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       return getEIPStatusTransitionsCached(
         input.repo ?? null,
         input.from || null,
@@ -2416,7 +2399,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
       months: z.number().optional().default(12),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const monthsParam = input.months || 12;
       return getEIPThroughputCached(input.repo ?? null, monthsParam);
     }),
@@ -2427,7 +2410,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 
       const periodStart =
         input.from ||
@@ -2443,7 +2426,7 @@ export const analyticsProcedures = {
   // Conservative metric: only counts PRs that had governance-state-changing editor action this month.
   getMonthlyEditorLeaderboard: protectedProcedure
     .input(z.object({ limit: z.number().optional().default(10) }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
       const now = new Date();
       const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
       const nextMonth = now.getMonth() === 11

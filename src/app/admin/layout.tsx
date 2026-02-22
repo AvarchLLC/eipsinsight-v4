@@ -23,7 +23,7 @@ export default async function AdminLayout({
     where: { id: result.user.id },
     select: { role: true },
   });
-  if (!user || user.role !== "admin") {
+  if (!user || (user.role !== "admin" && user.role !== "editor")) {
     redirect("/");
   }
 

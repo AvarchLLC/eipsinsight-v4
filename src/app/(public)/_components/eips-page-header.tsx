@@ -43,10 +43,10 @@ export function EIPsPageHeader() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-400"
+              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300"
             >
               Real-time governance analytics — proposal lifecycle, upgrade progress, and editorial workload.
-              Powered by <span className="text-slate-700 dark:text-slate-300">EIPsInsight</span>.
+              Powered by <span className="text-slate-700 dark:text-slate-200">EIPsInsight</span>.
             </motion.p>
           </div>
 
@@ -57,9 +57,9 @@ export function EIPsPageHeader() {
             transition={{ duration: 0.3 }}
             className={cn(
               "group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
-              "border-slate-300 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 backdrop-blur-sm",
-              "transition-all hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-cyan-50 dark:hover:bg-cyan-400/15",
-              "hover:shadow-lg hover:shadow-cyan-500/10"
+              "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80",
+              "transition-all hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-cyan-50 dark:hover:bg-slate-700/80",
+              "hover:shadow-lg dark:hover:shadow-lg hover:shadow-cyan-500/10 dark:hover:shadow-cyan-500/10"
             )}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -82,7 +82,7 @@ export function EIPsPageHeader() {
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-[linear-gradient(to_bottom_right,rgba(15,23,42,0.6),rgba(15,23,42,0.5),rgba(15,23,42,0.6))] backdrop-blur-sm p-6">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/90 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {infoItems.map((item, index) => {
                     const Icon = item.icon;
@@ -94,14 +94,14 @@ export function EIPsPageHeader() {
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                         className="flex items-start gap-3"
                       >
-                        <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-400/20 shrink-0">
+                        <div className="p-2 rounded-lg bg-cyan-500/10 dark:bg-slate-800/80 border border-cyan-400/20 dark:border-slate-600/50 shrink-0">
                           <Icon className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1">
+                          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
                             {item.title}
                           </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                             {item.description}
                           </p>
                         </div>

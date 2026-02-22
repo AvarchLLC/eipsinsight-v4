@@ -1,6 +1,7 @@
 generator client {
-  provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  provider   = "prisma-client-js"
+  output     = "../src/generated/prisma"
+  engineType = "library"
 }
 
 datasource db {
@@ -8,24 +9,49 @@ datasource db {
 }
 
 model User {
-  id                  String            @id @default(cuid())
-  name                String
-  email               String
-  emailVerified       Boolean           @default(false)
-  image               String?
-  createdAt           DateTime          @default(now())
-  updatedAt           DateTime          @updatedAt
-  avatarUrl           String?
-  membershipExpiresAt DateTime?
-  membershipTier      String?
-  role                String            @default("user")
-  accounts            Account[]
-  apiTokens           ApiToken[]
-  blogs               Blog[]
-  sessions            Session[]
-  preferences         user_preferences?
+  id                    String                @id @default(cuid())
+  name                  String
+  email                 String
+  emailVerified         Boolean               @default(false)
+  image                 String?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  avatarUrl             String?
+  membershipExpiresAt   DateTime?
+  membershipTier        String?
+  role                  String                @default("user")
+  accounts              Account[]
+  apiTokens             ApiToken[]
+  blogs                 Blog[]
+  sessions              Session[]
+  preferences           user_preferences?
+  blog_editor_profile   blog_editor_profile?
+  blog_comments         blog_comment[]
 
   @@map("user")
+}
+
+model blog_editor_profile {
+  user_id   String   @id
+  linkedin  String?
+  x         String?
+  facebook  String?
+  telegram  String?
+  bio       String?
+  updated_at DateTime @default(now()) @updatedAt
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("blog_editor_profile")
+}
+
+model blog_category {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  blogs       Blog[]
+
+  @@map("blog_category")
 }
 
 model user_preferences {
@@ -114,21 +140,57 @@ model ApiToken {
 }
 
 model Blog {
-  id         String   @id @default(cuid())
-  slug       String   @unique
-  title      String
-  excerpt    String?
-  content    String
-  coverImage String?
-  published  Boolean  @default(false)
-  authorId   String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  author     User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  id                 String           @id @default(cuid())
+  slug               String           @unique
+  title              String
+  excerpt            String?
+  content            String
+  coverImage         String?
+  published          Boolean          @default(false)
+  authorId           String
+  categoryId         String?
+  readingTimeMinutes Int?
+  tags               String[]         @default([])
+  featured           Boolean          @default(false)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+  author             User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category           blog_category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  blog_likes         blog_like[]
+  blog_comments      blog_comment[]
 
   @@index([published])
   @@index([slug])
+  @@index([categoryId])
   @@map("blog")
+}
+
+model blog_like {
+  id        String   @id @default(cuid())
+  blogId    String
+  likeKey   String   // userId or "anon:"+fingerprint
+  createdAt DateTime @default(now())
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@unique([blogId, likeKey])
+  @@index([blogId])
+  @@map("blog_like")
+}
+
+model blog_comment {
+  id          String   @id @default(cuid())
+  blogId      String
+  userId      String?
+  authorName  String
+  authorEmail String?
+  content     String
+  createdAt   DateTime @default(now())
+  blog        Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([blogId])
+  @@index([userId])
+  @@map("blog_comment")
 }
 
 model eip_category_events {
@@ -182,6 +244,13 @@ model eip_snapshots {
   updated_at      DateTime      @db.Timestamp(6)
   eips            eips          @relation(fields: [eip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   repositories    repositories? @relation(fields: [repository_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([status], map: "idx_eip_snapshots_status")
+  @@index([category], map: "idx_eip_snapshots_category")
+  @@index([type], map: "idx_eip_snapshots_type")
+  @@index([repository_id], map: "idx_eip_snapshots_repository_id")
+  @@index([status, repository_id], map: "idx_eip_snapshots_status_repo")
+  @@index([updated_at], map: "idx_eip_snapshots_updated_at")
 }
 
 model eip_status_events {
@@ -197,6 +266,10 @@ model eip_status_events {
   repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([eip_id, commit_sha, to_status], map: "eip_status_events_unique")
+  @@index([changed_at], map: "idx_eip_status_events_changed_at")
+  @@index([eip_id, changed_at], map: "idx_eip_status_events_eip_changed")
+  @@index([to_status, changed_at], map: "idx_eip_status_events_to_status_changed")
+  @@index([repository_id, changed_at], map: "idx_eip_status_events_repo_changed")
 }
 
 model eip_type_events {
@@ -225,6 +298,8 @@ model eips {
   eip_snapshots       eip_snapshots?
   eip_status_events   eip_status_events[]
   eip_type_events     eip_type_events[]
+
+  @@index([created_at], map: "idx_eips_created_at")
 }
 
 model pgmigrations {
@@ -243,6 +318,7 @@ model pull_request_eips {
   @@id([pr_number, repository_id, eip_number])
   @@index([eip_number], map: "pull_request_eips_eip_number_index")
   @@index([repository_id, eip_number], map: "pull_request_eips_repository_id_eip_number_index")
+  @@index([repository_id, pr_number], map: "idx_pull_request_eips_repo_pr")
 }
 
 model pull_requests {
@@ -267,6 +343,12 @@ model pull_requests {
 
   @@unique([pr_number, repository_id], map: "pull_requests_unique")
   @@index([labels], map: "idx_pull_requests_labels", type: Gin)
+  @@index([state], map: "idx_pull_requests_state")
+  @@index([created_at], map: "idx_pull_requests_created_at")
+  @@index([repository_id, state], map: "idx_pull_requests_repo_state")
+  @@index([repository_id, created_at], map: "idx_pull_requests_repo_created")
+  @@index([merged_at], map: "idx_pull_requests_merged_at")
+  @@index([closed_at], map: "idx_pull_requests_closed_at")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -311,6 +393,7 @@ model rip_commits {
   rips          rips?    @relation(fields: [rip_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([rip_id, commit_sha], map: "rip_commits_unique")
+  @@index([commit_date], map: "idx_rip_commits_commit_date")
 }
 
 model rips {
@@ -321,6 +404,8 @@ model rips {
   author      String?
   created_at  DateTime?     @default(now()) @db.Timestamp(6)
   rip_commits rip_commits[]
+
+  @@index([status], map: "idx_rips_status")
 }
 
 model scheduler_state {
@@ -341,6 +426,9 @@ model contributor_activity {
 
   @@index([actor], map: "contributor_activity_actor_index")
   @@index([repository_id, occurred_at], map: "contributor_activity_repository_id_occurred_at_index")
+  @@index([role, occurred_at], map: "idx_contributor_activity_role_occurred")
+  @@index([action_type, occurred_at], map: "idx_contributor_activity_action_occurred")
+  @@index([pr_number, repository_id], map: "idx_contributor_activity_pr_repo")
 }
 
 model pr_events {

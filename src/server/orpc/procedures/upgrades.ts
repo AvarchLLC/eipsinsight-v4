@@ -19,44 +19,43 @@ export const upgradesProcedures = {
         },
       });
 
-      // Get stats for each upgrade
-      const statsPromises = upgrades.map(async (upgrade) => {
-        const [totalEIPs, coreEIPs] = await Promise.all([
-          // Total EIPs in upgrade
-          prisma.upgrade_composition_current.count({
-            where: { upgrade_id: upgrade.id },
-          }),
-          // Core EIPs (EIPs that are Core category)
-          prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`
-            SELECT COUNT(DISTINCT ucc.eip_number)::bigint as count
-            FROM upgrade_composition_current ucc
-            JOIN eips e ON e.eip_number = ucc.eip_number
-            JOIN eip_snapshots s ON s.eip_id = e.id
-            WHERE ucc.upgrade_id = $1
-              AND s.category = 'Core'
-          `, upgrade.id).then(r => Number(r[0]?.count || 0)),
-        ]);
+      if (upgrades.length === 0) return [];
 
-        return {
-          ...upgrade,
-          stats: {
-            totalEIPs,
-            executionLayer: upgrade.meta_eip ? 1 : 0,
-            consensusLayer: upgrade.meta_eip ? 0 : 1,
-            coreEIPs,
-          },
-        };
-      });
+      const upgradeIds = upgrades.map(u => u.id);
 
-      const upgradesWithStats = await Promise.all(statsPromises);
+      // Batch: total EIPs per upgrade + core EIPs per upgrade in 2 queries (not N)
+      const [totalCounts, coreCounts] = await Promise.all([
+        prisma.$queryRaw<Array<{ upgrade_id: number; count: bigint }>>`
+          SELECT upgrade_id, COUNT(*)::bigint AS count
+          FROM upgrade_composition_current
+          WHERE upgrade_id = ANY(${upgradeIds})
+          GROUP BY upgrade_id
+        `,
+        prisma.$queryRaw<Array<{ upgrade_id: number; count: bigint }>>`
+          SELECT ucc.upgrade_id, COUNT(DISTINCT ucc.eip_number)::bigint AS count
+          FROM upgrade_composition_current ucc
+          JOIN eips e ON e.eip_number = ucc.eip_number
+          JOIN eip_snapshots s ON s.eip_id = e.id
+          WHERE ucc.upgrade_id = ANY(${upgradeIds}) AND s.category = 'Core'
+          GROUP BY ucc.upgrade_id
+        `,
+      ]);
 
-      return upgradesWithStats.map(u => ({
+      const totalMap = new Map(totalCounts.map(r => [r.upgrade_id, Number(r.count)]));
+      const coreMap = new Map(coreCounts.map(r => [r.upgrade_id, Number(r.count)]));
+
+      return upgrades.map(u => ({
         id: u.id,
         slug: u.slug,
         name: u.name || '',
         meta_eip: u.meta_eip,
         created_at: u.created_at?.toISOString() || null,
-        stats: u.stats,
+        stats: {
+          totalEIPs: totalMap.get(u.id) || 0,
+          executionLayer: u.meta_eip ? 1 : 0,
+          consensusLayer: u.meta_eip ? 0 : 1,
+          coreEIPs: coreMap.get(u.id) || 0,
+        },
       }));
     }),
 

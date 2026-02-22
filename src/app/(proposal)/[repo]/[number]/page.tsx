@@ -201,6 +201,7 @@ export default function ProposalDetailPage() {
   const [markdownLoading, setMarkdownLoading] = useState(false);
   const [markdownError, setMarkdownError] = useState<string | null>(null);
   const [discussionsTo, setDiscussionsTo] = useState<string | null>(null);
+  const [proposalRequires, setProposalRequires] = useState<number[]>([]);
   const [linkCopied, setLinkCopied] = useState(false);
   const [markdownCopied, setMarkdownCopied] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -246,49 +247,33 @@ export default function ProposalDetailPage() {
     }
   }, [number, normalizedRepo]);
 
-  // Fetch markdown content lazily
+  // Fetch markdown content lazily via getContent (includes discussions_to, requires from frontmatter)
   useEffect(() => {
     if (!proposal || markdownContent !== null) return;
 
-    const fetchMarkdown = async () => {
+    const fetchContent = async () => {
       try {
         setMarkdownLoading(true);
         setMarkdownError(null);
-        
-        // Fetch raw markdown from GitHub
-        const response = await fetch(
-          `https://raw.githubusercontent.com/ethereum/${repoPath}/master/${filePath}/${fileName}`
-        );
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch markdown');
-        }
-        
-        const text = await response.text();
-        setMarkdownContent(text);
-        
-        // Extract discussions-to from frontmatter
-        const frontmatterMatch = text.match(/^---\n([\s\S]*?)\n---\n/);
-        if (frontmatterMatch) {
-          const frontmatterText = frontmatterMatch[1];
-          const discussionsMatch = frontmatterText.match(/^discussions-to:\s*(.+)$/im);
-          if (discussionsMatch) {
-            let discussionsUrl = discussionsMatch[1].trim();
-            // Remove quotes if present
-            discussionsUrl = discussionsUrl.replace(/^["']|["']$/g, '');
-            setDiscussionsTo(discussionsUrl);
-          }
-        }
+
+        const data = await client.proposals.getContent({
+          repo: normalizedRepo as 'eip' | 'erc' | 'rip',
+          number,
+        });
+
+        setMarkdownContent(data.content);
+        setDiscussionsTo(data.discussions_to ?? null);
+        setProposalRequires(data.requires ?? []);
       } catch (err: any) {
-        console.error('Failed to fetch markdown:', err);
+        console.error('Failed to fetch proposal content:', err);
         setMarkdownError('Failed to load proposal content');
       } finally {
         setMarkdownLoading(false);
       }
     };
 
-    fetchMarkdown();
-  }, [proposal, repoPath, filePath, fileName, markdownContent]);
+    fetchContent();
+  }, [proposal, normalizedRepo, number, markdownContent]);
 
   const handleCopyLink = async () => {
     const url = window.location.href;
@@ -476,11 +461,11 @@ export default function ProposalDetailPage() {
                       <td className="px-6 py-4 text-sm text-white">{proposal.created}</td>
                     </tr>
                   )}
-                  {proposal.requires.length > 0 && (
+                  {proposalRequires.length > 0 && (
                     <tr>
                       <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Requires</td>
                       <td className="px-6 py-4 text-sm text-white font-mono">
-                        {proposal.requires.map(r => `${repoDisplayName}-${r}`).join(', ')}
+                        {proposalRequires.map(r => `${repoDisplayName}-${r}`).join(', ')}
                       </td>
                     </tr>
                   )}

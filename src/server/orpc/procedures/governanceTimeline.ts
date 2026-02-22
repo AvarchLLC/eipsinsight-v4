@@ -245,21 +245,49 @@ try {
           magiciansUrl: string;
         }> = [];
 
+        // Pre-parse all matching topics to collect proposal numbers
+        const parsedTopics: Array<{
+          topic: any;
+          proposalType: 'EIP' | 'ERC' | 'RIP';
+          proposalNumber: number;
+          cleanTitle: string;
+        }> = [];
+
         for (const topic of topics.slice(0, 40)) {
           const title = topic.title || '';
           const match = title.match(proposalRegex);
-
           if (!match) continue;
-
           const proposalType = match[1].toUpperCase() as 'EIP' | 'ERC' | 'RIP';
           const proposalNumber = parseInt(match[2], 10);
-
           if (!proposalNumber || proposalNumber <= 0) continue;
+          parsedTopics.push({
+            topic,
+            proposalType,
+            proposalNumber,
+            cleanTitle: title.replace(proposalRegex, '').trim(),
+          });
+        }
 
-          // Extract clean title (remove prefix)
-          const cleanTitle = title.replace(proposalRegex, '').trim();
+        // Batch DB lookups: fetch all EIPs and RIPs at once
+        const eipNumbers = parsedTopics.filter(t => t.proposalType !== 'RIP').map(t => t.proposalNumber);
+        const ripNumbers = parsedTopics.filter(t => t.proposalType === 'RIP').map(t => t.proposalNumber);
 
-          // Get discussion metadata
+        const [eipRows, ripRows] = await Promise.all([
+          eipNumbers.length > 0
+            ? prisma.eips.findMany({
+                where: { eip_number: { in: eipNumbers } },
+                include: { eip_snapshots: true },
+              })
+            : Promise.resolve([]),
+          ripNumbers.length > 0
+            ? prisma.rips.findMany({ where: { rip_number: { in: ripNumbers } } })
+            : Promise.resolve([]),
+        ]);
+
+        const eipMap = new Map(eipRows.map(e => [e.eip_number, e]));
+        const ripMap = new Map(ripRows.map(r => [r.rip_number, r]));
+
+        for (const { topic, proposalType, proposalNumber, cleanTitle } of parsedTopics) {
           const replies = topic.reply_count || 0;
           const views = topic.views || 0;
           const likes = topic.like_count || 0;
@@ -267,33 +295,21 @@ try {
           const lastActivityAt = topic.last_posted_at || topic.created_at || new Date().toISOString();
           const magiciansUrl = `https://ethereum-magicians.org/t/${topic.slug}/${topic.id}`;
           
-          // Get author information from posters
-          let authorInfo: {
-            name?: string;
-            username?: string;
-            avatar?: string;
-          } = {};
-          
+          let authorInfo: { name?: string; username?: string; avatar?: string } = {};
           if (data.users && topic.posters && topic.posters.length > 0) {
-            // Get the original poster (first one with "Original Poster" description, or first one if none)
             const originalPoster = topic.posters.find((p: any) => 
               p.description === 'Original Poster' || 
               p.description === 'Original Poster, Most Recent Poster' ||
               (p.extras === 'latest single' && p.description?.includes('Original Poster'))
             ) || topic.posters[0];
-            
             const posterUserId = originalPoster?.user_id;
-            
-            if (posterUserId && posterUserId !== -1) { // Exclude system user
+            if (posterUserId && posterUserId !== -1) {
               const user = data.users.find((u: any) => u.id === posterUserId);
               if (user) {
                 const avatarSize = '45';
                 const avatarUrl = user.avatar_template 
-                  ? user.avatar_template.includes('letter_avatar_proxy')
-                    ? `https://ethereum-magicians.org${user.avatar_template.replace('{size}', avatarSize)}`
-                    : `https://ethereum-magicians.org${user.avatar_template.replace('{size}', avatarSize)}`
+                  ? `https://ethereum-magicians.org${user.avatar_template.replace('{size}', avatarSize)}`
                   : undefined;
-                
                 authorInfo = {
                   name: user.name || user.username || 'Unknown',
                   username: user.username,
@@ -303,19 +319,12 @@ try {
             }
           }
 
-          // Check if proposal exists in internal database
           let internalProposal: {
-            status?: string;
-            category?: string;
-            url?: string;
-            title?: string;
-            author?: string;
+            status?: string; category?: string; url?: string; title?: string; author?: string;
           } | null = null;
 
           if (proposalType === 'RIP') {
-            const rip = await prisma.rips.findUnique({
-              where: { rip_number: proposalNumber },
-            });
+            const rip = ripMap.get(proposalNumber);
             if (rip) {
               internalProposal = {
                 status: rip.status || undefined,
@@ -326,14 +335,8 @@ try {
               };
             }
           } else {
-            // EIP or ERC
-            const eip = await prisma.eips.findUnique({
-              where: { eip_number: proposalNumber },
-            });
-
-            // "snapshots" property may not exist on eip; safely handle and default if not present
-            const snapshot: any = (eip as any)?.snapshots?.[0];
-
+            const eip = eipMap.get(proposalNumber);
+            const snapshot = eip?.eip_snapshots;
             if (eip && snapshot) {
               internalProposal = {
                 status: snapshot.status || undefined,
@@ -359,7 +362,7 @@ try {
             replies,
             views,
             likes,
-            tags: tags.slice(0, 3), // Limit to 3 tags
+            tags: tags.slice(0, 3),
             lastActivityAt,
             destination: internalProposal ? 'internal' : 'magicians',
             url: internalProposal?.url || magiciansUrl,

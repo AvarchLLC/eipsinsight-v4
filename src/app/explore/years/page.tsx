@@ -67,72 +67,36 @@ function YearsPageContent() {
 
   const pageSize = 20;
 
-  // Fetch years overview
+  // Fetch years overview (runs once)
   useEffect(() => {
-    async function fetchYears() {
-      try {
-        const data = await client.explore.getYearsOverview({});
-        setYears(data);
-      } catch (err) {
-        console.error('Failed to fetch years:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchYears();
+    client.explore.getYearsOverview({})
+      .then(data => setYears(data))
+      .catch(err => console.error('Failed to fetch years:', err))
+      .finally(() => setLoading(false));
   }, []);
 
-  // Fetch year stats when year changes
+  // Fetch stats, chart, and table in parallel when year changes
   useEffect(() => {
-    async function fetchStats() {
-      setStatsLoading(true);
-      try {
-        const data = await client.explore.getYearStats({ year: selectedYear });
-        setStats(data);
-      } catch (err) {
-        console.error('Failed to fetch year stats:', err);
-      } finally {
-        setStatsLoading(false);
-      }
-    }
-    fetchStats();
-  }, [selectedYear]);
+    setStatsLoading(true);
+    setChartLoading(true);
+    setTableLoading(true);
 
-  // Fetch chart data when year changes
-  useEffect(() => {
-    async function fetchChart() {
-      setChartLoading(true);
-      try {
-        const data = await client.explore.getYearActivityChart({ year: selectedYear });
-        setChartData(data);
-      } catch (err) {
-        console.error('Failed to fetch chart data:', err);
-      } finally {
-        setChartLoading(false);
+    Promise.allSettled([
+      client.explore.getYearStats({ year: selectedYear }),
+      client.explore.getYearActivityChart({ year: selectedYear }),
+      client.explore.getEIPsByYear({ year: selectedYear, limit: pageSize, offset: (page - 1) * pageSize }),
+    ]).then(([statsRes, chartRes, eipsRes]) => {
+      if (statsRes.status === 'fulfilled') setStats(statsRes.value);
+      if (chartRes.status === 'fulfilled') setChartData(chartRes.value);
+      if (eipsRes.status === 'fulfilled') {
+        setEips(eipsRes.value.items);
+        setTotalEips(eipsRes.value.total);
       }
-    }
-    fetchChart();
-  }, [selectedYear]);
-
-  // Fetch EIPs when year or page changes
-  useEffect(() => {
-    async function fetchEIPs() {
-      setTableLoading(true);
-      try {
-        const data = await client.explore.getEIPsByYear({
-          year: selectedYear,
-          limit: pageSize,
-          offset: (page - 1) * pageSize,
-        });
-        setEips(data.items);
-        setTotalEips(data.total);
-      } catch (err) {
-        console.error('Failed to fetch EIPs:', err);
-      } finally {
-        setTableLoading(false);
-      }
-    }
-    fetchEIPs();
+    }).finally(() => {
+      setStatsLoading(false);
+      setChartLoading(false);
+      setTableLoading(false);
+    });
   }, [selectedYear, page]);
 
   const handleYearSelect = (year: number) => {

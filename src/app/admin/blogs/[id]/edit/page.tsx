@@ -17,6 +17,10 @@ export default function EditBlogPage() {
     content: string;
     coverImage: string | null;
     published: boolean;
+    categoryId?: string | null;
+    readingTimeMinutes?: number | null;
+    tags?: string[];
+    featured?: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,16 +35,16 @@ export default function EditBlogPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-cyan-400" />
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-cyan-600 dark:text-cyan-400" />
       </div>
     );
   }
 
   if (!post) {
     return (
-      <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-        <p className="text-slate-400">Post not found</p>
+      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
+        <p className="text-slate-600 dark:text-slate-400">Post not found</p>
       </div>
     );
   }
@@ -56,6 +60,10 @@ export default function EditBlogPage() {
         content: post.content,
         coverImage: post.coverImage,
         published: post.published,
+        categoryId: post.categoryId ?? null,
+        readingTimeMinutes: post.readingTimeMinutes ?? null,
+        tags: post.tags ?? [],
+        featured: post.featured ?? false,
       }}
     />
   );

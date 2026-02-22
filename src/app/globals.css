@@ -3,6 +3,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html {
+  scroll-behavior: smooth;
+}
+
 :root {
   --expo-in: cubic-bezier(0.95, 0.05, 0.795, 0.035);
   --expo-out: cubic-bezier(0.19, 1, 0.22, 1);

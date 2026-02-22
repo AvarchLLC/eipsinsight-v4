@@ -1,4 +1,4 @@
-import { protectedProcedure, type Ctx, ORPCError } from './types'
+import { protectedProcedure, publicProcedure, checkAPIToken, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
@@ -9,7 +9,7 @@ export const proposalsProcedures = {
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 // Normalize repo name
       const repoName = input.repo.toLowerCase().replace(/s$/, '');
       const repoMap: Record<string, string> = {
@@ -49,7 +49,6 @@ export const proposalsProcedures = {
       }
 
       const snapshot = eip.eip_snapshots;
-      const repo = snapshot?.repositories;
 
       // Parse authors (assuming comma-separated in author field)
       const authors = eip.author 
@@ -66,8 +65,8 @@ export const proposalsProcedures = {
         category: snapshot?.category || null,
         status: snapshot?.status || 'Unknown',
         last_call_deadline: snapshot?.deadline?.toISOString().split('T')[0] || null,
-        discussions_to: null, // TODO: Add discussions_to field to schema
-        requires: [], // TODO: Parse from markdown or add to schema
+        discussions_to: null,
+        requires: [] as number[],
       };
     }),
 
@@ -77,7 +76,7 @@ export const proposalsProcedures = {
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
@@ -113,7 +112,7 @@ const eip = await prisma.eips.findUnique({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
@@ -147,7 +146,7 @@ const eip = await prisma.eips.findUnique({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 // Get all events for this proposal number (eip_number field stores the proposal number regardless of type)
       // Query directly by proposal number - no need to verify proposal exists first
       const events = await prisma.upgrade_composition_events.findMany({
@@ -204,35 +203,69 @@ const eip = await prisma.eips.findUnique({
       });
     }),
 
-  // E. Markdown Content (placeholder - eip_files may contain this)
-  getContent: protectedProcedure
+  // E. Markdown Content (fetched from GitHub raw)
+  getContent: publicProcedure
     .input(z.object({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
     .handler(async ({ context, input }) => {
-const eip = await prisma.eips.findUnique({
-        where: { eip_number: input.number },
-        include: {
-          eip_files: {
-            orderBy: { created_at: 'desc' },
-            take: 1,
-          },
-        },
-      });
+      await checkAPIToken(context.headers);
 
-      if (!eip) {
-        throw new ORPCError('NOT_FOUND', { 
-          message: `EIP-${input.number} not found` 
+      const repoName = input.repo.toLowerCase().replace(/s$/, '');
+      const repoPath =
+        repoName === 'eip' ? 'EIPs' :
+        repoName === 'erc' ? 'ERCs' :
+        'RIPs';
+
+      const filePath =
+        repoName === 'eip' ? 'EIPS' :
+        repoName === 'erc' ? 'ERCS' :
+        'RIPS';
+
+      const fileName = `${repoName}-${input.number}.md`;
+      const rawUrl = `https://raw.githubusercontent.com/ethereum/${repoPath}/master/${filePath}/${fileName}`;
+
+      const res = await fetch(rawUrl);
+      if (!res.ok) {
+        throw new ORPCError('NOT_FOUND', {
+          message: `Proposal content not found`,
         });
       }
 
-      // Return file path (content would need to be fetched from GitHub or stored separately)
-      const latestFile = eip.eip_files[0];
+      const content = await res.text();
+
+      // Parse frontmatter
+      let discussions_to: string | null = null;
+      let requires: number[] = [];
+
+      const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
+      if (frontmatterMatch) {
+        const fm = frontmatterMatch[1];
+
+        const discussionsMatch = fm.match(/^discussions-to:\s*(.+)$/im);
+        if (discussionsMatch) {
+          discussions_to = discussionsMatch[1]
+            .trim()
+            .replace(/^["']|["']$/g, '');
+        }
+
+        const requiresMatch = fm.match(/^requires:\s*(.+)$/im);
+        if (requiresMatch) {
+          requires = requiresMatch[1]
+            .trim()
+            .split(/[,\s\n\[\]]+/)
+            .map((s) => parseInt(s, 10))
+            .filter((n) => !Number.isNaN(n));
+        }
+      }
+
       return {
-        content: null, // TODO: Fetch from GitHub or add content field to eip_files
-        file_path: latestFile?.file_path || null,
-        updated_at: latestFile?.created_at?.toISOString() || null,
+        content,
+        file_path: `${filePath}/${fileName}`,
+        updated_at: null as string | null,
+        discussions_to,
+        requires,
       };
     }),
 
@@ -242,7 +275,7 @@ const eip = await prisma.eips.findUnique({
       repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
       number: z.number(),
     }))
-    .handler(async ({ context, input }) => {
+    .handler(async ({ input }) => {
 const emptyState = {
         current_pr_state: null as string | null,
         waiting_on: null as string | null,

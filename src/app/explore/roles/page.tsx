@@ -64,82 +64,39 @@ function RolesPageContent() {
   const [timelineLoading, setTimelineLoading] = useState(true);
   const [sparklineLoading, setSparklineLoading] = useState(true);
 
-  // Fetch role counts
+  // Fetch role counts (independent, runs once)
   useEffect(() => {
-    async function fetchCounts() {
-      try {
-        const data = await client.explore.getRoleCounts({});
-        const counts = {
-          editors: data.find(r => r.role === 'EDITOR')?.uniqueActors || 0,
-          reviewers: data.find(r => r.role === 'REVIEWER')?.uniqueActors || 0,
-          contributors: data.find(r => r.role === 'CONTRIBUTOR')?.uniqueActors || 0,
-        };
-        setRoleCounts(counts);
-      } catch (err) {
-        console.error('Failed to fetch role counts:', err);
-      } finally {
-        setCountsLoading(false);
-      }
-    }
-    fetchCounts();
+    client.explore.getRoleCounts({}).then(data => {
+      setRoleCounts({
+        editors: data.find(r => r.role === 'EDITOR')?.uniqueActors || 0,
+        reviewers: data.find(r => r.role === 'REVIEWER')?.uniqueActors || 0,
+        contributors: data.find(r => r.role === 'CONTRIBUTOR')?.uniqueActors || 0,
+      });
+    }).catch(err => console.error('Failed to fetch role counts:', err))
+      .finally(() => setCountsLoading(false));
   }, []);
 
-  // Fetch leaderboard when role changes
+  // Fetch leaderboard, timeline, sparkline in parallel when role changes
   useEffect(() => {
-    async function fetchLeaderboard() {
-      setLeaderboardLoading(true);
-      try {
-        const data = await client.explore.getRoleLeaderboard({
-          role: selectedRole || undefined,
-          limit: 20,
-        });
-        // The API can return a slightly wider union for `role`;
-        // at runtime this matches the LeaderboardEntry shape we expect.
-        setLeaderboard(data as LeaderboardEntry[]);
-      } catch (err) {
-        console.error('Failed to fetch leaderboard:', err);
-      } finally {
-        setLeaderboardLoading(false);
-      }
-    }
-    fetchLeaderboard();
-  }, [selectedRole]);
+    setLeaderboardLoading(true);
+    setTimelineLoading(true);
+    setSparklineLoading(true);
 
-  // Fetch timeline when role changes
-  useEffect(() => {
-    async function fetchTimeline() {
-      setTimelineLoading(true);
-      try {
-        const data = await client.explore.getRoleActivityTimeline({
-          role: selectedRole || undefined,
-          limit: 20,
-        });
-        setTimeline(data);
-      } catch (err) {
-        console.error('Failed to fetch timeline:', err);
-      } finally {
-        setTimelineLoading(false);
-      }
-    }
-    fetchTimeline();
-  }, [selectedRole]);
+    const roleArg = selectedRole || undefined;
 
-  // Fetch sparkline when role changes
-  useEffect(() => {
-    async function fetchSparkline() {
-      setSparklineLoading(true);
-      try {
-        const data = await client.explore.getRoleActivitySparkline({
-          role: selectedRole || undefined,
-        });
-        setSparkline(data);
-      } catch (err) {
-        console.error('Failed to fetch sparkline:', err);
-      } finally {
-        setSparklineLoading(false);
-      }
-    }
-    fetchSparkline();
+    Promise.allSettled([
+      client.explore.getRoleLeaderboard({ role: roleArg, limit: 20 }),
+      client.explore.getRoleActivityTimeline({ role: roleArg, limit: 20 }),
+      client.explore.getRoleActivitySparkline({ role: roleArg }),
+    ]).then(([lb, tl, sp]) => {
+      if (lb.status === 'fulfilled') setLeaderboard(lb.value as LeaderboardEntry[]);
+      if (tl.status === 'fulfilled') setTimeline(tl.value);
+      if (sp.status === 'fulfilled') setSparkline(sp.value);
+    }).finally(() => {
+      setLeaderboardLoading(false);
+      setTimelineLoading(false);
+      setSparklineLoading(false);
+    });
   }, [selectedRole]);
 
   const handleRoleChange = (role: Role) => {

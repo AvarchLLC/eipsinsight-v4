@@ -1,18 +1,21 @@
 import { PrismaClient } from "@/generated/prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
 
 const globalForPrisma = globalThis as unknown as {
   prisma?: PrismaClient;
 };
 
-// Prisma Accelerate acts as a connection pooler between Vercel serverless
-// and Aiven, preventing "too many clients" (53300) errors.
-// The accelerateUrl routes queries through the Accelerate proxy;
-// the direct Aiven URL is only used for migrations (in prisma.config.ts).
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    accelerateUrl: process.env.DATABASE_URL,
-    log: ["error"],
-  });
+function createPrisma() {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is required");
+  }
+  const adapter = new PrismaPg({ connectionString });
+  return new PrismaClient({ adapter, log: ["error"] });
+}
 
-globalForPrisma.prisma = prisma;
+export const prisma = globalForPrisma.prisma ?? createPrisma();
+
+if (process.env.NODE_ENV !== "production") {
+  globalForPrisma.prisma = prisma;
+}
