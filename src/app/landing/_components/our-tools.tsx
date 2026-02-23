@@ -161,9 +161,9 @@ export default function OurTools() {
         title="Tools & Resources"
         description="Everything you need to explore, analyze, and contribute to Ethereum standards"
         sectionId="our-tools"
-        className="bg-slate-950/30"
+        className="bg-slate-100/40 dark:bg-slate-950/30"
       />
-      <section className="relative w-full bg-slate-950/30 py-6 sm:py-8">
+      <section className="relative w-full bg-slate-100/40 py-6 sm:py-8 dark:bg-slate-950/30">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           
           {/* Featured Tools - Hero Cards */}
@@ -198,10 +198,10 @@ export default function OurTools() {
 
                       {/* Content */}
                       <div className="flex-1">
-                        <h3 className="mb-2 text-xl font-bold text-white transition-all duration-300 group-hover:tracking-tight">
+                        <h3 className="mb-2 text-xl font-bold text-slate-900 dark:text-white transition-all duration-300 group-hover:tracking-tight">
                           {tool.name}
                         </h3>
-                        <p className="text-sm leading-relaxed text-slate-400 transition-colors duration-300 group-hover:text-slate-300">
+                        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 transition-colors duration-300 group-hover:text-slate-700 dark:group-hover:text-slate-300">
                           {tool.description}
                         </p>
                       </div>
@@ -250,10 +250,10 @@ export default function OurTools() {
 
                       {/* Content */}
                       <div className="flex-1">
-                        <h3 className="mb-1.5 text-base font-bold text-slate-100 transition-colors group-hover:text-white">
+                        <h3 className="mb-1.5 text-base font-bold text-slate-900 dark:text-slate-100 transition-colors group-hover:text-slate-950 dark:group-hover:text-white">
                           {tool.name}
                         </h3>
-                        <p className="text-xs leading-relaxed text-slate-400 transition-colors group-hover:text-slate-300">
+                        <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-400 transition-colors group-hover:text-slate-700 dark:group-hover:text-slate-300">
                           {tool.description}
                         </p>
                       </div>
@@ -294,10 +294,10 @@ export default function OurTools() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-bold text-slate-100 transition-colors group-hover:text-white mb-0.5">
+                      <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 transition-colors group-hover:text-slate-950 dark:group-hover:text-white mb-0.5">
                         {tool.name}
                       </h3>
-                      <p className="text-[11px] text-slate-500 transition-colors group-hover:text-slate-400">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-500 transition-colors group-hover:text-slate-700 dark:group-hover:text-slate-400">
                         {tool.description}
                       </p>
                     </div>

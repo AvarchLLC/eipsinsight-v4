@@ -20,7 +20,7 @@ export default function FAQs() {
       question: 'Where does the data come from?',
       answer: (
         <>
-          We aggregate public GitHub data from the official Ethereum repositories (EIPs, ERCs, RIPs), partner repositories, and community submissions. We fetch commits, PRs, and proposal files using GitHub's API, normalize labels and timestamps into monthly buckets, and persist processed records in MongoDB. Public API endpoints (for example, /api/stats and PR snapshot APIs) expose the aggregated metrics; when the database is unavailable the UI shows a friendly fallback.
+          We aggregate public GitHub data from the official Ethereum repositories (EIPs, ERCs, RIPs), partner repositories, and community submissions. We fetch commits, PRs, and proposal files using GitHub&apos;s API, normalize labels and timestamps into monthly buckets, and persist processed records in MongoDB. Public API endpoints (for example, /api/stats and PR snapshot APIs) expose the aggregated metrics; when the database is unavailable the UI shows a friendly fallback.
         </>
       ),
     },
@@ -35,7 +35,7 @@ export default function FAQs() {
             href="https://github.com/AvarchLLC/EIPsInsight"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+            className="text-cyan-700 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300 underline transition-colors"
           >
             github.com/AvarchLLC/EIPsInsight
           </a>
@@ -49,7 +49,7 @@ export default function FAQs() {
       question: 'What do the labels and statuses mean?',
       answer: (
         <>
-          EIPsInsight uses two types of label systems for comprehensive analysis. 'CustomLabels' are our normalized categories designed for analytics clarity, including labels like 'e-review' (editorial review), 'e-consensus' (awaiting consensus), 'a-review' (author review), 'stagnant' (inactive proposals), and 'miscellaneous' for edge cases. 'GitHubLabels' represent the raw workflow labels from the official repositories. EIP statuses follow the standard lifecycle: Draft (initial submission), Review (community feedback phase), Last Call (final review period), Final (accepted and implemented), Stagnant (inactive for 6+ months), and Withdrawn (author-cancelled). Our visualizations map these statuses to color-coded charts and provide detailed tooltips explaining each stage of the proposal lifecycle.
+          EIPsInsight uses two types of label systems for comprehensive analysis. &apos;CustomLabels&apos; are our normalized categories designed for analytics clarity, including labels like &apos;e-review&apos; (editorial review), &apos;e-consensus&apos; (awaiting consensus), &apos;a-review&apos; (author review), &apos;stagnant&apos; (inactive proposals), and &apos;miscellaneous&apos; for edge cases. &apos;GitHubLabels&apos; represent the raw workflow labels from the official repositories. EIP statuses follow the standard lifecycle: Draft (initial submission), Review (community feedback phase), Last Call (final review period), Final (accepted and implemented), Stagnant (inactive for 6+ months), and Withdrawn (author-cancelled). Our visualizations map these statuses to color-coded charts and provide detailed tooltips explaining each stage of the proposal lifecycle.
         </>
       ),
     },
@@ -64,7 +64,7 @@ export default function FAQs() {
             href="https://github.com/AvarchLLC/EIPsInsight"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-400 hover:text-cyan-300 underline transition-colors"
+            className="text-cyan-700 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300 underline transition-colors"
           >
             github.com/AvarchLLC/EIPsInsight
           </a>
@@ -75,7 +75,7 @@ export default function FAQs() {
   ];
 
   return (
-    <section className="relative w-full bg-slate-950/30 py-16 sm:py-20" id="faqs">
+    <section className="relative w-full bg-slate-100/40 py-16 sm:py-20 dark:bg-slate-950/30" id="faqs">
       <div className="container mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col gap-10 md:flex-row md:gap-16">
           {/* Left Sidebar - Sticky */}
@@ -87,19 +87,19 @@ export default function FAQs() {
               transition={{ duration: 0.5 }}
               className="sticky top-24"
             >
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-200 sm:text-2xl">
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-2xl">
                 Frequently Asked Questions
               </h2>
-              <p className="mt-0.5 text-sm text-slate-500">
+              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">
                 Get answers to common questions about our platform and services.
               </p>
-              <p className="mt-4 text-sm text-slate-500">
-                Can't find what you're looking for? Visit our{' '}
+              <p className="mt-4 text-sm text-slate-600 dark:text-slate-500">
+                Can&apos;t find what you&apos;re looking for? Visit our{' '}
                 <a
                   href="https://github.com/AvarchLLC/EIPsInsight"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-cyan-400 font-medium hover:text-cyan-300 transition-colors underline"
+                  className="inline-flex items-center gap-1.5 text-cyan-700 dark:text-cyan-400 font-medium hover:text-cyan-800 dark:hover:text-cyan-300 transition-colors underline"
                 >
                   <Github className="h-3.5 w-3.5" />
                   GitHub repository
@@ -128,19 +128,19 @@ export default function FAQs() {
                   >
                     <AccordionItem
                       value={item.id}
-                      className="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60 backdrop-blur-sm px-4 shadow-sm last:border-b"
+                      className="rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 backdrop-blur-sm px-4 shadow-sm last:border-b"
                     >
                       <AccordionTrigger className="cursor-pointer items-center py-5 hover:no-underline">
                         <div className="flex items-center gap-3">
                           <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-cyan-400/30 bg-cyan-500/10">
-                            <IconComponent className="h-4 w-4 text-cyan-300" />
+                            <IconComponent className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                           </div>
-                          <span className="text-base font-semibold text-slate-200">{item.question}</span>
+                          <span className="text-base font-semibold text-slate-800 dark:text-slate-200">{item.question}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-5">
                         <div className="pl-9">
-                          <p className="text-sm leading-relaxed text-slate-300 sm:text-base">
+                          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300 sm:text-base">
                             {item.answer}
                           </p>
                         </div>

@@ -493,7 +493,7 @@ export default function BlogPostPage() {
                       <div className="flex items-start gap-3">
                         <div className="relative h-10 w-10 rounded-full overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
                           {avatarUrl ? (
-                            <Image src={avatarUrl} alt="" fill className="object-cover" />
+                            <Image src={avatarUrl} alt={`${c.authorName} avatar`} fill className="object-cover" />
                           ) : (
                             <div className="absolute inset-0 flex items-center justify-center text-slate-500 dark:text-slate-400 text-sm font-semibold">
                               {displayName.charAt(0).toUpperCase()}

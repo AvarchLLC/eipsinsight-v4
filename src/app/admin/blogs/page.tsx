@@ -119,7 +119,7 @@ export default function AdminBlogsPage() {
             {posts.map((post) => (
               <div
                 key={post.id}
-                className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-700/50 bg-slate-900/40 p-4"
+                className="flex flex-wrap items-center gap-4 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-4"
               >
                 <div className="relative h-16 w-24 shrink-0 rounded-lg overflow-hidden bg-slate-200 dark:bg-slate-800">
                   {post.coverImage ? (

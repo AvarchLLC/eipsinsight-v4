@@ -40,7 +40,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
     return (
       <div
         className={cn(
-          "h-9 rounded-lg bg-slate-800/50 animate-pulse",
+          "h-9 rounded-lg bg-slate-200 dark:bg-slate-800/50 animate-pulse",
           compact ? "w-9" : "w-32",
           className
         )}
@@ -76,7 +76,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
           "bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10",
           "border border-cyan-400/30 hover:border-cyan-400/50",
           "hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]",
-          "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-slate-950",
+          "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
           className
         )}
       >
@@ -87,7 +87,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
         </span>
 
         <Sparkles className="h-4 w-4 text-cyan-400 group-hover:text-emerald-400 transition-colors" />
-        <span className="text-sm font-medium text-slate-200 group-hover:text-white">
+        <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white">
           Choose persona
         </span>
         <ChevronDown className="h-3.5 w-3.5 text-slate-500 group-hover:text-slate-400" />
@@ -101,9 +101,9 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
         <button
           className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200",
-            "bg-gradient-to-r from-slate-800/80 to-slate-800/50 hover:from-slate-700/80 hover:to-slate-700/50",
-            "border border-slate-700/50 hover:border-cyan-400/30",
-            "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-slate-950",
+            "bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/50 hover:from-slate-200 hover:to-slate-100 dark:hover:from-slate-700/80 dark:hover:to-slate-700/50",
+            "border border-slate-200 dark:border-slate-700/50 hover:border-cyan-400/30",
+            "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
             "group",
             className
           )}
@@ -115,7 +115,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                 <span className="text-[10px] text-slate-500 uppercase tracking-wider">
                   Mode
                 </span>
-                <span className="text-sm font-medium text-slate-200 group-hover:text-white truncate">
+                <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white truncate">
                   {currentPersona.shortLabel}
                 </span>
               </div>
@@ -127,12 +127,12 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
 
       <DropdownMenuContent
         align="end"
-        className="w-72 bg-slate-900/95 backdrop-blur-xl border-slate-700/50"
+        className="w-72 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700/50"
       >
-        <DropdownMenuLabel className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+        <DropdownMenuLabel className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
           Switch Persona
         </DropdownMenuLabel>
-        <DropdownMenuSeparator className="bg-slate-700/50" />
+        <DropdownMenuSeparator className="bg-slate-200 dark:bg-slate-700/50" />
 
         {PERSONA_LIST.map((personaId) => {
           const personaMeta = PERSONAS[personaId];
@@ -145,10 +145,10 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
               onClick={() => handleSelectPersona(personaId)}
               className={cn(
                 "flex items-start gap-3 p-3 cursor-pointer rounded-lg transition-colors",
-                "focus:bg-slate-800/50 focus:text-white",
+                "focus:bg-slate-100 dark:focus:bg-slate-800/50 focus:text-slate-900 dark:focus:text-white",
                 isSelected
                   ? "bg-gradient-to-r from-cyan-500/10 to-emerald-500/10"
-                  : "hover:bg-slate-800/50"
+                  : "hover:bg-slate-100 dark:hover:bg-slate-800/50"
               )}
             >
               <div
@@ -156,7 +156,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                   isSelected
                     ? "bg-gradient-to-br from-emerald-500/30 to-cyan-500/30"
-                    : "bg-slate-800"
+                    : "bg-slate-100 dark:bg-slate-800"
                 )}
               >
                 <Icon
@@ -172,7 +172,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                   <span
                     className={cn(
                       "text-sm font-medium",
-                      isSelected ? "text-white" : "text-slate-200"
+                      isSelected ? "text-slate-900 dark:text-white" : "text-slate-700 dark:text-slate-200"
                     )}
                   >
                     {personaMeta.shortLabel}

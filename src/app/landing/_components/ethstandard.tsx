@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   History, 
@@ -40,22 +40,22 @@ const SkeletonOne = () => {
             <div className={cn("w-2 h-2 rounded-full", event.colorClass)} />
             <div className="flex-1 h-px bg-gradient-to-r from-slate-700 to-transparent" />
             <div className="flex flex-col items-end">
-              <span className="text-xs font-medium text-slate-300">{event.label}</span>
+              <span className="text-xs font-medium text-slate-700 dark:text-slate-300">{event.label}</span>
               <span className="text-[10px] text-slate-500">{event.date}</span>
             </div>
           </motion.div>
         ))}
       </div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-900/60 via-slate-900/60 to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-100/60 via-slate-100/60 to-transparent dark:from-slate-900/60 dark:via-slate-900/60 w-full pointer-events-none" />
     </div>
   );
 };
 
 const SkeletonTwo = () => {
   const blockers = [
-    { role: "Authors", count: 12, borderClass: "border-emerald-400/20", bgClass: "bg-emerald-500/10", textClass: "text-emerald-300" },
-    { role: "Editors", count: 8, borderClass: "border-cyan-400/20", bgClass: "bg-cyan-500/10", textClass: "text-cyan-300" },
-    { role: "Community", count: 5, borderClass: "border-blue-400/20", bgClass: "bg-blue-500/10", textClass: "text-blue-300" },
+    { role: "Authors", count: 12, borderClass: "border-emerald-400/20", bgClass: "bg-emerald-500/10", textClass: "text-emerald-700 dark:text-emerald-300" },
+    { role: "Editors", count: 8, borderClass: "border-cyan-400/20", bgClass: "bg-cyan-500/10", textClass: "text-cyan-700 dark:text-cyan-300" },
+    { role: "Community", count: 5, borderClass: "border-blue-400/20", bgClass: "bg-blue-500/10", textClass: "text-blue-700 dark:text-blue-300" },
   ];
 
   return (
@@ -76,16 +76,27 @@ const SkeletonTwo = () => {
           </motion.div>
         ))}
       </div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-900/60 via-slate-900/60 to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-100/60 via-slate-100/60 to-transparent dark:from-slate-900/60 dark:via-slate-900/60 w-full pointer-events-none" />
     </div>
   );
 };
 
+// Deterministic pseudo-random generator (pure) used for skeletons
+function seededRandom(i: number): number {
+  const seed = i + 1;
+  const val = (seed * 9301 + 49297) % 233280;
+  return val / 233280;
+}
+
 const SkeletonThree = () => {
-  const timeline = Array.from({ length: 6 }, (_, i) => ({
-    month: `Q${Math.floor(i / 2) + 1}`,
-    activity: Math.random() * 100,
-  }));
+  const timeline = useMemo(
+    () =>
+      Array.from({ length: 6 }, (_, i) => ({
+        month: `Q${Math.floor(i / 2) + 1}`,
+        activity: seededRandom(i) * 100,
+      })),
+    []
+  );
 
   return (
     <div className="relative flex flex-col gap-3 h-full py-4">
@@ -105,7 +116,7 @@ const SkeletonThree = () => {
           <div key={idx} className="flex-1 text-center">{item.month}</div>
         ))}
       </div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-900/60 via-slate-900/60 to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-100/60 via-slate-100/60 to-transparent dark:from-slate-900/60 dark:via-slate-900/60 w-full pointer-events-none" />
     </div>
   );
 };
@@ -115,17 +126,17 @@ const SkeletonFour = () => {
     <div className="relative flex flex-col gap-3 h-full py-4">
       <div className="flex items-center gap-3">
         <div className="flex-1 p-3 rounded-lg border border-emerald-400/20 bg-emerald-500/10">
-          <div className="text-xs text-emerald-300 mb-1">EIP-1234</div>
+          <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-1">EIP-1234</div>
           <div className="text-[10px] text-slate-400">Core</div>
         </div>
         <ArrowRight className="h-4 w-4 text-slate-500" />
         <div className="flex-1 p-3 rounded-lg border border-violet-400/20 bg-violet-500/10">
-          <div className="text-xs text-violet-300 mb-1">ERC-1234</div>
+          <div className="text-xs text-violet-700 dark:text-violet-300 mb-1">ERC-1234</div>
           <div className="text-[10px] text-slate-400">Token</div>
         </div>
       </div>
       <div className="text-xs text-slate-400 text-center">History preserved across migration</div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-900/60 via-slate-900/60 to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-100/60 via-slate-100/60 to-transparent dark:from-slate-900/60 dark:via-slate-900/60 w-full pointer-events-none" />
     </div>
   );
 };
@@ -150,7 +161,7 @@ const SkeletonFive = () => {
             style={{ left: `${node.x}%`, top: `${node.y}%` }}
           >
             <div className="p-2 rounded-lg border border-amber-400/30 bg-amber-500/10 backdrop-blur-sm">
-              <div className="text-xs font-medium text-amber-300">{node.label}</div>
+              <div className="text-xs font-medium text-amber-700 dark:text-amber-300">{node.label}</div>
             </div>
           </motion.div>
         ))}
@@ -169,7 +180,7 @@ const SkeletonFive = () => {
         </svg>
       </div>
       <div className="text-xs text-slate-400 text-center">Evolving governance network</div>
-      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-900/60 via-slate-900/60 to-transparent w-full pointer-events-none" />
+      <div className="absolute bottom-0 z-40 inset-x-0 h-20 bg-gradient-to-t from-slate-100/60 via-slate-100/60 to-transparent dark:from-slate-900/60 dark:via-slate-900/60 w-full pointer-events-none" />
     </div>
   );
 };
@@ -181,7 +192,7 @@ const trackingCards = [
     icon: History,
     color: "emerald",
     skeleton: <SkeletonOne />,
-    className: "col-span-1 lg:col-span-3 border-b lg:border-r dark:border-slate-700/50",
+    className: "col-span-1 lg:col-span-3 border-b lg:border-r border-slate-200 dark:border-slate-700/50",
   },
   {
     title: "Who Is Actually Blocking Progress",
@@ -189,7 +200,7 @@ const trackingCards = [
     icon: GitBranch,
     color: "cyan",
     skeleton: <SkeletonTwo />,
-    className: "col-span-1 lg:col-span-3 border-b dark:border-slate-700/50",
+    className: "col-span-1 lg:col-span-3 border-b border-slate-200 dark:border-slate-700/50",
   },
   {
     title: "Editor & Author Timelines",
@@ -197,7 +208,7 @@ const trackingCards = [
     icon: Clock,
     color: "blue",
     skeleton: <SkeletonThree />,
-    className: "col-span-1 lg:col-span-2 lg:border-r dark:border-slate-700/50",
+    className: "col-span-1 lg:col-span-2 lg:border-r border-slate-200 dark:border-slate-700/50",
   },
   {
     title: "ERC Migration Without History Loss",
@@ -205,7 +216,7 @@ const trackingCards = [
     icon: GitMerge,
     color: "violet",
     skeleton: <SkeletonFour />,
-    className: "col-span-1 lg:col-span-2 dark:border-slate-700/50",
+    className: "col-span-1 lg:col-span-2 border-slate-200 dark:border-slate-700/50",
   },
   {
     title: "RIPs Tracked Without Forced Lifecycle",
@@ -213,7 +224,7 @@ const trackingCards = [
     icon: Network,
     color: "amber",
     skeleton: <SkeletonFive />,
-    className: "col-span-1 lg:col-span-2 dark:border-slate-700/50",
+    className: "col-span-1 lg:col-span-2 border-slate-200 dark:border-slate-700/50",
   },
 ];
 
@@ -222,31 +233,31 @@ const getColorClasses = (color: string) => {
     emerald: {
       border: "border-emerald-400/30",
       bg: "bg-emerald-500/10",
-      icon: "text-emerald-300",
+      icon: "text-emerald-700 dark:text-emerald-300",
       canvasColors: [[52, 211, 153], [34, 211, 238]],
     },
     cyan: {
       border: "border-cyan-400/30",
       bg: "bg-cyan-500/10",
-      icon: "text-cyan-300",
+      icon: "text-cyan-700 dark:text-cyan-300",
       canvasColors: [[34, 211, 238], [52, 211, 153]],
     },
     blue: {
       border: "border-blue-400/30",
       bg: "bg-blue-500/10",
-      icon: "text-blue-300",
+      icon: "text-blue-700 dark:text-blue-300",
       canvasColors: [[59, 130, 246], [34, 211, 238]],
     },
     violet: {
       border: "border-violet-400/30",
       bg: "bg-violet-500/10",
-      icon: "text-violet-300",
+      icon: "text-violet-700 dark:text-violet-300",
       canvasColors: [[139, 92, 246], [34, 211, 238]],
     },
     amber: {
       border: "border-amber-400/30",
       bg: "bg-amber-500/10",
-      icon: "text-amber-300",
+      icon: "text-amber-700 dark:text-amber-300",
       canvasColors: [[251, 191, 36], [34, 211, 238]],
     },
   };
@@ -277,7 +288,7 @@ const FeatureCard = ({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={cn(
-        "group/canvas-card relative overflow-hidden bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60 p-4 sm:p-8 backdrop-blur-sm transition-all duration-300 cursor-default",
+        "group/canvas-card relative overflow-hidden bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 p-4 sm:p-8 backdrop-blur-sm transition-all duration-300 cursor-default",
         className
       )}
     >
@@ -293,7 +304,7 @@ const FeatureCard = ({
           >
             <CanvasRevealEffect
               animationSpeed={2}
-              containerClassName="bg-slate-950/80"
+              containerClassName="bg-slate-100/80 dark:bg-slate-950/80"
               colors={colors.canvasColors}
               dotSize={1.5}
               showGradient={true}
@@ -314,7 +325,7 @@ const FeatureCard = ({
 
 const FeatureTitle = ({ children }: { children?: React.ReactNode }) => {
   return (
-    <p className="max-w-5xl text-left tracking-tight text-slate-100 dark:text-white text-xl md:text-2xl md:leading-snug font-semibold">
+    <p className="max-w-5xl text-left tracking-tight text-slate-900 dark:text-white text-xl md:text-2xl md:leading-snug font-semibold">
       {children}
     </p>
   );
@@ -322,7 +333,7 @@ const FeatureTitle = ({ children }: { children?: React.ReactNode }) => {
 
 const FeatureDescription = ({ children }: { children?: React.ReactNode }) => {
   return (
-    <p className="text-sm md:text-base text-left text-slate-300/90 dark:text-slate-300 max-w-sm my-2">
+    <p className="text-sm md:text-base text-left text-slate-600 dark:text-slate-300 max-w-sm my-2">
       {children}
     </p>
   );
@@ -335,12 +346,12 @@ export default function EthStandard() {
         title="What EIPsInsight Tracks?"
         description="Governance isn't just proposals. It's events, responsibility, and time."
         sectionId="what-we-track"
-        className="bg-slate-950/30"
+        className="bg-slate-100/40 dark:bg-slate-950/30"
       />
-      <section className="relative w-full bg-slate-950/30">
+      <section className="relative w-full bg-slate-100/40 dark:bg-slate-950/30">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12">
           <div className="relative">
-            <div className="grid grid-cols-1 lg:grid-cols-6 border rounded-xl dark:border-slate-700/50 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-6 border border-slate-200 dark:border-slate-700/50 rounded-xl overflow-hidden">
               {trackingCards.map((card, index) => (
                 <FeatureCard key={card.title} className={card.className} card={card} index={index}>
                   {card.skeleton}

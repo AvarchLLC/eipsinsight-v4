@@ -161,12 +161,12 @@ export default function GovernanceBottlenecks() {
             transition={{ duration: 0.5, delay: 0.1 }}
             className="mb-8 sm:mb-10 lg:mb-12"
           >
-            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-slate-50/90 dark:bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
               <div className="mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mb-2">
                   Current Waiting Responsibility
                 </h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   {totalPRs} open proposals tracked across all repositories
                 </p>
               </div>
@@ -174,7 +174,7 @@ export default function GovernanceBottlenecks() {
               {/* Segmented Bar */}
               <div className="relative mb-6">
                 {loading ? (
-                  <div className="h-12 sm:h-16 rounded-lg bg-slate-800/50 animate-pulse" />
+                  <div className="h-12 sm:h-16 rounded-lg bg-slate-200 dark:bg-slate-800/50 animate-pulse" />
                 ) : (
                   <div className="flex h-12 sm:h-16 overflow-hidden rounded-lg">
                     {waitingStates.map((state, index) => (
@@ -214,7 +214,7 @@ export default function GovernanceBottlenecks() {
                       className="h-3 w-3 rounded-full"
                       style={{ backgroundColor: state.color }}
                     />
-                    <span className="text-xs sm:text-sm text-slate-300">
+                    <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">
                       {state.state}
                       <span className="ml-1 text-slate-500">({state.count})</span>
                     </span>
@@ -224,8 +224,8 @@ export default function GovernanceBottlenecks() {
 
               {/* Insight */}
               <div className="mt-6 rounded-lg border border-cyan-400/20 bg-cyan-500/5 p-4">
-                <p className="text-sm text-slate-300">
-                  Most open proposals are currently waiting on <span className="font-semibold text-cyan-300">authors to respond</span>, not editors.
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Most open proposals are currently waiting on <span className="font-semibold text-cyan-700 dark:text-cyan-300">authors to respond</span>, not editors.
                 </p>
               </div>
             </div>
@@ -243,30 +243,30 @@ export default function GovernanceBottlenecks() {
             <div className="rounded-xl border border-violet-400/30 bg-gradient-to-br from-violet-500/5 to-transparent p-5 sm:p-6 backdrop-blur-sm">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-violet-500/10 p-2">
-                  <Users className="h-5 w-5 text-violet-300" />
+                  <Users className="h-5 w-5 text-violet-700 dark:text-violet-300" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-base sm:text-lg font-semibold text-white mb-1">Editor Load</h4>
-                  <p className="text-xs sm:text-sm text-slate-400">Current editor workload</p>
+                  <h4 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1">Editor Load</h4>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Current editor workload</p>
                 </div>
               </div>
               
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-slate-400">PRs needing action</span>
-                  <span className="text-2xl sm:text-3xl font-bold text-violet-300">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">PRs needing action</span>
+                  <span className="text-2xl sm:text-3xl font-bold text-violet-700 dark:text-violet-300">
                     {loading ? '...' : `${editorPercentage}%`}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-slate-400">Median wait time</span>
-                  <span className="text-lg sm:text-xl font-semibold text-white">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Median wait time</span>
+                  <span className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">
                     {loading ? '...' : `${metrics?.editor.medianWaitDays || 0} days`}
                   </span>
                 </div>
                 <div className="flex items-center gap-2 pt-2 border-t border-violet-400/20">
                   <span className="text-xs text-emerald-400">↓ 12%</span>
-                  <span className="text-xs text-slate-500">vs last month</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-500">vs last month</span>
                 </div>
               </div>
             </div>
@@ -275,33 +275,33 @@ export default function GovernanceBottlenecks() {
             <div className="rounded-xl border border-cyan-400/30 bg-gradient-to-br from-cyan-500/5 to-transparent p-5 sm:p-6 backdrop-blur-sm">
               <div className="flex items-start gap-3 mb-4">
                 <div className="rounded-lg bg-cyan-500/10 p-2">
-                  <GitPullRequest className="h-5 w-5 text-cyan-300" />
+                  <GitPullRequest className="h-5 w-5 text-cyan-700 dark:text-cyan-300" />
                 </div>
                 <div className="flex-1">
-                  <h4 className="text-base sm:text-lg font-semibold text-white mb-1">Author Load</h4>
-                  <p className="text-xs sm:text-sm text-slate-400">Awaiting author response</p>
+                  <h4 className="text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-1">Author Load</h4>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400">Awaiting author response</p>
                 </div>
               </div>
               
               <div className="space-y-3">
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-slate-400">PRs waiting on authors</span>
-                  <span className="text-2xl sm:text-3xl font-bold text-cyan-300">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">PRs waiting on authors</span>
+                  <span className="text-2xl sm:text-3xl font-bold text-cyan-700 dark:text-cyan-300">
                     {loading ? '...' : `${authorPercentage}%`}
                   </span>
                 </div>
                 <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-slate-400">Median response time</span>
-                  <span className="text-lg sm:text-xl font-semibold text-white">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Median response time</span>
+                  <span className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white">
                     {loading ? '...' : `${metrics?.author.medianWaitDays || 0} days`}
                   </span>
                 </div>
                 <div className="flex flex-col gap-1 pt-2 border-t border-cyan-400/20">
-                  <span className="text-xs text-slate-400">Longest waiting</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-400">Longest waiting</span>
                   {loading || !longestWaitingPR ? (
-                    <span className="text-xs text-slate-500">Loading...</span>
+                    <span className="text-xs text-slate-600 dark:text-slate-500">Loading...</span>
                   ) : (
-                    <a href={longestWaitingPR.url} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-300 hover:text-cyan-200 transition-colors flex items-center gap-1">
+                    <a href={longestWaitingPR.url} target="_blank" rel="noopener noreferrer" className="text-xs text-cyan-700 dark:text-cyan-300 hover:text-cyan-800 dark:hover:text-cyan-200 transition-colors flex items-center gap-1">
                       PR #{longestWaitingPR.prNumber} ({longestWaitingPR.daysWaiting}d)
                       <ExternalLink className="h-3 w-3" />
                     </a>
@@ -319,19 +319,19 @@ export default function GovernanceBottlenecks() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="mb-8 sm:mb-10 lg:mb-12"
           >
-            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-slate-50/90 dark:bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
               <div className="mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mb-2">
                   How Long Things Stay Stuck
                 </h3>
-                <p className="text-sm text-slate-400">
+                <p className="text-sm text-slate-600 dark:text-slate-400">
                   Distribution of waiting times by responsibility
                 </p>
               </div>
 
               <div className="h-64 sm:h-80">
                 {loading ? (
-                  <div className="h-full rounded-lg bg-slate-800/50 animate-pulse" />
+                  <div className="h-full rounded-lg bg-slate-200 dark:bg-slate-800/50 animate-pulse" />
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
@@ -369,11 +369,11 @@ export default function GovernanceBottlenecks() {
               <div className="flex flex-wrap gap-4 sm:gap-6 justify-center mt-6">
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded bg-cyan-400" />
-                  <span className="text-xs sm:text-sm text-slate-300">Waiting on Author</span>
+                  <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">Waiting on Author</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="h-3 w-3 rounded bg-violet-400" />
-                  <span className="text-xs sm:text-sm text-slate-300">Waiting on Editor</span>
+                  <span className="text-xs sm:text-sm text-slate-700 dark:text-slate-300">Waiting on Editor</span>
                 </div>
               </div>
             </div>
@@ -386,12 +386,12 @@ export default function GovernanceBottlenecks() {
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.4 }}
           >
-            <div className="rounded-2xl border border-slate-700/50 bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-slate-50/90 dark:bg-slate-900/30 p-6 sm:p-8 backdrop-blur-sm">
               <div className="mb-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-white mb-2">
+                <h3 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-white mb-2">
                   Needs Attention
                 </h3>
-                <p className="text-sm text-slate-400 mb-4">
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
                   Proposals requiring immediate action
                 </p>
 
@@ -409,8 +409,8 @@ export default function GovernanceBottlenecks() {
                       onClick={() => setFilter(f.value as "all" | "30+" | "90+" | "editor" | "author")}
                       className={`px-3 py-1.5 text-xs sm:text-sm rounded-lg border transition-all ${
                         filter === f.value
-                          ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-300"
-                          : "bg-slate-800/50 border-slate-700/50 text-slate-400 hover:border-slate-600"
+                          ? "bg-cyan-500/20 border-cyan-400/50 text-cyan-700 dark:text-cyan-300"
+                          : "bg-slate-100 dark:bg-slate-800/50 border-slate-300 dark:border-slate-700/50 text-slate-600 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-600"
                       }`}
                     >
                       {f.label}
@@ -424,7 +424,7 @@ export default function GovernanceBottlenecks() {
                 <div className="inline-block min-w-full align-middle">
                   <table className="min-w-full">
                     <thead>
-                      <tr className="border-b border-slate-700">
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
                         <th className="px-3 sm:px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
                           PR
                         </th>
@@ -445,28 +445,28 @@ export default function GovernanceBottlenecks() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-800">
+                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                       {needsAttention.map((pr) => (
-                        <tr key={pr.prNumber} className="hover:bg-slate-800/30 transition-colors">
+                        <tr key={pr.prNumber} className="hover:bg-slate-200/70 dark:hover:bg-slate-800/30 transition-colors">
                           <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                             <a
                               href={pr.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-sm font-mono text-cyan-300 hover:text-cyan-200 transition-colors"
+                              className="text-sm font-mono text-cyan-700 dark:text-cyan-300 hover:text-cyan-800 dark:hover:text-cyan-200 transition-colors"
                             >
                               #{pr.prNumber}
                             </a>
                           </td>
                           <td className="hidden sm:table-cell px-3 sm:px-4 py-3 whitespace-nowrap">
-                            <span className="text-sm text-slate-300">{pr.repository.split('/')[1]}</span>
+                            <span className="text-sm text-slate-700 dark:text-slate-300">{pr.repository.split('/')[1]}</span>
                           </td>
                           <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                             <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${
-                              pr.currentState === 'WAITING_AUTHOR' ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' :
-                              pr.currentState === 'WAITING_EDITOR' ? 'bg-violet-500/10 text-violet-300 border border-violet-500/30' :
+                              pr.currentState === 'WAITING_AUTHOR' ? 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30' :
+                              pr.currentState === 'WAITING_EDITOR' ? 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/30' :
                               pr.currentState === 'IDLE' ? 'bg-slate-500/10 text-slate-400 border border-slate-500/30' :
-                              'bg-emerald-500/10 text-emerald-300 border border-emerald-500/30'
+                              'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                             }`}>
                               {pr.responsibleParty}
                             </span>
@@ -477,21 +477,21 @@ export default function GovernanceBottlenecks() {
                               <span className={`text-sm font-semibold ${
                                 pr.daysWaiting >= 90 ? 'text-red-400' :
                                 pr.daysWaiting >= 30 ? 'text-amber-400' :
-                                'text-slate-300'
+                                'text-slate-700 dark:text-slate-300'
                               }`}>
                                 {pr.daysWaiting}d
                               </span>
                             </div>
                           </td>
                           <td className="hidden lg:table-cell px-3 sm:px-4 py-3">
-                            <span className="text-sm text-slate-400 max-w-xs truncate block">{pr.lastEvent}</span>
+                            <span className="text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate block">{pr.lastEvent}</span>
                           </td>
                           <td className="px-3 sm:px-4 py-3 whitespace-nowrap">
                             <a
                               href={pr.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-cyan-300 transition-colors"
+                              className="inline-flex items-center gap-1 text-xs text-slate-600 dark:text-slate-400 hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors"
                             >
                               View
                               <ExternalLink className="h-3 w-3" />

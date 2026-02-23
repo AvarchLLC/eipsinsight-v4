@@ -3,12 +3,13 @@ import { Libre_Baskerville as LibreBaskervilleFont, Space_Grotesk as SpaceGrotes
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import "@/lib/orpc.server";
-import { SidebarProvider, SidebarTrigger, SidebarInset } from "@/components/ui/sidebar";
+import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/providers/Providers";
+import { buildMetadata } from "@/lib/seo";
 
 const Libre_Baskerville = LibreBaskervilleFont({
   variable: "--font-libre-baskerville",
@@ -24,75 +25,31 @@ const Space_Grotesk = SpaceGroteskFont({
 
 
 export const metadata: Metadata = {
+  ...buildMetadata({
+    title: "EIPsInsight — Ethereum Standards Intelligence",
+    description:
+      "EIPsInsight provides clear, visual insights into Ethereum Improvement Proposals. Track EIPs, ERCs, and RIPs with analytics, governance signals, and historical context.",
+    path: "/",
+    keywords: [
+      "Ethereum",
+      "EIPs",
+      "ERCs",
+      "RIPs",
+      "Ethereum Improvement Proposals",
+      "Ethereum Governance",
+      "Blockchain Standards",
+      "Ethereum Analytics",
+      "Ethereum Research",
+    ],
+  }),
   title: {
     default: "EIPsInsight — Ethereum Standards Intelligence",
     template: "%s · EIPsInsight",
   },
-
-  description:
-    "EIPsInsight provides clear, visual insights into Ethereum Improvement Proposals. Track EIPs, ERCs, and RIPs with analytics, governance signals, and historical context.",
-
-  keywords: [
-    "Ethereum",
-    "EIPs",
-    "ERCs",
-    "RIPs",
-    "Ethereum Improvement Proposals",
-    "Ethereum Governance",
-    "Blockchain Standards",
-    "Ethereum Analytics",
-    "Ethereum Research",
-  ],
-
   authors: [{ name: "EIPsInsight" }],
-
   creator: "EIPsInsight",
   publisher: "EIPsInsight",
-
   metadataBase: new URL("https://eipsinsight.com"),
-
-  alternates: {
-    canonical: "/",
-  },
-
-  openGraph: {
-    type: "website",
-    url: "https://eipsinsight.com",
-    title: "EIPsInsight — Ethereum Standards Intelligence",
-    description:
-      "Track the progress, governance, and lifecycle of Ethereum Improvement Proposals with clarity.",
-    siteName: "EIPsInsight",
-    images: [
-      {
-        url: "/eipsinsight.png",
-        width: 1200,
-        height: 630,
-        alt: "EIPsInsight — Ethereum Standards Intelligence",
-      },
-    ],
-  },
-
-  twitter: {
-    card: "summary_large_image",
-    title: "EIPsInsight — Ethereum Standards Intelligence",
-    description:
-      "Clear, visual insights into Ethereum Improvement Proposals, ERCs, and RIPs.",
-    images: ["/eipsinsight.png"],
-    creator: "@EIPsInsight",
-  },
-
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
-      index: true,
-      follow: true,
-      "max-image-preview": "large",
-      "max-snippet": -1,
-      "max-video-preview": -1,
-    },
-  },
-
   category: "technology",
 };
 

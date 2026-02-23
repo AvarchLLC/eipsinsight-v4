@@ -7,8 +7,6 @@ import { motion } from 'motion/react';
 import Link from 'next/link';
 import EthStandard from './_components/ethstandard';
 import ProtocolBento from './_components/protocol-bento';
-import ProposalStructure from './_components/proposal-structure';
-import GovernanceBottlenecks from './_components/governance-bottlenecks';
 import GovernanceOverTime from './_components/governance-over-time';
 import OurTools from './_components/our-tools';
 import LogoCloud from '@/components/logo-cloud';
@@ -36,14 +34,14 @@ export default function EIPsInsightHero() {
             transition={{ duration: 0.45 }}
             className="mb-6 flex justify-center"
           >
-            <div className="inline-flex items-center rounded-full border border-cyan-300/30 bg-black/70 px-3 py-1 text-sm backdrop-blur-sm">
+            <div className="inline-flex items-center rounded-full border border-cyan-300/40 bg-white/80 px-3 py-1 text-sm backdrop-blur-sm dark:border-cyan-300/30 dark:bg-black/70">
               <span className="mr-2 rounded-full bg-emerald-400 px-2 py-0.5 text-xs font-semibold text-black">
                 Live
               </span>
-              <span className="text-cyan-200">
+              <span className="text-cyan-700 dark:text-cyan-200">
                 Ethereum Standards Intelligence Platform
               </span>
-              <ChevronRight className="ml-1 h-4 w-4 text-cyan-200" />
+              <ChevronRight className="ml-1 h-4 w-4 text-cyan-700 dark:text-cyan-200" />
             </div>
           </motion.div>
 
@@ -52,7 +50,7 @@ export default function EIPsInsightHero() {
             initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.05 }}
-            className="dec-title text-balance bg-gradient-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
+            className="dec-title text-balance bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-4xl font-semibold tracking-tight text-transparent sm:text-5xl md:text-6xl lg:text-7xl"
           >
             Making Ethereum Proposals Accessible
           </motion.h1>
@@ -62,7 +60,7 @@ export default function EIPsInsightHero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.12 }}
-            className="mt-4 text-xl font-medium text-slate-200"
+            className="mt-4 text-xl font-medium text-slate-700 dark:text-slate-200"
           >
             Tracking progress. Shaping Ethereum.
           </motion.p>
@@ -72,7 +70,7 @@ export default function EIPsInsightHero() {
             initial={{ opacity: 0, y: 14 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.45, delay: 0.2 }}
-            className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-300"
+            className="mx-auto mt-6 max-w-2xl text-lg leading-relaxed text-slate-600 dark:text-slate-300"
           >
             EIPsInsight provides clear, visual tools for exploring, analyzing,
             and contributing to Ethereum Improvement Proposals. Follow EIPs,
@@ -104,7 +102,7 @@ export default function EIPsInsightHero() {
               asChild
               variant="outline"
               size="lg"
-              className="flex items-center gap-2 rounded-full border-cyan-300/60 bg-black/30 text-cyan-100 backdrop-blur-sm hover:bg-cyan-400/10 hover:text-white"
+              className="flex items-center gap-2 rounded-full border-cyan-300/60 bg-white/80 text-cyan-700 backdrop-blur-sm hover:bg-cyan-400/10 hover:text-cyan-800 dark:bg-black/30 dark:text-cyan-100 dark:hover:text-white"
             >
               <Link href="/eips">
                 <Layers className="h-4 w-4" />
@@ -116,7 +114,7 @@ export default function EIPsInsightHero() {
               asChild
               variant="ghost"
               size="lg"
-              className="rounded-full text-cyan-200 hover:bg-cyan-500/10 hover:text-white"
+              className="rounded-full text-cyan-700 hover:bg-cyan-500/10 hover:text-cyan-800 dark:text-cyan-200 dark:hover:text-white"
             >
               <Link href="/learn">
                 <BookOpen className="mr-2 h-4 w-4" />
@@ -132,12 +130,12 @@ export default function EIPsInsightHero() {
             transition={{ duration: 0.45, delay: 0.4 }}
             className="mt-12"
           >
-            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 rounded-xl border border-cyan-300/20 bg-black/30 px-4 py-3 text-xs text-slate-400 backdrop-blur-sm">
-              <span className="text-slate-300">Built for the Ethereum ecosystem</span>
-              <span className="rounded-full border border-emerald-300/30 bg-emerald-400/10 px-3 py-1 text-emerald-200">EIPs</span>
-              <span className="rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-cyan-200">ERCs</span>
-              <span className="rounded-full border border-blue-300/30 bg-blue-400/10 px-3 py-1 text-blue-200">RIPs</span>
-              <span className="rounded-full border border-slate-300/30 bg-slate-400/10 px-3 py-1 text-slate-200">Governance</span>
+            <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 rounded-xl border border-cyan-300/30 bg-white/70 px-4 py-3 text-xs text-slate-600 backdrop-blur-sm dark:border-cyan-300/20 dark:bg-black/30 dark:text-slate-400">
+              <span className="text-slate-700 dark:text-slate-300">Built for the Ethereum ecosystem</span>
+              <span className="rounded-full border border-emerald-300/50 bg-emerald-500/10 px-3 py-1 text-emerald-700 dark:border-emerald-300/30 dark:text-emerald-200">EIPs</span>
+              <span className="rounded-full border border-cyan-300/50 bg-cyan-500/10 px-3 py-1 text-cyan-700 dark:border-cyan-300/30 dark:text-cyan-200">ERCs</span>
+              <span className="rounded-full border border-blue-300/50 bg-blue-500/10 px-3 py-1 text-blue-700 dark:border-blue-300/30 dark:text-blue-200">RIPs</span>
+              <span className="rounded-full border border-slate-300/60 bg-slate-500/10 px-3 py-1 text-slate-700 dark:border-slate-300/30 dark:text-slate-200">Governance</span>
             </div>
           </motion.div>
 

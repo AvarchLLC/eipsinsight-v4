@@ -1,7 +1,16 @@
 import { getGhostClient } from "@/lib/ghost";
 import NewsClient from "./NewsClient";
+import type { Metadata } from "next";
+import { buildMetadata } from "@/lib/seo";
 
 export const revalidate = 1800; // 30 min cache
+export const metadata: Metadata = buildMetadata({
+  title: "News",
+  description:
+    "Latest Ethereum standards and ecosystem news aggregated from trusted sources.",
+  path: "/resources/news",
+  keywords: ["Ethereum news", "EIP ecosystem news", "governance updates"],
+});
 
 // ── Add or remove Ghost sources here ────────────────────────────────────────
 const GHOST_SOURCES: { label: string }[] = [

@@ -107,7 +107,7 @@ export function PersonaHighlightsSection({
   const PersonaIcon = personaMeta.icon;
 
   return (
-    <section className={cn("relative w-full bg-slate-950/30", className)}>
+    <section className={cn("relative w-full bg-slate-100/40 dark:bg-slate-950/30", className)}>
       <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
         {/* Persona badge */}
         {showBadge && (
@@ -118,8 +118,8 @@ export function PersonaHighlightsSection({
             className="flex items-center gap-2 mb-4"
           >
             <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border border-cyan-400/20">
-              <PersonaIcon className="h-4 w-4 text-cyan-400" />
-              <span className="text-xs font-medium text-cyan-300">
+              <PersonaIcon className="h-4 w-4 text-cyan-700 dark:text-cyan-400" />
+              <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
                 {personaMeta.shortLabel} View
               </span>
               <Sparkles className="h-3 w-3 text-emerald-400" />
@@ -155,8 +155,8 @@ function HighlightCard({ highlight, index }: HighlightCardProps) {
       transition={{ duration: 0.4, delay: index * 0.1 }}
       className={cn(
         "group relative p-5 rounded-xl",
-        "bg-gradient-to-br from-slate-900/80 to-slate-950/80",
-        "border border-slate-700/50",
+        "bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/80 dark:to-slate-950/80",
+        "border border-slate-200 dark:border-slate-700/50",
         "hover:border-cyan-400/30 hover:shadow-lg hover:shadow-cyan-500/10",
         "transition-all duration-300"
       )}
@@ -165,10 +165,10 @@ function HighlightCard({ highlight, index }: HighlightCardProps) {
       <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-emerald-500/5 via-cyan-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
       <div className="relative z-10">
-        <h3 className="text-sm font-semibold text-white mb-2 group-hover:text-cyan-100 transition-colors">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-700 dark:group-hover:text-cyan-100 transition-colors">
           {highlight.title}
         </h3>
-        <p className="text-xs text-slate-400 leading-relaxed mb-3">
+        <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed mb-3">
           {highlight.description}
         </p>
 
@@ -177,7 +177,7 @@ function HighlightCard({ highlight, index }: HighlightCardProps) {
             href={highlight.ctaLink}
             className={cn(
               "inline-flex items-center gap-1.5 text-xs font-medium",
-              "text-cyan-400 hover:text-emerald-400",
+              "text-cyan-700 dark:text-cyan-400 hover:text-emerald-700 dark:hover:text-emerald-400",
               "transition-colors duration-200"
             )}
           >

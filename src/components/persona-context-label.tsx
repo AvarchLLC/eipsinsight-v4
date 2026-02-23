@@ -62,13 +62,13 @@ export function PersonaContextLabel({
       <span
         className={cn(
           "inline-flex items-center gap-1 px-2 py-0.5 rounded-full",
-          "bg-slate-800/50 border border-slate-700/50",
-          "text-xs text-slate-400",
+          "bg-slate-100 dark:bg-slate-800/50 border border-slate-300 dark:border-slate-700/50",
+          "text-xs text-slate-600 dark:text-slate-400",
           className
         )}
       >
-        <PersonaIcon className="h-3 w-3 text-cyan-400" />
-        <span className="text-cyan-300">{personaMeta.shortLabel}</span>
+        <PersonaIcon className="h-3 w-3 text-cyan-700 dark:text-cyan-400" />
+        <span className="text-cyan-700 dark:text-cyan-300">{personaMeta.shortLabel}</span>
       </span>
     );
   }
@@ -78,19 +78,19 @@ export function PersonaContextLabel({
     <div
       className={cn(
         "flex items-center justify-between gap-3 px-4 py-2 rounded-lg",
-        "bg-gradient-to-r from-slate-800/50 to-slate-800/30",
-        "border border-slate-700/50",
+        "bg-gradient-to-r from-slate-100 to-white dark:from-slate-800/50 dark:to-slate-800/30",
+        "border border-slate-300 dark:border-slate-700/50",
         className
       )}
     >
       <div className="flex items-center gap-2">
         <Sparkles className="h-3.5 w-3.5 text-emerald-400" />
-        <span className="text-xs text-slate-400">
+        <span className="text-xs text-slate-600 dark:text-slate-400">
           {pageName ? `${pageName} · ` : ""}Viewing as:
         </span>
         <div className="flex items-center gap-1.5">
-          <PersonaIcon className="h-3.5 w-3.5 text-cyan-400" />
-          <span className="text-xs font-medium text-cyan-300">
+          <PersonaIcon className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400" />
+          <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
             {personaMeta.shortLabel}
           </span>
         </div>
@@ -100,7 +100,7 @@ export function PersonaContextLabel({
         <Link
           href="/p"
           className={cn(
-            "flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300",
+            "flex items-center gap-1 text-xs text-slate-500 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300",
             "transition-colors duration-200"
           )}
         >
@@ -139,8 +139,8 @@ export function PersonaBadge({ className }: { className?: string }) {
         className
       )}
     >
-      <PersonaIcon className="h-3.5 w-3.5 text-cyan-400" />
-      <span className="text-xs font-medium text-cyan-300">
+      <PersonaIcon className="h-3.5 w-3.5 text-cyan-700 dark:text-cyan-400" />
+      <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
         {personaMeta.shortLabel}
       </span>
     </span>

@@ -5,23 +5,47 @@ import { env } from "@/env";
 import { prismaAuth } from "@/lib/prisma-auth";
 import { sendEmail } from "@/lib/email";
 
+const githubClientId = env.GITHUB_CLIENT_ID.trim();
+const githubClientSecret = env.GITHUB_CLIENT_SECRET.trim();
+const googleClientId = env.GOOGLE_CLIENT_ID.trim();
+const googleClientSecret = env.GOOGLE_CLIENT_SECRET.trim();
+
+const socialProviders = {
+  ...(githubClientId && githubClientSecret
+    ? {
+        github: {
+          clientId: githubClientId,
+          clientSecret: githubClientSecret,
+        },
+      }
+    : {}),
+  ...(googleClientId && googleClientSecret
+    ? {
+        google: {
+          clientId: googleClientId,
+          clientSecret: googleClientSecret,
+          accessType: "offline",
+          prompt: "select_account consent",
+        },
+      }
+    : {}),
+};
+
 export const auth = betterAuth({
   database: prismaAdapter(prismaAuth, {
     provider: "postgresql",
   }),
+  secret: env.BETTER_AUTH_SECRET,
   baseURL: env.BETTER_AUTH_URL,
-  socialProviders: {
-    github: {
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    },
-    google: {
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-      accessType: "offline",
-      prompt: "select_account consent",
-    },
+  trustedOrigins: [
+    env.BETTER_AUTH_URL,
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ],
+  logger: {
+    level: process.env.NODE_ENV === "production" ? "error" : "debug",
   },
+  socialProviders,
   plugins: [
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {

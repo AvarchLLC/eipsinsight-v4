@@ -105,10 +105,10 @@ function DefaultBanner({ onDismiss, className }: BannerVariantProps) {
 
             {/* Content */}
             <div>
-              <h3 className="text-sm font-semibold text-white mb-1">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white mb-1">
                 Want a tailored experience?
               </h3>
-              <p className="text-xs text-slate-400 max-w-md">
+              <p className="text-xs text-slate-600 dark:text-slate-400 max-w-md">
                 Pick a persona to customize navigation, highlights, and defaults
                 based on how you use EIPsInsight.
               </p>
@@ -133,7 +133,7 @@ function DefaultBanner({ onDismiss, className }: BannerVariantProps) {
 
             <button
               onClick={onDismiss}
-              className="p-2 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/50 transition-colors"
+              className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
               aria-label="Dismiss"
             >
               <X className="h-4 w-4" />
@@ -162,7 +162,7 @@ function CompactBanner({ onDismiss, className }: BannerVariantProps) {
       >
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-cyan-400" />
-          <span className="text-sm text-slate-300">
+          <span className="text-sm text-slate-700 dark:text-slate-300">
             Personalize your experience
           </span>
         </div>
@@ -176,7 +176,7 @@ function CompactBanner({ onDismiss, className }: BannerVariantProps) {
           </Link>
           <button
             onClick={onDismiss}
-            className="p-1 rounded text-slate-500 hover:text-white transition-colors"
+            className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             aria-label="Dismiss"
           >
             <X className="h-3.5 w-3.5" />
@@ -200,7 +200,7 @@ function CardBanner({ onDismiss, className }: BannerVariantProps) {
         transition={{ duration: 0.3 }}
         className={cn(
           "relative overflow-hidden rounded-2xl",
-          "bg-gradient-to-br from-slate-900/90 to-slate-950/90",
+          "bg-gradient-to-br from-slate-100 to-white dark:from-slate-900/90 dark:to-slate-950/90",
           "border border-cyan-400/20",
           "p-6",
           className
@@ -209,7 +209,7 @@ function CardBanner({ onDismiss, className }: BannerVariantProps) {
         {/* Dismiss button */}
         <button
           onClick={onDismiss}
-          className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/50 transition-colors"
+          className="absolute top-3 right-3 p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
           aria-label="Dismiss"
         >
           <X className="h-4 w-4" />
@@ -219,15 +219,15 @@ function CardBanner({ onDismiss, className }: BannerVariantProps) {
         <div className="text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-400/20 mb-4">
             <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-            <span className="text-xs font-medium text-cyan-300">
+            <span className="text-xs font-medium text-cyan-700 dark:text-cyan-300">
               Personalized Experience
             </span>
           </div>
 
-          <h3 className="text-lg font-semibold text-white mb-2">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
             How do you use EIPsInsight?
           </h3>
-          <p className="text-sm text-slate-400 mb-6 max-w-sm mx-auto">
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6 max-w-sm mx-auto">
             Select your role to get tailored navigation, highlights, and
             defaults.
           </p>
@@ -240,14 +240,14 @@ function CardBanner({ onDismiss, className }: BannerVariantProps) {
               return (
                 <div
                   key={personaId}
-                  className="w-10 h-10 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center"
+                  className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 flex items-center justify-center"
                   title={persona.shortLabel}
                 >
-                  <Icon className="h-5 w-5 text-slate-400" />
+                  <Icon className="h-5 w-5 text-slate-600 dark:text-slate-400" />
                 </div>
               );
             })}
-            <div className="w-10 h-10 rounded-xl bg-slate-800/50 border border-slate-700/50 flex items-center justify-center text-xs text-slate-500">
+            <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 flex items-center justify-center text-xs text-slate-500 dark:text-slate-400">
               +2
             </div>
           </div>

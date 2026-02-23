@@ -262,7 +262,7 @@ const SocialCard = ({ item }: { item: typeof socialPresence[0] }) => {
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.2 }}
       transition={{ duration: 0.3 }}
-      className="group relative flex flex-col rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60 p-4 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/40"
+      className="group relative flex flex-col rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 p-4 backdrop-blur-sm transition-all duration-300 hover:border-cyan-400/40"
     >
       <div className="flex items-start justify-between mb-3">
         <div className={cn("rounded-lg p-2 border", colors.bg, colors.border)}>
@@ -270,26 +270,26 @@ const SocialCard = ({ item }: { item: typeof socialPresence[0] }) => {
         </div>
         <button
           onClick={handleCopyLink}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-slate-800/50"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded hover:bg-slate-200 dark:hover:bg-slate-800/50"
           title="Copy link"
         >
           {copied ? (
             <Check className="h-3.5 w-3.5 text-emerald-400" />
           ) : (
-            <Copy className="h-3.5 w-3.5 text-slate-400" />
+            <Copy className="h-3.5 w-3.5 text-slate-500 dark:text-slate-400" />
           )}
         </button>
       </div>
 
-      <h3 className="text-sm font-semibold text-slate-100 mb-1">{item.name}</h3>
-      <p className="text-xs text-slate-400 mb-2">{item.platform}</p>
-      <p className="text-xs text-slate-500 leading-relaxed mb-3">{item.purpose}</p>
+      <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-1">{item.name}</h3>
+      <p className="text-xs text-slate-600 dark:text-slate-400 mb-2">{item.platform}</p>
+      <p className="text-xs text-slate-500 dark:text-slate-500 leading-relaxed mb-3">{item.purpose}</p>
 
       <a
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-700 hover:text-cyan-800 dark:text-cyan-400 dark:hover:text-cyan-300 transition-colors"
       >
         Visit
         <ExternalLink className="h-3 w-3" />
@@ -305,9 +305,9 @@ export default function LatestUpdates() {
         title="Latest Updates"
         description="Signals from the ecosystem, not just announcements"
         sectionId="latest-updates"
-        className="bg-slate-950/30"
+        className="bg-slate-100/40 dark:bg-slate-950/30"
       />
-      <section className="relative w-full bg-slate-950/30">
+      <section className="relative w-full bg-slate-100/40 dark:bg-slate-950/30">
         <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-8 sm:pb-12">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Live Updates Feed - Left Column */}
@@ -321,12 +321,12 @@ export default function LatestUpdates() {
                   />
                   <div className="relative z-10 h-2 w-2 rounded-full bg-cyan-400" />
                 </div>
-                <span className="text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                <span className="text-xs font-semibold tracking-wide text-slate-600 dark:text-slate-400 uppercase">
                   Live
                 </span>
               </div>
 
-              <div className="rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60 backdrop-blur-sm overflow-hidden">
+              <div className="rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 backdrop-blur-sm overflow-hidden">
                 <div className="max-h-[600px] overflow-y-auto space-y-4 p-6">
                   {tweets.map((tweet, index) => (
                     <motion.div
@@ -335,7 +335,7 @@ export default function LatestUpdates() {
                       whileInView={{ opacity: 1, y: 0 }}
                       viewport={{ once: true, amount: 0.1 }}
                       transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="rounded-lg border border-slate-700/40 bg-slate-900/40 p-4"
+                      className="rounded-lg border border-slate-200 dark:border-slate-700/40 bg-slate-50/80 dark:bg-slate-900/40 p-4"
                     >
                       <TweetEmbed 
                         tweetId={tweet.id} 
@@ -351,7 +351,7 @@ export default function LatestUpdates() {
 
             {/* Social Presence Cards - Right Column */}
             <div className="lg:col-span-1">
-              <h3 className="text-sm font-semibold text-slate-300 mb-4 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-4 uppercase tracking-wide">
                 Follow & Connect
               </h3>
               <div className="space-y-3">

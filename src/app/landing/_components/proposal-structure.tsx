@@ -61,12 +61,12 @@ export default function ProposalStructure() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.5 }}
-            className="rounded-2xl border border-cyan-400/20 bg-black/50 p-6 backdrop-blur"
+            className="rounded-2xl border border-cyan-400/20 bg-white/80 dark:bg-black/50 p-6 backdrop-blur"
           >
-            <h3 className="dec-title mb-2 text-xl font-semibold text-slate-50">
+            <h3 className="dec-title mb-2 text-xl font-semibold text-slate-900 dark:text-slate-50">
               EIPs by Type
             </h3>
-            <p className="mb-6 text-sm text-slate-400">
+            <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
               Proposals are categorized by their domain and scope
             </p>
 
@@ -116,7 +116,7 @@ export default function ProposalStructure() {
                     className="h-3 w-3 rounded-sm"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-slate-700 dark:text-slate-300">
                     {item.name} ({item.value})
                   </span>
                 </div>
@@ -129,12 +129,12 @@ export default function ProposalStructure() {
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true, amount: 0.3 }}
             transition={{ duration: 0.5 }}
-            className="rounded-2xl border border-cyan-400/20 bg-black/50 p-6 backdrop-blur"
+            className="rounded-2xl border border-cyan-400/20 bg-white/80 dark:bg-black/50 p-6 backdrop-blur"
           >
-            <h3 className="dec-title mb-2 text-xl font-semibold text-slate-50">
+            <h3 className="dec-title mb-2 text-xl font-semibold text-slate-900 dark:text-slate-50">
               EIPs by Lifecycle Status
             </h3>
-            <p className="mb-6 text-sm text-slate-400">
+            <p className="mb-6 text-sm text-slate-600 dark:text-slate-400">
               Track proposals through their journey to finalization
             </p>
 
@@ -184,7 +184,7 @@ export default function ProposalStructure() {
                     className="h-3 w-3 rounded-sm"
                     style={{ backgroundColor: item.color }}
                   />
-                  <span className="text-xs text-slate-300">
+                  <span className="text-xs text-slate-700 dark:text-slate-300">
                     {item.name} ({item.value})
                   </span>
                 </div>

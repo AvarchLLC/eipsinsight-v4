@@ -83,15 +83,15 @@ export default function TrendingProposals() {
         title="Trending Proposals"
         description="Explore the most impactful proposals shaping Ethereum today."
         sectionId="trending-proposals"
-        className="bg-slate-950/30"
+        className="bg-slate-100/40 dark:bg-slate-950/30"
       />
-      <section className="relative w-full bg-slate-950/30">
+      <section className="relative w-full bg-slate-100/40 dark:bg-slate-950/30">
         {loading ? (
           <div className="flex gap-3 py-8">
             {[...Array(6)].map((_, i) => (
               <div
                 key={i}
-                className="h-[170px] w-[300px] shrink-0 animate-pulse rounded-lg border border-slate-700/30 bg-slate-900/40 backdrop-blur-sm"
+                className="h-[170px] w-[300px] shrink-0 animate-pulse rounded-lg border border-slate-200 dark:border-slate-700/30 bg-slate-50/80 dark:bg-slate-900/40 backdrop-blur-sm"
               >
                 <div className="p-3.5">
                   <div className="mb-2 h-4 w-20 rounded bg-slate-800/50" />
@@ -114,7 +114,7 @@ export default function TrendingProposals() {
           </div>
         ) : proposals.length === 0 ? (
           <div className="py-24 text-center">
-            <p className="text-slate-400">No active proposal discussions at the moment.</p>
+            <p className="text-slate-600 dark:text-slate-400">No active proposal discussions at the moment.</p>
           </div>
         ) : (
           <div className="relative py-8">
@@ -142,7 +142,7 @@ export default function TrendingProposals() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/90 via-slate-900/70 to-slate-900/90 p-3.5 backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:shadow-xl hover:shadow-cyan-500/15"
+                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/90 dark:via-slate-900/70 dark:to-slate-900/90 p-3.5 backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:shadow-xl hover:shadow-cyan-500/15"
                   >
                     {/* Header: Badge + Status */}
                     <div className="mb-1.5 flex items-center gap-1.5">
@@ -163,7 +163,7 @@ export default function TrendingProposals() {
                     </div>
 
                     {/* Title */}
-                    <h3 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-slate-100 transition-colors group-hover:text-white">
+                    <h3 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-slate-900 dark:text-slate-100 transition-colors group-hover:text-slate-950 dark:group-hover:text-white">
                       {proposal.title}
                     </h3>
 
@@ -174,7 +174,7 @@ export default function TrendingProposals() {
                           {proposal.tags.slice(0, 2).map((tag, idx) => (
                             <span
                               key={idx}
-                              className="inline-flex items-center gap-0.5 rounded bg-slate-800/70 px-1.5 py-0.5 text-[9px] font-medium text-slate-400"
+                              className="inline-flex items-center gap-0.5 rounded bg-slate-200/90 dark:bg-slate-800/70 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 dark:text-slate-400"
                             >
                               <Tag className="h-2 w-2" />
                               {tag}
@@ -183,14 +183,14 @@ export default function TrendingProposals() {
                         </div>
                       )}
                       {proposal.category && (
-                        <span className="rounded bg-slate-800/70 px-1.5 py-0.5 text-[9px] font-medium text-slate-300">
+                        <span className="rounded bg-slate-200/90 dark:bg-slate-800/70 px-1.5 py-0.5 text-[9px] font-medium text-slate-600 dark:text-slate-300">
                           {proposal.category}
                         </span>
                       )}
                     </div>
 
                     {/* Stats: Views, Likes, Replies */}
-                    <div className="mb-2 flex items-center gap-2.5 text-[10px] text-slate-400">
+                    <div className="mb-2 flex items-center gap-2.5 text-[10px] text-slate-600 dark:text-slate-400">
                       {proposal.views !== undefined && (
                         <div className="flex items-center gap-1">
                           <Eye className="h-2.5 w-2.5" />
@@ -210,17 +210,17 @@ export default function TrendingProposals() {
                     </div>
 
                     {/* Author + Time + CTA */}
-                    <div className="mt-auto flex items-center justify-between border-t border-slate-700/40 pt-2">
+                    <div className="mt-auto flex items-center justify-between border-t border-slate-200 dark:border-slate-700/40 pt-2">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7 border border-slate-700/60">
+                        <Avatar className="h-7 w-7 border border-slate-300 dark:border-slate-700/60">
                           <AvatarImage src={proposal.authorAvatar} alt={authorName} />
                           <AvatarFallback className="bg-gradient-to-br from-cyan-500/25 to-emerald-500/25 text-[10px] font-bold text-cyan-200">
                             {authorInitials}
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col min-w-0">
-                          <span className="text-[11px] font-semibold text-slate-200 truncate">{authorName}</span>
-                          <div className="flex items-center gap-1 text-[9px] text-slate-500">
+                          <span className="text-[11px] font-semibold text-slate-800 dark:text-slate-200 truncate">{authorName}</span>
+                          <div className="flex items-center gap-1 text-[9px] text-slate-500 dark:text-slate-500">
                             <Clock className="h-2 w-2" />
                             <span>{formatTimeAgo(proposal.lastActivityAt)}</span>
                           </div>
@@ -244,8 +244,8 @@ export default function TrendingProposals() {
             </div>
 
             {/* Progressive blur edges */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-950/30 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-950/30 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-slate-100/40 dark:from-slate-950/30 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-slate-100/40 dark:from-slate-950/30 to-transparent" />
             <ProgressiveBlur
               className="pointer-events-none absolute left-0 top-0 h-full w-24"
               direction="left"

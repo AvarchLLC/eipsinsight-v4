@@ -70,6 +70,9 @@ DATABASE_URL="postgresql://user:password@PGBOUNCER_HOST:6432/defaultdb?pgbouncer
 
 # Direct Aiven (migrations only)
 DIRECT_DATABASE_URL="postgresql://user:password@AIVEN_HOST:PORT/defaultdb?sslmode=require"
+
+# Local/dev only: allow self-signed TLS chains
+PRISMA_SSL_ALLOW_SELF_SIGNED="false"
 ```
 
 - `pgbouncer=true` tells Prisma to avoid prepared statements (required for PgBouncer transaction pooling).

@@ -31,7 +31,7 @@ export function ThemeLoading() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-9999 flex items-center justify-center bg-slate-950"
+          className="fixed inset-0 z-9999 flex items-center justify-center bg-background"
         >
           <div className="flex flex-col items-center gap-6 px-4">
             {/* Logo */}
@@ -61,7 +61,7 @@ export function ThemeLoading() {
               <h2 className="dec-title text-2xl font-semibold bg-linear-to-r from-emerald-300 via-cyan-300 to-emerald-300 bg-clip-text text-transparent">
                 Loading Experience
               </h2>
-              <p className="text-sm text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Preparing your insights...
               </p>
             </motion.div>
@@ -73,7 +73,7 @@ export function ThemeLoading() {
               transition={{ duration: 0.5, delay: 0.3 }}
               className="w-full max-w-xs"
             >
-              <div className="relative h-2 overflow-hidden rounded-full bg-slate-800/50">
+              <div className="relative h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800/50">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progress}%` }}

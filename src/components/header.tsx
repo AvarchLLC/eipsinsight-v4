@@ -130,7 +130,7 @@ export function PageHeader({
                   </div>
                 )}
                 {eyebrow && !indicator && (
-                  <span className="inline-flex items-center rounded-full border border-cyan-300/20 bg-slate-900/50 px-2.5 py-1 text-xs font-medium tracking-wide text-cyan-200/90 backdrop-blur-sm">
+                  <span className="inline-flex items-center rounded-full border border-cyan-300/30 bg-cyan-500/10 px-2.5 py-1 text-xs font-medium tracking-wide text-cyan-700 dark:text-cyan-200/90 backdrop-blur-sm">
               {eyebrow}
             </span>
                 )}

@@ -11,7 +11,6 @@ import {
   User,
   Settings2,
   LogOut,
-  Sparkles,
   Home,
   Layers,
   Package,
@@ -76,11 +75,6 @@ export default function Navbar() {
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  // Close mobile menu on route change
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   const currentPersona = persona ? PERSONAS[persona] : null;
   const PersonaIcon = currentPersona?.icon;
@@ -147,13 +141,13 @@ export default function Navbar() {
                   >
                     {hasPersona && PersonaIcon ? (
                       <>
-                        <PersonaIcon className="h-3.5 w-3.5 text-cyan-400" />
+                        <PersonaIcon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
                         <span className="text-xs">{currentPersona?.shortLabel}</span>
                       </>
                     ) : (
                       <span className="text-xs font-medium">Select persona</span>
                     )}
-                    <ChevronDown className="h-3 w-3 text-slate-500" />
+                    <ChevronDown className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
@@ -178,7 +172,7 @@ export default function Navbar() {
                           isSelected && "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300"
                         )}
                       >
-                        <Icon className={cn("h-4 w-4 shrink-0", isSelected ? "text-cyan-400" : "text-slate-400")} />
+                        <Icon className={cn("h-4 w-4 shrink-0", isSelected ? "text-cyan-600 dark:text-cyan-300" : "text-slate-500 dark:text-slate-400")} />
                         <div className="flex flex-col">
                           <span className={cn("text-sm", isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300")}>
                             {meta.shortLabel}
@@ -251,7 +245,7 @@ export default function Navbar() {
                         window.location.href = "/";
                       }}
                     >
-                      <LogOut className="h-4 w-4 text-rose-300" />
+                      <LogOut className="h-4 w-4 text-rose-500 dark:text-rose-300" />
                       <span className="text-sm">Sign out</span>
                     </DropdownMenuItem>
                   </div>
@@ -299,7 +293,7 @@ export default function Navbar() {
           <div className="space-y-3 px-4 py-4">
             {/* Mobile Search */}
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-cyan-400/80" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-cyan-400/80" />
               <input
                 type="search"
                 placeholder="Search EIPs, ERCs, authors…"
@@ -352,13 +346,13 @@ export default function Navbar() {
                     >
                       {hasPersona && PersonaIcon ? (
                         <>
-                          <PersonaIcon className="h-3.5 w-3.5 text-cyan-400" />
+                          <PersonaIcon className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
                           <span className="text-xs">{currentPersona?.shortLabel}</span>
                         </>
                       ) : (
                         <span className="text-xs font-medium">Select persona</span>
                       )}
-                      <ChevronDown className="h-3 w-3 text-slate-500" />
+                      <ChevronDown className="h-3 w-3 text-slate-500 dark:text-slate-400" />
                     </button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-48 bg-white dark:bg-slate-900/95 backdrop-blur-xl border-slate-200 dark:border-slate-700/50">
@@ -372,7 +366,7 @@ export default function Navbar() {
                           onClick={() => handlePersonaChange(personaId)}
                           className={cn("flex items-center gap-2", isSelected && "bg-cyan-500/10 text-cyan-700 dark:text-cyan-300")}
                         >
-                          <Icon className={cn("h-4 w-4", isSelected ? "text-cyan-400" : "text-slate-400")} />
+                          <Icon className={cn("h-4 w-4", isSelected ? "text-cyan-600 dark:text-cyan-300" : "text-slate-500 dark:text-slate-400")} />
                           <span className={isSelected ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}>{meta.shortLabel}</span>
                         </DropdownMenuItem>
                       );

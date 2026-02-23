@@ -483,15 +483,15 @@ export default function GovernanceOverTime() {
         title="Governance Over Time"
         description="How Ethereum proposals have evolved across categories and lifecycle stages since inception."
         sectionId="governance-over-time"
-        className="bg-slate-950/30"
+        className="bg-slate-100/40 dark:bg-slate-950/30"
       />
-      <section className="relative w-full bg-slate-950/30 pb-8 sm:pb-12 lg:pb-16">
+      <section className="relative w-full bg-slate-100/40 dark:bg-slate-950/30 pb-8 sm:pb-12 lg:pb-16">
       <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         
           {/* Compact Insight Chip */}
           {insight && (
             <div className="mb-6 max-w-7xl mx-auto">
-              <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-1.5 text-xs text-cyan-300">
+              <div className="inline-flex items-center gap-2 rounded-full bg-cyan-500/10 border border-cyan-500/20 px-4 py-1.5 text-xs text-cyan-700 dark:text-cyan-300">
                 <span>📈</span>
                 <span>{insight}</span>
               </div>
@@ -507,7 +507,7 @@ export default function GovernanceOverTime() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="rounded-2xl border border-slate-700/20 bg-gradient-to-br from-slate-900/40 via-slate-950/60 to-slate-900/40 p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
+                className="rounded-2xl border border-slate-200 dark:border-slate-700/20 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/40 dark:via-slate-950/60 dark:to-slate-900/40 p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.3)]"
                 style={{
                   boxShadow: 'inset 0 1px 0 0 rgba(148, 163, 184, 0.05), 0 8px 32px rgba(0, 0, 0, 0.4)'
                 }}
@@ -544,8 +544,8 @@ export default function GovernanceOverTime() {
                       onClick={() => setSelectedYear(year === selectedYear ? null : year)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                         selectedYear === year
-                          ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.15)]'
-                          : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/40 border border-slate-700/30 hover:border-slate-600/50'
+                          ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border border-cyan-500/30 shadow-[0_0_8px_rgba(34,211,238,0.15)]'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-200/70 dark:hover:bg-slate-800/40 border border-slate-300 dark:border-slate-700/30 hover:border-slate-400 dark:hover:border-slate-600/50'
                       }`}
                     >
                       {year}
@@ -555,7 +555,7 @@ export default function GovernanceOverTime() {
                     <select
                       value={selectedYear && availableYears.slice(0, 4).includes(selectedYear) ? '' : (selectedYear || '')}
                       onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800/40 text-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/30 border border-slate-700/30 hover:border-slate-600/50 transition-colors"
+                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-cyan-500/30 border border-slate-300 dark:border-slate-700/30 hover:border-slate-400 dark:hover:border-slate-600/50 transition-colors"
                     >
                       <option value="">More...</option>
                       {availableYears.slice(4).map(year => (
@@ -570,15 +570,15 @@ export default function GovernanceOverTime() {
             {/* Right: Controls + Legend */}
             <div className="space-y-4">
               {/* Compact Controls */}
-              <div className="rounded-xl border border-slate-700/30 bg-slate-900/40 p-3 backdrop-blur-md space-y-3">
+              <div className="rounded-xl border border-slate-200 dark:border-slate-700/30 bg-slate-50/90 dark:bg-slate-900/40 p-3 backdrop-blur-md space-y-3">
               {/* Category/Status Toggle */}
-                <div className="flex rounded-lg p-0.5 bg-slate-800/30">
+                <div className="flex rounded-lg p-0.5 bg-slate-100 dark:bg-slate-800/30">
                 <button
                   onClick={() => setViewMode('category')}
                     className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     viewMode === 'category'
-                        ? 'bg-cyan-500/20 text-cyan-300'
-                      : 'text-slate-400 hover:text-slate-300'
+                        ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   Category
@@ -587,8 +587,8 @@ export default function GovernanceOverTime() {
                   onClick={() => setViewMode('status')}
                     className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     viewMode === 'status'
-                        ? 'bg-cyan-500/20 text-cyan-300'
-                      : 'text-slate-400 hover:text-slate-300'
+                        ? 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300'
+                      : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'
                   }`}
                 >
                   Status
@@ -596,12 +596,12 @@ export default function GovernanceOverTime() {
               </div>
 
               {/* RIP Filter */}
-                <label className="flex items-center gap-2 text-xs text-slate-400/80 cursor-pointer">
+                <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400/80 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={includeRIPs}
                   onChange={(e) => setIncludeRIPs(e.target.checked)}
-                    className="rounded border-slate-600/50 bg-slate-800/30 text-cyan-500 focus:ring-cyan-500"
+                    className="rounded border-slate-400 dark:border-slate-600/50 bg-white dark:bg-slate-800/30 text-cyan-500 focus:ring-cyan-500"
                 />
                 Include RIPs
               </label>
@@ -609,8 +609,8 @@ export default function GovernanceOverTime() {
 
               {/* Analytical Legend with Counts */}
               {!loading && chartData.length > 0 && (
-                <div className="rounded-xl border border-slate-700/30 bg-slate-900/40 p-3 backdrop-blur-md space-y-2">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Legend</div>
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700/30 bg-slate-50/90 dark:bg-slate-900/40 p-3 backdrop-blur-md space-y-2">
+                  <div className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wide mb-2">Legend</div>
                   <div className="space-y-1.5">
                     {Object.keys(colors).map(key => {
                       const isHidden = hiddenKeys.has(key);
@@ -622,8 +622,8 @@ export default function GovernanceOverTime() {
                           onClick={() => toggleKey(key)}
                           className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md transition-all ${
                             isHidden
-                              ? 'bg-slate-800/20 text-slate-500/60'
-                              : 'bg-slate-800/30 text-slate-300 hover:bg-slate-700/40'
+                              ? 'bg-slate-200/70 dark:bg-slate-800/20 text-slate-500/80 dark:text-slate-500/60'
+                              : 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/40'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -653,16 +653,16 @@ export default function GovernanceOverTime() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="mt-8 max-w-7xl mx-auto rounded-xl border border-slate-700/20 bg-slate-900/30 p-4 backdrop-blur-xl"
+            className="mt-8 max-w-7xl mx-auto rounded-xl border border-slate-200 dark:border-slate-700/20 bg-slate-50/90 dark:bg-slate-900/30 p-4 backdrop-blur-xl"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-100">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {selectedYear} · {detailedData.length} {detailedData.length === 1 ? 'proposal' : 'proposals'}
               </h3>
               {detailedData.length > 0 && (
                 <button
                   onClick={downloadCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-0 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/15 transition-all text-xs"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-0 bg-cyan-400/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-400/15 transition-all text-xs"
                 >
                   <Download className="h-3.5 w-3.5" />
                   CSV
@@ -675,14 +675,14 @@ export default function GovernanceOverTime() {
                 <Loader2 className="h-6 w-6 animate-spin text-cyan-400" />
               </div>
             ) : detailedData.length === 0 ? (
-              <div className="text-center text-slate-400 py-8">
+              <div className="text-center text-slate-600 dark:text-slate-400 py-8">
                 No data available for {selectedYear}
               </div>
             ) : (
               <div className="overflow-x-auto max-h-[500px] overflow-y-auto">
                 <table className="w-full">
-                  <thead className="sticky top-0 bg-slate-950/90 backdrop-blur-md z-10">
-                    <tr className="border-b border-slate-700/20">
+                  <thead className="sticky top-0 bg-slate-100/95 dark:bg-slate-950/90 backdrop-blur-md z-10">
+                    <tr className="border-b border-slate-200 dark:border-slate-700/20">
                       <th className="px-3 py-2 text-left text-[10px] font-medium text-slate-400/70 uppercase tracking-wider">EIP #</th>
                       <th className="px-3 py-2 text-left text-[10px] font-medium text-slate-400/70 uppercase tracking-wider">Title</th>
                       <th className="px-3 py-2 text-left text-[10px] font-medium text-slate-400/70 uppercase tracking-wider">Status</th>
@@ -690,24 +690,24 @@ export default function GovernanceOverTime() {
                       <th className="px-3 py-2 text-left text-[10px] font-medium text-slate-400/70 uppercase tracking-wider">Link</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/30">
+                  <tbody className="divide-y divide-slate-200 dark:divide-slate-800/30">
                     {detailedData
                       .filter(item => item.eipNumber && item.eipNumber > 0) // Filter out invalid entries
                       .map((item) => {
                         const statusColor = statusColors[item.status] || '#64748B';
                         const meta = `${item.category || item.type || 'Unknown'}${item.author && item.author !== 'Unknown' ? ` · ${item.author}` : ''}`;
                         return (
-                          <tr key={item.eipNumber} className="hover:bg-slate-800/20 transition-colors relative group">
+                          <tr key={item.eipNumber} className="hover:bg-slate-200/60 dark:hover:bg-slate-800/20 transition-colors relative group">
                             {/* Row Heat - Left Accent Bar */}
                             <td className="absolute left-0 top-0 h-full w-0.5 opacity-0 group-hover:opacity-100 transition-opacity" style={{ backgroundColor: statusColor }} />
-                            <td className="px-3 py-2 text-xs font-mono text-cyan-300/90">{item.eipNumber}</td>
-                            <td className="px-3 py-2 text-xs text-slate-300/90">{item.title || 'Untitled'}</td>
+                            <td className="px-3 py-2 text-xs font-mono text-cyan-700 dark:text-cyan-300/90">{item.eipNumber}</td>
+                            <td className="px-3 py-2 text-xs text-slate-700 dark:text-slate-300/90">{item.title || 'Untitled'}</td>
                           <td className="px-3 py-2">
                             <span className={`inline-flex px-2 py-0.5 rounded text-[10px] font-medium backdrop-blur-sm border ${
-                              item.status === 'Final' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/20' :
-                              item.status === 'Draft' ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/20' :
-                              item.status === 'Review' ? 'bg-blue-500/15 text-blue-300 border-blue-500/20' :
-                              item.status === 'Last Call' ? 'bg-amber-500/15 text-amber-300 border-amber-500/20' :
+                              item.status === 'Final' ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20' :
+                              item.status === 'Draft' ? 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20' :
+                              item.status === 'Review' ? 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/20' :
+                              item.status === 'Last Call' ? 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/20' :
                               item.status === 'Withdrawn' ? 'bg-slate-500/15 text-slate-400 border-slate-500/20' :
                               'bg-slate-500/15 text-slate-500 border-slate-500/20'
                             }`}>
@@ -720,7 +720,7 @@ export default function GovernanceOverTime() {
                               href={item.url}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-cyan-400/90 hover:text-cyan-300 text-xs transition-colors"
+                              className="text-cyan-700 dark:text-cyan-400/90 hover:text-cyan-800 dark:hover:text-cyan-300 text-xs transition-colors"
                             >
                               →
                             </a>

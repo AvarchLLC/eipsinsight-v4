@@ -157,10 +157,10 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
               transition={{ duration: 0.4 }}
               className="sticky top-24"
             >
-              <h2 className="dec-title text-lg font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-xl">
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-2xl">
                 Reference
               </h2>
-              <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-500">
+              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
                 EIP types, status terms, and how to contribute.
               </p>
             </motion.div>
@@ -181,14 +181,14 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
                   >
                     <AccordionItem
                       value={item.id}
-                      className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/40 px-4 shadow-sm transition-colors hover:border-slate-300 dark:hover:border-slate-700/60"
+                      className="rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 px-4 shadow-sm transition-colors hover:border-slate-300 dark:hover:border-slate-700/60"
                     >
                       <AccordionTrigger className="cursor-pointer items-center py-4 hover:no-underline data-[state=open]:border-b data-[state=open]:border-slate-200 dark:data-[state=open]:border-slate-700/40 data-[state=open]:pb-4">
                         <div className="flex items-center gap-3">
                           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600/50 bg-slate-100 dark:bg-slate-800/50">
                             <IconComponent className="h-4 w-4 text-slate-600 dark:text-slate-300" />
                           </div>
-                          <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+                          <span className="text-base font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-5 pt-0">

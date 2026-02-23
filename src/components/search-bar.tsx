@@ -1,11 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, X, ArrowRight, FileText, Users, GitPullRequest, Loader2 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 
 interface ProposalResult {
   kind: 'proposal';
@@ -40,6 +39,15 @@ interface PRResult {
 }
 
 type SearchResult = ProposalResult | AuthorResult | PRResult;
+
+type AuthorSearchRaw = Partial<AuthorResult> & {
+  name: string;
+  contributionCount?: number;
+  eipCount?: number;
+  prCount?: number;
+  issueCount?: number;
+  reviewCount?: number;
+};
 
 // Status color mapping (light + dark mode)
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -87,7 +95,7 @@ export function SearchBar() {
         ]);
 
         const proposals = proposalsRes.status === 'fulfilled' ? proposalsRes.value : [];
-        const authors = authorsRes.status === 'fulfilled' ? authorsRes.value : [];
+        const authors = authorsRes.status === 'fulfilled' ? (authorsRes.value as AuthorSearchRaw[]) : [];
         const prs = prsRes.status === 'fulfilled' ? prsRes.value : [];
 
         if (proposalsRes.status === 'rejected') console.error('Search proposals failed:', proposalsRes.reason);
@@ -102,14 +110,15 @@ export function SearchBar() {
             repo: (["eip", "erc", "rip"].includes(p.repo) ? p.repo : "eip") as "eip" | "erc" | "rip"
           })),
           authors: authors.map((a) => ({
+            kind: 'author' as const,
             ...a,
             // Derive a contributionCount if not provided by the backend
             contributionCount:
-              (a as any).contributionCount ??
-              (((a as any).eipCount ?? 0) +
-                ((a as any).prCount ?? 0) +
-                ((a as any).issueCount ?? 0) +
-                ((a as any).reviewCount ?? 0)),
+              a.contributionCount ??
+              ((a.eipCount ?? 0) +
+                (a.prCount ?? 0) +
+                (a.issueCount ?? 0) +
+                (a.reviewCount ?? 0)),
           })),
           prs,
         });
@@ -125,6 +134,24 @@ export function SearchBar() {
 
     return () => clearTimeout(timeoutId);
   }, [query]);
+
+  // Handler for clicking a result (must be defined before keyboard effect)
+  const handleResultClick = useCallback((result: SearchResult) => {
+    if (result.kind === 'proposal') {
+      router.push(`/${result.repo}/${result.number}`);
+    } else if (result.kind === 'author') {
+      // TODO: Navigate to author page when available
+      router.push(`/search?author=${encodeURIComponent(result.name)}`);
+    } else if (result.kind === 'pr') {
+      // Open GitHub PR directly using the full repository name from search results,
+      // e.g. "ethereum/EIPs" -> https://github.com/ethereum/EIPs/pull/11171
+      const githubUrl = `https://github.com/${result.repo}/pull/${result.prNumber}`;
+      window.open(githubUrl, "_blank", "noopener,noreferrer");
+    }
+    setShowDropdown(false);
+    setQuery('');
+    inputRef.current?.blur();
+  }, [router]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -165,7 +192,7 @@ export function SearchBar() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showDropdown, selectedIndex, results]);
+  }, [showDropdown, selectedIndex, results, handleResultClick]);
 
   // Scroll selected item into view
   useEffect(() => {
@@ -179,22 +206,6 @@ export function SearchBar() {
     }
   }, [selectedIndex, showDropdown]);
 
-  const handleResultClick = (result: SearchResult) => {
-    if (result.kind === 'proposal') {
-      router.push(`/${result.repo}/${result.number}`);
-    } else if (result.kind === 'author') {
-      // TODO: Navigate to author page when available
-      router.push(`/search?author=${encodeURIComponent(result.name)}`);
-    } else if (result.kind === 'pr') {
-      // Open GitHub PR directly using the full repository name from search results,
-      // e.g. "ethereum/EIPs" -> https://github.com/ethereum/EIPs/pull/11171
-      const githubUrl = `https://github.com/${result.repo}/pull/${result.prNumber}`;
-      window.open(githubUrl, "_blank", "noopener,noreferrer");
-    }
-    setShowDropdown(false);
-    setQuery('');
-    inputRef.current?.blur();
-  };
 
   const allResults = [
     ...results.proposals,
@@ -221,12 +232,12 @@ export function SearchBar() {
               setShowDropdown(true);
             }
           }}
-          onBlur={(e) => {
+          onBlur={() => {
             // Delay to allow click events
             setTimeout(() => setShowDropdown(false), 200);
           }}
           className={cn(
-            "w-full pl-12 pr-12 py-3 text-sm",
+            "w-full pl-12 pr-12 py-3 text-base",
             "rounded-full border border-slate-300 dark:border-cyan-300/30",
             "bg-white/95 dark:bg-black/40 backdrop-blur-sm",
             "text-slate-900 dark:text-slate-200 placeholder:text-slate-500 dark:placeholder:text-slate-400",
@@ -306,7 +317,7 @@ export function SearchBar() {
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-sm font-bold text-cyan-600 dark:text-cyan-300 font-mono">
+                              <span className="text-sm font-bold text-cyan-700 dark:text-cyan-300 font-mono">
                                 {result.repo.toUpperCase()}-{result.number}
                               </span>
                               <span className={cn(
@@ -420,7 +431,7 @@ export function SearchBar() {
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-bold text-blue-600 dark:text-blue-300 font-mono">
+                              <span className="text-sm font-bold text-blue-700 dark:text-blue-300 font-mono">
                                 #{result.prNumber}
                               </span>
                               {result.state && (

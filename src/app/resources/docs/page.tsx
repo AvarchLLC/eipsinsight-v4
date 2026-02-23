@@ -110,38 +110,38 @@ const docSections: DocSection[] = [
 const colorClasses: Record<string, { bg: string; text: string; border: string }> = {
   cyan: {
     bg: "bg-cyan-500/20",
-    text: "text-cyan-400",
+    text: "text-cyan-600 dark:text-cyan-400",
     border: "border-cyan-500/40",
   },
   emerald: {
     bg: "bg-emerald-500/20",
-    text: "text-emerald-400",
+    text: "text-emerald-600 dark:text-emerald-400",
     border: "border-emerald-500/40",
   },
   purple: {
     bg: "bg-purple-500/20",
-    text: "text-purple-400",
+    text: "text-purple-600 dark:text-purple-400",
     border: "border-purple-500/40",
   },
 };
 
 export default function DocsPage() {
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
+    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
       {/* Header */}
-      <section className="border-b border-slate-800/50 bg-slate-900/30 backdrop-blur-sm">
+      <section className="border-b border-slate-200 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/30 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-8">
           <Link
             href="/resources"
-            className="inline-flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors mb-4"
+            className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Resources
           </Link>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">
+          <h1 className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl mb-2">
             Documentation
           </h1>
-          <p className="text-slate-400">
+          <p className="text-slate-600 dark:text-slate-400">
             Official specs, guides, and process documentation for Ethereum standards.
           </p>
         </div>
@@ -159,7 +159,7 @@ export default function DocsPage() {
                   <div className={cn("rounded-full p-2", colors.bg)}>
                     <Icon className={cn("h-5 w-5", colors.text)} />
                   </div>
-                  <h2 className="text-2xl font-bold text-white">
+                  <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
                     {section.title}
                   </h2>
                 </div>
@@ -171,17 +171,17 @@ export default function DocsPage() {
                       href={link.href}
                       target={link.external ? "_blank" : undefined}
                       rel={link.external ? "noreferrer" : undefined}
-                      className="group block rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm transition-all hover:border-slate-600 hover:shadow-lg hover:-translate-y-0.5"
+                      className="group block rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm transition-all hover:border-slate-600 hover:shadow-lg hover:-translate-y-0.5"
                     >
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <h3 className="text-lg font-semibold text-white mb-2 group-hover:text-cyan-300 transition-colors flex items-center gap-2">
+                          <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors flex items-center gap-2">
                             {link.title}
                             {link.external && (
                               <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
                             )}
                           </h3>
-                          <p className="text-sm text-slate-400">
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
                             {link.description}
                           </p>
                         </div>
@@ -195,18 +195,18 @@ export default function DocsPage() {
         </div>
 
         {/* Footer CTA */}
-        <div className="mt-16 rounded-xl border border-slate-700/50 bg-slate-900/40 p-8 backdrop-blur-sm text-center">
-          <h3 className="text-xl font-semibold text-white mb-2">
+        <div className="mt-16 rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-8 backdrop-blur-sm text-center">
+          <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
             Missing something?
           </h3>
-          <p className="text-sm text-slate-400 mb-6">
-            Let us know if there's documentation you'd like to see added.
+          <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
+            Let us know if there&apos;s documentation you&apos;d like to see added.
           </p>
           <a
             href="https://github.com/AvarchLLC/EIPsInsight/issues/new"
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-cyan-500/20 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/30 hover:border-cyan-400 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-slate-900 dark:text-white bg-cyan-500/20 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/30 hover:border-cyan-400 transition-colors"
           >
             Suggest documentation
             <ExternalLink className="h-4 w-4" />

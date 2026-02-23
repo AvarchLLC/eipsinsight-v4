@@ -5,7 +5,14 @@ export const authProcedures = {
   getSession: os
     .$context<Ctx>()
     .handler(async ({ context }) => {
-      const result = await auth.api.getSession({ headers: context.headers })
-      return result ?? null
+      try {
+        const result = await auth.api.getSession({
+          headers: new Headers(context.headers),
+        })
+        return result ?? null
+      } catch {
+        // Return null instead of 500 when session fetch fails (e.g. DB connection, config)
+        return null
+      }
     }),
 }

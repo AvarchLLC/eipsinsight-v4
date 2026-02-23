@@ -111,7 +111,7 @@ export function ThemeToggle({
         aria-label="Toggle theme"
         className={cn(
           'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300',
-          'border border-slate-700/40 dark:border-slate-600/50',
+          'border border-slate-300 dark:border-slate-600/50',
           'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-700/50',
           'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
           'active:scale-95',

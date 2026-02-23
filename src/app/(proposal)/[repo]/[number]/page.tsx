@@ -14,7 +14,9 @@ import {
   Copy,
   Check,
   FileCode,
-  ChevronRight
+  ChevronRight,
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { Button } from '@/components/ui/button';
@@ -38,19 +40,19 @@ const statusColors: Record<string, {
   'Draft': { 
     bg: 'bg-cyan-500/10', 
     bgGradient: 'bg-gradient-to-br from-cyan-500/15 via-cyan-500/8 to-transparent',
-    text: 'text-cyan-200', 
+    text: 'text-cyan-700 dark:text-cyan-200', 
     border: 'border-cyan-400/40', 
-    leftBorder: 'border-l-cyan-400',
+    leftBorder: 'border-l-cyan-500 dark:border-l-cyan-400',
     dot: 'bg-cyan-500',
     dotGlow: 'shadow-cyan-500/50',
-    cardBg: 'bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-cyan-500/5'
+    cardBg: 'bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-cyan-500/5 dark:from-cyan-500/20 dark:via-cyan-500/10 dark:to-cyan-500/5'
   },
   'Review': { 
     bg: 'bg-blue-500/10', 
     bgGradient: 'bg-gradient-to-br from-blue-500/15 via-blue-500/8 to-transparent',
-    text: 'text-blue-200', 
+    text: 'text-blue-700 dark:text-blue-200', 
     border: 'border-blue-400/40', 
-    leftBorder: 'border-l-blue-400',
+    leftBorder: 'border-l-blue-500 dark:border-l-blue-400',
     dot: 'bg-blue-500',
     dotGlow: 'shadow-blue-500/50',
     cardBg: 'bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-blue-500/5'
@@ -58,9 +60,9 @@ const statusColors: Record<string, {
   'Last Call': { 
     bg: 'bg-amber-500/10', 
     bgGradient: 'bg-gradient-to-br from-amber-500/15 via-amber-500/8 to-transparent',
-    text: 'text-amber-200', 
+    text: 'text-amber-700 dark:text-amber-200', 
     border: 'border-amber-400/40', 
-    leftBorder: 'border-l-amber-400',
+    leftBorder: 'border-l-amber-500 dark:border-l-amber-400',
     dot: 'bg-amber-500',
     dotGlow: 'shadow-amber-500/50',
     cardBg: 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-amber-500/5'
@@ -68,9 +70,9 @@ const statusColors: Record<string, {
   'Final': { 
     bg: 'bg-emerald-500/10', 
     bgGradient: 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/8 to-transparent',
-    text: 'text-emerald-200', 
+    text: 'text-emerald-700 dark:text-emerald-200', 
     border: 'border-emerald-400/40', 
-    leftBorder: 'border-l-emerald-400',
+    leftBorder: 'border-l-emerald-500 dark:border-l-emerald-400',
     dot: 'bg-emerald-500',
     dotGlow: 'shadow-emerald-500/50',
     cardBg: 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-500/5'
@@ -78,9 +80,9 @@ const statusColors: Record<string, {
   'Stagnant': { 
     bg: 'bg-slate-500/10', 
     bgGradient: 'bg-gradient-to-br from-slate-500/15 via-slate-500/8 to-transparent',
-    text: 'text-slate-300', 
+    text: 'text-slate-700 dark:text-slate-300', 
     border: 'border-slate-400/30', 
-    leftBorder: 'border-l-slate-400',
+    leftBorder: 'border-l-slate-500 dark:border-l-slate-400',
     dot: 'bg-slate-500',
     dotGlow: 'shadow-slate-500/30',
     cardBg: 'bg-gradient-to-br from-slate-500/15 via-slate-500/8 to-slate-500/5'
@@ -88,9 +90,9 @@ const statusColors: Record<string, {
   'Withdrawn': { 
     bg: 'bg-red-500/10', 
     bgGradient: 'bg-gradient-to-br from-red-500/15 via-red-500/8 to-transparent',
-    text: 'text-red-200', 
+    text: 'text-red-700 dark:text-red-200', 
     border: 'border-red-400/40', 
-    leftBorder: 'border-l-red-400',
+    leftBorder: 'border-l-red-500 dark:border-l-red-400',
     dot: 'bg-red-500',
     dotGlow: 'shadow-red-500/50',
     cardBg: 'bg-gradient-to-br from-red-500/20 via-red-500/10 to-red-500/5'
@@ -206,6 +208,10 @@ export default function ProposalDetailPage() {
   const [markdownCopied, setMarkdownCopied] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [aiSummary, setAiSummary] = useState<string | null>(null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
+  const [showAi, setShowAi] = useState(false);
 
   // Normalize repo name
   const normalizedRepo = repo.toLowerCase().replace(/s$/, '');
@@ -275,6 +281,38 @@ export default function ProposalDetailPage() {
     fetchContent();
   }, [proposal, normalizedRepo, number, markdownContent]);
 
+  // Fetch AI summary when markdown content is available
+  useEffect(() => {
+    if (!markdownContent || !number || normalizedRepo !== 'eip') return;
+
+    let cancelled = false;
+    setAiSummaryLoading(true);
+    setAiSummaryError(null);
+
+    fetch('/api/eip-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ eipNo: number, content: markdownContent }),
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (cancelled) return;
+        if (res.ok) {
+          setAiSummary(data.summary);
+        } else {
+          setAiSummaryError(data.error || 'Failed to generate summary');
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAiSummaryError('Failed to generate summary');
+      })
+      .finally(() => {
+        if (!cancelled) setAiSummaryLoading(false);
+      });
+
+    return () => { cancelled = true; };
+  }, [markdownContent, number, normalizedRepo]);
+
   const handleCopyLink = async () => {
     const url = window.location.href;
     try {
@@ -300,7 +338,7 @@ export default function ProposalDetailPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-400 border-t-transparent" />
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 dark:border-cyan-400 border-t-transparent" />
       </div>
     );
   }
@@ -309,9 +347,9 @@ export default function ProposalDetailPage() {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <AlertCircle className="h-12 w-12 text-red-400 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-white mb-2">Failed to load proposal</h2>
-          <p className="text-slate-400">{error || 'Unknown error'}</p>
+          <AlertCircle className="h-12 w-12 text-red-500 dark:text-red-400 mx-auto mb-4" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Failed to load proposal</h2>
+          <p className="text-slate-600 dark:text-slate-400">{error || 'Unknown error'}</p>
         </div>
       </div>
     );
@@ -323,30 +361,30 @@ export default function ProposalDetailPage() {
 
   // Determine urgency color for governance signals
   const getUrgencyColor = (days: number | null) => {
-    if (!days) return 'text-slate-300';
-    if (days > 60) return 'text-red-400';
-    if (days > 30) return 'text-amber-400';
-    return 'text-emerald-300';
+    if (!days) return 'text-slate-600 dark:text-slate-300';
+    if (days > 60) return 'text-red-600 dark:text-red-400';
+    if (days > 30) return 'text-amber-600 dark:text-amber-400';
+    return 'text-emerald-600 dark:text-emerald-300';
   };
 
   return (
     <div className="bg-background relative w-full overflow-hidden min-h-screen">
       {/* Seamless Background */}
-      <div className="fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.15),_transparent_50%),_radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.12),_transparent_50%)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
-        <div className="absolute top-0 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-cyan-400/10 via-emerald-400/5 to-transparent blur-3xl" />
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.08),_transparent_50%),_radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.06),_transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.15),_transparent_50%),_radial-gradient(ellipse_at_bottom_right,_rgba(6,182,212,0.12),_transparent_50%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(34,211,238,0.02)_1px,transparent_1px),linear-gradient(to_bottom,rgba(34,211,238,0.02)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,rgba(34,211,238,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(34,211,238,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem]" />
+        <div className="absolute top-0 left-1/2 h-[800px] w-[800px] -translate-x-1/2 rounded-full bg-gradient-to-br from-cyan-400/5 via-emerald-400/3 to-transparent dark:from-cyan-400/10 dark:via-emerald-400/5 dark:to-transparent blur-3xl" />
       </div>
 
       <div className="relative z-10">
         {/* 1. Identity Header (Minimal) */}
-        <div className="relative w-full bg-background/80 backdrop-blur-xl border-b border-cyan-400/10">
+        <div className="relative w-full bg-background/80 backdrop-blur-xl border-b border-slate-200 dark:border-cyan-400/10">
           <div className="mx-auto max-w-7xl px-4 pt-10 pb-6 sm:px-6 sm:pt-12 sm:pb-8">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-3">
                 {/* Repo badge and copy link */}
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-300 backdrop-blur-sm">
+                  <span className="inline-flex items-center rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-xs font-semibold text-cyan-700 dark:text-cyan-300 backdrop-blur-sm">
                     {repoDisplayName}
                   </span>
                   <TooltipProvider>
@@ -354,12 +392,12 @@ export default function ProposalDetailPage() {
                       <TooltipTrigger asChild>
                         <button
                           onClick={handleCopyLink}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700/40 bg-slate-900/50 backdrop-blur-sm transition-all hover:border-cyan-400/50 hover:bg-cyan-400/15"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/50 backdrop-blur-sm transition-all hover:border-cyan-400/50 hover:bg-cyan-400/15"
                         >
                           {linkCopied ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-400" />
+                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                           ) : (
-                            <Copy className="h-3.5 w-3.5 text-slate-400" />
+                            <Copy className="h-3.5 w-3.5 text-slate-600 dark:text-slate-400" />
                           )}
                         </button>
                       </TooltipTrigger>
@@ -371,19 +409,19 @@ export default function ProposalDetailPage() {
                 </div>
 
                 {/* Title */}
-                <h1 className="dec-title text-balance bg-gradient-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl md:text-5xl">
+                <h1 className="dec-title text-balance bg-gradient-to-br from-emerald-700 via-slate-800 to-cyan-700 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl md:text-5xl">
                   {proposalId}: {proposal.title}
                 </h1>
 
                 {/* Description */}
-                <p className="max-w-3xl text-sm leading-relaxed text-slate-400 sm:text-base mt-3">
+                <p className="max-w-3xl text-sm leading-relaxed text-slate-600 dark:text-slate-400 sm:text-base mt-3">
                   Track the governance lifecycle, status changes, and upgrade participation for this proposal.
                 </p>
 
                 {/* Authors as Avatars */}
                 {proposal.authors.length > 0 && (
                   <div className="mt-6 flex items-center gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Authors</p>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500">Authors</p>
                     <div className="flex -space-x-2 *:data-[slot=avatar]:ring-2 *:data-[slot=avatar]:ring-background *:data-[slot=avatar]:grayscale-0">
                       <TooltipProvider>
                         {proposal.authors.map((author, index) => (
@@ -399,7 +437,7 @@ export default function ProposalDetailPage() {
                                       e.currentTarget.style.display = 'none';
                                     }}
                                   />
-                                  <AvatarFallback className="bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 text-cyan-300 font-semibold">
+                                  <AvatarFallback className="bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 text-cyan-700 dark:text-cyan-300 font-semibold">
                                     {getInitials(author)}
                                   </AvatarFallback>
                                 </Avatar>
@@ -414,70 +452,100 @@ export default function ProposalDetailPage() {
                     </div>
                   </div>
                 )}
+                
+                {/* AI Summary toggle (collapsible inline) */}
+                <div className="mt-4">
+                  <button
+                    onClick={() => setShowAi(s => !s)}
+                    className="text-sm font-medium text-cyan-600 dark:text-cyan-300 hover:underline focus:outline-none"
+                  >
+                    {showAi ? 'Hide AI summary' : 'Show AI summary'}
+                  </button>
+                  {showAi && (
+                    <div className="mt-2 text-sm text-slate-700 dark:text-slate-300">
+                      {aiSummaryLoading ? (
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className="h-4 w-4 animate-spin text-slate-600 dark:text-slate-400" />
+                          <span>Generating summary...</span>
+                        </div>
+                      ) : aiSummaryError ? (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">{aiSummaryError}</div>
+                      ) : aiSummary ? (
+                        <div
+                          className="prose prose-sm dark:prose-invert max-w-none [&_h4]:text-cyan-600 [&_h4]:dark:text-cyan-400 [&_strong]:text-cyan-600 [&_strong]:dark:text-cyan-400 [&_p]:text-slate-700 [&_p]:dark:text-slate-300"
+                          dangerouslySetInnerHTML={{ __html: aiSummary }}
+                        />
+                      ) : (
+                        <div className="text-sm text-slate-500 dark:text-slate-500">AI summary will appear here.</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16">
+        <div className="container mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-16 mt-8">
+          <div className="space-y-6">
           {/* 2. Preamble Table (RFC-style, flat, authoritative) */}
-          <div className="mb-12 mt-8">
-            <div className="overflow-hidden rounded-lg border border-slate-700/40 bg-slate-950/50">
+          <div>
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-700/40 bg-white/80 dark:bg-slate-950/50">
               <table className="w-full border-collapse">
-                <tbody className="divide-y divide-slate-700/30">
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-700/30">
                   <tr>
-                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">EIP</td>
-                    <td className="px-6 py-4 text-sm text-white font-mono">{proposalId}</td>
+                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">EIP</td>
+                    <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-mono">{proposalId}</td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Title</td>
-                    <td className="px-6 py-4 text-sm text-white">{proposal.title}</td>
+                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Title</td>
+                    <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.title}</td>
                   </tr>
                   <tr>
-                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Status</td>
-                    <td className="px-6 py-4 text-sm text-white">{proposal.status}</td>
+                    <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Status</td>
+                    <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.status}</td>
                   </tr>
                   {proposal.type && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Type</td>
-                      <td className="px-6 py-4 text-sm text-white">{proposal.type}</td>
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Type</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.type}</td>
                     </tr>
                   )}
                   {proposal.category && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Category</td>
-                      <td className="px-6 py-4 text-sm text-white">{proposal.category}</td>
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Category</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.category}</td>
                     </tr>
                   )}
                   {proposal.authors.length > 0 && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Author</td>
-                      <td className="px-6 py-4 text-sm text-white">{proposal.authors.join(', ')}</td>
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Author</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.authors.join(', ')}</td>
                     </tr>
                   )}
                   {proposal.created && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Created</td>
-                      <td className="px-6 py-4 text-sm text-white">{proposal.created}</td>
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Created</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">{proposal.created}</td>
                     </tr>
                   )}
                   {proposalRequires.length > 0 && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Requires</td>
-                      <td className="px-6 py-4 text-sm text-white font-mono">
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Requires</td>
+                      <td className="px-6 py-4 text-sm text-slate-900 dark:text-white font-mono">
                         {proposalRequires.map(r => `${repoDisplayName}-${r}`).join(', ')}
                       </td>
                     </tr>
                   )}
                   {(proposal.discussions_to || discussionsTo) && (
                     <tr>
-                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Discussions-To</td>
+                      <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Discussions-To</td>
                       <td className="px-6 py-4 text-sm">
                         <a 
                           href={proposal.discussions_to || discussionsTo || '#'} 
                           target="_blank" 
                           rel="noopener noreferrer" 
-                          className="text-cyan-300 hover:text-cyan-200 transition-colors break-all"
+                          className="text-cyan-600 dark:text-cyan-300 hover:text-cyan-700 dark:hover:text-cyan-200 transition-colors break-all"
                         >
                           {proposal.discussions_to || discussionsTo}
                         </a>
@@ -488,8 +556,8 @@ export default function ProposalDetailPage() {
                   {upgrades.length > 0 && (
                     <>
                       <tr>
-                        <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Inclusion Status</td>
-                        <td className="px-6 py-4 text-sm text-white">
+                        <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Inclusion Status</td>
+                        <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">
                           {upgrades.map((upgrade, idx) => (
                             <span key={idx}>
                               {upgrade.bucket 
@@ -501,8 +569,8 @@ export default function ProposalDetailPage() {
                         </td>
                       </tr>
                       <tr>
-                        <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-400 bg-slate-900/30 w-40 align-top">Network Upgrade</td>
-                        <td className="px-6 py-4 text-sm text-white">
+                        <td className="px-6 py-4 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 bg-slate-100/80 dark:bg-slate-900/30 w-40 align-top">Network Upgrade</td>
+                        <td className="px-6 py-4 text-sm text-slate-900 dark:text-white">
                           {upgrades.map((upgrade, idx) => (
                             <span key={idx}>
                               {upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
@@ -519,26 +587,29 @@ export default function ProposalDetailPage() {
           </div>
 
           {/* 3. Governance Signals + Lifecycle Timeline (Together) */}
-          <div className="mb-12 space-y-8">
+          <div className="space-y-8">
             {/* Governance Signals */}
             {governanceState && (governanceState.waiting_on || governanceState.days_since_last_action !== null) && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
-                className="rounded-xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-transparent p-6 backdrop-blur-sm"
+                className="rounded-xl border border-emerald-200/20 dark:border-emerald-400/12 bg-white/80 dark:bg-slate-900/30 p-6 backdrop-blur-sm"
               >
                 <div className="flex items-center gap-2 mb-4">
-                  <Activity className="h-5 w-5 text-emerald-400" />
-                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-300">Governance Signals</h3>
+                  <Activity className="h-5 w-5 text-emerald-400 dark:text-emerald-300" />
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-300">Governance Signals</h3>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {governanceState.waiting_on && (
                     <div>
-                      <p className="text-xs text-slate-500 mb-1">Waiting On</p>
-                      <p className="text-sm font-semibold text-emerald-300">
-                        {formatWaitingOn(governanceState.waiting_on)}
-                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Waiting On</p>
+                      {(() => {
+                        const waitingStr = formatWaitingOn(governanceState.waiting_on);
+                        const isClosed = /closed/i.test(waitingStr);
+                        const valueClass = isClosed ? 'text-sm font-semibold text-slate-700 dark:text-slate-300' : 'text-sm font-semibold text-emerald-700 dark:text-emerald-300';
+                        return <p className={valueClass}>{waitingStr}</p>;
+                      })()}
                     </div>
                   )}
                   {governanceState.days_since_last_action !== null && (
@@ -559,12 +630,12 @@ export default function ProposalDetailPage() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
-                className="rounded-xl border border-cyan-400/20 bg-slate-900/40 p-8 backdrop-blur-sm overflow-hidden"
+                className="rounded-xl border border-cyan-400/20 dark:border-cyan-400/20 bg-white/80 dark:bg-slate-900/40 p-8 backdrop-blur-sm overflow-hidden"
               >
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-cyan-400" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-300">Lifecycle Timeline</h3>
+                    <TrendingUp className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">Lifecycle Timeline</h3>
                   </div>
                   {/* Status pill - only here, glowy */}
                   {proposal.status && (
@@ -696,7 +767,7 @@ export default function ProposalDetailPage() {
                                     <span className={cn(
                                       "text-[10px] uppercase tracking-wide font-semibold px-1.5 py-0.5 rounded", 
                                       statusColors[event.from]?.bg || 'bg-slate-500/20',
-                                      statusColors[event.from]?.text || 'text-slate-400'
+                                      statusColors[event.from]?.text || 'text-slate-600 dark:text-slate-400'
                                     )}>
                                       {event.from}
                                     </span>
@@ -714,14 +785,14 @@ export default function ProposalDetailPage() {
                               
                               {/* Date and time */}
                               <div className="space-y-0.5 mb-2.5">
-                                <p className="text-xs font-medium text-white">
+                                <p className="text-xs font-medium text-slate-900 dark:text-white">
                                   {new Date(event.changed_at).toLocaleDateString('en-US', {
                                     month: 'short',
                                     day: 'numeric',
                                     year: 'numeric'
                                   })}
                                 </p>
-                                <p className="text-[10px] text-slate-400">
+                                <p className="text-[10px] text-slate-600 dark:text-slate-400">
                                   {new Date(event.changed_at).toLocaleTimeString('en-US', {
                                     hour: '2-digit',
                                     minute: '2-digit'
@@ -731,8 +802,8 @@ export default function ProposalDetailPage() {
                               
                               {/* Duration */}
                               {duration && prevEvent && (
-                                <div className="pt-2 border-t border-white/10">
-                                  <p className="text-[10px] text-slate-400 italic">
+                                <div className="pt-2 border-t border-slate-300/50 dark:border-white/10">
+                                  <p className="text-[10px] text-slate-600 dark:text-slate-400 italic">
                                     {duration} in {prevEvent.to}
                                   </p>
                                 </div>
@@ -740,9 +811,9 @@ export default function ProposalDetailPage() {
                               
                               {/* Commit link hint */}
                               {event.commit_sha && (
-                                <div className="mt-2 pt-2 border-t border-white/10 flex items-center justify-center gap-1">
+                                <div className="mt-2 pt-2 border-t border-slate-300/50 dark:border-white/10 flex items-center justify-center gap-1">
                                   <Github className="h-2.5 w-2.5 text-slate-500" />
-                                  <span className="text-[10px] text-slate-500 group-hover:text-slate-400 transition-colors">
+                                  <span className="text-[10px] text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-400 transition-colors">
                                     View commit
                                   </span>
                                 </div>
@@ -776,24 +847,24 @@ export default function ProposalDetailPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
-              className="rounded-xl border border-violet-400/20 bg-slate-900/40 p-6 mb-12 backdrop-blur-sm"
+              className="rounded-xl border border-violet-400/20 dark:border-violet-400/20 bg-white/80 dark:bg-slate-900/40 p-6 backdrop-blur-sm"
             >
               <div className="flex items-center gap-2 mb-4">
-                <Package className="h-5 w-5 text-violet-400" />
-                <h3 className="text-sm font-bold uppercase tracking-wider text-violet-300">Network Upgrades</h3>
+                <Package className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+                <h3 className="text-sm font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">Network Upgrades</h3>
               </div>
               <div className="space-y-3">
                 {upgrades.map((upgrade, index) => (
                   <TooltipProvider key={index}>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <div className="flex items-center justify-between p-3 rounded-lg border border-violet-400/10 bg-violet-500/5 hover:bg-violet-500/10 transition-colors cursor-help">
+                        <div className="flex items-center justify-between p-3 rounded-lg border border-violet-400/10 dark:border-violet-400/10 bg-violet-500/5 hover:bg-violet-500/10 transition-colors cursor-help">
                           <div>
-                            <p className="text-sm font-semibold text-violet-300">
+                            <p className="text-sm font-semibold text-violet-700 dark:text-violet-300">
                               Included in {upgrade.name} ({upgrade.bucket})
                             </p>
                             {upgrade.commit_date && (
-                              <p className="text-xs text-slate-400 mt-0.5">
+                              <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                                 {new Date(upgrade.commit_date).toLocaleDateString('en-US', {
                                   year: 'numeric',
                                   month: 'long',
@@ -803,7 +874,7 @@ export default function ProposalDetailPage() {
                             )}
                           </div>
                           <Link href={`/upgrade/${upgrade.slug}`}>
-                            <Button variant="ghost" size="sm" className="text-violet-300 hover:text-violet-200">
+                            <Button variant="ghost" size="sm" className="text-violet-700 dark:text-violet-300 hover:text-violet-800 dark:hover:text-violet-200">
                               View <ArrowRight className="h-3.5 w-3.5 ml-1" />
                             </Button>
                           </Link>
@@ -824,7 +895,7 @@ export default function ProposalDetailPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="rounded-xl border border-slate-700/40 bg-slate-950/50 p-8 mb-12"
+            className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white/80 dark:bg-slate-950/50 p-8 overflow-hidden flex flex-col"
           >
             {/* Copy as Markdown button */}
             {markdownContent && (
@@ -836,7 +907,7 @@ export default function ProposalDetailPage() {
                         variant="outline"
                         size="sm"
                         onClick={handleCopyMarkdown}
-                        className="border-slate-600/40 bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:border-slate-500/50 transition-all"
+                        className="border-slate-300 dark:border-slate-600/40 bg-slate-100 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700/50 hover:border-slate-400 dark:hover:border-slate-500/50 transition-all"
                       >
                         {markdownCopied ? (
                           <>
@@ -866,12 +937,12 @@ export default function ProposalDetailPage() {
             ) : markdownError ? (
               <div className="text-center py-12">
                 <AlertCircle className="h-8 w-8 text-slate-500 mx-auto mb-2" />
-                <p className="text-sm text-slate-400 mb-4">{markdownError}</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">{markdownError}</p>
                 <a
                   href={githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm text-cyan-300 hover:text-cyan-200 inline-flex items-center gap-1.5"
+                  className="text-sm text-cyan-600 dark:text-cyan-300 hover:text-cyan-700 dark:hover:text-cyan-200 inline-flex items-center gap-1.5"
                 >
                   View on GitHub instead <ExternalLink className="h-3.5 w-3.5" />
                 </a>
@@ -890,23 +961,24 @@ export default function ProposalDetailPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.4 }}
-            className="rounded-xl border border-slate-700/40 bg-slate-900/30 p-4 backdrop-blur-sm"
+            className="rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white/80 dark:bg-slate-900/30 p-4 backdrop-blur-sm"
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Github className="h-4 w-4 text-slate-400" />
+                <Github className="h-4 w-4 text-slate-600 dark:text-slate-400" />
                 <a
                   href={githubUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sm font-medium text-cyan-300 hover:text-cyan-200 transition-colors"
+                  className="text-sm font-medium text-cyan-600 dark:text-cyan-300 hover:text-cyan-700 dark:hover:text-cyan-200 transition-colors"
                 >
                   View on GitHub
                 </a>
               </div>
-              <ExternalLink className="h-3.5 w-3.5 text-slate-500" />
+              <ExternalLink className="h-3.5 w-3.5 text-slate-600 dark:text-slate-500" />
             </div>
           </motion.div>
+          </div>
         </div>
       </div>
     </div>
