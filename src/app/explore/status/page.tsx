@@ -12,7 +12,6 @@ import { ViewToggle } from './_components/view-toggle';
 import { StatusEIPTable } from './_components/status-eip-table';
 import { StatusCardGrid } from './_components/status-card-grid';
 import { StatusFlowGraph } from './_components/status-flow-graph';
-import { SectionSeparator } from '@/components/header';
 
 interface EIP {
   id: number;
@@ -35,18 +34,17 @@ function StatusPageContent() {
   const router = useRouter();
 
   // Parse initial filters from URL
-  const initialStatus = searchParams.get('status')?.replace('-', ' ') || null;
-  const initialCategory = searchParams.get('category');
+  const initialStatus = searchParams.get('status')?.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || null;
+  const initialCategories = searchParams.getAll('category');
+  const initialTypes = searchParams.getAll('type');
 
   const [view, setView] = useState<'list' | 'grid'>('list');
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(
-    initialStatus ? initialStatus.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : null
-  );
-  const [selectedCategories, setSelectedCategories] = useState<string[]>(
-    initialCategory ? [initialCategory] : []
-  );
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(initialStatus);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(initialCategories);
+  const [selectedTypes, setSelectedTypes] = useState<string[]>(initialTypes);
   const [statuses, setStatuses] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
   const [eips, setEips] = useState<EIP[]>([]);
   const [total, setTotal] = useState(0);
   const [statusFlow, setStatusFlow] = useState<StatusFlow[]>([]);
@@ -57,16 +55,18 @@ function StatusPageContent() {
 
   const pageSize = 20;
 
-  // Fetch available statuses and categories
+  // Fetch available statuses, categories, and types
   useEffect(() => {
     async function fetchFilters() {
       try {
-        const [statusData, categoryData] = await Promise.all([
+        const [statusData, categoryData, typesData] = await Promise.all([
           client.explore.getStatusCounts({}),
           client.explore.getCategoryCounts({}),
+          client.explore.getTypes({}),
         ]);
         setStatuses(statusData.map(s => s.status));
         setCategories(categoryData.map(c => c.category));
+        setTypes(typesData.map(t => t.type));
       } catch (err) {
         console.error('Failed to fetch filters:', err);
       } finally {
@@ -99,7 +99,8 @@ function StatusPageContent() {
       try {
         const data = await client.explore.getEIPsByStatus({
           status: selectedStatus || undefined,
-          category: selectedCategories.length === 1 ? selectedCategories[0] : undefined,
+          categories: selectedCategories.length > 0 ? selectedCategories : undefined,
+          types: selectedTypes.length > 0 ? selectedTypes : undefined,
           limit: pageSize,
           offset: (page - 1) * pageSize,
         });
@@ -112,31 +113,33 @@ function StatusPageContent() {
       }
     }
     fetchEIPs();
-  }, [selectedStatus, selectedCategories, page]);
+  }, [selectedStatus, selectedCategories, selectedTypes, page]);
 
-  // Update URL when filters change
+  const updateUrl = (status: string | null, cats: string[], typs: string[]) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status.toLowerCase().replace(/\s/g, '-'));
+    cats.forEach(c => params.append('category', c));
+    typs.forEach(t => params.append('type', t));
+    const queryString = params.toString();
+    router.push(`/explore/status${queryString ? `?${queryString}` : ''}`, { scroll: false });
+  };
+
   const handleStatusChange = (status: string | null) => {
     setSelectedStatus(status);
     setPage(1);
-    
-    const params = new URLSearchParams();
-    if (status) params.set('status', status.toLowerCase().replace(' ', '-'));
-    if (selectedCategories.length === 1) params.set('category', selectedCategories[0]);
-    
-    const queryString = params.toString();
-    router.push(`/explore/status${queryString ? `?${queryString}` : ''}`, { scroll: false });
+    updateUrl(status, selectedCategories, selectedTypes);
   };
 
   const handleCategoriesChange = (cats: string[]) => {
     setSelectedCategories(cats);
     setPage(1);
-    
-    const params = new URLSearchParams();
-    if (selectedStatus) params.set('status', selectedStatus.toLowerCase().replace(' ', '-'));
-    if (cats.length === 1) params.set('category', cats[0]);
-    
-    const queryString = params.toString();
-    router.push(`/explore/status${queryString ? `?${queryString}` : ''}`, { scroll: false });
+    updateUrl(selectedStatus, cats, selectedTypes);
+  };
+
+  const handleTypesChange = (typs: string[]) => {
+    setSelectedTypes(typs);
+    setPage(1);
+    updateUrl(selectedStatus, selectedCategories, typs);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -146,37 +149,34 @@ function StatusPageContent() {
   const totalPages = Math.ceil(total / pageSize);
 
   return (
-    <div className="bg-background relative w-full overflow-hidden min-h-screen">
+    <div className="bg-background relative w-full min-h-screen">
       {/* Background gradient */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.08),_transparent_50%)]" />
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.06),_transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(52,211,153,0.08),_transparent_50%)]" />
       </div>
 
-      {/* Header */}
-      <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Back link */}
+      {/* Header - compact */}
+      <section className="relative w-full pt-6 pb-2">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <Link
             href="/explore"
             className={cn(
-              "inline-flex items-center gap-2 mb-6",
-              "text-sm text-slate-400 hover:text-white transition-colors"
+              "inline-flex items-center gap-2 mb-4",
+              "text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             )}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
           </Link>
-
-          {/* Page Title */}
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-400/30">
-              <Layers className="h-7 w-7 text-emerald-400" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-500/15 border border-emerald-400/30 dark:border-emerald-400/30">
+              <Layers className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="dec-title text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
                 Browse by Status
               </h1>
-              <p className="text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Filter and explore EIPs by their current status and category
               </p>
             </div>
@@ -184,46 +184,43 @@ function StatusPageContent() {
         </div>
       </section>
 
-      <SectionSeparator />
-
-      {/* Status Flow Graph */}
-      <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      {/* Status Flow Graph - compact */}
+      <section className="relative w-full py-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <StatusFlowGraph data={statusFlow} loading={flowLoading} />
         </div>
       </section>
 
-      <SectionSeparator />
-
-      {/* Filters and Content */}
-      <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar Filters */}
-            <div className="lg:col-span-1">
-              <div className="sticky top-4">
+      {/* Filters and Content - single row, filters sticky */}
+      <section className="relative w-full py-4 pb-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* Mobile: filters inline above content. Desktop: sidebar */}
+            <aside className="lg:w-56 shrink-0">
+              <div className="lg:sticky lg:top-20">
                 <StatusFilterBar
                   statuses={statuses}
                   categories={categories}
+                  types={types}
                   selectedStatus={selectedStatus}
                   selectedCategories={selectedCategories}
+                  selectedTypes={selectedTypes}
                   onStatusChange={handleStatusChange}
                   onCategoriesChange={handleCategoriesChange}
+                  onTypesChange={handleTypesChange}
                 />
               </div>
-            </div>
+            </aside>
 
-            {/* Main Content */}
-            <div className="lg:col-span-3">
-              {/* View Toggle & Results Count */}
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-sm text-slate-400">
+            {/* Main Content - flex-1 */}
+            <main className="flex-1 min-w-0">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-sm text-slate-500 dark:text-slate-400">
                   {total.toLocaleString()} results
                 </span>
                 <ViewToggle view={view} onViewChange={setView} />
               </div>
 
-              {/* Results */}
               {view === 'list' ? (
                 <StatusEIPTable
                   eips={eips}
@@ -236,38 +233,34 @@ function StatusPageContent() {
               ) : (
                 <>
                   <StatusCardGrid eips={eips} loading={tableLoading} />
-                  
-                  {/* Grid Pagination */}
                   {totalPages > 1 && !tableLoading && (
-                    <div className="flex items-center justify-center gap-4 mt-6">
+                    <div className="flex items-center justify-center gap-4 mt-4">
                       <button
                         onClick={() => handlePageChange(page - 1)}
                         disabled={page === 1}
                         className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm",
-                          "border border-slate-700/50 transition-all",
+                          "border border-slate-200 dark:border-slate-700/50 transition-all",
                           page === 1
                             ? "opacity-50 cursor-not-allowed text-slate-500"
-                            : "text-slate-300 hover:border-cyan-400/50 hover:text-white"
+                            : "text-slate-700 dark:text-slate-300 hover:border-cyan-400/50 hover:text-slate-900 dark:hover:text-white"
                         )}
                       >
                         <ChevronLeft className="h-4 w-4" />
                         Previous
                       </button>
-
-                      <span className="text-sm text-slate-400">
+                      <span className="text-sm text-slate-500 dark:text-slate-400">
                         Page {page} of {totalPages}
                       </span>
-
                       <button
                         onClick={() => handlePageChange(page + 1)}
                         disabled={page === totalPages}
                         className={cn(
                           "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm",
-                          "border border-slate-700/50 transition-all",
+                          "border border-slate-200 dark:border-slate-700/50 transition-all",
                           page === totalPages
                             ? "opacity-50 cursor-not-allowed text-slate-500"
-                            : "text-slate-300 hover:border-cyan-400/50 hover:text-white"
+                            : "text-slate-700 dark:text-slate-300 hover:border-cyan-400/50 hover:text-slate-900 dark:hover:text-white"
                         )}
                       >
                         Next
@@ -277,13 +270,10 @@ function StatusPageContent() {
                   )}
                 </>
               )}
-            </div>
+            </main>
           </div>
         </div>
       </section>
-
-      {/* Bottom spacing */}
-      <div className="h-16" />
     </div>
   );
 }

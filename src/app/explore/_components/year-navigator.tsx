@@ -73,10 +73,10 @@ export function YearNavigator() {
   if (loading) {
     return (
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="animate-pulse flex flex-col gap-4">
-            <div className="h-8 w-48 bg-slate-800 rounded" />
-            <div className="h-24 bg-slate-800 rounded-xl" />
+            <div className="h-8 w-48 bg-slate-200 dark:bg-slate-800 rounded" />
+            <div className="h-24 bg-slate-200 dark:bg-slate-800 rounded-xl" />
           </div>
         </div>
       </section>
@@ -88,10 +88,10 @@ export function YearNavigator() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-400/20">
-            <Calendar className="h-5 w-5 text-cyan-400" />
+          <div className="p-2 rounded-lg bg-cyan-500/15 dark:bg-cyan-500/10 border border-cyan-400/30 dark:border-cyan-400/20">
+            <Calendar className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Browse by Year</h2>
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Browse by Year</h2>
         </div>
 
         {/* Year Scroller */}
@@ -102,8 +102,8 @@ export function YearNavigator() {
             className={cn(
               "absolute left-0 top-1/2 -translate-y-1/2 z-10",
               "flex h-10 w-10 items-center justify-center rounded-full",
-              "bg-slate-900/90 border border-slate-700/50 backdrop-blur-sm",
-              "text-slate-400 hover:text-white hover:border-cyan-400/50",
+              "bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/50 backdrop-blur-sm",
+              "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-cyan-400/50",
               "transition-all duration-200"
             )}
           >
@@ -131,20 +131,20 @@ export function YearNavigator() {
                     "relative flex-shrink-0 px-6 py-4 rounded-xl cursor-pointer",
                     "border transition-all duration-200",
                     selectedYear === yearData.year
-                      ? "bg-cyan-500/15 border-cyan-400/40 shadow-lg shadow-cyan-500/10"
-                      : "bg-slate-900/50 border-slate-700/40 hover:border-slate-600/60"
+                      ? "bg-cyan-50 dark:bg-cyan-500/15 border-cyan-400/50 dark:border-cyan-400/40 shadow-md shadow-cyan-200/50 dark:shadow-cyan-500/10 ring-1 ring-cyan-200/60 dark:ring-transparent"
+                      : "bg-white dark:bg-slate-900/50 border-slate-200 dark:border-slate-700/40 shadow-sm dark:shadow-none ring-1 ring-slate-200/50 dark:ring-transparent hover:border-cyan-300/60 dark:hover:border-slate-600/60 hover:shadow-md"
                   )}
                 >
-                  <span className={cn(
-                    "text-2xl font-bold",
-                    selectedYear === yearData.year ? "text-cyan-300" : "text-white"
+                    <span className={cn(
+                    "dec-title text-2xl font-bold tracking-tight",
+                    selectedYear === yearData.year ? "text-cyan-600 dark:text-cyan-300" : "text-slate-900 dark:text-white"
                   )}>
                     {yearData.year}
                   </span>
                   
                   {/* Stats badge */}
                   <div className="mt-1 flex items-center gap-1.5">
-                    <span className="text-xs text-slate-400">
+                    <span className="text-xs text-slate-600 dark:text-slate-400">
                       {yearData.newEIPs} EIPs
                     </span>
                   </div>
@@ -159,15 +159,15 @@ export function YearNavigator() {
                         className={cn(
                           "absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20",
                           "px-3 py-2 rounded-lg",
-                          "bg-slate-800 border border-slate-700",
-                          "text-xs text-slate-300 whitespace-nowrap"
+                          "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-lg",
+                          "text-xs text-slate-700 dark:text-slate-300 whitespace-nowrap"
                         )}
                       >
-                        <div className="font-medium text-white mb-1">{yearData.year}</div>
+                        <div className="font-medium text-slate-900 dark:text-white mb-1">{yearData.year}</div>
                         <div>{yearData.newEIPs} new EIPs</div>
                         <div>{yearData.statusChanges} status changes</div>
                         <div>{yearData.activePRs} active PRs</div>
-                        <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-1 border-4 border-transparent border-t-slate-800" />
+                        <div className="absolute left-1/2 -translate-x-1/2 top-full -mt-1 border-4 border-transparent border-t-white dark:border-t-slate-800" />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -182,8 +182,8 @@ export function YearNavigator() {
             className={cn(
               "absolute right-0 top-1/2 -translate-y-1/2 z-10",
               "flex h-10 w-10 items-center justify-center rounded-full",
-              "bg-slate-900/90 border border-slate-700/50 backdrop-blur-sm",
-              "text-slate-400 hover:text-white hover:border-cyan-400/50",
+              "bg-white/90 dark:bg-slate-900/90 border border-slate-200 dark:border-slate-700/50 backdrop-blur-sm",
+              "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-cyan-400/50",
               "transition-all duration-200"
             )}
           >
@@ -198,14 +198,14 @@ export function YearNavigator() {
             animate={{ opacity: 1, y: 0 }}
             className={cn(
               "mt-6 p-4 rounded-xl",
-              "bg-slate-900/50 border border-slate-700/40"
+              "bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40 shadow-sm dark:shadow-none ring-1 ring-slate-200/40 dark:ring-transparent"
             )}
           >
             <div className="flex items-center justify-between mb-3">
-              <span className="text-sm text-slate-400">
+              <span className="text-sm text-slate-600 dark:text-slate-400">
                 Monthly activity for {selectedYear}
               </span>
-              <span className="text-xs text-slate-500">
+              <span className="text-xs text-slate-600 dark:text-slate-500">
                 EIPs touched per month
               </span>
             </div>
@@ -223,11 +223,11 @@ export function YearNavigator() {
                     transition={{ duration: 0.3, delay: i * 0.03 }}
                     className={cn(
                       "w-full rounded-t",
-                      data.count > 0 ? "bg-cyan-400/60" : "bg-slate-700/30"
+                      data.count > 0 ? "bg-cyan-500/60 dark:bg-cyan-400/60" : "bg-slate-300/50 dark:bg-slate-700/30"
                     )}
                     style={{ minHeight: data.count > 0 ? '4px' : '2px' }}
                   />
-                  <span className="text-[10px] text-slate-500">
+                  <span className="text-[10px] text-slate-600 dark:text-slate-500">
                     {['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][i]}
                   </span>
                 </div>

@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { TrendingScoreInfo } from './_components/trending-score-info';
 import { TrendingList } from './_components/trending-list';
 import { TrendingHeatmap } from './_components/trending-heatmap';
-import { SectionSeparator } from '@/components/header';
 
 interface TrendingProposal {
   eipId: number;
@@ -65,37 +64,34 @@ export default function TrendingPage() {
   }, []);
 
   return (
-    <div className="bg-background relative w-full overflow-hidden min-h-screen">
+    <div className="bg-background relative w-full min-h-screen">
       {/* Background gradient */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,146,60,0.08),_transparent_50%)]" />
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(251,146,60,0.06),_transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(251,146,60,0.08),_transparent_50%)]" />
       </div>
 
       {/* Header */}
-      <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Back link */}
+      <section className="relative w-full pt-4 pb-2">
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
           <Link
             href="/explore"
             className={cn(
-              "inline-flex items-center gap-2 mb-6",
-              "text-sm text-slate-400 hover:text-white transition-colors"
+              "inline-flex items-center gap-2 mb-3",
+              "text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             )}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
           </Link>
-
-          {/* Page Title */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-orange-500/15 border border-orange-400/30">
-              <TrendingUp className="h-7 w-7 text-orange-400" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-orange-500/15 border border-orange-400/30 dark:border-orange-400/30">
+              <TrendingUp className="h-6 w-6 text-orange-600 dark:text-orange-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="dec-title text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
                 Trending Proposals
               </h1>
-              <p className="text-slate-400">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
                 Discover the most active EIPs over the last 7 days
               </p>
             </div>
@@ -103,36 +99,29 @@ export default function TrendingPage() {
         </div>
       </section>
 
-      <SectionSeparator />
-
       {/* Main Content */}
-      <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section className="relative w-full py-4 pb-6">
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             {/* Main List (2/3 width) */}
             <div className="lg:col-span-2">
               <TrendingList proposals={proposals} loading={proposalsLoading} />
             </div>
 
             {/* Sidebar (1/3 width) */}
-            <div className="space-y-6">
+            <div>
               <TrendingScoreInfo />
             </div>
           </div>
         </div>
       </section>
 
-      <SectionSeparator />
-
       {/* Heatmap Section */}
-      <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <section className="relative w-full py-4 pb-8">
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
           <TrendingHeatmap data={heatmapData} loading={heatmapLoading} />
         </div>
       </section>
-
-      {/* Bottom spacing */}
-      <div className="h-16" />
     </div>
   );
 }

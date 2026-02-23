@@ -36,21 +36,21 @@ const statusIcons: Record<string, React.ComponentType<{ className?: string }>> =
 };
 
 const statusColors: Record<string, { border: string; bg: string; text: string; icon: string }> = {
-  'Draft': { border: 'border-slate-400/30', bg: 'bg-slate-500/10', text: 'text-slate-300', icon: 'text-slate-400' },
-  'Review': { border: 'border-blue-400/30', bg: 'bg-blue-500/10', text: 'text-blue-300', icon: 'text-blue-400' },
-  'Last Call': { border: 'border-amber-400/30', bg: 'bg-amber-500/10', text: 'text-amber-300', icon: 'text-amber-400' },
-  'Final': { border: 'border-emerald-400/30', bg: 'bg-emerald-500/10', text: 'text-emerald-300', icon: 'text-emerald-400' },
-  'Stagnant': { border: 'border-orange-400/30', bg: 'bg-orange-500/10', text: 'text-orange-300', icon: 'text-orange-400' },
-  'Withdrawn': { border: 'border-red-400/30', bg: 'bg-red-500/10', text: 'text-red-300', icon: 'text-red-400' },
+  'Draft': { border: 'border-slate-300 dark:border-slate-400/30', bg: 'bg-slate-500/15 dark:bg-slate-500/10', text: 'text-slate-600 dark:text-slate-300', icon: 'text-slate-500 dark:text-slate-400' },
+  'Review': { border: 'border-blue-300 dark:border-blue-400/30', bg: 'bg-blue-500/15 dark:bg-blue-500/10', text: 'text-blue-600 dark:text-blue-300', icon: 'text-blue-500 dark:text-blue-400' },
+  'Last Call': { border: 'border-amber-300 dark:border-amber-400/30', bg: 'bg-amber-500/15 dark:bg-amber-500/10', text: 'text-amber-700 dark:text-amber-300', icon: 'text-amber-500 dark:text-amber-400' },
+  'Final': { border: 'border-emerald-300 dark:border-emerald-400/30', bg: 'bg-emerald-500/15 dark:bg-emerald-500/10', text: 'text-emerald-600 dark:text-emerald-300', icon: 'text-emerald-500 dark:text-emerald-400' },
+  'Stagnant': { border: 'border-orange-300 dark:border-orange-400/30', bg: 'bg-orange-500/15 dark:bg-orange-500/10', text: 'text-orange-600 dark:text-orange-300', icon: 'text-orange-500 dark:text-orange-400' },
+  'Withdrawn': { border: 'border-red-300 dark:border-red-400/30', bg: 'bg-red-500/15 dark:bg-red-500/10', text: 'text-red-600 dark:text-red-300', icon: 'text-red-500 dark:text-red-400' },
 };
 
 const categoryColors: Record<string, string> = {
-  'Core': 'bg-cyan-500/20 text-cyan-300 border-cyan-400/30',
-  'Networking': 'bg-violet-500/20 text-violet-300 border-violet-400/30',
-  'Interface': 'bg-pink-500/20 text-pink-300 border-pink-400/30',
-  'ERC': 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30',
-  'Meta': 'bg-amber-500/20 text-amber-300 border-amber-400/30',
-  'Informational': 'bg-blue-500/20 text-blue-300 border-blue-400/30',
+  'Core': 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-400/40 dark:border-cyan-400/30',
+  'Networking': 'bg-violet-500/20 text-violet-700 dark:text-violet-300 border-violet-400/40 dark:border-violet-400/30',
+  'Interface': 'bg-pink-500/20 text-pink-700 dark:text-pink-300 border-pink-400/40 dark:border-pink-400/30',
+  'ERC': 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-400/40 dark:border-emerald-400/30',
+  'Meta': 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-400/40 dark:border-amber-400/30',
+  'Informational': 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-400/40 dark:border-blue-400/30',
 };
 
 function formatLastUpdated(dateStr: string | null): string {
@@ -95,12 +95,12 @@ export function StatusCategoryGrid() {
   if (loading) {
     return (
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <div className="animate-pulse">
-            <div className="h-8 w-64 bg-slate-800 rounded mb-6" />
+            <div className="h-8 w-64 bg-slate-200 dark:bg-slate-800 rounded mb-6" />
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
               {[...Array(6)].map((_, i) => (
-                <div key={i} className="h-32 bg-slate-800 rounded-xl" />
+                <div key={i} className="h-32 bg-slate-200 dark:bg-slate-800 rounded-xl" />
               ))}
             </div>
           </div>
@@ -111,13 +111,13 @@ export function StatusCategoryGrid() {
 
   return (
     <section className="relative w-full py-8">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
         {/* Section Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-400/20">
-            <Layers className="h-5 w-5 text-emerald-400" />
+          <div className="p-2 rounded-lg bg-emerald-500/15 dark:bg-emerald-500/10 border border-emerald-400/30 dark:border-emerald-400/20">
+            <Layers className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
           </div>
-          <h2 className="text-xl font-semibold text-white">Browse by Status & Category</h2>
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl">Browse by Status & Category</h2>
         </div>
 
         {/* Category Pills */}
@@ -127,8 +127,8 @@ export function StatusCategoryGrid() {
             className={cn(
               "px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
               selectedCategory === null
-                ? "bg-white/10 text-white border-white/20"
-                : "bg-transparent text-slate-400 border-slate-700/50 hover:border-slate-600"
+                ? "bg-slate-200 dark:bg-white/10 text-slate-900 dark:text-white border-slate-300 dark:border-white/20"
+                : "bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600"
             )}
           >
             All
@@ -140,8 +140,8 @@ export function StatusCategoryGrid() {
               className={cn(
                 "px-4 py-1.5 rounded-full text-sm font-medium border transition-all",
                 selectedCategory === cat.category
-                  ? categoryColors[cat.category] || 'bg-slate-500/20 text-slate-300 border-slate-400/30'
-                  : "bg-transparent text-slate-400 border-slate-700/50 hover:border-slate-600"
+                  ? categoryColors[cat.category] || 'bg-slate-200 dark:bg-slate-500/20 text-slate-800 dark:text-slate-300 border-slate-300 dark:border-slate-400/30'
+                  : "bg-transparent text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700/50 hover:border-slate-400 dark:hover:border-slate-600"
               )}
             >
               {cat.category} ({cat.count})
@@ -169,8 +169,10 @@ export function StatusCategoryGrid() {
                   whileHover={{ scale: 1.02, y: -4 }}
                   className={cn(
                     "relative p-4 rounded-xl border cursor-pointer",
-                    "bg-slate-900/50 backdrop-blur-sm",
-                    "hover:shadow-lg transition-all duration-200",
+                    "bg-white dark:bg-slate-900/50 shadow-sm dark:shadow-none",
+                    "hover:shadow-lg hover:shadow-slate-200/50 dark:hover:shadow-cyan-500/10",
+                    "ring-1 ring-slate-200/60 dark:ring-transparent",
+                    "transition-all duration-200",
                     colors.border
                   )}
                 >
@@ -183,17 +185,17 @@ export function StatusCategoryGrid() {
                   </div>
 
                   {/* Status name */}
-                  <h3 className={cn("text-sm font-semibold mb-1", colors.text)}>
+                  <h3 className={cn("dec-title text-sm font-semibold tracking-tight mb-1", colors.text)}>
                     {status}
                   </h3>
 
                   {/* Count */}
-                  <p className="text-2xl font-bold text-white mb-1">
+                  <p className="dec-title text-2xl font-bold tracking-tight text-slate-900 dark:text-white mb-1">
                     {count.toLocaleString()}
                   </p>
 
                   {/* Last updated */}
-                  <p className="text-xs text-slate-500">
+                  <p className="text-xs text-slate-600 dark:text-slate-500">
                     Updated: {formatLastUpdated(statusData?.lastUpdated || null)}
                   </p>
                 </motion.div>

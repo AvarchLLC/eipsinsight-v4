@@ -128,6 +128,65 @@ const sql = `
       return final;
     }),
 
+  getTimelineByCategoryAndStatus: optionalAuthProcedure
+    .input(z.object({
+      includeRIPs: z.boolean().optional().default(true),
+      primaryDimension: z.enum(['category', 'status']).optional().default('category'),
+    }))
+    .handler(async ({ input }) => {
+      const sql = `
+        WITH CombinedProposals AS (
+          SELECT 
+            EXTRACT(YEAR FROM e.created_at)::int as year,
+            CASE
+              WHEN s.category IS NOT NULL AND s.category != '' THEN s.category
+              WHEN s.type = 'Meta' THEN 'Meta'
+              WHEN s.type = 'Informational' THEN 'Informational'
+              ELSE 'Core'
+            END as category,
+            s.status
+          FROM eips e
+          JOIN eip_snapshots s ON e.id = s.eip_id
+          WHERE e.created_at IS NOT NULL
+          UNION ALL
+          SELECT 
+            EXTRACT(YEAR FROM created_at)::int as year,
+            'RIP' as category,
+            status as status
+          FROM rips
+          WHERE created_at IS NOT NULL
+          ${!input.includeRIPs ? 'AND 1=0' : ''}
+        )
+        SELECT year, category, status, COUNT(*)::bigint as count
+        FROM CombinedProposals
+        WHERE year IS NOT NULL
+        GROUP BY year, category, status
+        ORDER BY year ASC, count DESC
+      `;
+      const results = await prisma.$queryRawUnsafe<Array<{
+        year: number | null;
+        category: string;
+        status: string;
+        count: bigint;
+      }>>(sql);
+
+      const primary = input.primaryDimension === 'category' ? 'category' : 'status';
+      const secondary = input.primaryDimension === 'category' ? 'status' : 'category';
+
+      const byYear = new Map<number, Array<{ primary: string; secondary: string; count: number }>>();
+      for (const row of results) {
+        if (row.year == null) continue;
+        const p = primary === 'category' ? row.category : row.status;
+        const s = primary === 'category' ? row.status : row.category;
+        if (!byYear.has(row.year)) byYear.set(row.year, []);
+        byYear.get(row.year)!.push({ primary: p, secondary: s, count: Number(row.count) });
+      }
+
+      return Array.from(byYear.entries())
+        .sort((a, b) => a[0] - b[0])
+        .map(([year, breakdown]) => ({ year, breakdown }));
+    }),
+
   getDetailedDataByYear: optionalAuthProcedure
     .input(z.object({
       year: z.number(),

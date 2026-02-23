@@ -11,7 +11,6 @@ import { RoleTabSwitcher } from './_components/role-tab-switcher';
 import { RoleLeaderboard } from './_components/role-leaderboard';
 import { RoleActivityTimeline } from './_components/role-activity-timeline';
 import { RoleActivitySparkline } from './_components/role-activity-sparkline';
-import { SectionSeparator } from '@/components/header';
 
 type Role = 'EDITOR' | 'REVIEWER' | 'CONTRIBUTOR' | null;
 
@@ -110,43 +109,39 @@ function RolesPageContent() {
   };
 
   return (
-    <div className="bg-background relative w-full overflow-hidden min-h-screen">
+    <div className="bg-background relative w-full min-h-screen">
       {/* Background gradient */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.08),_transparent_50%)]" />
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.06),_transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(139,92,246,0.08),_transparent_50%)]" />
       </div>
 
       {/* Header */}
-      <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Back link */}
+      <section className="relative w-full pt-4 pb-2">
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
           <Link
             href="/explore"
             className={cn(
-              "inline-flex items-center gap-2 mb-6",
-              "text-sm text-slate-400 hover:text-white transition-colors"
+              "inline-flex items-center gap-2 mb-3",
+              "text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             )}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
           </Link>
-
-          {/* Page Title */}
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-400/30">
-              <Users className="h-7 w-7 text-violet-400" />
+          <div className="flex items-center gap-3 mb-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-500/15 border border-violet-400/30 dark:border-violet-400/30">
+              <Users className="h-6 w-6 text-violet-600 dark:text-violet-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">
-                Browse by Role
+              <h1 className="dec-title text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">
+                Contributor Leaderboard
               </h1>
-              <p className="text-slate-400">
-                Explore contributors by their role in the EIP process
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                Top contributors by role in the EIP process
               </p>
             </div>
           </div>
 
-          {/* Role Tab Switcher */}
           {!countsLoading && (
             <RoleTabSwitcher
               selectedRole={selectedRole}
@@ -157,35 +152,31 @@ function RolesPageContent() {
         </div>
       </section>
 
-      <SectionSeparator />
-
       {/* Main Content */}
-      <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <section className="relative w-full py-4 pb-6">
+        <div className="mx-auto max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 lg:grid-rows-1 lg:items-stretch">
             {/* Leaderboard (2/3 width) */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-2 min-h-[400px]">
               <RoleLeaderboard entries={leaderboard} loading={leaderboardLoading} />
             </div>
 
-            {/* Sidebar (1/3 width) */}
-            <div className="space-y-6">
-              {/* Activity Sparkline */}
-              <RoleActivitySparkline
-                data={sparkline}
-                loading={sparklineLoading}
-                role={selectedRole}
-              />
-
-              {/* Activity Timeline */}
-              <RoleActivityTimeline events={timeline} loading={timelineLoading} />
+            {/* Sidebar */}
+            <div className="flex flex-col gap-4 min-h-[400px] max-h-[480px]">
+              <div className="shrink-0">
+                <RoleActivitySparkline
+                  data={sparkline}
+                  loading={sparklineLoading}
+                  role={selectedRole}
+                />
+              </div>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+                <RoleActivityTimeline events={timeline} loading={timelineLoading} />
+              </div>
             </div>
           </div>
         </div>
       </section>
-
-      {/* Bottom spacing */}
-      <div className="h-16" />
     </div>
   );
 }

@@ -28,6 +28,13 @@ import {
   RotateCcw,
   ChevronDown,
   Filter,
+  BarChart3,
+  GitMerge,
+  Users,
+  Trophy,
+  Rss,
+  Shield,
+  Eye,
 } from "lucide-react";
 import {
   ChartContainer,
@@ -49,7 +56,9 @@ import {
   Legend,
 } from "recharts";
 import { cn } from "@/lib/utils";
-import { PageHeader } from "@/components/header";
+import { StandardsPageHeader } from "@/app/standards/_components/standards-page-header";
+import { CopyLinkButton } from "@/components/header";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 // ──────── Types ────────
 type RepoTab = "all" | "eips" | "ercs" | "rips";
@@ -114,6 +123,34 @@ interface RIPRow {
 interface RIPActivity {
   month: string;
   count: number;
+}
+
+type ChartMode = "repository" | "category" | "status";
+
+interface RecentClosedMergedPR {
+  number: string;
+  title: string;
+  status: string;
+  closedAt: string;
+  repoShort: string;
+}
+
+interface EditorReview {
+  prNumber: string;
+  title: string;
+  reviewer: string;
+  submittedAt: string;
+  repoShort: string;
+}
+
+interface LeaderboardEntry {
+  actor: string;
+  totalReviews?: number;
+  prsTouched?: number;
+  total?: number;
+  reviews?: number;
+  prsAuthored?: number;
+  prsReviewed?: number;
 }
 
 // ──────── Colors ────────
@@ -201,6 +238,19 @@ function StandardsPageContent() {
     categories: string[];
   }>({ statuses: [], types: [], categories: [] });
 
+  // ── Chart mode (Repository / Category / Status) ──
+  const [chartMode, setChartMode] = useState<ChartMode>("repository");
+  const [timelineCatStatus, setTimelineCatStatus] = useState<Array<{ year: number; breakdown: Array<{ primary: string; secondary: string; count: number }> }>>([]);
+
+  // ── Activity & leaderboards ──
+  const [recentClosedMergedPRs, setRecentClosedMergedPRs] = useState<RecentClosedMergedPR[]>([]);
+  const [editorReviewsLast24h, setEditorReviewsLast24h] = useState<EditorReview[]>([]);
+  const [reviewActivityTotal, setReviewActivityTotal] = useState<number>(0);
+  const [editorsLeaderboard, setEditorsLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [reviewersLeaderboard, setReviewersLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [contributorsLeaderboard, setContributorsLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [leaderboardTab, setLeaderboardTab] = useState<"editors" | "reviewers" | "contributors">("editors");
+
   // ── Debounce search ──
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -280,6 +330,47 @@ function StandardsPageContent() {
       }
     };
     load();
+  }, [repoParam, isRIP]);
+
+  // ── Fetch timeline by category/status (for chart switcher) ──
+  useEffect(() => {
+    if (isRIP || (chartMode !== "category" && chartMode !== "status")) return;
+    const primary = chartMode === "category" ? "category" : "status";
+    const includeRIPs = repoParam === undefined;
+    client.governanceTimeline
+      .getTimelineByCategoryAndStatus({ includeRIPs, primaryDimension: primary })
+      .then(setTimelineCatStatus)
+      .catch(console.error);
+  }, [chartMode, repoParam, isRIP]);
+
+  // ── Fetch activity & leaderboards (for EIPs/ERCs) ──
+  useEffect(() => {
+    if (isRIP) return;
+    Promise.all([
+      client.analytics.getRecentClosedMergedPRs({ limit: 25, repo: repoParam }),
+      client.analytics.getEditorReviewsLast24h({ limit: 50, repo: repoParam }),
+      client.analytics.getReviewActivityTotal({ hours: 24, repo: repoParam }),
+      client.analytics.getEditorsLeaderboard({ limit: 10, repo: repoParam }),
+      client.analytics.getReviewersLeaderboard({ limit: 10, repo: repoParam }),
+      client.analytics.getContributorRankings({ limit: 10, repo: repoParam, sortBy: "total" }),
+    ])
+      .then(([prs, reviews, totalRes, eds, revs, contribs]) => {
+        setRecentClosedMergedPRs(prs);
+        setEditorReviewsLast24h(reviews);
+        setReviewActivityTotal(totalRes.total);
+        setEditorsLeaderboard(eds);
+        setReviewersLeaderboard(revs);
+        setContributorsLeaderboard(
+          contribs.map((c) => ({
+            actor: c.actor,
+            total: c.total,
+            reviews: c.reviews,
+            prsAuthored: c.prsAuthored,
+            prsReviewed: c.prsReviewed,
+          }))
+        );
+      })
+      .catch(console.error);
   }, [repoParam, isRIP]);
 
   // ── Fetch table ──
@@ -391,11 +482,11 @@ function StandardsPageContent() {
   };
 
   const SortIcon = ({ col }: { col: string }) => {
-    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-500" />;
+    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-600 dark:text-slate-400" />;
     return sortDir === "asc" ? (
-      <ArrowUp className="h-3 w-3 ml-1 text-cyan-400" />
+      <ArrowUp className="h-3 w-3 ml-1 text-primary" />
     ) : (
-      <ArrowDown className="h-3 w-3 ml-1 text-cyan-400" />
+      <ArrowDown className="h-3 w-3 ml-1 text-primary" />
     );
   };
 
@@ -581,6 +672,41 @@ function StandardsPageContent() {
       .sort((a, b) => a.year - b.year);
   }, [trends]);
 
+  // Progress Over Time: transform timelineCatStatus into stacked bar data
+  const progressTimelineData = useMemo(() => {
+    if (chartMode === "repository") return trendLineData;
+    if (timelineCatStatus.length === 0) return [];
+    return timelineCatStatus.map(({ year, breakdown }) => {
+      const entry: Record<string, number | string> = { year };
+      for (const { primary, count } of breakdown) {
+        entry[primary] = (Number(entry[primary]) || 0) + count;
+      }
+      return entry;
+    });
+  }, [chartMode, trendLineData, timelineCatStatus]);
+
+  const progressTimelineKeys = useMemo(() => {
+    if (chartMode === "repository") return ["eips", "ercs", "rips"];
+    if (timelineCatStatus.length === 0) return [];
+    const keys = new Set<string>();
+    for (const { breakdown } of timelineCatStatus) {
+      for (const { primary } of breakdown) keys.add(primary);
+    }
+    return Array.from(keys);
+  }, [chartMode, timelineCatStatus]);
+
+  // Top Status (Core Protocol Insights)
+  const topStatusCounts = useMemo(() => {
+    const byStatus: Record<string, number> = {};
+    for (const d of statusDist) {
+      byStatus[d.status] = (byStatus[d.status] ?? 0) + d.count;
+    }
+    return Object.entries(byStatus)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([status, count]) => ({ status, count }));
+  }, [statusDist]);
+
   const donutData = useMemo(() => {
     const byStatus: Record<string, number> = {};
     for (const d of statusDist) {
@@ -658,11 +784,11 @@ function StandardsPageContent() {
   // ── Render helpers ──
   const StatusBadge = ({ status }: { status: string }) => (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium"
       style={{
         backgroundColor: `${STATUS_COLORS[status] ?? "#94a3b8"}20`,
         color: STATUS_COLORS[status] ?? "#94a3b8",
-        border: `1px solid ${STATUS_COLORS[status] ?? "#94a3b8"}30`,
+        border: `1px solid ${STATUS_COLORS[status] ?? "#94a3b8"}40`,
       }}
     >
       {status}
@@ -671,7 +797,7 @@ function StandardsPageContent() {
 
   const TypeBadge = ({ value }: { value: string | null }) =>
     value ? (
-      <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium bg-slate-700/50 text-slate-300 border border-slate-600/30">
+      <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
         {value}
       </span>
     ) : null;
@@ -680,16 +806,17 @@ function StandardsPageContent() {
   // ─── RENDER ──────────────────────
   // ─────────────────────────────────
   return (
-    <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950">
-      {/* ── Page Header ── */}
-      <PageHeader
-        title="Standards Explorer"
-        description="Browse, filter, and analyze Ethereum standards across repositories with advanced search and filtering capabilities."
-        indicator={{ icon: "chart", label: "Standards", pulse: false }}
-        className="border-b border-slate-800/50"
-      />
+    <div className="relative min-h-screen w-full overflow-hidden bg-background">
+      {/* Subtle background accent (matches dashboard/public) */}
+      <div className="pointer-events-none absolute inset-0 z-0">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.03),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
+      </div>
 
-      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <div className="relative z-10 w-full max-w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-12 space-y-4">
+      {/* ── Page Header ── */}
+      <StandardsPageHeader />
+
+      <div className="space-y-4">
         {/* ── Repo Tabs ── */}
         <div className="flex items-center gap-3 flex-wrap">
         {(
@@ -704,10 +831,10 @@ function StandardsPageContent() {
               key={tab.value}
               onClick={() => setRepo(tab.value)}
               className={cn(
-                "inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all duration-150",
+                "inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all duration-300",
                 repo === tab.value
-                  ? "bg-linear-to-r from-cyan-700/10 to-emerald-700/10 text-cyan-300 border-cyan-500/40 shadow-md"
-                  : "bg-slate-800/30 text-slate-400 border-slate-700/40 hover:bg-slate-700/40 hover:text-slate-300"
+                  ? "bg-primary/10 text-primary border-primary/40 shadow-[0_0_12px_rgba(34,211,238,0.15)] dark:shadow-[0_0_12px_rgba(34,211,238,0.15)]"
+                  : "bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/60 hover:text-slate-900 dark:hover:text-slate-100"
               )}
             >
               {tab.label}
@@ -715,37 +842,39 @@ function StandardsPageContent() {
           ))}
         </div>
 
+        <hr className="border-slate-200 dark:border-slate-800/50" />
+
         {/* ── Filters Bar ── */}
         {!isRIP && (
-          <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-sm">
+          <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 shadow-sm dark:shadow-slate-950/30">
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
               className="w-full flex items-center justify-between px-4 py-3"
             >
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-slate-400" />
-                <span className="text-sm font-medium text-slate-300">
+                <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <span className="text-sm font-medium text-foreground">
                   Filters
                 </span>
                 {hasActiveFilters && (
-                  <span className="inline-flex items-center rounded-full bg-cyan-500/20 px-2 py-0.5 text-xs text-cyan-300">
+                  <span className="inline-flex items-center rounded-full bg-primary/20 px-2 py-0.5 text-xs font-medium text-primary">
                     Active
                   </span>
                 )}
               </div>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 text-slate-400 transition-transform",
+                  "h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform",
                   filtersOpen && "rotate-180"
                 )}
               />
             </button>
 
             {filtersOpen && (
-              <div className="border-t border-slate-700/50 px-4 py-4 space-y-4">
+              <div className="border-t border-slate-200 dark:border-slate-700/50 px-4 py-4 space-y-4">
                 {/* Search */}
                 <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 dark:text-slate-400" />
                   <input
                     type="text"
                     placeholder="Search by number, title, or author..."
@@ -754,14 +883,14 @@ function StandardsPageContent() {
                       setSearchQuery(e.target.value);
                       setPage(1);
                     }}
-                    className="w-full pl-10 pr-10 py-2 text-sm bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+                    className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
                     >
-                      <X className="h-4 w-4 text-slate-400 hover:text-white" />
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
@@ -802,7 +931,7 @@ function StandardsPageContent() {
 
                   {/* Year Range */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-400">
+                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
                       Year Range
                     </label>
                     <div className="flex items-center gap-2">
@@ -818,9 +947,9 @@ function StandardsPageContent() {
                           );
                           setPage(1);
                         }}
-                        className="w-full py-1.5 px-2 text-sm bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring"
                       />
-                      <span className="text-slate-500 text-xs">to</span>
+                      <span className="text-slate-600 dark:text-slate-400 text-xs">to</span>
                       <input
                         type="number"
                         placeholder="To"
@@ -833,7 +962,7 @@ function StandardsPageContent() {
                           );
                           setPage(1);
                         }}
-                        className="w-full py-1.5 px-2 text-sm bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring"
                       />
                     </div>
                   </div>
@@ -843,7 +972,7 @@ function StandardsPageContent() {
                   <div className="flex justify-end">
                     <button
                       onClick={resetFilters}
-                      className="inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-white transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
                     >
                       <RotateCcw className="h-3 w-3" />
                       Reset filters
@@ -858,7 +987,7 @@ function StandardsPageContent() {
         {/* ── RIP Search (simple) ── */}
         {isRIP && (
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 dark:text-slate-400" />
             <input
               type="text"
               placeholder="Search RIPs by number, title, or author..."
@@ -867,24 +996,28 @@ function StandardsPageContent() {
                 setSearchQuery(e.target.value);
                 setPage(1);
               }}
-              className="w-full pl-10 pr-10 py-2 text-sm bg-slate-800/50 border border-slate-700/50 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30"
+              className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
             />
           </div>
         )}
 
         {loading ? (
           <div className="flex items-center justify-center min-h-[400px]">
-            <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
           <>
             {/* ────── KPI Cards ────── */}
             {isRIP && ripKpis ? (
-              <div id="standards-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div id="standards-kpis" className="scroll-mt-24">
+                <div className="flex items-center justify-end mb-3">
+                  <CopyLinkButton sectionId="standards-kpis" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
                   label="Total RIPs"
                   value={ripKpis.total}
-                  icon={<FileText className="h-6 w-6 text-cyan-400" />}
+                  icon={<FileText className="h-6 w-6 text-primary" />}
                   color="cyan"
                 />
                 <KPICard
@@ -916,13 +1049,18 @@ function StandardsPageContent() {
                   icon={<Sparkles className="h-6 w-6 text-purple-400" />}
                   color="purple"
                 />
+                </div>
               </div>
             ) : !isRIP && kpis ? (
-              <div id="standards-kpis" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div id="standards-kpis" className="scroll-mt-24">
+                <div className="flex items-center justify-end mb-3">
+                  <CopyLinkButton sectionId="standards-kpis" />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
                   label="Total Standards"
                   value={kpis.total}
-                  icon={<FileText className="h-6 w-6 text-cyan-400" />}
+                  icon={<FileText className="h-6 w-6 text-primary" />}
                   color="cyan"
                 />
                 <KPICard
@@ -943,16 +1081,91 @@ function StandardsPageContent() {
                   icon={<Sparkles className="h-6 w-6 text-purple-400" />}
                   color="purple"
                 />
+                </div>
               </div>
             ) : null}
+
+            {/* ────── Core Protocol Insights (Top Status) ────── */}
+            {!isRIP && topStatusCounts.length > 0 && (
+              <div id="core-protocol-insights" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4 text-primary" />
+                    Core Protocol Insights
+                  </h3>
+                  <CopyLinkButton sectionId="core-protocol-insights" />
+                </div>
+                <div className="flex flex-wrap gap-4">
+                  {topStatusCounts.map(({ status, count }) => (
+                    <div
+                      key={status}
+                      className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20"
+                    >
+                      <span
+                        className="w-2 h-2 rounded-full shrink-0"
+                        style={{ backgroundColor: STATUS_COLORS[status] ?? "#94a3b8" }}
+                      />
+                      <span className="text-sm font-medium text-foreground">{status}</span>
+                      <span className="text-sm font-bold text-primary">{count.toLocaleString()}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ────── Repo Intro (EIPs / ERCs / RIPs) ────── */}
+            {!isRIP && repo !== "all" && (
+              <div id="repo-intro" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    {repo === "eips"
+                      ? "Ethereum Improvement Proposals (EIPs)"
+                      : repo === "ercs"
+                        ? "Ethereum Request for Comment (ERCs)"
+                        : "Rollup Improvement Proposals (RIPs)"}
+                  </h3>
+                  <CopyLinkButton sectionId="repo-intro" />
+                </div>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                  {repo === "eips"
+                    ? "EIPs are standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards."
+                    : repo === "ercs"
+                      ? "ERCs are standards for application-level interfaces and contract behaviors on Ethereum. The goal is to standardize and provide high-quality documentation for the Ethereum application layer."
+                      : "RIPs are standards for rollup-specific improvements and interfaces."}
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <a
+                    href={`https://github.com/ethereum/${repo === "eips" ? "EIPs" : repo === "ercs" ? "ERCs" : "RIPs"}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-primary hover:text-primary/80 border border-primary/40 rounded-lg transition-colors"
+                  >
+                    <Rss className="h-4 w-4" />
+                    Subscribe / Watch on GitHub
+                  </a>
+                  <a
+                    href={`https://github.com/ethereum/${repo === "eips" ? "EIPs" : repo === "ercs" ? "ERCs" : "RIPs"}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                    View Repository
+                  </a>
+                </div>
+              </div>
+            )}
 
             {/* ────── Charts ────── */}
             {isRIP ? (
               /* RIP Activity Over Time */
-              <div id="standards-charts" className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-                <h3 className="text-lg font-semibold text-white mb-4">
-                  RIP Activity Over Time
-                </h3>
+              <div id="standards-charts" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    RIP Activity Over Time
+                  </h3>
+                  <CopyLinkButton sectionId="standards-charts" />
+                </div>
                 {ripActivity.length > 0 ? (
                   <ChartContainer
                     config={
@@ -968,17 +1181,17 @@ function StandardsPageContent() {
                     <LineChart data={ripActivity}>
                       <CartesianGrid
                         strokeDasharray="3 3"
-                        stroke="#334155"
+                        stroke="#94a3b8"
                       />
                       <XAxis
                         dataKey="month"
-                        tick={{ fill: "#94a3b8", fontSize: 11 }}
+                        tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                         tickFormatter={(v: string) => {
                           const [y, m] = v.split("-");
                           return `${m}/${y.slice(2)}`;
                         }}
                       />
-                      <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                      <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
                       <Line
                         type="monotone"
@@ -991,27 +1204,30 @@ function StandardsPageContent() {
                     </LineChart>
                   </ChartContainer>
                 ) : (
-                  <p className="text-slate-400 text-sm">No data available</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
                 )}
               </div>
             ) : (
-              <div id="standards-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div id="standards-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-24">
                 {/* Status Distribution */}
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+                <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-white">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                       Status Distribution
                     </h3>
-                    {stackedStatusData.length > 0 && (
+                    <div className="flex items-center gap-2">
+                      <CopyLinkButton sectionId="standards-charts" />
+                      {stackedStatusData.length > 0 && (
                       <button
                         onClick={() => handleStatusDistCSV()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
                         title="Download detailed EIP data with all metadata"
                       >
                         <Download className="h-3.5 w-3.5" />
                         Detailed CSV
                       </button>
                     )}
+                    </div>
                   </div>
                   {stackedStatusData.length > 0 ? (
                     <>
@@ -1037,16 +1253,16 @@ function StandardsPageContent() {
                         <BarChart data={stackedStatusData}>
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#334155"
+                            stroke="#94a3b8"
                           />
                           <XAxis
                             dataKey="status"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                           />
-                          <YAxis tick={{ fill: "#94a3b8", fontSize: 11 }} />
+                          <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Legend
-                            wrapperStyle={{ fontSize: 12, color: "#94a3b8" }}
+                            wrapperStyle={{ fontSize: 12 }}
                           />
                         {barsNodes}
                         </BarChart>
@@ -1055,14 +1271,14 @@ function StandardsPageContent() {
                   
                     </>
                   ) : (
-                    <p className="text-slate-400 text-sm">No data available</p>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
                   )}
                 </div>
 
                 {/* Status Donut (for single-repo views) */}
                 {repo !== "all" ? (
-                  <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-                    <h3 className="text-lg font-semibold text-white mb-4">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-4">
                       Status Breakdown
                     </h3>
                     {donutData.length > 0 ? (
@@ -1103,127 +1319,135 @@ function StandardsPageContent() {
                           </Pie>
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Legend
-                            wrapperStyle={{
-                              fontSize: 12,
-                              color: "#94a3b8",
-                            }}
+                            wrapperStyle={{ fontSize: 12 }}
                           />
                         </PieChart>
                       </ChartContainer>
                     ) : (
-                      <p className="text-slate-400 text-sm">
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
                         No data available
                       </p>
                     )}
                   </div>
                 ) : (
-                  /* Trends Over Time */
-                  <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">
-                        Standards Created Over Time
+                  /* Progress Over Time (switchable: Repository / Category / Status) */
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
+                    <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                        Progress Over Time
                       </h3>
-                      {trendLineData.length > 0 && (
-                        <button
-                          onClick={handleTrendsCSV}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
-                        >
-                          <Download className="h-3.5 w-3.5" />
-                          CSV
-                        </button>
-                      )}
+                      <div className="flex items-center gap-3">
+                        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+                          {[
+                            { value: "repository" as const, label: "By Repository" },
+                            { value: "category" as const, label: "By Category" },
+                            { value: "status" as const, label: "By Status" },
+                          ].map((opt) => (
+                            <button
+                              key={opt.value}
+                              onClick={() => setChartMode(opt.value)}
+                              className={cn(
+                                "px-3 py-1.5 text-xs font-medium transition-colors",
+                                chartMode === opt.value
+                                  ? "bg-primary/20 text-primary border-primary/40"
+                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                              )}
+                            >
+                              {opt.label}
+                            </button>
+                          ))}
+                        </div>
+                        {progressTimelineData.length > 0 && (
+                          <button
+                            onClick={handleTrendsCSV}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            CSV
+                          </button>
+                        )}
+                      </div>
                     </div>
-                    {trendLineData.length > 0 ? (
+                    {chartMode === "repository" && trendLineData.length > 0 ? (
                       <ChartContainer
                         config={
                           {
-                            eips: {
-                              label: "EIPs",
-                              color: REPO_COLORS.eips,
-                            },
-                            ercs: {
-                              label: "ERCs",
-                              color: REPO_COLORS.ercs,
-                            },
-                            rips: {
-                              label: "RIPs",
-                              color: REPO_COLORS.rips,
-                            },
+                            eips: { label: "EIPs", color: REPO_COLORS.eips },
+                            ercs: { label: "ERCs", color: REPO_COLORS.ercs },
+                            rips: { label: "RIPs", color: REPO_COLORS.rips },
                           } satisfies ChartConfig
                         }
                         className="h-[300px] w-full"
                       >
                         <LineChart data={trendLineData}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#334155"
-                          />
-                          <XAxis
-                            dataKey="year"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                          />
-                          <YAxis
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
-                          />
-                          <ChartTooltip
-                            content={<ChartTooltipContent />}
-                          />
-                          <Legend
-                            wrapperStyle={{
-                              fontSize: 12,
-                              color: "#94a3b8",
-                            }}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="eips"
-                            stroke={REPO_COLORS.eips}
-                            strokeWidth={2}
-                            name="EIPs"
-                            dot={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="ercs"
-                            stroke={REPO_COLORS.ercs}
-                            strokeWidth={2}
-                            name="ERCs"
-                            dot={false}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey="rips"
-                            stroke={REPO_COLORS.rips}
-                            strokeWidth={2}
-                            name="RIPs"
-                            dot={false}
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+                          <XAxis dataKey="year" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          <Line type="monotone" dataKey="eips" stroke={REPO_COLORS.eips} strokeWidth={2} name="EIPs" dot={false} />
+                          <Line type="monotone" dataKey="ercs" stroke={REPO_COLORS.ercs} strokeWidth={2} name="ERCs" dot={false} />
+                          <Line type="monotone" dataKey="rips" stroke={REPO_COLORS.rips} strokeWidth={2} name="RIPs" dot={false} />
                         </LineChart>
                       </ChartContainer>
+                    ) : (chartMode === "category" || chartMode === "status") && progressTimelineData.length > 0 ? (
+                      <ChartContainer
+                        config={
+                          Object.fromEntries(
+                            progressTimelineKeys.map((k, i) => [
+                              k,
+                              {
+                                label: k,
+                                color: chartMode === "category" ? (CATEGORY_COLOR_MAP[k] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length]) : (STATUS_COLORS[k] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length]),
+                              },
+                            ])
+                          ) as ChartConfig
+                        }
+                        className="h-[300px] w-full"
+                      >
+                        <BarChart data={progressTimelineData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+                          <XAxis dataKey="year" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          {progressTimelineKeys.map((key) => (
+                            <Bar
+                              key={key}
+                              dataKey={key}
+                              stackId="a"
+                              fill={chartMode === "category" ? (CATEGORY_COLOR_MAP[key] ?? "#94a3b8") : (STATUS_COLORS[key] ?? "#94a3b8")}
+                              name={key}
+                              radius={[0, 0, 0, 0]}
+                            />
+                          ))}
+                        </BarChart>
+                      </ChartContainer>
                     ) : (
-                      <p className="text-slate-400 text-sm">
-                        No data available
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                        {chartMode !== "repository" ? "Loading..." : "No data available"}
                       </p>
                     )}
                   </div>
                 )}
 
                 {/* Category Breakdown (always shown for non-RIP) */}
-                <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm lg:col-span-2">
+                <div id="category-breakdown" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 lg:col-span-2 scroll-mt-24">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-white">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                         Category Breakdown
                       </h3>
-                      <p className="text-xs text-slate-400 mt-1">
+                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
                         Core, Interface, Networking are part of Standards Track
                       </p>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
+                      <CopyLinkButton sectionId="category-breakdown" />
                       {normalizedCategoryData.length > 0 && (
                         <button
                           onClick={() => handleCategoryCSV()}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-slate-300 bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/50 hover:text-white transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-foreground bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/50 hover:text-white transition-colors"
                           title="Download detailed EIP data with all metadata (applies current legend filters)"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1254,17 +1478,17 @@ function StandardsPageContent() {
                         <BarChart data={categoryDataToRender} layout="vertical">
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#334155"
+                            stroke="#94a3b8"
                           />
                           <XAxis
                             type="number"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                           />
                           <YAxis
                             dataKey="category"
                             type="category"
                             width={120}
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                           />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Count">
@@ -1281,10 +1505,25 @@ function StandardsPageContent() {
                         </BarChart>
                       </ChartContainer>
 
+                      {/* Category summary with percentages */}
+                      <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+                        {normalizedCategoryData.map((d) => {
+                          const pct = categoryTotalCount > 0 ? ((d.count / categoryTotalCount) * 100).toFixed(1) : "0";
+                          return (
+                            <span key={d.category}>
+                              {d.category} {d.count} ({pct}%)
+                            </span>
+                          );
+                        })}
+                        <span className="font-medium text-foreground">
+                          All {repo === "all" ? "Standards" : repo.toUpperCase()} {categoryTotalCount} (100%)
+                        </span>
+                      </div>
+
                       {/* Bottom controls: legend filters, CSV, total */}
                       <div className="mt-4 flex items-center justify-between gap-4 px-2">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-sm text-slate-300 mr-2">Show:</div>
+                          <div className="text-sm text-foreground mr-2">Show:</div>
                           {normalizedCategoryData.map((d) => {
                             const disabled = disabledCategories.includes(d.category);
                             return (
@@ -1294,8 +1533,8 @@ function StandardsPageContent() {
                                 className={cn(
                                   "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all",
                                   disabled
-                                    ? "bg-slate-800/30 text-slate-500 border border-slate-700/40"
-                                    : "bg-slate-800/60 text-white border border-slate-600/40 shadow-sm"
+                                    ? "bg-slate-100 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50"
+                                    : "bg-slate-100 dark:bg-slate-800/40 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700/50 shadow-sm"
                                 )}
                                 title={disabled ? `Show ${d.category}` : `Hide ${d.category}`}
                               >
@@ -1307,26 +1546,26 @@ function StandardsPageContent() {
                         </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-400">Total: {categoryTotalCount}</span>
+                      <span className="text-xs text-slate-600 dark:text-slate-400">Total: {categoryTotalCount}</span>
                     </div>
                       </div>
                     </>
                   ) : (
-                    <p className="text-slate-400 text-sm">No data available</p>
+                    <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
                   )}
                 </div>
 
                 {/* Trends Over Time (for single-repo view) */}
                 {repo !== "all" && (
-                  <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm lg:col-span-2">
+                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 lg:col-span-2">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-white">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
                         Standards Created Over Time
                       </h3>
                       {trendLineData.length > 0 && (
                         <button
                           onClick={handleTrendsCSV}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-400 hover:text-slate-200 bg-slate-800/50 hover:bg-slate-700/50 border border-slate-700/50 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
                           title="Download detailed EIP data with all metadata"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1350,14 +1589,14 @@ function StandardsPageContent() {
                         <LineChart data={trendLineData}>
                           <CartesianGrid
                             strokeDasharray="3 3"
-                            stroke="#334155"
+                            stroke="#94a3b8"
                           />
                           <XAxis
                             dataKey="year"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                           />
                           <YAxis
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
                           />
                           <ChartTooltip
                             content={<ChartTooltipContent />}
@@ -1373,7 +1612,7 @@ function StandardsPageContent() {
                         </LineChart>
                       </ChartContainer>
                     ) : (
-                      <p className="text-slate-400 text-sm">
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">
                         No data available
                       </p>
                     )}
@@ -1382,25 +1621,227 @@ function StandardsPageContent() {
               </div>
             )}
 
+            {/* ────── Recently Closed/Merged PRs & Review Activity & Leaderboards ────── */}
+            {!isRIP && (
+              <div id="standards-activity" className="grid grid-cols-1 lg:grid-cols-3 gap-4 scroll-mt-24">
+                {/* Recently Closed/Merged PRs */}
+                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                      <GitMerge className="h-4 w-4 text-primary" />
+                      Recently Closed/Merged PRs
+                    </h3>
+                    <CopyLinkButton sectionId="standards-activity" />
+                  </div>
+                  <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
+                    {recentClosedMergedPRs.length === 0 ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">No recent activity</p>
+                    ) : (
+                      recentClosedMergedPRs.map((pr) => (
+                        <a
+                          key={`${pr.repoShort}-${pr.number}`}
+                          href={`https://github.com/ethereum/${pr.repoShort === "eips" ? "EIPs" : pr.repoShort === "ercs" ? "ERCs" : "RIPs"}/pull/${pr.number}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-sm font-medium text-primary">#{pr.number}</span>
+                            <span
+                              className={cn(
+                                "text-[11px] font-medium px-1.5 py-0.5 rounded",
+                                pr.status === "Merged" ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-slate-500/20 text-slate-600 dark:text-slate-400"
+                              )}
+                            >
+                              {pr.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5" title={pr.title}>
+                            {pr.title || "Untitled"}
+                          </p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-1">
+                            {new Date(pr.closedAt).toLocaleDateString()}
+                          </p>
+                        </a>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Review Activity */}
+                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                  <div className="flex items-center justify-between mb-4 shrink-0">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                      <Users className="h-4 w-4 text-primary" />
+                      Review Activity
+                    </h3>
+                    <CopyLinkButton sectionId="standards-activity" />
+                  </div>
+                  <div className="mb-4 p-3 rounded-lg bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 shrink-0">
+                    <p className="text-2xl font-bold text-primary">{reviewActivityTotal}</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-400">Reviews (Last 24 Hours)</p>
+                  </div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2 shrink-0">
+                    Editor Reviews (Last 24 Hours)
+                  </p>
+                  <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
+                    {editorReviewsLast24h.length === 0 ? (
+                      <p className="text-sm text-slate-600 dark:text-slate-400">No reviews in last 24h</p>
+                    ) : (
+                      editorReviewsLast24h.slice(0, 15).map((r, i) => (
+                        <a
+                          key={`${r.repoShort}-${r.prNumber}-${i}`}
+                          href={`https://github.com/ethereum/${r.repoShort === "eips" ? "EIPs" : r.repoShort === "ercs" ? "ERCs" : "RIPs"}/pull/${r.prNumber}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                        >
+                          <span className="text-sm font-medium text-primary">#{r.prNumber}</span>
+                          <span className="text-xs text-slate-600 dark:text-slate-400 ml-2">Reviewer: {r.reviewer}</span>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5" title={r.title}>
+                            {r.title || "Untitled"}
+                          </p>
+                          <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                            {new Date(r.submittedAt).toLocaleString()}
+                          </p>
+                        </a>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Leaderboards */}
+                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                  <div className="flex items-center justify-between mb-3 shrink-0">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      Leaderboards
+                    </h3>
+                    <CopyLinkButton sectionId="standards-activity" />
+                  </div>
+                  <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 mb-3 shrink-0">
+                    {[
+                      { id: "editors" as const, label: "Editors", icon: Shield },
+                      { id: "reviewers" as const, label: "Reviewers", icon: Eye },
+                      { id: "contributors" as const, label: "Contributors", icon: Users },
+                    ].map((tab) => {
+                      const Icon = tab.icon;
+                      return (
+                        <button
+                          key={tab.id}
+                          onClick={() => setLeaderboardTab(tab.id)}
+                          className={cn(
+                            "flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
+                            leaderboardTab === tab.id
+                              ? "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-600 shadow-sm"
+                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                          )}
+                        >
+                          <Icon className="h-3.5 w-3.5" />
+                          {tab.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div className="flex-1 min-h-0 overflow-y-auto">
+                    {leaderboardTab === "editors" && (
+                      <ul className="space-y-2">
+                        {editorsLeaderboard.slice(0, 10).map((e, i) => (
+                          <li key={e.actor} className="flex items-center gap-3">
+                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                              <AvatarImage
+                                src={`https://github.com/${e.actor.replace(/\[bot\]$/, "")}.png`}
+                                alt={e.actor}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                {e.actor.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-foreground truncate flex-1">{e.actor}</span>
+                            <span className="text-primary font-semibold text-sm shrink-0">{e.totalReviews ?? 0}</span>
+                          </li>
+                        ))}
+                        {editorsLeaderboard.length === 0 && (
+                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                        )}
+                      </ul>
+                    )}
+                    {leaderboardTab === "reviewers" && (
+                      <ul className="space-y-2">
+                        {reviewersLeaderboard.slice(0, 10).map((r, i) => (
+                          <li key={r.actor} className="flex items-center gap-3">
+                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                              <AvatarImage
+                                src={`https://github.com/${r.actor.replace(/\[bot\]$/, "")}.png`}
+                                alt={r.actor}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                {r.actor.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-foreground truncate flex-1">{r.actor}</span>
+                            <span className="text-primary font-semibold text-sm shrink-0">{r.totalReviews ?? 0}</span>
+                          </li>
+                        ))}
+                        {reviewersLeaderboard.length === 0 && (
+                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                        )}
+                      </ul>
+                    )}
+                    {leaderboardTab === "contributors" && (
+                      <ul className="space-y-2">
+                        {contributorsLeaderboard.slice(0, 10).map((c, i) => (
+                          <li key={c.actor} className="flex items-center gap-3">
+                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                              <AvatarImage
+                                src={`https://github.com/${c.actor.replace(/\[bot\]$/, "")}.png`}
+                                alt={c.actor}
+                              />
+                              <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                                {c.actor.charAt(0).toUpperCase()}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm font-medium text-foreground truncate flex-1">{c.actor}</span>
+                            <span className="text-primary font-semibold text-sm shrink-0">{c.total ?? 0}</span>
+                          </li>
+                        ))}
+                        {contributorsLeaderboard.length === 0 && (
+                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <hr className="border-slate-200 dark:border-slate-800/50" />
+
             {/* ────── Table ────── */}
-            <div id="standards-table" className="rounded-xl border border-slate-700/50 bg-slate-900/40 backdrop-blur-sm overflow-hidden shadow-xl shadow-slate-950/20">
-              <div className="px-6 py-5 border-b border-slate-700/50 bg-linear-to-r from-slate-800/50 to-slate-900/30">
-                <h3 className="text-lg font-bold text-white">
-                  {isRIP ? "RIPs" : "Standards"}{" "}
-                  <span className="text-sm font-normal text-slate-400 ml-2">
+            <div id="standards-table" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 overflow-hidden shadow-sm scroll-mt-24">
+              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    {isRIP ? "RIPs" : "Standards"}
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
                     Showing {(isRIP ? filteredRipTableData : filteredTableData).length.toLocaleString()} of {totalRows.toLocaleString()} results
-                  </span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-1.5">
-                  Use the filter inputs below each column header to search within specific columns
-                </p>
+                  </p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                    Use the filter inputs below each column header to search within specific columns
+                  </p>
+                </div>
+                <CopyLinkButton sectionId="standards-table" />
               </div>
 
               <div className="overflow-x-auto">
                 {isRIP ? (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-700/50 bg-slate-800/20">
+                      <tr className="border-b border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30">
                         <TH
                           label="RIP #"
                           col="number"
@@ -1451,7 +1892,7 @@ function StandardsPageContent() {
                           onSort={handleSort}
                         />
                       </tr>
-                      <tr className="bg-slate-800/30 border-b border-slate-700/50">
+                      <tr className="bg-slate-50 dark:bg-slate-800/20 border-b border-slate-200 dark:border-slate-700/50">
                         {['number', 'title', 'status', 'author', 'created_at', 'last_commit', 'commits'].map(col => (
                           <td key={col} className="px-4 py-2">
                             <input
@@ -1459,7 +1900,7 @@ function StandardsPageContent() {
                               placeholder={`Filter...`}
                               value={columnSearch[col] || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
-                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         ))}
@@ -1470,7 +1911,7 @@ function StandardsPageContent() {
                         <tr>
                           <td
                             colSpan={7}
-                            className="py-12 text-center text-slate-400"
+                            className="py-12 text-center text-slate-600 dark:text-slate-400"
                           >
                             No RIPs found
                           </td>
@@ -1479,31 +1920,31 @@ function StandardsPageContent() {
                         filteredRipTableData.map((row) => (
                           <tr
                             key={row.number}
-                            className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                            className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
                           >
-                            <td className="px-4 py-3 font-medium text-cyan-300">
+                            <td className="px-4 py-3 font-medium text-primary">
                               RIP-{row.number}
                             </td>
-                            <td className="px-4 py-3 text-slate-200 max-w-[300px] truncate">
+                            <td className="px-4 py-3 text-foreground max-w-[300px] truncate">
                               {row.title ?? "—"}
                             </td>
                             <td className="px-4 py-3">
                               {row.status ? (
                                 <StatusBadge status={row.status} />
                               ) : (
-                                <span className="text-slate-500">—</span>
+                                <span className="text-slate-600 dark:text-slate-400">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-slate-300 text-xs">
+                            <td className="px-4 py-3 text-foreground text-xs">
                               {row.author ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-400 text-xs">
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
                               {row.createdAt ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-400 text-xs">
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
                               {row.lastCommit ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-300">
+                            <td className="px-4 py-3 text-foreground">
                               {row.commits}
                             </td>
                           </tr>
@@ -1514,7 +1955,7 @@ function StandardsPageContent() {
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-700/50 bg-slate-800/20">
+                      <tr className="border-b border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30">
                         {repo === "all" && (
                           <TH
                             label="Repo"
@@ -1588,9 +2029,9 @@ function StandardsPageContent() {
                           sortDir={sortDir}
                           onSort={handleSort}
                         />
-                        <th className="px-4 py-3 text-xs font-medium text-slate-400"></th>
+                        <th className="px-4 py-3 text-xs font-medium text-slate-600 dark:text-slate-400"></th>
                       </tr>
-                      <tr className="bg-slate-800/30 border-b border-slate-700/50">
+                      <tr className="bg-slate-50 dark:bg-slate-800/20 border-b border-slate-200 dark:border-slate-700/50">
                         {repo === "all" && (
                           <td className="px-4 py-2">
                             <input
@@ -1598,7 +2039,7 @@ function StandardsPageContent() {
                               placeholder="Filter..."
                               value={columnSearch.repo || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, repo: e.target.value})}
-                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         )}
@@ -1609,7 +2050,7 @@ function StandardsPageContent() {
                               placeholder="Filter..."
                               value={columnSearch[col] || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
-                              className="w-full px-2 py-1 text-xs bg-slate-900/50 border border-slate-700/50 rounded text-slate-300 placeholder-slate-500 focus:outline-none focus:border-slate-600 focus:ring-1 focus:ring-slate-600"
+                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         ))}
@@ -1621,7 +2062,7 @@ function StandardsPageContent() {
                         <tr>
                           <td
                             colSpan={repo === "all" ? 11 : 10}
-                            className="py-12 text-center text-slate-400"
+                            className="py-12 text-center text-slate-600 dark:text-slate-400"
                           >
                             No standards found
                           </td>
@@ -1636,7 +2077,7 @@ function StandardsPageContent() {
                           return (
                             <tr
                               key={`${row.repo}-${row.number}`}
-                              className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                              className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
                             >
                               {repo === "all" && (
                                 <td className="px-4 py-3">
@@ -1651,11 +2092,11 @@ function StandardsPageContent() {
                                   </span>
                                 </td>
                               )}
-                              <td className="px-4 py-3 font-medium text-cyan-300">
+                              <td className="px-4 py-3 font-medium text-primary">
                                 {row.number}
                               </td>
                               <td
-                                className="px-4 py-3 text-slate-200 max-w-[250px] truncate"
+                                className="px-4 py-3 text-foreground max-w-[250px] truncate"
                                 title={row.title ?? ""}
                               >
                                 {row.title ?? "—"}
@@ -1669,16 +2110,16 @@ function StandardsPageContent() {
                               <td className="px-4 py-3">
                                 <TypeBadge value={row.category} />
                               </td>
-                              <td className="px-4 py-3 text-slate-400 text-xs">
+                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
                                 {row.createdAt ?? "—"}
                               </td>
-                              <td className="px-4 py-3 text-slate-400 text-xs">
+                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
                                 {row.updatedAt}
                               </td>
-                              <td className="px-4 py-3 text-slate-300">
+                              <td className="px-4 py-3 text-foreground">
                                 {row.daysInStatus}d
                               </td>
-                              <td className="px-4 py-3 text-slate-300">
+                              <td className="px-4 py-3 text-foreground">
                                 {row.linkedPRs}
                               </td>
                               <td className="px-4 py-3">
@@ -1686,7 +2127,7 @@ function StandardsPageContent() {
                                   href={`https://github.com/${row.repo}/blob/master/EIPS/eip-${row.number}.md`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-slate-400 hover:text-cyan-300 transition-colors"
+                                  className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors"
                                   title="View on GitHub"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
@@ -1703,8 +2144,8 @@ function StandardsPageContent() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-slate-700/50 flex items-center justify-between">
-                  <p className="text-xs text-slate-400">
+                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
+                  <p className="text-xs text-slate-600 dark:text-slate-400">
                     Page {page} of {totalPages} ({totalRows.toLocaleString()}{" "}
                     total)
                   </p>
@@ -1712,7 +2153,7 @@ function StandardsPageContent() {
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="p-1.5 rounded-md border border-slate-700/50 bg-slate-800/30 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -1735,8 +2176,8 @@ function StandardsPageContent() {
                           className={cn(
                             "px-3 py-1.5 text-xs font-medium rounded-md border transition-colors",
                             page === pageNum
-                              ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/40"
-                              : "border-slate-700/50 bg-slate-800/30 text-slate-400 hover:text-white"
+                              ? "bg-cyan-500/20 text-primary border-cyan-500/40"
+                              : "border-slate-700/50 bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:text-white"
                           )}
                         >
                           {pageNum}
@@ -1748,7 +2189,7 @@ function StandardsPageContent() {
                       onClick={() =>
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
-                      className="p-1.5 rounded-md border border-slate-700/50 bg-slate-800/30 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -1758,6 +2199,7 @@ function StandardsPageContent() {
             </div>
           </>
         )}
+      </div>
       </div>
     </div>
   );
@@ -1779,22 +2221,22 @@ function KPICard({
   color: string;
 }) {
   const colorMap: Record<string, string> = {
-    cyan: "bg-cyan-500/20",
-    emerald: "bg-emerald-500/20",
-    amber: "bg-amber-500/20",
-    purple: "bg-purple-500/20",
+    cyan: "bg-cyan-500/20 text-cyan-600 dark:text-primary",
+    emerald: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400",
+    amber: "bg-amber-500/20 text-amber-600 dark:text-amber-400",
+    purple: "bg-purple-500/20 text-purple-600 dark:text-purple-400",
   };
 
   return (
-    <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+    <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-slate-400 mb-1">{label}</p>
-          <p className="text-3xl font-bold text-white">
+          <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">{label}</p>
+          <p className="text-3xl font-bold text-slate-900 dark:text-white">
             {typeof value === "number" ? value.toLocaleString() : value}
           </p>
           {subtitle && (
-            <p className="text-xs text-slate-500 mt-1">{subtitle}</p>
+            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
           )}
         </div>
         <div className={cn("rounded-full p-3", colorMap[color] ?? colorMap.cyan)}>
@@ -1820,10 +2262,10 @@ function MultiSelect({
 
   return (
     <div className="space-y-1.5 relative">
-      <label className="text-xs font-medium text-slate-400">{label}</label>
+      <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">{label}</label>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-1.5 px-2 text-sm bg-slate-800/50 border border-slate-700/50 rounded-md text-slate-300 hover:border-slate-600 transition-colors"
+        className="w-full flex items-center justify-between py-1.5 px-2 text-sm h-9 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 hover:border-ring transition-colors"
       >
         <span className="truncate">
           {selected.length === 0
@@ -1832,17 +2274,17 @@ function MultiSelect({
         </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-slate-400 transition-transform shrink-0 ml-2",
+            "h-3.5 w-3.5 text-slate-600 dark:text-slate-400 transition-transform shrink-0 ml-2",
             open && "rotate-180"
           )}
         />
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 w-full bg-slate-800 border border-slate-700/50 rounded-lg shadow-xl max-h-48 overflow-y-auto scrollbar-thin">
+        <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto scrollbar-thin">
           {options.map((opt) => (
             <label
               key={opt}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-700/50 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
             >
               <input
                 type="checkbox"
@@ -1854,13 +2296,13 @@ function MultiSelect({
                     onChange(selected.filter((s) => s !== opt));
                   }
                 }}
-                className="rounded border-slate-600 bg-slate-700 text-cyan-500 focus:ring-cyan-500/30"
+                className="rounded border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 text-primary focus:ring-ring/30"
               />
-              <span className="text-sm text-slate-200">{opt}</span>
+              <span className="text-sm text-foreground">{opt}</span>
             </label>
           ))}
           {options.length === 0 && (
-            <p className="px-3 py-2 text-xs text-slate-500">No options</p>
+            <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No options</p>
           )}
         </div>
       )}
@@ -1886,8 +2328,8 @@ function TH({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-medium text-slate-400 text-left whitespace-nowrap",
-        !noSort && "cursor-pointer hover:text-white transition-colors select-none"
+        "px-4 py-3 text-xs font-medium text-slate-600 dark:text-slate-400 text-left whitespace-nowrap",
+        !noSort && "cursor-pointer hover:text-foreground transition-colors select-none"
       )}
       onClick={noSort ? undefined : () => onSort(col)}
     >
@@ -1896,12 +2338,12 @@ function TH({
         {!noSort &&
           (sortBy === col ? (
             sortDir === "asc" ? (
-              <ArrowUp className="h-3 w-3 ml-1 text-cyan-400" />
+              <ArrowUp className="h-3 w-3 ml-1 text-primary" />
             ) : (
-              <ArrowDown className="h-3 w-3 ml-1 text-cyan-400" />
+              <ArrowDown className="h-3 w-3 ml-1 text-primary" />
             )
           ) : (
-            <ArrowUpDown className="h-3 w-3 ml-1 text-slate-600" />
+            <ArrowUpDown className="h-3 w-3 ml-1 text-slate-600 dark:text-slate-400" />
           ))}
       </span>
     </th>
@@ -1913,8 +2355,8 @@ export default function StandardsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-linear-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <div className="min-h-screen bg-background flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       }
     >

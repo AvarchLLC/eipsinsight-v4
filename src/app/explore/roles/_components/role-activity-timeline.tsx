@@ -30,16 +30,6 @@ interface RoleActivityTimelineProps {
   loading: boolean;
 }
 
-const eventConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
-  'APPROVED': { icon: CheckCircle2, color: 'text-emerald-400', label: 'approved' },
-  'CHANGES_REQUESTED': { icon: XCircle, color: 'text-orange-400', label: 'requested changes on' },
-  'COMMENTED': { icon: MessageSquare, color: 'text-blue-400', label: 'commented on' },
-  'REVIEWED': { icon: Eye, color: 'text-violet-400', label: 'reviewed' },
-  'MERGED': { icon: GitPullRequest, color: 'text-cyan-400', label: 'merged' },
-  'OPENED': { icon: FileEdit, color: 'text-amber-400', label: 'opened' },
-  'CLOSED': { icon: XCircle, color: 'text-red-400', label: 'closed' },
-};
-
 function formatTimeAgo(dateStr: string): string {
   const date = new Date(dateStr);
   const now = new Date();
@@ -83,17 +73,27 @@ function getPRLink(event: ActivityEvent): string {
   return baseUrl;
 }
 
+const eventConfigLight: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
+  'APPROVED': { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', label: 'approved' },
+  'CHANGES_REQUESTED': { icon: XCircle, color: 'text-orange-600 dark:text-orange-400', label: 'requested changes on' },
+  'COMMENTED': { icon: MessageSquare, color: 'text-blue-600 dark:text-blue-400', label: 'commented on' },
+  'REVIEWED': { icon: Eye, color: 'text-violet-600 dark:text-violet-400', label: 'reviewed' },
+  'MERGED': { icon: GitPullRequest, color: 'text-cyan-600 dark:text-cyan-400', label: 'merged' },
+  'OPENED': { icon: FileEdit, color: 'text-amber-600 dark:text-amber-400', label: 'opened' },
+  'CLOSED': { icon: XCircle, color: 'text-red-600 dark:text-red-400', label: 'closed' },
+};
+
 export function RoleActivityTimeline({ events, loading }: RoleActivityTimelineProps) {
   if (loading) {
     return (
-      <div className="bg-slate-900/50 rounded-xl border border-slate-700/40 p-6">
+      <div className="h-full min-h-0 rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 p-4">
         <div className="animate-pulse space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="flex gap-4">
-              <div className="h-10 w-10 rounded-full bg-slate-800" />
+            <div key={i} className="flex gap-3">
+              <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
               <div className="flex-1">
-                <div className="h-4 w-3/4 bg-slate-800 rounded mb-2" />
-                <div className="h-3 w-1/4 bg-slate-800 rounded" />
+                <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-800 rounded mb-2" />
+                <div className="h-3 w-1/4 bg-slate-200 dark:bg-slate-800 rounded" />
               </div>
             </div>
           ))}
@@ -104,8 +104,8 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
 
   if (events.length === 0) {
     return (
-      <div className="bg-slate-900/50 rounded-xl border border-slate-700/40 p-12 text-center">
-        <p className="text-slate-400">No recent activity</p>
+      <div className="h-full min-h-0 rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 p-6 flex items-center justify-center">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">No recent activity</p>
       </div>
     );
   }
@@ -114,26 +114,22 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="bg-slate-900/50 rounded-xl border border-slate-700/40 overflow-hidden"
+      className="h-full min-h-0 flex flex-col rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 overflow-hidden shadow-sm dark:shadow-none"
     >
-      {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-700/40 flex items-center gap-2">
-        <Clock className="h-5 w-5 text-slate-400" />
-        <h3 className="text-lg font-semibold text-white">Recent Activity</h3>
+      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700/40 flex items-center gap-2 shrink-0">
+        <Clock className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+        <h3 className="dec-title text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
       </div>
 
-      {/* Timeline */}
-      <div className="p-6">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-thin">
         <div className="relative">
-          {/* Vertical line */}
-          <div className="absolute left-5 top-0 bottom-0 w-px bg-slate-700/50" />
+          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700/50" />
 
-          {/* Events */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             {events.map((event, index) => {
-              const config = eventConfig[event.eventType] || {
+              const config = eventConfigLight[event.eventType] || {
                 icon: GitPullRequest,
-                color: 'text-slate-400',
+                color: 'text-slate-500 dark:text-slate-400',
                 label: event.eventType.toLowerCase(),
               };
               const Icon = config.icon;
@@ -141,51 +137,49 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
               return (
                 <motion.div
                   key={event.id}
-                  initial={{ opacity: 0, x: -20 }}
+                  initial={{ opacity: 0, x: -12 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="relative flex gap-4 pl-2"
+                  transition={{ delay: index * 0.04 }}
+                  className="relative flex gap-3 pl-1"
                 >
-                  {/* Icon */}
                   <div className={cn(
-                    "relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full",
-                    "bg-slate-900 border border-slate-700"
+                    "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+                    "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
                   )}>
-                    <Icon className={cn("h-4 w-4", config.color)} />
+                    <Icon className={cn("h-3.5 w-3.5", config.color)} />
                   </div>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0 pt-0.5">
-                    <p className="text-sm">
+                    <p className="text-xs leading-snug">
                       <Link 
                         href={`https://github.com/${event.actor}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-white hover:text-cyan-400 transition-colors"
+                        className="font-medium text-slate-900 dark:text-white hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
                       >
                         {event.actor}
                       </Link>
                       {event.role && (
                         <span className={cn(
-                          "mx-1.5 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
-                          event.role === 'EDITOR' && "bg-cyan-500/20 text-cyan-400",
-                          event.role === 'REVIEWER' && "bg-violet-500/20 text-violet-400",
-                          event.role === 'CONTRIBUTOR' && "bg-emerald-500/20 text-emerald-400"
+                          "mx-1 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
+                          event.role === 'EDITOR' && "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400",
+                          event.role === 'REVIEWER' && "bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-400",
+                          event.role === 'CONTRIBUTOR' && "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
                         )}>
                           {event.role}
                         </span>
                       )}
-                      <span className="text-slate-400"> {config.label} </span>
+                      <span className="text-slate-500 dark:text-slate-400"> {config.label} </span>
                       <Link
                         href={getPRLink(event)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-cyan-400 font-medium hover:text-cyan-300 hover:underline transition-colors"
+                        className="text-violet-600 dark:text-cyan-400 font-medium hover:underline transition-colors"
                       >
                         PR #{event.prNumber}
                       </Link>
                     </p>
-                    <p className="text-xs text-slate-500 mt-0.5">
+                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
                       {formatTimeAgo(event.createdAt)}
                     </p>
                   </div>

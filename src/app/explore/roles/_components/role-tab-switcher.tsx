@@ -33,7 +33,7 @@ export function RoleTabSwitcher({ selectedRole, onRoleChange, counts }: RoleTabS
   };
 
   return (
-    <div className="flex flex-wrap gap-2 p-1 rounded-xl bg-slate-900/50 border border-slate-700/40">
+    <div className="flex flex-wrap gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40">
       {tabs.map((tab) => {
         const Icon = tab.icon;
         const isSelected = selectedRole === tab.role;
@@ -44,11 +44,11 @@ export function RoleTabSwitcher({ selectedRole, onRoleChange, counts }: RoleTabS
             key={tab.role || 'all'}
             onClick={() => onRoleChange(tab.role)}
             className={cn(
-              "relative flex items-center gap-2 px-4 py-2.5 rounded-lg",
+              "relative flex items-center gap-2 px-3 py-2 rounded-lg",
               "text-sm font-medium transition-all",
               isSelected
-                ? "text-white"
-                : "text-slate-400 hover:text-slate-300"
+                ? "text-slate-900 dark:text-white"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300"
             )}
           >
             {isSelected && (
@@ -56,24 +56,24 @@ export function RoleTabSwitcher({ selectedRole, onRoleChange, counts }: RoleTabS
                 layoutId="role-tab-bg"
                 className={cn(
                   "absolute inset-0 rounded-lg border",
-                  tab.color === 'cyan' && "bg-cyan-500/20 border-cyan-400/40",
-                  tab.color === 'violet' && "bg-violet-500/20 border-violet-400/40",
-                  tab.color === 'emerald' && "bg-emerald-500/20 border-emerald-400/40"
+                  tab.color === 'cyan' && "bg-cyan-100 dark:bg-cyan-500/20 border-cyan-300/50 dark:border-cyan-400/40",
+                  tab.color === 'violet' && "bg-violet-100 dark:bg-violet-500/20 border-violet-300/50 dark:border-violet-400/40",
+                  tab.color === 'emerald' && "bg-emerald-100 dark:bg-emerald-500/20 border-emerald-300/50 dark:border-emerald-400/40"
                 )}
                 transition={{ type: "spring", stiffness: 300, damping: 30 }}
               />
             )}
             <Icon className={cn(
-              "h-4 w-4 relative z-10",
-              isSelected && tab.color === 'cyan' && "text-cyan-400",
-              isSelected && tab.color === 'violet' && "text-violet-400",
-              isSelected && tab.color === 'emerald' && "text-emerald-400"
+              "h-4 w-4 relative z-10 shrink-0",
+              isSelected && tab.color === 'cyan' && "text-cyan-600 dark:text-cyan-400",
+              isSelected && tab.color === 'violet' && "text-violet-600 dark:text-violet-400",
+              isSelected && tab.color === 'emerald' && "text-emerald-600 dark:text-emerald-400"
             )} />
             <span className="relative z-10">{tab.label}</span>
             <span className={cn(
-              "relative z-10 px-1.5 py-0.5 rounded text-xs",
-              "bg-slate-800",
-              isSelected ? "text-white" : "text-slate-500"
+              "relative z-10 px-1.5 py-0.5 rounded text-xs font-medium",
+              "bg-white/80 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50",
+              isSelected ? "text-slate-900 dark:text-white" : "text-slate-500 dark:text-slate-400"
             )}>
               {count}
             </span>

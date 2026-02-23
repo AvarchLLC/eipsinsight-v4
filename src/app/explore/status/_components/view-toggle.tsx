@@ -12,14 +12,14 @@ interface ViewToggleProps {
 
 export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-900/50 border border-slate-700/40">
+    <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40">
       <button
         onClick={() => onViewChange('list')}
         className={cn(
           "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
           view === 'list'
-            ? "text-white"
-            : "text-slate-400 hover:text-slate-300"
+            ? "text-slate-900 dark:text-white"
+            : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
         )}
       >
         {view === 'list' && (
@@ -37,8 +37,8 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
         className={cn(
           "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
           view === 'grid'
-            ? "text-white"
-            : "text-slate-400 hover:text-slate-300"
+            ? "text-slate-900 dark:text-white"
+            : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
         )}
       >
         {view === 'grid' && (

@@ -111,20 +111,21 @@ function YearsPageContent() {
 
   return (
     <div className="bg-background relative w-full overflow-hidden min-h-screen">
-      {/* Background gradient */}
+      {/* Background gradient - cyan/emerald accent */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(34,211,238,0.08),_transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.06),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.08),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(52,211,153,0.04),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(52,211,153,0.05),transparent_50%)]" />
       </div>
 
       {/* Header */}
       <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           {/* Back link */}
           <Link
             href="/explore"
             className={cn(
               "inline-flex items-center gap-2 mb-6",
-              "text-sm text-slate-400 hover:text-white transition-colors"
+              "text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
             )}
           >
             <ArrowLeft className="h-4 w-4" />
@@ -133,14 +134,14 @@ function YearsPageContent() {
 
           {/* Page Title */}
           <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500/15 border border-cyan-400/30">
-              <Calendar className="h-7 w-7 text-cyan-400" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500/15 border border-cyan-400/40 dark:border-cyan-400/30 shadow-sm shadow-cyan-200/40 dark:shadow-cyan-500/15">
+              <Calendar className="h-7 w-7 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-white">
+              <h1 className="dec-title text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
                 Browse by Year
               </h1>
-              <p className="text-slate-400">
+              <p className="text-slate-600 dark:text-slate-400">
                 Explore EIP activity and proposals from {selectedYear}
               </p>
             </div>
@@ -150,7 +151,7 @@ function YearsPageContent() {
 
       {/* Year Timeline */}
       <section className="relative w-full py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           {!loading && years.length > 0 && (
             <YearTimeline
               years={years}
@@ -165,8 +166,8 @@ function YearsPageContent() {
 
       {/* Year Overview Panel */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <h2 className="text-xl font-semibold text-white mb-4">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl mb-4">
             {selectedYear} Overview
           </h2>
           <YearOverviewPanel
@@ -181,7 +182,7 @@ function YearsPageContent() {
 
       {/* Activity Chart */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <YearActivityChart
             data={chartData}
             year={selectedYear}
@@ -194,7 +195,7 @@ function YearsPageContent() {
 
       {/* EIP Table */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
           <YearEIPTable
             eips={eips}
             total={totalEips}

@@ -433,7 +433,7 @@ function SearchPageContent() {
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.03),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
         </div>
 
-        <div className="relative z-10 mx-auto flex max-w-7xl flex-col gap-6 px-4 pb-12 pt-6 sm:px-6 lg:px-8 xl:px-12">
+        <div className="relative z-10 mx-auto flex max-w-full flex-col gap-4 px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
           {/* Page header */}
           <motion.header
             initial={{ opacity: 0, y: 8 }}
@@ -480,7 +480,7 @@ function SearchPageContent() {
 
           {/* Default state: Suggested Queries + Trending Topics (when no query) */}
           {!q && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <section className="rounded-2xl border border-slate-200 dark:border-slate-800/40 bg-white dark:bg-slate-950/40 p-4 sm:p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
                   <SearchIcon className="h-3.5 w-3.5" />
@@ -522,7 +522,7 @@ function SearchPageContent() {
           )}
 
           {/* Main content */}
-          <section className="grid grid-cols-1 gap-6 md:grid-cols-[260px,minmax(0,1fr)]">
+          <section className="grid grid-cols-1 gap-4 md:grid-cols-[260px,minmax(0,1fr)]">
             {/* Filters column - collapsible */}
             <aside className="rounded-2xl border border-slate-200 dark:border-slate-800/40 bg-white dark:bg-slate-950/40 overflow-hidden">
               <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
@@ -622,7 +622,7 @@ function SearchPageContent() {
 
               {/* EIPs tab */}
               {tab === "eips" && (
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1.6fr),minmax(0,1fr)]">
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr),minmax(0,1fr)]">
                   {/* Left: Insights + Results */}
                   <div className="space-y-4">
                     {/* Search Insights Summary + Chips */}

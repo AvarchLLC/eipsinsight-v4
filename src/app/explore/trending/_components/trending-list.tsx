@@ -22,12 +22,12 @@ interface TrendingListProps {
 }
 
 const statusColors: Record<string, string> = {
-  'Draft': 'bg-slate-500/20 text-slate-300 border-slate-500/30',
-  'Review': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
-  'Last Call': 'bg-amber-500/20 text-amber-300 border-amber-500/30',
-  'Final': 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30',
-  'Stagnant': 'bg-orange-500/20 text-orange-300 border-orange-500/30',
-  'Withdrawn': 'bg-red-500/20 text-red-300 border-red-500/30',
+  'Draft': 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30',
+  'Review': 'bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30',
+  'Last Call': 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30',
+  'Final': 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+  'Stagnant': 'bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30',
+  'Withdrawn': 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
 };
 
 function formatLastActivity(dateStr: string | null): string {
@@ -46,19 +46,19 @@ function formatLastActivity(dateStr: string | null): string {
 }
 
 function getScoreColor(score: number): string {
-  if (score >= 20) return 'text-orange-400';
-  if (score >= 10) return 'text-amber-400';
-  return 'text-slate-400';
+  if (score >= 20) return 'text-orange-600 dark:text-orange-400';
+  if (score >= 10) return 'text-amber-600 dark:text-amber-400';
+  return 'text-slate-600 dark:text-slate-400';
 }
 
 export function TrendingList({ proposals, loading }: TrendingListProps) {
   if (loading) {
     return (
-      <div className="bg-slate-900/50 rounded-xl border border-slate-700/40 overflow-hidden">
+      <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/40 overflow-hidden">
         <div className="p-6">
           <div className="animate-pulse space-y-4">
             {[...Array(10)].map((_, i) => (
-              <div key={i} className="h-20 bg-slate-800 rounded-lg" />
+              <div key={i} className="h-20 bg-slate-200 dark:bg-slate-800 rounded-lg" />
             ))}
           </div>
         </div>
@@ -68,8 +68,8 @@ export function TrendingList({ proposals, loading }: TrendingListProps) {
 
   if (proposals.length === 0) {
     return (
-      <div className="bg-slate-900/50 rounded-xl border border-slate-700/40 p-12 text-center">
-        <p className="text-slate-400">No trending proposals at the moment</p>
+      <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/40 p-12 text-center">
+        <p className="text-slate-600 dark:text-slate-400">No trending proposals at the moment</p>
       </div>
     );
   }
@@ -78,21 +78,21 @@ export function TrendingList({ proposals, loading }: TrendingListProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="bg-slate-900/50 rounded-xl border border-slate-700/40 overflow-hidden"
+      className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/40 overflow-hidden"
     >
       {/* Header */}
-      <div className="px-6 py-4 border-b border-slate-700/40 flex items-center justify-between">
+      <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-700/40 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-orange-400" />
-          <h3 className="text-lg font-semibold text-white">
+          <TrendingUp className="h-5 w-5 text-orange-500 dark:text-orange-400" />
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
             Trending Proposals ({proposals.length})
           </h3>
         </div>
-        <span className="text-xs text-slate-500">Last 7 days</span>
+        <span className="text-xs text-slate-500 dark:text-slate-500">Last 7 days</span>
       </div>
 
       {/* List */}
-      <div className="divide-y divide-slate-700/30">
+      <div className="divide-y divide-slate-200 dark:divide-slate-700/30">
         {proposals.map((proposal, index) => (
           <Link key={proposal.eipId} href={`/eips/${proposal.number}`}>
             <motion.div
@@ -100,7 +100,7 @@ export function TrendingList({ proposals, loading }: TrendingListProps) {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.03 }}
               className={cn(
-                "px-6 py-4 hover:bg-slate-800/30 transition-colors cursor-pointer",
+                "px-6 py-4 hover:bg-slate-100 dark:hover:bg-slate-800/30 transition-colors cursor-pointer",
                 "flex items-center gap-4"
               )}
             >
@@ -118,7 +118,7 @@ export function TrendingList({ proposals, loading }: TrendingListProps) {
               {/* EIP Info */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-bold text-cyan-400">
+                  <span className="font-bold text-cyan-600 dark:text-cyan-400">
                     EIP-{proposal.number}
                   </span>
                   <span className={cn(
@@ -128,10 +128,10 @@ export function TrendingList({ proposals, loading }: TrendingListProps) {
                     {proposal.status}
                   </span>
                 </div>
-                <h4 className="text-sm text-white line-clamp-1 mb-1">
+                <h4 className="text-sm text-slate-900 dark:text-white line-clamp-1 mb-1">
                   {proposal.title}
                 </h4>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-600 dark:text-slate-500">
                   {proposal.trendingReason}
                 </p>
               </div>

@@ -12,20 +12,20 @@ export function TrendingScoreInfo() {
       animate={{ opacity: 1, y: 0 }}
       className={cn(
         "p-6 rounded-xl",
-        "bg-gradient-to-br from-slate-900/80 to-slate-950/80",
-        "border border-slate-700/40 backdrop-blur-sm"
+        "bg-white dark:bg-gradient-to-br dark:from-slate-900/80 dark:to-slate-950/80",
+        "border border-slate-200 dark:border-slate-700/40 backdrop-blur-sm"
       )}
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <Info className="h-5 w-5 text-cyan-400" />
-        <h3 className="text-lg font-semibold text-white">
+        <Info className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
           How Trending Score Works
         </h3>
       </div>
 
       {/* Description */}
-      <p className="text-sm text-slate-400 mb-6">
+      <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
         Our trending algorithm identifies proposals with the most activity in the last 7 days,
         based on PR events, comments, and status changes.
       </p>
@@ -34,14 +34,14 @@ export function TrendingScoreInfo() {
       <div className="space-y-4">
         <div className="flex items-start gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-cyan-500/15">
-            <GitPullRequest className="h-4 w-4 text-cyan-400" />
+            <GitPullRequest className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">PR Events</span>
-              <span className="text-xs text-cyan-400 font-bold">×2</span>
+              <span className="font-medium text-slate-900 dark:text-white">PR Events</span>
+              <span className="text-xs text-cyan-600 dark:text-cyan-400 font-bold">×2</span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">
               Reviews, approvals, and changes requested in the last 7 days
             </p>
           </div>
@@ -49,14 +49,14 @@ export function TrendingScoreInfo() {
 
         <div className="flex items-start gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-500/15">
-            <MessageSquare className="h-4 w-4 text-violet-400" />
+            <MessageSquare className="h-4 w-4 text-violet-600 dark:text-violet-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Comments</span>
-              <span className="text-xs text-violet-400 font-bold">×1</span>
+              <span className="font-medium text-slate-900 dark:text-white">Comments</span>
+              <span className="text-xs text-violet-600 dark:text-violet-400 font-bold">×1</span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">
               Total comments on related pull requests
             </p>
           </div>
@@ -64,14 +64,14 @@ export function TrendingScoreInfo() {
 
         <div className="flex items-start gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-500/15">
-            <RefreshCw className="h-4 w-4 text-emerald-400" />
+            <RefreshCw className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-medium text-white">Status Change</span>
-              <span className="text-xs text-emerald-400 font-bold">+10</span>
+              <span className="font-medium text-slate-900 dark:text-white">Status Change</span>
+              <span className="text-xs text-emerald-600 dark:text-emerald-400 font-bold">+10</span>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-600 dark:text-slate-500 mt-0.5">
               Bonus points if status changed in the last 7 days
             </p>
           </div>
@@ -79,9 +79,9 @@ export function TrendingScoreInfo() {
       </div>
 
       {/* Formula */}
-      <div className="mt-6 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+      <div className="mt-6 p-3 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50">
         <span className="text-xs text-slate-500 uppercase tracking-wider">Formula</span>
-        <code className="block mt-1 text-sm text-cyan-300 font-mono">
+        <code className="block mt-1 text-sm text-cyan-700 dark:text-cyan-300 font-mono">
           score = (PR events × 2) + comments + (status change ? 10 : 0)
         </code>
       </div>

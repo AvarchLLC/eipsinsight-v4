@@ -115,6 +115,133 @@ const getYearActivityChartCached = unstable_cache(
   { revalidate: 600 }
 );
 
+/** Detailed per-EIP activity for CSV export. Not cached to avoid large payloads. */
+async function getYearActivityChartDetail(year: number) {
+  const startDate = new Date(`${year}-01-01`);
+  const endDate = new Date(`${year}-12-31`);
+  const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+  const [eipsTouchedRows, newEIPsRows, statusChangesRows] = await Promise.all([
+    prisma.$queryRaw<Array<{
+      month: number;
+      eip_number: number;
+      title: string | null;
+      author: string | null;
+      status: string | null;
+      category: string | null;
+      type: string | null;
+      status_changes_count: bigint;
+    }>>`
+      SELECT
+        EXTRACT(MONTH FROM ese.changed_at)::int AS month,
+        e.eip_number,
+        e.title,
+        e.author,
+        s.status,
+        s.category,
+        s.type,
+        COUNT(*)::bigint AS status_changes_count
+      FROM eip_status_events ese
+      JOIN eips e ON e.id = ese.eip_id
+      LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+      WHERE ese.changed_at >= ${startDate} AND ese.changed_at <= ${endDate}
+      GROUP BY EXTRACT(MONTH FROM ese.changed_at), e.eip_number, e.title, e.author, s.status, s.category, s.type
+      ORDER BY month, e.eip_number
+    `,
+    prisma.$queryRaw<Array<{
+      month: number;
+      eip_number: number;
+      title: string | null;
+      author: string | null;
+      status: string | null;
+      category: string | null;
+      type: string | null;
+      created_at: Date | null;
+    }>>`
+      SELECT
+        EXTRACT(MONTH FROM e.created_at)::int AS month,
+        e.eip_number,
+        e.title,
+        e.author,
+        s.status,
+        s.category,
+        s.type,
+        e.created_at
+      FROM eips e
+      LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+      WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate}
+      ORDER BY month, e.eip_number
+    `,
+    prisma.$queryRaw<Array<{
+      month: number;
+      eip_number: number;
+      title: string | null;
+      author: string | null;
+      status: string | null;
+      category: string | null;
+      type: string | null;
+      from_status: string | null;
+      to_status: string;
+      changed_at: Date;
+    }>>`
+      SELECT
+        EXTRACT(MONTH FROM ese.changed_at)::int AS month,
+        e.eip_number,
+        e.title,
+        e.author,
+        s.status,
+        s.category,
+        s.type,
+        ese.from_status,
+        ese.to_status,
+        ese.changed_at
+      FROM eip_status_events ese
+      JOIN eips e ON e.id = ese.eip_id
+      LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+      WHERE ese.changed_at >= ${startDate} AND ese.changed_at <= ${endDate}
+      ORDER BY month, ese.changed_at, e.eip_number
+    `,
+  ]);
+
+  return {
+    eipsTouched: eipsTouchedRows.map(r => ({
+      month: monthNames[r.month - 1],
+      monthNum: r.month,
+      eipNumber: r.eip_number,
+      title: r.title ?? '',
+      author: r.author ?? '',
+      status: r.status ?? '',
+      category: r.category ?? '',
+      type: r.type ?? '',
+      statusChangesCount: Number(r.status_changes_count),
+    })),
+    newEIPs: newEIPsRows.map(r => ({
+      month: monthNames[r.month - 1],
+      monthNum: r.month,
+      eipNumber: r.eip_number,
+      title: r.title ?? '',
+      author: r.author ?? '',
+      status: r.status ?? '',
+      category: r.category ?? '',
+      type: r.type ?? '',
+      createdAt: r.created_at?.toISOString().slice(0, 10) ?? '',
+    })),
+    statusChanges: statusChangesRows.map(r => ({
+      month: monthNames[r.month - 1],
+      monthNum: r.month,
+      eipNumber: r.eip_number,
+      title: r.title ?? '',
+      author: r.author ?? '',
+      status: r.status ?? '',
+      category: r.category ?? '',
+      type: r.type ?? '',
+      fromStatus: r.from_status ?? '',
+      toStatus: r.to_status,
+      changedAt: r.changed_at.toISOString(),
+    })),
+  };
+}
+
 const getStatusCountsCached = unstable_cache(
   async () => {
     const rows = await prisma.$queryRaw<Array<{
@@ -286,6 +413,15 @@ export const exploreProcedures = {
       return getYearActivityChartCached(input.year);
     }),
 
+  getYearActivityChartDetail: publicProcedure
+    .input(z.object({
+      year: z.number().min(2015).max(2030),
+    }))
+    .handler(async ({ context, input }) => {
+      await checkAPIToken(context.headers);
+      return getYearActivityChartDetail(input.year);
+    }),
+
   // ============================================
   // STATUS-BASED QUERIES
   // ============================================
@@ -302,47 +438,65 @@ export const exploreProcedures = {
       return getCategoryCountsCached();
     }),
 
-  // Get EIPs by status with filters
+  // Get EIPs by status with filters (supports multi-category and multi-type)
   getEIPsByStatus: optionalAuthProcedure
     .input(z.object({
       status: z.string().optional(),
-      category: z.string().optional(),
-      type: z.string().optional(),
+      categories: z.array(z.string()).optional(),
+      types: z.array(z.string()).optional(),
       limit: z.number().min(1).max(100).default(50),
       offset: z.number().min(0).default(0),
     }))
-    .handler(async ({ input }) => {const where: {
-        status?: string;
-        category?: string;
-        type?: string;
-      } = {};
+    .handler(async ({ input }) => {
+      const filters: string[] = [];
+      const params: unknown[] = [];
+      let paramIdx = 0;
 
-      if (input.status) where.status = input.status;
-      if (input.category) where.category = input.category;
-      if (input.type) where.type = input.type;
+      if (input.status) {
+        paramIdx++;
+        filters.push(`AND s.status = $${paramIdx}`);
+        params.push(input.status);
+      }
+      if (input.categories && input.categories.length > 0) {
+        const placeholders = input.categories.map(() => {
+          paramIdx++;
+          return `$${paramIdx}`;
+        }).join(', ');
+        filters.push(`AND s.category IN (${placeholders})`);
+        params.push(...input.categories);
+      }
+      if (input.types && input.types.length > 0) {
+        const placeholders = input.types.map(() => {
+          paramIdx++;
+          return `$${paramIdx}`;
+        }).join(', ');
+        filters.push(`AND s.type IN (${placeholders})`);
+        params.push(...input.types);
+      }
 
-      const statusFilter = input.status ? `AND s.status = '${input.status.replace(/'/g, "''")}'` : '';
-      const categoryFilter = input.category ? `AND s.category = '${input.category.replace(/'/g, "''")}'` : '';
-      const typeFilter = input.type ? `AND s.type = '${input.type.replace(/'/g, "''")}'` : '';
-      const filterClause = `WHERE 1=1 ${statusFilter} ${categoryFilter} ${typeFilter}`;
+      const filterClause = filters.length > 0 ? filters.join(' ') : '';
+      const limit = input.limit;
+      const offset = input.offset;
 
       const [items, countResult] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{
           eip_id: number; eip_number: number; title: string | null;
           type: string | null; status: string; category: string | null;
           updated_at: Date | null; last_changed_at: Date | null;
-        }>>(`
-          SELECT s.eip_id, e.eip_number, e.title, s.type, s.status, s.category, s.updated_at,
-                 (SELECT MAX(changed_at) FROM eip_status_events ese WHERE ese.eip_id = s.eip_id) AS last_changed_at
-          FROM eip_snapshots s
-          JOIN eips e ON e.id = s.eip_id
-          ${filterClause}
-          ORDER BY s.updated_at DESC
-          LIMIT ${input.limit} OFFSET ${input.offset}
-        `),
-        prisma.$queryRawUnsafe<Array<{ count: bigint }>>(`
-          SELECT COUNT(*) AS count FROM eip_snapshots s ${filterClause}
-        `),
+        }>>(
+          `SELECT s.eip_id, e.eip_number, e.title, s.type, s.status, s.category, s.updated_at,
+                  (SELECT MAX(changed_at) FROM eip_status_events ese WHERE ese.eip_id = s.eip_id) AS last_changed_at
+           FROM eip_snapshots s
+           JOIN eips e ON e.id = s.eip_id
+           WHERE 1=1 ${filterClause}
+           ORDER BY s.updated_at DESC
+           LIMIT ${limit} OFFSET ${offset}`,
+          ...params
+        ),
+        prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+          `SELECT COUNT(*) AS count FROM eip_snapshots s WHERE 1=1 ${filterClause}`,
+          ...params
+        ),
       ]);
 
       const total = Number(countResult[0]?.count ?? 0);
@@ -371,10 +525,14 @@ export const exploreProcedures = {
   getStatusFlow: publicProcedure
     .handler(async ({ context }) => {
       await checkAPIToken(context.headers);
-      const statusOrder = ['Draft', 'Review', 'Last Call', 'Final', 'Stagnant', 'Withdrawn'];
+      const statusOrder = ['Draft', 'Review', 'Last Call', 'Final', 'Living', 'Stagnant', 'Withdrawn'];
       const cached = await getStatusCountsCached();
       const countMap = new Map(cached.map(s => [s.status, s.count]));
-      return statusOrder.map(status => ({ status, count: countMap.get(status) || 0 }));
+      const ordered = statusOrder.map(status => ({ status, count: countMap.get(status) || 0 }));
+      const extras = cached
+        .filter(s => !statusOrder.includes(s.status))
+        .map(s => ({ status: s.status, count: s.count }));
+      return [...ordered, ...extras];
     }),
 
   // ============================================
@@ -589,7 +747,7 @@ export const exploreProcedures = {
 
       // Calculate trending score:
       // (# of pr_events in last 7 days * 2) + (# of comments) + (if status changed in last 7 days ? 10 : 0)
-      const trendingData = await prisma.$queryRaw<Array<{
+      let trendingData = await prisma.$queryRaw<Array<{
         eip_id: number;
         eip_number: number;
         title: string | null;
@@ -604,7 +762,7 @@ export const exploreProcedures = {
             e.id as eip_id,
             COUNT(*) as pr_events_count
           FROM pull_request_eips pre
-          JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+          JOIN eips e ON e.eip_number = pre.eip_number
           JOIN pr_events pe ON pre.pr_number = pe.pr_number AND pre.repository_id = pe.repository_id
           WHERE pe.created_at >= ${sevenDaysAgo}
           GROUP BY e.id
@@ -614,14 +772,14 @@ export const exploreProcedures = {
             e.id as eip_id,
             SUM(COALESCE(pr.num_comments, 0)) as comments_count
           FROM pull_request_eips pre
-          JOIN eips e ON e.eip_number = pre.eip_number AND e.repository_id = pre.repository_id
+          JOIN eips e ON e.eip_number = pre.eip_number
           JOIN pull_requests pr ON pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id
           GROUP BY e.id
         ),
         recent_status_changes AS (
           SELECT DISTINCT eip_id
           FROM eip_status_events
-          WHERE changed_at >= ${sevenDaysAgo}
+          WHERE changed_at >= ${sevenDaysAgo} AND eip_id IS NOT NULL
         )
         SELECT 
           e.id as eip_id,
@@ -645,6 +803,65 @@ export const exploreProcedures = {
         ) DESC
         LIMIT ${input.limit}
       `;
+
+      // Fallback: when no 7-day activity, show recently updated EIPs (last 90 days)
+      if (trendingData.length === 0) {
+        const ninetyDaysAgo = new Date();
+        ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+        trendingData = await prisma.$queryRaw<Array<{
+          eip_id: number;
+          eip_number: number;
+          title: string | null;
+          status: string;
+          pr_events_count: bigint;
+          comments_count: bigint;
+          had_status_change: boolean;
+          last_activity: Date;
+        }>>`
+          SELECT 
+            e.id as eip_id,
+            e.eip_number,
+            e.title,
+            COALESCE(es.status, 'Unknown') as status,
+            0::bigint as pr_events_count,
+            0::bigint as comments_count,
+            false as had_status_change,
+            COALESCE(es.updated_at, e.created_at) as last_activity
+          FROM eips e
+          LEFT JOIN eip_snapshots es ON e.id = es.eip_id
+          WHERE es.updated_at >= ${ninetyDaysAgo} OR (e.created_at >= ${ninetyDaysAgo})
+          ORDER BY COALESCE(es.updated_at, e.created_at) DESC NULLS LAST
+          LIMIT ${input.limit}
+        `;
+      }
+
+      // Final fallback: show most recent EIPs by number if still empty
+      if (trendingData.length === 0) {
+        trendingData = await prisma.$queryRaw<Array<{
+          eip_id: number;
+          eip_number: number;
+          title: string | null;
+          status: string;
+          pr_events_count: bigint;
+          comments_count: bigint;
+          had_status_change: boolean;
+          last_activity: Date;
+        }>>`
+          SELECT 
+            e.id as eip_id,
+            e.eip_number,
+            e.title,
+            COALESCE(es.status, 'Unknown') as status,
+            0::bigint as pr_events_count,
+            0::bigint as comments_count,
+            false as had_status_change,
+            COALESCE(es.updated_at, e.created_at) as last_activity
+          FROM eips e
+          LEFT JOIN eip_snapshots es ON e.id = es.eip_id
+          ORDER BY e.eip_number DESC
+          LIMIT ${input.limit}
+        `;
+      }
 
       return trendingData.map(t => {
         const score = Number(t.pr_events_count) * 2 + Number(t.comments_count) + (t.had_status_change ? 10 : 0);
@@ -708,6 +925,7 @@ export const exploreProcedures = {
       `;
 
       const eipIds = topEIPs.map(e => e.eip_id);
+      if (eipIds.length === 0) return [];
 
       // Get daily activity for these EIPs
       const dailyActivity = await prisma.$queryRaw<Array<{

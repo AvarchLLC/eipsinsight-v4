@@ -1194,6 +1194,108 @@ export const analyticsProcedures = {
       return results;
     }),
 
+  getRecentClosedMergedPRs: optionalAuthProcedure
+    .input(z.object({
+      limit: z.number().optional().default(25),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        number: string;
+        title: string;
+        status: string;
+        closedAt: string;
+        repoShort: string;
+      }>>(
+        `
+        SELECT 
+          pr.pr_number::text as number,
+          pr.title,
+          CASE 
+            WHEN pr.merged_at IS NOT NULL THEN 'Merged' 
+            ELSE 'Closed' 
+          END as status,
+          COALESCE(pr.merged_at, pr.closed_at)::text as "closedAt",
+          LOWER(SPLIT_PART(r.name, '/', 2)) as "repoShort"
+        FROM pull_requests pr
+        JOIN repositories r ON pr.repository_id = r.id
+        WHERE pr.state = 'closed'
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ORDER BY COALESCE(pr.merged_at, pr.closed_at) DESC NULLS LAST
+        LIMIT $2
+      `,
+        input.repo ?? null,
+        input.limit
+      );
+      return results.map((r) => ({
+        number: r.number,
+        title: r.title ?? '',
+        status: r.status,
+        closedAt: r.closedAt,
+        repoShort: r.repoShort ?? 'unknown',
+      }));
+    }),
+
+  getEditorReviewsLast24h: optionalAuthProcedure
+    .input(z.object({
+      limit: z.number().optional().default(50),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        pr_number: string;
+        title: string;
+        reviewer: string;
+        submitted_at: string;
+        repo_short: string;
+      }>>(
+        `
+        SELECT 
+          rev.pr_number::text as pr_number,
+          pr.title,
+          rev.reviewer,
+          rev.submitted_at::text as submitted_at,
+          LOWER(SPLIT_PART(r.name, '/', 2)) as repo_short
+        FROM pr_reviews rev
+        JOIN repositories r ON rev.repository_id = r.id
+        LEFT JOIN pull_requests pr ON pr.pr_number = rev.pr_number AND pr.repository_id = rev.repository_id
+        WHERE rev.submitted_at >= NOW() - INTERVAL '24 hours'
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        ORDER BY rev.submitted_at DESC
+        LIMIT $2
+      `,
+        input.repo ?? null,
+        input.limit
+      );
+      return results.map((r) => ({
+        prNumber: r.pr_number,
+        title: r.title ?? '',
+        reviewer: r.reviewer,
+        submittedAt: r.submitted_at,
+        repoShort: r.repo_short ?? 'unknown',
+      }));
+    }),
+
+  getReviewActivityTotal: optionalAuthProcedure
+    .input(z.object({
+      hours: z.number().optional().default(24),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{ total: bigint }>>(
+        `
+        SELECT COUNT(*)::bigint as total
+        FROM pr_reviews rev
+        JOIN repositories r ON rev.repository_id = r.id
+        WHERE rev.submitted_at >= NOW() - INTERVAL '1 hour' * $1
+          AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
+      `,
+        input.hours,
+        input.repo ?? null
+      );
+      return { total: Number(results[0]?.total ?? 0) };
+    }),
+
   getLastCallWatchlist: optionalAuthProcedure
     .input(repoFilterSchema)
     .handler(async ({ input }) => {
