@@ -4,13 +4,27 @@ import { emailOTP } from "better-auth/plugins";
 import { env } from "@/env";
 import { prismaAuth } from "@/lib/prisma-auth";
 import { sendEmail } from "@/lib/email";
+// The published @better-auth/core package may not expose the `SocialProviders`
+// type at its top-level exports across versions. Define a narrow local type
+// that matches the fields we use (github & google) and allow other providers.
+type SocialProviders = {
+  github?: { clientId: string; clientSecret: string; enabled?: boolean };
+  google?: {
+    clientId: string;
+    clientSecret: string;
+    accessType?: "offline" | "online";
+    prompt?: "select_account consent" | "select_account" | "consent" | "login" | "none";
+    enabled?: boolean;
+  };
+  [key: string]: unknown;
+};
 
 const githubClientId = env.GITHUB_CLIENT_ID.trim();
 const githubClientSecret = env.GITHUB_CLIENT_SECRET.trim();
 const googleClientId = env.GOOGLE_CLIENT_ID.trim();
 const googleClientSecret = env.GOOGLE_CLIENT_SECRET.trim();
 
-const socialProviders = {
+const socialProviders: SocialProviders = {
   ...(githubClientId && githubClientSecret
     ? {
         github: {
@@ -20,12 +34,12 @@ const socialProviders = {
       }
     : {}),
   ...(googleClientId && googleClientSecret
-    ? {
+      ? {
         google: {
           clientId: googleClientId,
           clientSecret: googleClientSecret,
-          accessType: "offline",
-          prompt: "select_account consent",
+          accessType: "offline" as const,
+          prompt: "select_account consent" as const,
         },
       }
     : {}),

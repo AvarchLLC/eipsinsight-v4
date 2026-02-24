@@ -6,6 +6,9 @@ import '@/lib/orpc.server.ts'
 import type { Metadata } from 'next'
 import { buildMetadata } from '@/lib/seo'
 
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
 export const metadata: Metadata = buildMetadata({
   title: 'API Tokens',
   description: 'Manage personal API tokens for EIPsInsight integrations.',
