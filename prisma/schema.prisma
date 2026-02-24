@@ -9,50 +9,49 @@ datasource db {
 }
 
 model User {
-  id                    String                @id @default(cuid())
-  name                  String
-  email                 String
-  emailVerified         Boolean               @default(false)
-  image                 String?
-  createdAt             DateTime              @default(now())
-  updatedAt             DateTime              @updatedAt
-  avatarUrl             String?
-  membershipExpiresAt   DateTime?
-  membershipTier        String?
-  role                  String                @default("user")
-  // Stripe fields
-  stripeCustomerId      String?               @unique
-  stripeSubscriptionId  String?               @unique
-  stripePriceId         String?
+  id                     String               @id @default(cuid())
+  name                   String
+  email                  String
+  emailVerified          Boolean              @default(false)
+  image                  String?
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  avatarUrl              String?
+  membershipExpiresAt    DateTime?
+  membershipTier         String?
+  role                   String               @default("user")
   stripeCurrentPeriodEnd DateTime?
-  accounts              Account[]
-  apiTokens             ApiToken[]
-  apiUsage              ApiUsage[]
-  blogs                 Blog[]
-  sessions              Session[]
-  preferences           user_preferences?
-  blog_editor_profile   blog_editor_profile?
-  blog_comments         blog_comment[]
+  stripeCustomerId       String?              @unique
+  stripePriceId          String?
+  stripeSubscriptionId   String?              @unique
+  accounts               Account[]
+  apiTokens              ApiToken[]
+  apiUsage               ApiUsage[]
+  blogs                  Blog[]
+  blog_comments          blog_comment[]
+  blog_editor_profile    blog_editor_profile?
+  sessions               Session[]
+  preferences            user_preferences?
 
   @@map("user")
 }
 
 model blog_editor_profile {
-  user_id   String   @id
-  linkedin  String?
-  x         String?
-  facebook  String?
-  telegram  String?
-  bio       String?
+  user_id    String   @id
+  linkedin   String?
+  x          String?
+  facebook   String?
+  telegram   String?
+  bio        String?
   updated_at DateTime @default(now()) @updatedAt
-  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("blog_editor_profile")
 }
 
 model blog_category {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String  @id @default(cuid())
+  slug        String  @unique
   name        String
   description String?
   blogs       Blog[]
@@ -116,20 +115,19 @@ model Verification {
 }
 
 model MembershipTier {
-  id                  String   @id @default(cuid())
-  name                String   @unique
-  slug                String   @unique
-  description         String?
-  priceMonthly        Float
-  priceYearly         Float?
-  features            String[]
-  requestLimit        Int      @default(10000)
-  // Stripe fields
-  stripeProductId     String?  @unique
-  stripePriceIdMonthly String? @unique
-  stripePriceIdYearly String?  @unique
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  name                 String   @unique
+  slug                 String   @unique
+  description          String?
+  priceMonthly         Float
+  priceYearly          Float?
+  features             String[]
+  requestLimit         Int      @default(10000)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+  stripePriceIdMonthly String?  @unique
+  stripePriceIdYearly  String?  @unique
+  stripeProductId      String?  @unique
 
   @@map("membership_tier")
 }
@@ -139,52 +137,35 @@ model ApiToken {
   userId    String
   name      String
   tokenHash String    @unique
-  scopes    String[]  @default([])
   lastUsed  DateTime?
   expiresAt DateTime?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  scopes    String[]  @default([])
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiUsage  ApiUsage[]
 
   @@map("api_token")
 }
 
-model ApiUsage {
-  id         String    @id @default(cuid())
-  userId     String
-  apiTokenId String?
-  endpoint   String
-  method     String
-  statusCode Int
-  userAgent  String?
-  ipAddress  String?
-  createdAt  DateTime  @default(now())
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  apiToken   ApiToken? @relation(fields: [apiTokenId], references: [id], onDelete: SetNull)
-
-  @@map("api_usage")
-}
-
 model Blog {
-  id                 String           @id @default(cuid())
-  slug               String           @unique
+  id                 String         @id @default(cuid())
+  slug               String         @unique
   title              String
   excerpt            String?
   content            String
   coverImage         String?
-  published          Boolean          @default(false)
+  published          Boolean        @default(false)
   authorId           String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
   categoryId         String?
   readingTimeMinutes Int?
-  tags               String[]         @default([])
-  featured           Boolean          @default(false)
-  createdAt          DateTime         @default(now())
-  updatedAt          DateTime         @updatedAt
-  author             User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  category           blog_category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  blog_likes         blog_like[]
+  tags               String[]       @default([])
+  featured           Boolean        @default(false)
+  author             User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category           blog_category? @relation(fields: [categoryId], references: [id])
   blog_comments      blog_comment[]
+  blog_likes         blog_like[]
 
   @@index([published])
   @@index([slug])
@@ -195,7 +176,7 @@ model Blog {
 model blog_like {
   id        String   @id @default(cuid())
   blogId    String
-  likeKey   String   // userId or "anon:"+fingerprint
+  likeKey   String
   createdAt DateTime @default(now())
   blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
 
@@ -213,7 +194,7 @@ model blog_comment {
   content     String
   createdAt   DateTime @default(now())
   blog        Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  user        User?    @relation(fields: [userId], references: [id])
 
   @@index([blogId])
   @@index([userId])
@@ -521,6 +502,25 @@ model upgrades {
   created_at                 DateTime?                    @default(now()) @db.Timestamp(6)
   upgrade_composition_events upgrade_composition_events[]
   upgrade_meta_eip_events    upgrade_meta_eip_events[]
+}
+
+model ApiUsage {
+  id         String   @id @default(cuid())
+  userId     String
+  apiTokenId String?
+  endpoint   String
+  method     String
+  statusCode Int
+  userAgent  String?
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([apiTokenId])
+  @@index([createdAt])
+  @@map("api_usage")
 }
 
 model contributor_scores {
