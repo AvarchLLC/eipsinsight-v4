@@ -1,0 +1,1 @@
+-- This migration is intentionally empty. Seed tiers handled via prisma/seed-tiers.ts

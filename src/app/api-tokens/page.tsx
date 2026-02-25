@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Plus, AlertCircle } from 'lucide-react'
+import { Plus, AlertCircle, Crown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { client } from '@/lib/orpc'
 import { TokenStats } from './_components/token-stats'
@@ -9,11 +9,13 @@ import { TokenList } from './_components/token-list'
 import { CreateTokenDialog } from './_components/create-token-dialog'
 import { RevokeTokenDialog } from './_components/revoke-token-dialog'
 import { toast } from 'sonner'
+import Link from 'next/link'
 
 export default function ApiTokensPage() {
   const [tokens, setTokens] = useState<any[]>([])
   const [stats, setStats] = useState<any>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [membershipTier, setMembershipTier] = useState<string>('free')
   const [isCreating, setIsCreating] = useState(false)
   const [isRevoking, setIsRevoking] = useState(false)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -26,12 +28,14 @@ export default function ApiTokensPage() {
     try {
       setIsLoading(true)
       setError(null)
-      const [tokensList, statsData] = await Promise.all([
+      const [tokensList, statsData, subscription] = await Promise.all([
         client.account.listTokens({}),
         client.account.getTokenStats({}),
+        fetch('/api/stripe/subscription').then((res) => res.json()).catch(() => ({ tier: 'free' })),
       ])
       setTokens(tokensList || [])
       setStats(statsData)
+      setMembershipTier(subscription?.tier || 'free')
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load tokens'
       setError(message)
@@ -93,6 +97,8 @@ export default function ApiTokensPage() {
     }
   }
 
+  const isPaidMember = membershipTier !== 'free'
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">
       {/* Header */}
@@ -105,15 +111,45 @@ export default function ApiTokensPage() {
             <h1 className="text-3xl font-semibold text-slate-50">API Tokens</h1>
             <p className="mt-2 text-slate-400">Create and manage API tokens for programmatic access to your account.</p>
           </div>
-          <Button
-            onClick={() => setShowCreateDialog(true)}
-            className="shrink-0 rounded-lg bg-cyan-500 text-black hover:bg-cyan-400"
-          >
-            <Plus className="h-4 w-4" />
-            New Token
-          </Button>
+          {isPaidMember ? (
+            <Button
+              onClick={() => setShowCreateDialog(true)}
+              className="shrink-0 rounded-lg bg-cyan-500 text-black hover:bg-cyan-400"
+            >
+              <Plus className="h-4 w-4" />
+              New Token
+            </Button>
+          ) : (
+            <Button
+              asChild
+              className="shrink-0 rounded-lg bg-amber-500 text-black hover:bg-amber-400"
+            >
+              <Link href="/pricing">
+                <Crown className="h-4 w-4" />
+                Upgrade to Pro
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
+
+      {/* Free Tier Notice */}
+      {!isPaidMember && (
+        <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-6">
+          <div className="flex gap-3">
+            <Crown className="h-6 w-6 shrink-0 text-amber-300" />
+            <div>
+              <h3 className="font-semibold text-amber-300">Upgrade to Pro or Enterprise</h3>
+              <p className="mt-2 text-sm text-amber-200">
+                API tokens are only available for Pro and Enterprise members. Upgrade your plan to create and manage API tokens for programmatic access.
+              </p>
+              <Button asChild className="mt-4 bg-amber-500 text-black hover:bg-amber-400">
+                <Link href="/pricing">View Plans</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Error Alert */}
       {error && (

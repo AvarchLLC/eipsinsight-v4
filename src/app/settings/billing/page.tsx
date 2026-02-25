@@ -24,7 +24,22 @@ export default function BillingPage() {
   );
   const [dataLoading, setDataLoading] = useState(true);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<"cancel" | "resume" | null>(
+    null
+  );
   const [message, setMessage] = useState("");
+
+  const refreshSubscription = async () => {
+    try {
+      const response = await fetch("/api/stripe/subscription");
+      if (response.ok) {
+        const data = await response.json();
+        setSubscription(data);
+      }
+    } catch (error) {
+      console.error("Error fetching subscription:", error);
+    }
+  };
 
   useEffect(() => {
     // Sync subscription if redirected from Stripe checkout
@@ -50,11 +65,7 @@ export default function BillingPage() {
 
         // Refetch subscription data after sync
         await new Promise((resolve) => setTimeout(resolve, 500));
-        const subscriptionResponse = await fetch("/api/stripe/subscription");
-        if (subscriptionResponse.ok) {
-          const data = await subscriptionResponse.json();
-          setSubscription(data);
-        }
+        await refreshSubscription();
       } catch (error) {
         console.error("Error syncing checkout session:", error);
       } finally {
@@ -75,19 +86,13 @@ export default function BillingPage() {
     }
 
     // Fetch subscription data
-    async function fetchSubscription() {
+    const fetchSubscription = async () => {
       try {
-        const response = await fetch("/api/stripe/subscription");
-        if (response.ok) {
-          const data = await response.json();
-          setSubscription(data);
-        }
-      } catch (error) {
-        console.error("Error fetching subscription:", error);
+        await refreshSubscription();
       } finally {
         setDataLoading(false);
       }
-    }
+    };
 
     fetchSubscription();
   }, [session, loading, router]);
@@ -110,6 +115,48 @@ export default function BillingPage() {
       alert("Failed to open subscription management. Please try again.");
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm("Cancel your subscription at period end?")) return;
+
+    setActionLoading("cancel");
+    setMessage("");
+    try {
+      const response = await fetch("/api/stripe/cancel", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to cancel subscription");
+      }
+
+      setMessage(
+        "Subscription will cancel at the end of the current billing period."
+      );
+      await refreshSubscription();
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      alert("Failed to cancel subscription. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setActionLoading("resume");
+    setMessage("");
+    try {
+      const response = await fetch("/api/stripe/resume", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to resume subscription");
+      }
+
+      setMessage("Subscription resumed successfully.");
+      await refreshSubscription();
+    } catch (error) {
+      console.error("Error resuming subscription:", error);
+      alert("Failed to resume subscription. Please try again.");
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -220,7 +267,7 @@ export default function BillingPage() {
           </div>
         )}
 
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {isFreeTier ? (
             <button
               onClick={() => router.push("/pricing")}
@@ -229,23 +276,42 @@ export default function BillingPage() {
               Upgrade Plan
             </button>
           ) : (
-            <button
-              onClick={handleManageSubscription}
-              disabled={portalLoading}
-              className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              {portalLoading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
-                </>
+            <>
+              <button
+                onClick={handleManageSubscription}
+                disabled={portalLoading}
+                className="bg-primary text-primary-foreground px-6 py-2 rounded-lg font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                {portalLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Manage Subscription
+                    <ExternalLink className="h-4 w-4" />
+                  </>
+                )}
+              </button>
+              {subscription?.cancelAtPeriodEnd ? (
+                <button
+                  onClick={handleResumeSubscription}
+                  disabled={actionLoading === "resume"}
+                  className="border border-border bg-background px-6 py-2 rounded-lg font-medium hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === "resume" ? "Resuming..." : "Resume Plan"}
+                </button>
               ) : (
-                <>
-                  Manage Subscription
-                  <ExternalLink className="h-4 w-4" />
-                </>
+                <button
+                  onClick={handleCancelSubscription}
+                  disabled={actionLoading === "cancel"}
+                  className="border border-border bg-background px-6 py-2 rounded-lg font-medium hover:bg-accent transition-colors disabled:opacity-50"
+                >
+                  {actionLoading === "cancel" ? "Cancelling..." : "Cancel Plan"}
+                </button>
               )}
-            </button>
+            </>
           )}
         </div>
       </div>

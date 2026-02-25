@@ -107,6 +107,18 @@ export const accountProcedures = {
         throw new ORPCError('UNAUTHORIZED')
       }
 
+      // Check membership tier - only paid users can create API tokens
+      const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { membershipTier: true },
+      })
+
+      if (!user?.membershipTier || user.membershipTier === 'free') {
+        throw new ORPCError('FORBIDDEN', {
+          message: 'API tokens are only available for Pro and Enterprise members. Please upgrade your plan.',
+        })
+      }
+
       // Generate secure token
       const plainToken = generateToken()
       const tokenHash = hashToken(plainToken)

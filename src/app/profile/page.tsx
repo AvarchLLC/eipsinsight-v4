@@ -14,24 +14,112 @@ import {
   Crown,
   CheckCircle2,
   XCircle,
+  Calendar,
+  TrendingUp,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
+
+interface SubscriptionData {
+  tier: string;
+  status: string;
+  currentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  priceAmount: number;
+  priceCurrency: string;
+  billingInterval: string;
+}
 
 export default function ProfilePage() {
   const { data: session, loading: isLoading } = useSession();
   const [membershipTier, setMembershipTier] = useState<string>("free");
   const [tierLoading, setTierLoading] = useState(true);
+  const [subscription, setSubscription] = useState<SubscriptionData | null>(
+    null
+  );
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState<"cancel" | "resume" | null>(
+    null
+  );
+  const [message, setMessage] = useState("");
+
+  const refreshSubscription = async () => {
+    const response = await fetch("/api/stripe/subscription");
+    if (!response.ok) return;
+    const data = await response.json();
+    setSubscription(data);
+    setMembershipTier(data?.tier || "free");
+  };
 
   useEffect(() => {
     if (session?.user) {
-      fetch("/api/stripe/subscription")
-        .then((res) => res.json())
-        .then((data) => setMembershipTier(data?.tier || "free"))
+      refreshSubscription()
         .catch(() => setMembershipTier("free"))
         .finally(() => setTierLoading(false));
     } else if (!isLoading) {
       setTierLoading(false);
     }
   }, [session?.user, isLoading]);
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true);
+    try {
+      const response = await fetch("/api/stripe/portal", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to create portal session");
+      }
+
+      const { url } = await response.json();
+      window.location.href = url;
+    } catch (error) {
+      console.error("Error opening customer portal:", error);
+      alert("Failed to open subscription management. Please try again.");
+    } finally {
+      setPortalLoading(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!window.confirm("Cancel your subscription at period end?")) return;
+
+    setActionLoading("cancel");
+    setMessage("");
+    try {
+      const response = await fetch("/api/stripe/cancel", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to cancel subscription");
+      }
+
+      setMessage(
+        "Subscription will cancel at the end of the current billing period."
+      );
+      await refreshSubscription();
+    } catch (error) {
+      console.error("Error cancelling subscription:", error);
+      alert("Failed to cancel subscription. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleResumeSubscription = async () => {
+    setActionLoading("resume");
+    setMessage("");
+    try {
+      const response = await fetch("/api/stripe/resume", { method: "POST" });
+      if (!response.ok) {
+        throw new Error("Failed to resume subscription");
+      }
+
+      setMessage("Subscription resumed successfully.");
+      await refreshSubscription();
+    } catch (error) {
+      console.error("Error resuming subscription:", error);
+      alert("Failed to resume subscription. Please try again.");
+    } finally {
+      setActionLoading(null);
+    }
+  };
 
   if (isLoading || tierLoading) {
     return (
@@ -84,6 +172,12 @@ export default function ProfilePage() {
         <h1 className="text-3xl font-semibold text-slate-900 dark:text-slate-50">Your Account</h1>
         <p className="text-slate-600 dark:text-slate-400">Manage your identity, credentials, and preferences.</p>
       </div>
+
+      {message && (
+        <div className="mb-6 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+          {message}
+        </div>
+      )}
 
       <div className="space-y-6">
         {/* Profile Header Card */}
@@ -180,6 +274,26 @@ export default function ProfilePage() {
                 <span className="text-slate-600 dark:text-slate-400">Current Plan</span>
                 <span className="capitalize text-slate-700 dark:text-slate-300">{membershipTier}</span>
               </div>
+              {subscription && isPaid && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Price</span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    ${subscription.priceAmount / 100}/{subscription.billingInterval}
+                  </span>
+                </div>
+              )}
+              {subscription && isPaid && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {subscription.cancelAtPeriodEnd ? "Cancels on" : "Renews on"}
+                  </span>
+                  <span className="text-slate-700 dark:text-slate-300">
+                    {subscription.currentPeriodEnd
+                      ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                      : "N/A"}
+                  </span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">Features</span>
                 <span className="text-slate-700 dark:text-slate-300">{membershipTier === "premium" ? "Unlimited" : "Standard"}</span>
@@ -188,6 +302,53 @@ export default function ProfilePage() {
                 <span className="text-slate-600 dark:text-slate-400">Support</span>
                 <span className="text-slate-700 dark:text-slate-300">{membershipTier === "premium" ? "Priority" : "Community"}</span>
               </div>
+            </div>
+            <div className="mt-5 flex flex-wrap gap-2">
+              {isPaid ? (
+                <>
+                  <Button
+                    onClick={handleManageSubscription}
+                    disabled={portalLoading}
+                    className="gap-2"
+                  >
+                    {portalLoading ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      <>
+                        Manage Subscription
+                        <ExternalLink className="h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                  {subscription?.cancelAtPeriodEnd ? (
+                    <Button
+                      variant="secondary"
+                      onClick={handleResumeSubscription}
+                      disabled={actionLoading === "resume"}
+                    >
+                      {actionLoading === "resume" ? "Resuming..." : "Resume Plan"}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="secondary"
+                      onClick={handleCancelSubscription}
+                      disabled={actionLoading === "cancel"}
+                    >
+                      {actionLoading === "cancel" ? "Cancelling..." : "Cancel Plan"}
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button asChild className="gap-2">
+                  <Link href="/pricing">
+                    Upgrade Plan
+                    <TrendingUp className="h-4 w-4" />
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>
@@ -222,6 +383,22 @@ export default function ProfilePage() {
               <div className="flex flex-col items-start">
                 <span className="font-semibold text-slate-900 dark:text-slate-50">API Tokens</span>
                 <span className="text-xs text-slate-600 dark:text-slate-400">Manage access keys</span>
+              </div>
+            </Link>
+          </Button>
+
+          <Button
+            variant="secondary"
+            asChild
+            className="flex h-auto items-center justify-start gap-3 rounded-xl border-slate-300 dark:border-cyan-400/30 bg-white/80 dark:bg-slate-950/60 p-4 hover:border-cyan-500/40 dark:hover:border-cyan-400/50 hover:bg-slate-100 dark:hover:bg-slate-900/70"
+          >
+            <Link href="/settings/billing">
+              <div className="rounded-lg bg-cyan-500/15 p-2">
+                <Calendar className="h-5 w-5 text-cyan-700 dark:text-cyan-300" />
+              </div>
+              <div className="flex flex-col items-start">
+                <span className="font-semibold text-slate-900 dark:text-slate-50">Billing & Subscription</span>
+                <span className="text-xs text-slate-600 dark:text-slate-400">Invoices and payment details</span>
               </div>
             </Link>
           </Button>

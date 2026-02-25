@@ -196,8 +196,19 @@ export default function PRsAnalyticsPage() {
   const [openPRs, setOpenPRs] = useState<OpenPRRow[]>([]);
   const [processCategories, setProcessCategories] = useState<ProcessCategory[]>([]);
   const [govWaitStates, setGovWaitStates] = useState<GovernanceWaitState[]>([]);
+  const [membershipTier, setMembershipTier] = useState<string>('free');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
+  const isPaidMember = membershipTier !== 'free';
+
+  // Fetch membership tier on mount
+  useEffect(() => {
+    fetch('/api/stripe/subscription')
+      .then(res => res.json())
+      .then(data => setMembershipTier(data?.tier || 'free'))
+      .catch(() => setMembershipTier('free'));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -644,6 +655,46 @@ export default function PRsAnalyticsPage() {
           </div>
         )}
       </Section>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+            <div className="flex items-start gap-3 mb-4">
+              <GitPullRequest className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-semibold text-white">Unlock Export Features</h3>
+                <p className="text-sm text-slate-400 mt-1">Upgrade to Pro or Enterprise to download PR analytics data</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 rounded p-3 mb-4 text-sm text-slate-300">
+              <p className="font-medium text-white mb-2">Pro features include:</p>
+              <ul className="space-y-1 text-xs">
+                <li>✓ CSV exports for all analytics</li>
+                <li>✓ 50,000 API requests/month</li>
+                <li>✓ Advanced analytics dashboards</li>
+                <li>✓ Priority support</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-800/50 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <a
+                href="/pricing"
+                className="flex-1 px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors text-sm font-medium text-center"
+              >
+                View Plans
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

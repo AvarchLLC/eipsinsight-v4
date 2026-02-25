@@ -235,6 +235,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Blogs", href: "/admin/blogs" },
           { title: "Editors", href: "/admin/editors" },
+          { title: "Videos", href: "/admin/videos" },
         ],
       },
     ],

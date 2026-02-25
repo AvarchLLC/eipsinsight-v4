@@ -103,12 +103,20 @@ export default function EditorsAnalyticsPage() {
   const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
   const [categoryCoverage, setCategoryCoverage] = useState<CategoryCoverage[]>([]);
   const [repoDistribution, setRepoDistribution] = useState<RepoDistribution[]>([]);
+  const [membershipTier, setMembershipTier] = useState<string>('free');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
   const [exporting, setExporting] = useState(false);
+  const isPaidMember = membershipTier !== 'free';
 
   const downloadLeaderboardCSV = useCallback(async () => {
+    if (!isPaidMember) {
+      setShowUpgradeModal(true);
+      return;
+    }
+
     setExporting(true);
     try {
       const { csv, filename } = await client.analytics.getEditorsLeaderboardExport({
@@ -128,7 +136,15 @@ export default function EditorsAnalyticsPage() {
     } finally {
       setExporting(false);
     }
-  }, [repoParam, from, to]);
+  }, [repoParam, from, to, isPaidMember]);
+
+  // Fetch membership tier on mount
+  useEffect(() => {
+    fetch('/api/stripe/subscription')
+      .then(res => res.json())
+      .then(data => setMembershipTier(data?.tier || 'free'))
+      .catch(() => setMembershipTier('free'));
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -291,11 +307,16 @@ export default function EditorsAnalyticsPage() {
           </h2>
           <button
             onClick={downloadLeaderboardCSV}
-            disabled={exporting || leaderboard.length === 0}
-            className="flex items-center gap-1.5 rounded-lg border border-slate-600/50 bg-slate-800/30 px-3 py-1.5 text-sm text-slate-300 hover:bg-slate-800/50 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={exporting || leaderboard.length === 0 || !isPaidMember}
+            title={!isPaidMember ? 'Upgrade to Pro to download exports' : ''}
+            className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+              !isPaidMember
+                ? 'border-amber-600/30 bg-amber-500/10 text-amber-600/70 cursor-not-allowed opacity-60'
+                : 'border-slate-600/50 bg-slate-800/30 text-slate-300 hover:bg-slate-800/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed'
+            }`}
           >
             {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-            Download CSV
+            {!isPaidMember ? 'Export (Pro+)' : 'Download CSV'}
           </button>
         </div>
         <div className="overflow-x-auto">
@@ -440,6 +461,46 @@ export default function EditorsAnalyticsPage() {
           Number of editors active in each category
         </p>
       </div>
+
+      {/* Upgrade Modal */}
+      {showUpgradeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-slate-700 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+            <div className="flex items-start gap-3 mb-4">
+              <Download className="h-6 w-6 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div>
+                <h3 className="text-lg font-semibold text-white">Unlock CSV Export</h3>
+                <p className="text-sm text-slate-400 mt-1">Upgrade to Pro or Enterprise to download analytics data</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/50 rounded p-3 mb-4 text-sm text-slate-300">
+              <p className="font-medium text-white mb-2">Pro features include:</p>
+              <ul className="space-y-1 text-xs">
+                <li>✓ CSV exports for all analytics</li>
+                <li>✓ 50,000 API requests/month</li>
+                <li>✓ Advanced analytics dashboards</li>
+                <li>✓ Priority support</li>
+              </ul>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowUpgradeModal(false)}
+                className="flex-1 px-4 py-2 rounded-lg border border-slate-600 text-slate-300 hover:bg-slate-800/50 transition-colors text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <a
+                href="/pricing"
+                className="flex-1 px-4 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 transition-colors text-sm font-medium text-center"
+              >
+                View Plans
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

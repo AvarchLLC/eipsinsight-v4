@@ -88,6 +88,45 @@ export function requireAuth(ctx: Ctx) {
   }
 }
 
+/** Check user's membership tier (returns 'free' for unauthenticated) */
+async function getUserTier(userId?: string): Promise<string> {
+  if (!userId) return 'free'
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { membershipTier: true, membershipExpiresAt: true },
+  })
+
+  if (!user) return 'free'
+
+  // Check if subscription is expired
+  const now = new Date()
+  if (user.membershipExpiresAt && user.membershipExpiresAt < now) {
+    return 'free'
+  }
+
+  return user.membershipTier || 'free'
+}
+
+/** Require minimum tier for feature access */
+export async function requireTier(ctx: Ctx, minimumTier: 'pro' | 'enterprise') {
+  const userId = ctx.user?.id
+  if (!userId) {
+    throw new ORPCError('FORBIDDEN', {
+      message: 'This feature is only available for Pro and Enterprise members. Please upgrade your plan.',
+    })
+  }
+
+  const tier = await getUserTier(userId)
+  const tierHierarchy = { free: 0, pro: 1, enterprise: 2 }
+
+  if ((tierHierarchy[tier as keyof typeof tierHierarchy] ?? 0) < (tierHierarchy[minimumTier])) {
+    throw new ORPCError('FORBIDDEN', {
+      message: `This feature requires ${minimumTier === 'enterprise' ? 'Enterprise' : 'Pro'} membership. Please upgrade your plan.`,
+    })
+  }
+}
+
 export const publicProcedure = os.$context<Ctx>()
 
 /** Populates user/apiToken when available but does NOT require auth. Use for public read operations. */

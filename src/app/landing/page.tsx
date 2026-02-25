@@ -12,6 +12,7 @@ import OurTools from './_components/our-tools';
 import LogoCloud from '@/components/logo-cloud';
 import TrendingProposals from './_components/trending-proposals';
 import LatestUpdates from './_components/latest-updates';
+import SocialCommunityUpdates from './_components/social-community-updates';
 import FAQs from './_components/faqs';
 import { PersonaNudgeBanner } from '@/components/persona-nudge-banner';
 
@@ -233,6 +234,17 @@ export default function EIPsInsightHero() {
       </div>
       
       <LatestUpdates />
+
+      <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
+        <div className="relative flex items-center justify-center">
+          {/* Decorative line with gradient */}
+          <div className="absolute inset-x-0 flex items-center -translate-y-1">
+            <div className="w-full border-t border-cyan-400/20" />
+          </div>
+        </div>
+      </div>
+      
+      <SocialCommunityUpdates />
 
       <div className="relative z-10 w-full px-4 sm:px-6 lg:px-8">
         <div className="relative flex items-center justify-center">

@@ -87,10 +87,60 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const rawPeriodEnd = (subscription as any).current_period_end;
+    const rawAnchor = (subscription as any).billing_cycle_anchor;
+    const rawEndedAt = (subscription as any).ended_at;
+    const recurring = price?.recurring;
+
+    const computePeriodEndFromAnchor = () => {
+      if (!rawAnchor || isNaN(rawAnchor) || !recurring?.interval) return null;
+      const intervalCount = recurring.interval_count ?? 1;
+      const anchorDate = new Date(rawAnchor * 1000);
+      const endDate = new Date(anchorDate.getTime());
+
+      switch (recurring.interval) {
+        case "day":
+          endDate.setDate(endDate.getDate() + intervalCount);
+          break;
+        case "week":
+          endDate.setDate(endDate.getDate() + intervalCount * 7);
+          break;
+        case "month":
+          endDate.setMonth(endDate.getMonth() + intervalCount);
+          break;
+        case "year":
+          endDate.setFullYear(endDate.getFullYear() + intervalCount);
+          break;
+        default:
+          return null;
+      }
+
+      return endDate;
+    };
+
+    const currentPeriodEndDate =
+      rawPeriodEnd && !isNaN(rawPeriodEnd)
+        ? new Date(rawPeriodEnd * 1000)
+        : rawEndedAt && !isNaN(rawEndedAt)
+          ? new Date(rawEndedAt * 1000)
+          : computePeriodEndFromAnchor();
+
+    const currentPeriodEnd =
+      currentPeriodEndDate?.toISOString() ||
+      user.stripeCurrentPeriodEnd?.toISOString() ||
+      null;
+
+    if (currentPeriodEnd && !user.stripeCurrentPeriodEnd) {
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: { stripeCurrentPeriodEnd: new Date(currentPeriodEnd) },
+      });
+    }
+
     return NextResponse.json({
       tier,
       status: subscription.status,
-      currentPeriodEnd: user.stripeCurrentPeriodEnd?.toISOString() || null,
+      currentPeriodEnd,
       cancelAtPeriodEnd: subscription.cancel_at_period_end,
       priceAmount: price?.unit_amount || 0,
       priceCurrency: price?.currency || "usd",

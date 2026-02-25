@@ -14,6 +14,7 @@ import { standardsProcedures } from './procedures/standards'
 import { insightsProcedures } from './procedures/insights'
 import { toolsProcedures } from './procedures/tools'
 import { blogProcedures } from './procedures/blog'
+import { videoProcedures } from './procedures/video'
 
 export const router = {
   auth: authProcedures,
@@ -32,4 +33,5 @@ export const router = {
   insights: insightsProcedures,
   tools: toolsProcedures,
   blog: blogProcedures,
+  video: videoProcedures,
 }

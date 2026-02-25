@@ -1,4 +1,4 @@
-import { optionalAuthProcedure } from './types'
+import { optionalAuthProcedure, requireTier } from './types'
 
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
@@ -1786,7 +1786,8 @@ export const analyticsProcedures = {
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      await requireTier(context, 'pro');
 
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -2920,7 +2921,8 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
     }))
-    .handler(async ({ input }) => {
+    .handler(async ({ context, input }) => {
+      await requireTier(context, 'pro');
 
       const [summary, details] = await Promise.all([
         getEditorsLeaderboardCached(input.repo ?? null, input.from ?? null, input.to ?? null, 500),

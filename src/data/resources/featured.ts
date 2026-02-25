@@ -11,26 +11,26 @@ export const featuredResources: FeaturedResource[] = [
   {
     id: "eip-governance",
     title: "How EIP Governance Works",
-    type: "blog",
+    type: "doc",
     description:
       "A deep dive into the decision-making process behind Ethereum Improvement Proposals.",
-    link: "/resources/blogs/eip-governance",
+    link: "/resources/docs",
   },
   {
     id: "eip-1559",
-    title: "What is EIP-1559?",
-    type: "video",
+    title: "Understanding EIP-1559",
+    type: "doc",
     description:
-      "An explainer video covering the fee market changes introduced by EIP-1559.",
-    link: "/resources/videos/eip-1559-explained",
+      "Learn about the fee market changes introduced by EIP-1559 and its impact on Ethereum.",
+    link: "/eip/1559",
   },
   {
     id: "dencun-upgrade",
     title: "Dencun Upgrade Explained",
-    type: "blog",
+    type: "doc",
     description:
       "Everything you need to know about the Dencun network upgrade and its impact.",
-    link: "/resources/blogs/dencun-upgrade",
+    link: "/upgrade/cancun",
   },
   {
     id: "eip-process-doc",
@@ -38,6 +38,6 @@ export const featuredResources: FeaturedResource[] = [
     type: "doc",
     description:
       "Official documentation on how to write and submit an EIP.",
-    link: "/resources/docs#eip-process",
+    link: "/resources/docs",
   },
 ];

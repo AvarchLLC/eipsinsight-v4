@@ -15,6 +15,7 @@ import {
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { EIPsPageHeader } from './_components/eips-page-header';
 import HomeFAQs from './_components/home-faqs';
+import SocialCommunityUpdates from '../landing/_components/social-community-updates';
 
 // ────────────────────────────────────────────────────────────────
 // TYPES & CONSTANTS
@@ -976,6 +977,13 @@ export default function EIPsHomePage() {
             )}
           </SectionCard>
         </motion.div>
+
+        <hr className="border-slate-200 dark:border-slate-800/50 my-8" />
+
+        {/* ─── Social & Community Updates ── */}
+        <motion.section initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35, delay: 0.20 }}>
+          <SocialCommunityUpdates />
+        </motion.section>
 
         <hr className="border-slate-200 dark:border-slate-800/50 my-8" />
 

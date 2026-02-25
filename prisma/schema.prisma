@@ -201,6 +201,23 @@ model blog_comment {
   @@map("blog_comment")
 }
 
+model Video {
+  id             String   @id @default(cuid())
+  youtubeUrl     String
+  youtubeVideoId String
+  title          String
+  description    String?
+  thumbnail      String?
+  tags           String[] @default([])
+  published      Boolean  @default(false)
+  displayOrder   Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([published, displayOrder])
+  @@map("video")
+}
+
 model eip_category_events {
   id            BigInt        @id @default(autoincrement())
   eip_id        Int?
