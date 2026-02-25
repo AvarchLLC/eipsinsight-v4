@@ -11,6 +11,7 @@ export default function NewVideoPage() {
         youtubeUrl: "",
         title: "",
         description: "",
+        tags: [],
         published: false,
       }}
     />

@@ -40,6 +40,7 @@ const videoSchema = z.object({
   youtubeUrl: z.string().url(),
   title: z.string().min(1),
   description: z.string().optional().nullable(),
+  tags: z.array(z.string()).optional().default([]),
   published: z.boolean().optional(),
   displayOrder: z.number().optional(),
 })
@@ -52,13 +53,22 @@ export const videoProcedures = {
         publishedOnly: z.boolean().optional().default(true),
         limit: z.number().min(1).max(100).optional().default(10),
         offset: z.number().min(0).optional().default(0),
+        tags: z.array(z.string()).optional(),
       }),
     )
     .handler(async ({ input, context }) => {
       if (!input.publishedOnly) {
         await requireAdmin(context)
       }
-      const where = input.publishedOnly ? { published: true } : {}
+      const where: any = input.publishedOnly ? { published: true } : {}
+      
+      // Filter by tags if provided
+      if (input.tags && input.tags.length > 0) {
+        where.tags = {
+          hasSome: input.tags,
+        }
+      }
+      
       const videos = await prisma.video.findMany({
         where,
         orderBy: { displayOrder: 'asc' },
@@ -67,6 +77,22 @@ export const videoProcedures = {
       })
       const total = await prisma.video.count({ where })
       return { videos, total }
+    }),
+
+  getAllTags: os
+    .$context<Ctx>()
+    .handler(async () => {
+      const videos = await prisma.video.findMany({
+        where: { published: true },
+        select: { tags: true },
+      })
+      
+      const allTags = new Set<string>()
+      videos.forEach(video => {
+        video.tags.forEach(tag => allTags.add(tag))
+      })
+      
+      return Array.from(allTags).sort()
     }),
 
   getById: os
@@ -101,7 +127,7 @@ export const videoProcedures = {
       })
 
       const displayOrder = input.displayOrder ?? (maxOrder?.displayOrder ?? 0) + 1
-      const thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+      const thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
 
       const video = await prisma.video.create({
         data: {
@@ -110,6 +136,7 @@ export const videoProcedures = {
           title: input.title,
           description: input.description ?? null,
           thumbnail,
+          tags: input.tags ?? [],
           published: input.published ?? false,
           displayOrder,
         },
@@ -125,6 +152,7 @@ export const videoProcedures = {
         youtubeUrl: z.string().url().optional(),
         title: z.string().min(1).optional(),
         description: z.string().optional().nullable(),
+        tags: z.array(z.string()).optional(),
         published: z.boolean().optional(),
         displayOrder: z.number().optional(),
       }),
@@ -148,7 +176,7 @@ export const videoProcedures = {
           throw new ORPCError('BAD_REQUEST', { message: 'Invalid YouTube URL' })
         }
         videoId = newVideoId
-        thumbnail = `https://img.youtube.com/vi/${videoId}/maxresdefault.jpg`
+        thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
       }
 
       const video = await prisma.video.update({
@@ -157,6 +185,7 @@ export const videoProcedures = {
           ...(input.youtubeUrl && { youtubeUrl: input.youtubeUrl, youtubeVideoId: videoId, thumbnail }),
           ...(input.title && { title: input.title }),
           ...(input.description !== undefined && { description: input.description }),
+          ...(input.tags !== undefined && { tags: input.tags }),
           ...(input.published !== undefined && { published: input.published }),
           ...(input.displayOrder !== undefined && { displayOrder: input.displayOrder }),
         },

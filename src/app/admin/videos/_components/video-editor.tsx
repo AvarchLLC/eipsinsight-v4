@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Play, Eye } from "lucide-react";
+import { ArrowLeft, Loader2, Play, Eye, X } from "lucide-react";
 import { client } from "@/lib/orpc";
 
 interface VideoEditorProps {
@@ -12,6 +12,7 @@ interface VideoEditorProps {
     youtubeUrl: string;
     title: string;
     description: string;
+    tags: string[];
     published: boolean;
   };
 }
@@ -37,6 +38,8 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
   const [youtubeUrl, setYoutubeUrl] = useState(initialData.youtubeUrl);
   const [title, setTitle] = useState(initialData.title);
   const [description, setDescription] = useState(initialData.description);
+  const [tags, setTags] = useState<string[]>(initialData.tags || []);
+  const [tagInput, setTagInput] = useState("");
   const [published, setPublished] = useState(initialData.published);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,6 +53,25 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
       setPreviewVideoId(null);
     }
   }, [youtubeUrl]);
+
+  const addTag = () => {
+    const trimmedTag = tagInput.trim();
+    if (trimmedTag && !tags.includes(trimmedTag)) {
+      setTags([...tags, trimmedTag]);
+      setTagInput("");
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter((tag) => tag !== tagToRemove));
+  };
+
+  const handleTagInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addTag();
+    }
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -77,6 +99,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
           youtubeUrl,
           title,
           description: description || undefined,
+          tags,
           published,
         });
         window.location.href = "/admin/videos";
@@ -86,6 +109,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
           youtubeUrl,
           title,
           description: description || null,
+          tags,
           published,
         });
         window.location.href = "/admin/videos";
@@ -187,6 +211,53 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
               rows={4}
               className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+              Tags (Optional)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={tagInput}
+                  onChange={(e) => setTagInput(e.target.value)}
+                  onKeyDown={handleTagInputKeyDown}
+                  placeholder="Enter tag and press Enter"
+                  className="flex-1 px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/50 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                />
+                <button
+                  type="button"
+                  onClick={addTag}
+                  className="px-4 py-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 transition-colors font-medium"
+                >
+                  Add
+                </button>
+              </div>
+              {tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag, idx) => (
+                    <span
+                      key={idx}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-sm text-slate-700 dark:text-slate-300"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <p className="text-xs text-slate-500 dark:text-slate-500">
+                Suggested tags: Web3 Today, ACD Highlights, Staking, NFT, Ethereum, EIP, etc.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">

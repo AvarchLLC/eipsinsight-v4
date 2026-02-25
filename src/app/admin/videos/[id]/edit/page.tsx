@@ -14,6 +14,7 @@ export default function EditVideoPage() {
     youtubeUrl: string;
     title: string;
     description: string | null;
+    tags?: string[];
     published: boolean;
   } | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,6 +52,7 @@ export default function EditVideoPage() {
         youtubeUrl: video.youtubeUrl,
         title: video.title,
         description: video.description ?? "",
+        tags: video.tags ?? [],
         published: video.published,
       }}
     />
