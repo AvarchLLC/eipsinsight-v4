@@ -15,7 +15,6 @@ import {
   ChevronRight,
   Sparkles,
   Crown,
-  User,
   PanelLeft,
   PanelLeftOpen,
   Compass,
@@ -30,6 +29,7 @@ import { usePersonaStore } from "@/stores/personaStore";
 import { DEFAULT_PERSONA, type Persona } from "@/lib/persona";
 import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
+import { client } from "@/lib/orpc";
 import {
   Sidebar,
   SidebarContent,
@@ -219,11 +219,6 @@ const sidebarSections: SidebarSection[] = [
     label: "Account",
     items: [
       {
-        title: "Profile",
-        icon: User,
-        href: "/profile",
-      },
-      {
         title: "Settings",
         icon: Settings,
         href: "/settings",
@@ -231,11 +226,11 @@ const sidebarSections: SidebarSection[] = [
       {
         title: "Admin",
         icon: Shield,
-        href: "/admin/blogs",
+        href: "/admin#blogs",
         items: [
-          { title: "Blogs", href: "/admin/blogs" },
-          { title: "Editors", href: "/admin/editors" },
-          { title: "Videos", href: "/admin/videos" },
+          { title: "Blogs", href: "/admin#blogs" },
+          { title: "Editors", href: "/admin#editors" },
+          { title: "Videos", href: "/admin#videos" },
         ],
       },
     ],
@@ -343,6 +338,10 @@ function AppSidebarContent() {
   // Scroll spy state (kept for future use)
   const [activeSection, setActiveSection] = React.useState("");
   const [membershipTier, setMembershipTier] = React.useState<string>("free");
+  const [isAdmin, setIsAdmin] = React.useState(false);
+  const [hash, setHash] = React.useState(() => 
+    typeof window !== "undefined" ? window.location.hash : ""
+  );
 
   // Fetch membership tier
   React.useEffect(() => {
@@ -352,11 +351,49 @@ function AppSidebarContent() {
       .catch(() => setMembershipTier("free"));
   }, []);
 
+  React.useEffect(() => {
+    const updateHash = () => setHash(window.location.hash);
+    updateHash();
+    window.addEventListener("hashchange", updateHash);
+    return () => window.removeEventListener("hashchange", updateHash);
+  }, []);
+
+  // Also update hash when pathname or searchParams change
+  React.useEffect(() => {
+    setHash(window.location.hash);
+  }, [pathname, searchParams]);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    client.account
+      .getMe()
+      .then((user) => {
+        if (!cancelled) setIsAdmin(user.role === "admin");
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Get persona-ordered sections
   const orderedSections = React.useMemo(
     () => getOrderedSections(persona),
     [persona]
   );
+
+  const visibleSections = React.useMemo(() => {
+    return orderedSections.map((section) => {
+      if (section.id !== "account") return section;
+      const items = section.items.filter((item) => {
+        if (item.title === "Admin") return isAdmin;
+        return true;
+      });
+      return { ...section, items };
+    });
+  }, [orderedSections, isAdmin]);
 
   // Normalized search param string for reactive comparison
   const currentSearchStr = React.useMemo(() => {
@@ -531,23 +568,37 @@ function AppSidebarContent() {
       // Compare query params — both sides sorted for order-insensitive match
       const hrefParams = new URLSearchParams(url.search);
       hrefParams.sort();
-      return hrefParams.toString() === currentSearchStr;
+      if (hrefParams.toString() !== currentSearchStr) return false;
+
+      // If the href includes a hash, require it to match the current hash
+      if (url.hash) return url.hash === hash;
+      return true;
     },
-    [pathname, currentSearchStr, activeSection]
+    [pathname, currentSearchStr, activeSection, hash]
   );
 
   /**
    * Check if a parent item's path is active (prefix match).
    * Used for the top-level collapsible highlight.
+   * Special handling for hash-based routing (e.g., /admin#blogs).
    */
   const isParentPathActive = React.useCallback(
     (href?: string): boolean => {
       if (!href) return false;
+      
+      // Handle hash-based routing
+      if (href.includes("#")) {
+        const [basePath] = href.split("#");
+        return (
+          pathname === basePath && hash !== ""
+        );
+      }
+      
       const basePath = href.split("?")[0].split("#")[0];
       if (basePath === "/") return pathname === "/";
       return pathname === basePath || pathname.startsWith(basePath + "/");
     },
-    [pathname]
+    [pathname, hash]
   );
 
   /**
@@ -768,7 +819,7 @@ function AppSidebarContent() {
           state === "collapsed" && "px-0 items-center"
         )}
       >
-        {orderedSections.map((section) => (
+        {visibleSections.map((section) => (
           <SidebarGroup key={section.id} className="py-0">
             {/* Section label (expanded) or separator line (collapsed) */}
             {state === "expanded" && section.label && (

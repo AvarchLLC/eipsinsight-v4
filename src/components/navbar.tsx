@@ -237,7 +237,7 @@ export default function Navbar() {
                   {/* Menu Items */}
                   <div className="py-1">
                     <DropdownMenuItem asChild>
-                      <Link href="/settings" className="flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-100">
+                      <Link href="/profile" className="flex items-center gap-2 px-4 py-2 text-slate-700 dark:text-slate-100">
                         <Settings2 className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                         <span className="text-sm">Account</span>
                       </Link>
@@ -401,7 +401,7 @@ export default function Navbar() {
                 </Button>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Link href="/settings" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                  <Link href="/profile" className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
                     <ProfileAvatar user={session.user} size="sm" />
                     <span className="truncate max-w-[80px]">{session.user.name || "Account"}</span>
                   </Link>

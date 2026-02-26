@@ -102,7 +102,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
           tags,
           published,
         });
-        window.location.href = "/admin/videos";
+        window.location.href = "/admin#videos";
       } else if (videoId) {
         await client.video.update({
           id: videoId,
@@ -112,7 +112,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
           tags,
           published,
         });
-        window.location.href = "/admin/videos";
+        window.location.href = "/admin#videos";
       }
     } catch (err: unknown) {
       const msg =
@@ -129,7 +129,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
       <section className="border-b border-slate-200 dark:border-slate-800/50 bg-white dark:bg-slate-900/50">
         <div className="container mx-auto px-4 py-8">
           <Link
-            href="/admin/videos"
+            href="/admin#videos"
             className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -292,7 +292,7 @@ export function VideoEditor({ mode, videoId, initialData }: VideoEditorProps) {
               )}
             </button>
             <Link
-              href="/admin/videos"
+              href="/admin#videos"
               className="px-6 py-3 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-medium hover:bg-slate-100 dark:hover:bg-slate-800/50"
             >
               Cancel

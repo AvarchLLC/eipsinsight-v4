@@ -77,7 +77,7 @@ function BlogsContent() {
             {isAdmin && (
               <div className="flex gap-2">
                 <Link
-                  href="/admin/blogs"
+                  href="/admin#blogs"
                   className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50"
                 >
                   <Pencil className="h-4 w-4" />

@@ -269,7 +269,7 @@ export const blogProcedures = {
               <h2 style="color: #0f172a;">You've been added as a blog editor</h2>
               <p>Hi ${user.name},</p>
               <p>An admin has granted you blog editor access on EIPsInsight. You can now create and edit blog posts.</p>
-              <p><a href="${env.BETTER_AUTH_URL}/admin/blogs" style="display: inline-block; padding: 10px 20px; background: linear-gradient(to right, #10b981, #22d3ee); color: #000; text-decoration: none; border-radius: 8px; font-weight: 600;">Go to Manage Blogs</a></p>
+              <p><a href="${env.BETTER_AUTH_URL}/admin#blogs" style="display: inline-block; padding: 10px 20px; background: linear-gradient(to right, #10b981, #22d3ee); color: #000; text-decoration: none; border-radius: 8px; font-weight: 600;">Go to Manage Blogs</a></p>
               <p style="color: #64748b; font-size: 12px;">If you didn't expect this, you can ignore this email.</p>
             </div>
           `,

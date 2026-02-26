@@ -234,7 +234,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           tags,
           featured,
         });
-        window.location.href = "/admin/blogs";
+        window.location.href = "/admin#blogs";
       } else if (postId) {
         await client.blog.update({
           id: postId,
@@ -249,7 +249,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           tags,
           featured,
         });
-        window.location.href = "/admin/blogs";
+        window.location.href = "/admin#blogs";
       }
     } catch (err: unknown) {
       setError(err && typeof err === "object" && "message" in err ? String((err as { message: string }).message) : "Failed to save");
@@ -263,7 +263,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
       <section className="border-b border-slate-200 dark:border-slate-800/50 bg-white dark:bg-slate-900/50">
         <div className="container mx-auto px-4 py-8">
           <Link
-            href="/admin/blogs"
+            href="/admin#blogs"
             className="inline-flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition-colors mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -581,7 +581,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
               {saving ? "Saving..." : "Save"}
             </button>
             <Link
-              href="/admin/blogs"
+              href="/admin#blogs"
               className="px-6 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors"
             >
               Cancel
