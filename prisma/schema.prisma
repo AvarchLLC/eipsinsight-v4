@@ -133,16 +133,17 @@ model MembershipTier {
 }
 
 model ApiToken {
-  id        String    @id @default(cuid())
+  id        String     @id @default(cuid())
   userId    String
   name      String
-  tokenHash String    @unique
+  tokenHash String     @unique
   lastUsed  DateTime?
   expiresAt DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  scopes    String[]  @default([])
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  scopes    String[]   @default([])
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  api_usage ApiUsage[]
 
   @@map("api_token")
 }
@@ -208,11 +209,11 @@ model Video {
   title          String
   description    String?
   thumbnail      String?
-  tags           String[] @default([])
   published      Boolean  @default(false)
   displayOrder   Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+  tags           String[] @default([])
 
   @@index([published, displayOrder])
   @@map("video")
@@ -522,7 +523,7 @@ model upgrades {
 }
 
 model ApiUsage {
-  id         String   @id @default(cuid())
+  id         String    @id @default(cuid())
   userId     String
   apiTokenId String?
   endpoint   String
@@ -530,13 +531,10 @@ model ApiUsage {
   statusCode Int
   userAgent  String?
   ipAddress  String?
-  createdAt  DateTime @default(now())
+  createdAt  DateTime  @default(now())
+  api_token  ApiToken? @relation(fields: [apiTokenId], references: [id])
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([apiTokenId])
-  @@index([createdAt])
   @@map("api_usage")
 }
 

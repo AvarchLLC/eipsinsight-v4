@@ -318,12 +318,13 @@ export default function PRsAnalyticsPage() {
     });
     
     // Governance states
+    const govTotal = governanceStates.reduce((acc, s) => acc + s.count, 0);
     governanceStates.forEach(g => {
       combined.push({
         type: 'Governance State',
         state: g.state,
         count: g.count,
-        pct: g.pct,
+        pct: govTotal > 0 ? (g.count / govTotal) * 100 : 0,
       });
     });
     
