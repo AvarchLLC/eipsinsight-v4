@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, Activity, Zap, Database } from "lucide-react";
 import {
@@ -166,6 +166,67 @@ export default function ContributorsAnalyticsPage() {
       color: repoColors[r.repo] || "#94a3b8",
     }));
   }, [activityByRepo]);
+
+  // Export functionality
+  useAnalyticsExport(() => {
+    const combined: Record<string, unknown>[] = [];
+    
+    // KPIs
+    if (kpis) {
+      combined.push({
+        type: 'KPIs',
+        totalContributors: kpis.totalContributors,
+        activeContributors30d: kpis.activeContributors30d,
+        totalActivities: kpis.totalActivities,
+        last24hCount: kpis.last24hCount,
+      });
+    }
+    
+    // Activity by type
+    activityByType.forEach(a => {
+      combined.push({
+        type: 'Activity by Type',
+        actionType: a.actionType,
+        count: a.count,
+      });
+    });
+    
+    // Activity by repo
+    activityByRepo.forEach(a => {
+      combined.push({
+        type: 'Activity by Repo',
+        repo: a.repo,
+        count: a.count,
+      });
+    });
+    
+    // Contributor rankings
+    rankings.forEach(r => {
+      combined.push({
+        type: 'Contributor Ranking',
+        contributor: r.actor,
+        total: r.total,
+        reviews: r.reviews,
+        statusChanges: r.statusChanges,
+        prsAuthored: r.prsAuthored,
+        prsReviewed: r.prsReviewed,
+      });
+    });
+    
+    // Live feed (sampling first 20)
+    liveFeed.slice(0, 20).forEach(l => {
+      combined.push({
+        type: 'Live Feed',
+        actor: l.actor,
+        actionType: l.actionType,
+        prNumber: l.prNumber,
+        repo: l.repo,
+        occurredAt: l.occurredAt,
+      });
+    });
+    
+    return combined;
+  }, `contributors-analytics-${repoFilter}-${timeRange}`);
 
   if (loading) {
     return (

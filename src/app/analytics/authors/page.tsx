@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, TrendingUp, GitPullRequest, FileText } from "lucide-react";
 import {
@@ -140,6 +140,61 @@ export default function AuthorsAnalyticsPage() {
 
     fetchData();
   }, [timeRange, repoFilter, repoParam, from, to]);
+
+  // Export functionality
+  useAnalyticsExport(() => {
+    const combined: Record<string, unknown>[] = [];
+    
+    // KPIs
+    if (kpis) {
+      combined.push({
+        type: 'KPIs',
+        totalAuthors: kpis.totalAuthors,
+        newAuthors: kpis.newAuthors,
+        prsCreated: kpis.prsCreated,
+        eipsAuthored: kpis.eipsAuthored,
+      });
+    }
+    
+    // Activity timeline
+    activityTimeline.forEach(a => {
+      combined.push({
+        type: 'Activity Timeline',
+        month: a.month,
+        activeAuthors: a.activeAuthors,
+      });
+    });
+    
+    // Success rates
+    successRates.forEach(s => {
+      combined.push({
+        type: 'Success Rate',
+        author: s.author,
+        totalPRs: s.totalPRs,
+        merged: s.merged,
+        closed: s.closed,
+        open: s.open,
+        mergedPct: s.mergedPct,
+        closedPct: s.closedPct,
+        openPct: s.openPct,
+        avgTimeToMerge: s.avgTimeToMerge,
+      });
+    });
+    
+    // Top authors
+    topAuthors.forEach(t => {
+      combined.push({
+        type: 'Top Author',
+        author: t.author,
+        prsCreated: t.prsCreated,
+        prsMerged: t.prsMerged,
+        avgTimeToMerge: t.avgTimeToMerge,
+        lastActivity: t.lastActivity,
+      });
+    });
+    
+    return combined;
+  }, `authors-analytics-${repoFilter}-${timeRange}`);
 
   if (loading) {
     return (
