@@ -611,20 +611,20 @@ const getEditorsLeaderboardCached = unstable_cache(
     }>>(
       `
       WITH editor_activity AS (
-        SELECT ca.actor, ca.pr_number, ca.repository_id, ca.occurred_at
-        FROM contributor_activity ca
-        LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE UPPER(ca.role) = 'EDITOR'
+        SELECT pe.actor, pe.pr_number, pe.repository_id, pe.created_at
+        FROM pr_events pe
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-          AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
-          AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
+          AND ($2::text IS NULL OR pe.created_at >= $2::timestamp)
+          AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
       ),
       by_actor AS (
         SELECT actor, COUNT(*)::bigint AS total_reviews, COUNT(DISTINCT pr_number)::bigint AS prs_touched
         FROM editor_activity GROUP BY actor
       ),
       first_review AS (
-        SELECT ea.actor, ea.pr_number, ea.repository_id, MIN(ea.occurred_at) AS first_at
+        SELECT ea.actor, ea.pr_number, ea.repository_id, MIN(ea.created_at) AS first_at
         FROM editor_activity ea GROUP BY ea.actor, ea.pr_number, ea.repository_id
       ),
       response_days AS (
@@ -732,13 +732,13 @@ const getEditorsByCategoryCached = unstable_cache(
         JOIN pull_request_eips pre ON pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id
       ),
       review_with_category AS (
-        SELECT ca.actor, COALESCE(LOWER(TRIM(es.category)), 'unknown') AS category
-        FROM contributor_activity ca
-        JOIN pr_eip pe ON pe.pr_number = ca.pr_number AND pe.repository_id = ca.repository_id
-        JOIN eips e ON e.eip_number = pe.eip_number AND e.repository_id = pe.repository_id
+        SELECT pe.actor, COALESCE(LOWER(TRIM(es.category)), 'unknown') AS category
+        FROM pr_events pe
+        JOIN pr_eip prpe ON prpe.pr_number = pe.pr_number AND prpe.repository_id = pe.repository_id
+        JOIN eips e ON e.eip_number = prpe.eip_number
         JOIN eip_snapshots es ON es.eip_id = e.id
-        LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (UPPER(ca.role) = 'EDITOR' OR ca.action_type = 'reviewed')
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
       ),
       ranked AS (
@@ -776,14 +776,14 @@ const getEditorsRepoDistributionCached = unstable_cache(
     const results = await prisma.$queryRawUnsafe<Array<{ actor: string; repo: string; count: bigint; pct: number }>>(
       `
       WITH base AS (
-        SELECT ca.actor, COALESCE(r.name, 'Unknown') AS repo
-        FROM contributor_activity ca
-        LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE UPPER(ca.role) = 'EDITOR'
-          AND ($1::text IS NULL OR ca.actor = $1)
+        SELECT pe.actor, COALESCE(r.name, 'Unknown') AS repo
+        FROM pr_events pe
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
+          AND ($1::text IS NULL OR pe.actor = $1)
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
-          AND ($3::text IS NULL OR ca.occurred_at >= $3::timestamp)
-          AND ($4::text IS NULL OR ca.occurred_at <= $4::timestamp)
+          AND ($3::text IS NULL OR pe.created_at >= $3::timestamp)
+          AND ($4::text IS NULL OR pe.created_at <= $4::timestamp)
       ),
       totals AS (SELECT actor, COUNT(*) AS total FROM base GROUP BY actor)
       SELECT b.actor, b.repo, COUNT(*)::bigint AS count,
@@ -2216,16 +2216,16 @@ export const analyticsProcedures = {
           action_type: string;
         }>>(
           `
-          SELECT ca.actor, ca.pr_number, r.name AS repo_name,
-                 TO_CHAR(ca.occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurred_at,
-                 ca.action_type
-          FROM contributor_activity ca
-          LEFT JOIN repositories r ON r.id = ca.repository_id
-          WHERE UPPER(COALESCE(ca.role, '')) = 'EDITOR'
+          SELECT pe.actor, pe.pr_number, r.name AS repo_name,
+                 TO_CHAR(pe.created_at, 'YYYY-MM-DD HH24:MI:SS') AS occurred_at,
+                 pe.event_type AS action_type
+          FROM pr_events pe
+          LEFT JOIN repositories r ON r.id = pe.repository_id
+          WHERE pe.actor_role = 'EDITOR'
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-            AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
-            AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
-          ORDER BY ca.actor, ca.occurred_at ASC
+            AND ($2::text IS NULL OR pe.created_at >= $2::timestamp)
+            AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
+          ORDER BY pe.actor, pe.created_at ASC
           LIMIT 10000
           `,
           input.repo ?? null,
@@ -2327,15 +2327,15 @@ export const analyticsProcedures = {
       }>>(
         `
         SELECT
-          TO_CHAR(date_trunc('month', ca.occurred_at), 'YYYY-MM') as month,
-          ca.actor,
+          TO_CHAR(date_trunc('month', pe.created_at), 'YYYY-MM') as month,
+          pe.actor,
           COUNT(*)::bigint as count
-        FROM contributor_activity ca
-        LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE UPPER(ca.role) = 'EDITOR'
-          AND ca.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
+        FROM pr_events pe
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
+          AND pe.created_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', ca.occurred_at), ca.actor
+        GROUP BY date_trunc('month', pe.created_at), pe.actor
         ORDER BY month ASC, count DESC
       `,
         input.repo ?? null,
@@ -2464,15 +2464,15 @@ export const analyticsProcedures = {
     .handler(async ({ input }) => {
       const results = await prisma.$queryRawUnsafe<Array<{ month: string; count: bigint }>>(
         `
-        SELECT TO_CHAR(date_trunc('month', ca.occurred_at), 'YYYY-MM') AS month, COUNT(*)::bigint AS count
-        FROM contributor_activity ca
-        LEFT JOIN repositories r ON r.id = ca.repository_id
-        WHERE (UPPER(ca.role) = 'EDITOR' OR ca.action_type = 'reviewed')
-          AND ($1::text IS NULL OR ca.actor = $1)
-          AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
-          AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
+        SELECT TO_CHAR(date_trunc('month', pe.created_at), 'YYYY-MM') AS month, COUNT(*)::bigint AS count
+        FROM pr_events pe
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE (pe.actor_role = 'EDITOR' OR pe.event_type = 'reviewed')
+          AND ($1::text IS NULL OR pe.actor = $1)
+          AND ($2::text IS NULL OR pe.created_at >= $2::timestamp)
+          AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
           AND ($4::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($4))
-        GROUP BY date_trunc('month', ca.occurred_at)
+        GROUP BY date_trunc('month', pe.created_at)
         ORDER BY month ASC
       `,
         input.actor ?? null,
