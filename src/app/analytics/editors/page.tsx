@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, UserCheck, Clock, FileText, Download } from "lucide-react";
 import {
@@ -230,6 +230,45 @@ export default function EditorsAnalyticsPage() {
     });
     return Array.from(actors).slice(0, 8); // Limit to 8 for readability
   }, [monthlyTrend]);
+
+  // Export functionality
+  useAnalyticsExport(() => {
+    const combined: Record<string, unknown>[] = [];
+    
+    // Leaderboard data
+    leaderboard.forEach(e => {
+      combined.push({
+        type: 'Leaderboard',
+        editor: e.actor,
+        totalReviews: e.totalReviews,
+        prsTouched: e.prsTouched,
+        medianResponseDays: e.medianResponseDays,
+      });
+    });
+    
+    // Category coverage
+    categoryCoverage.forEach(c => {
+      combined.push({
+        type: 'Category Coverage',
+        category: c.category,
+        editorCount: c.actors.length,
+        editors: c.actors.join(', '),
+      });
+    });
+    
+    // Repo distribution
+    repoDistribution.forEach(r => {
+      combined.push({
+        type: 'Repo Distribution',
+        editor: r.actor,
+        repo: r.repo,
+        count: r.count,
+        pct: r.pct,
+      });
+    });
+    
+    return combined;
+  }, `editors-analytics-${repoFilter}-${timeRange}`);
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, Clock, MessageSquare } from "lucide-react";
 import {
@@ -165,6 +165,44 @@ export default function ReviewersAnalyticsPage() {
     });
     return Array.from(actors).slice(0, 8); // Limit to 8 for readability
   }, [monthlyTrend]);
+
+  // Export functionality
+  useAnalyticsExport(() => {
+    const combined: Record<string, unknown>[] = [];
+    
+    // Leaderboard data
+    leaderboard.forEach(r => {
+      combined.push({
+        type: 'Leaderboard',
+        reviewer: r.actor,
+        totalReviews: r.totalReviews,
+        prsTouched: r.prsTouched,
+        medianResponseDays: r.medianResponseDays,
+      });
+    });
+    
+    // Review cycles data
+    cyclesData.forEach(c => {
+      combined.push({
+        type: 'Review Cycles',
+        cycles: c.cycles,
+        count: c.count,
+      });
+    });
+    
+    // Repo distribution
+    repoDistribution.forEach(r => {
+      combined.push({
+        type: 'Repo Distribution',
+        reviewer: r.actor,
+        repo: r.repo,
+        count: r.count,
+        pct: r.pct,
+      });
+    });
+    
+    return combined;
+  }, `reviewers-analytics-${repoFilter}-${timeRange}`);
 
   if (loading) {
     return (

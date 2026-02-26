@@ -6,6 +6,46 @@ import { Download, Calendar, Database } from "lucide-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
+// ─── Export Helper Functions ─────────────────────────────────────
+
+/**
+ * Convert array of objects to CSV string
+ */
+function jsonToCSV(data: Record<string, unknown>[]): string {
+  if (data.length === 0) return "";
+
+  // Get headers from first object
+  const headers = Object.keys(data[0]);
+  const headerRow = headers.map(h => `"${h}"`).join(",");
+
+  // Create data rows
+  const dataRows = data.map(row =>
+    headers.map(header => {
+      const value = row[header];
+      if (value === null || value === undefined) return '""';
+      const stringValue = String(value).replace(/"/g, '""');
+      return `"${stringValue}"`;
+    }).join(",")
+  );
+
+  return [headerRow, ...dataRows].join("\n");
+}
+
+/**
+ * Trigger file download
+ */
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: `${mimeType};charset=utf-8;` });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 type TimeRange = "7d" | "30d" | "90d" | "1y" | "this_month" | "all" | "custom";
 type RepoFilter = "all" | "eips" | "ercs" | "rips";
 type SnapshotMode = "live" | "snapshot";
@@ -28,6 +68,50 @@ export function useAnalytics() {
     throw new Error("useAnalytics must be used within AnalyticsLayout");
   }
   return context;
+}
+
+/**
+ * Hook for child pages to handle export events
+ * @param data - Function that returns the data to export
+ * @param filename - Base filename (without extension)
+ */
+export function useAnalyticsExport(
+  data: () => Record<string, unknown>[],
+  filename: string
+) {
+  React.useEffect(() => {
+    const handleExport = (event: Event) => {
+      const customEvent = event as CustomEvent<{
+        format: "csv" | "json";
+        timeRange: string;
+        repoFilter: string;
+        snapshotMode: string;
+      }>;
+      
+      const { format } = customEvent.detail;
+      const exportData = data();
+
+      if (exportData.length === 0) {
+        console.warn("No data to export");
+        alert("No data available to export");
+        return;
+      }
+
+      const timestamp = new Date().toISOString().split("T")[0];
+      const fullFilename = `${filename}-${timestamp}.${format}`;
+
+      if (format === "csv") {
+        const csv = jsonToCSV(exportData);
+        downloadFile(csv, fullFilename, "text/csv");
+      } else {
+        const json = JSON.stringify(exportData, null, 2);
+        downloadFile(json, fullFilename, "application/json");
+      }
+    };
+
+    window.addEventListener("analytics-export", handleExport);
+    return () => window.removeEventListener("analytics-export", handleExport);
+  }, [data, filename]);
 }
 
 const timeRangeOptions: { value: TimeRange; label: string }[] = [
@@ -109,8 +193,14 @@ function AnalyticsLayoutInner({
   }, [searchParams, router, pathname]);
 
   const exportData = useCallback((format: "csv" | "json") => {
-    // TODO: Implement export functionality
-    console.log(`Exporting as ${format}`, { timeRange, repoFilter, snapshotMode });
+    // Dispatch custom event that child pages can listen to
+    const event = new CustomEvent('analytics-export', {
+      detail: { format, timeRange, repoFilter, snapshotMode }
+    });
+    window.dispatchEvent(event);
+
+    // Also log for debugging
+    console.log(`Export triggered: ${format}`, { timeRange, repoFilter, snapshotMode });
   }, [timeRange, repoFilter, snapshotMode]);
 
   const contextValue = useMemo(

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import {
   Loader2,
@@ -300,6 +300,53 @@ export default function PRsAnalyticsPage() {
   }, [processCategories, govWaitStates]);
 
   const totalOpen = openSummary?.totalOpen ?? 0;
+
+  // Export functionality
+  useAnalyticsExport(() => {
+    const combined: Record<string, unknown>[] = [];
+    
+    // Monthly activity
+    monthlySeries.forEach(m => {
+      combined.push({
+        type: 'Monthly Activity',
+        month: m.month,
+        openAtMonthEnd: m.openAtMonthEnd,
+        created: m.created,
+        merged: m.merged,
+        closed: m.closed,
+      });
+    });
+    
+    // Governance states
+    governanceStates.forEach(g => {
+      combined.push({
+        type: 'Governance State',
+        state: g.state,
+        count: g.count,
+        pct: g.pct,
+      });
+    });
+    
+    // Label stats
+    labelStats.forEach(l => {
+      combined.push({
+        type: 'Label',
+        label: l.label,
+        count: l.count,
+      });
+    });
+    
+    // Lifecycle stages
+    lifecycleStages.forEach(lc => {
+      combined.push({
+        type: 'Lifecycle Stage',
+        stage: lc.stage,
+        count: lc.count,
+      });
+    });
+    
+    return combined;
+  }, `prs-analytics-${repoFilter}-${timeRange}`);
 
   if (loading) {
     return (

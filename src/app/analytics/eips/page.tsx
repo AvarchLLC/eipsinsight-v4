@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { useAnalytics } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import {
   Loader2, TrendingUp, FileText, CheckCircle,
@@ -186,6 +186,45 @@ export default function EIPsAnalyticsPage() {
       setLoading(false);
     })();
   }, [timeRange, repoFilter, repoParam]);
+
+  // ── Export Handler ──
+  useAnalyticsExport(() => {
+    // Combine all analytics data for export
+    const exportData: Record<string, unknown>[] = [];
+
+    // Add status distribution
+    statusDist.forEach(item => {
+      exportData.push({
+        type: 'Status Distribution',
+        status: item.status,
+        count: item.count,
+        percentage: total > 0 ? ((item.count / total) * 100).toFixed(2) + '%' : '0%'
+      });
+    });
+
+    // Add category breakdown
+    catBreakdown.forEach(item => {
+      exportData.push({
+        type: 'Category Breakdown',
+        category: item.category,
+        count: item.count,
+        percentage: total > 0 ? ((item.count / total) * 100).toFixed(2) + '%' : '0%'
+      });
+    });
+
+    // Add cross-tab data
+    crossTab.forEach(item => {
+      exportData.push({
+        type: 'Category-Status Matrix',
+        category: item.category,
+        status: item.status,
+        repo: item.repo,
+        count: item.count
+      });
+    });
+
+    return exportData;
+  }, `eips-analytics-${repoFilter}`);
 
   // ── Derived ──
   const total = kpis?.total || 0;
