@@ -16,6 +16,7 @@ import {
   BookOpen,
   ChevronDown,
   Crown,
+  Info,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ const mobileNavItems = [
   { title: "Upgrades", href: "/upgrade", icon: Package },
   { title: "Analytics", href: "/analytics/prs", icon: LineChart },
   { title: "Resources", href: "/resources", icon: BookOpen },
+  { title: "About Us", href: "/about", icon: Info },
 ];
 
 export default function Navbar() {

@@ -210,6 +210,7 @@ const sidebarSections: SidebarSection[] = [
           { title: "Videos", href: "/resources/videos" },
           { title: "News", href: "/resources/news" },
           { title: "Documentation", href: "/resources/docs" },
+          { title: "About Us", href: "/about" },
         ],
       },
     ],
