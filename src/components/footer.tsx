@@ -12,6 +12,7 @@ export default function Footer() {
       { name: "Governance", href: "/governance" },
     ],
     legal: [
+      { name: "About Us", href: "/about" },
       { name: "Privacy", href: "/privacy" },
       { name: "Terms", href: "/terms" },
     ],
