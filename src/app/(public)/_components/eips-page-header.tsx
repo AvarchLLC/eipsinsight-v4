@@ -35,7 +35,7 @@ export function EIPsPageHeader() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl"
+              className="dec-title persona-title text-3xl font-semibold tracking-tight sm:text-4xl"
             >
               Ethereum Improvement Proposals
             </motion.h1>
@@ -58,8 +58,8 @@ export function EIPsPageHeader() {
             className={cn(
               "group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
               "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80",
-              "transition-all hover:border-cyan-500/50 dark:hover:border-cyan-400/50 hover:bg-cyan-50 dark:hover:bg-slate-700/80",
-              "hover:shadow-lg dark:hover:shadow-lg hover:shadow-cyan-500/10 dark:hover:shadow-cyan-500/10"
+              "transition-all hover:border-primary/50 hover:bg-primary/10 dark:hover:bg-slate-700/80",
+              "hover:shadow-lg dark:hover:shadow-lg"
             )}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -67,8 +67,8 @@ export function EIPsPageHeader() {
           >
             <Info className={cn(
               "h-4 w-4 transition-all",
-              "text-slate-500 dark:text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-300",
-              isOpen && "text-cyan-600 dark:text-cyan-300"
+              "text-slate-500 dark:text-slate-400 group-hover:text-primary",
+              isOpen && "text-primary"
             )} />
           </motion.button>
         </div>
@@ -94,8 +94,8 @@ export function EIPsPageHeader() {
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                         className="flex items-start gap-3"
                       >
-                        <div className="p-2 rounded-lg bg-cyan-500/10 dark:bg-slate-800/80 border border-cyan-400/20 dark:border-slate-600/50 shrink-0">
-                          <Icon className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
+                        <div className="p-2 rounded-lg bg-primary/10 dark:bg-slate-800/80 border border-primary/20 dark:border-slate-600/50 shrink-0">
+                          <Icon className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">

@@ -1,27 +1,22 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { Loader2, Users, TrendingUp, GitPullRequest, FileText } from "lucide-react";
+import { Loader2, Users, TrendingUp, GitPullRequest, FileText, AlertCircle } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
-  BarChart,
-  Bar,
   LineChart,
   Line,
   XAxis,
   YAxis,
   CartesianGrid,
   ResponsiveContainer,
-  Legend,
-  Cell,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
 interface AuthorKPIs {
   totalAuthors: number;
@@ -90,6 +85,7 @@ function getTimeWindow(timeRange: string): { from: string | undefined; to: strin
 export default function AuthorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [kpis, setKPIs] = useState<AuthorKPIs | null>(null);
   const [activityTimeline, setActivityTimeline] = useState<ActivityTimelinePoint[]>([]);
@@ -102,6 +98,7 @@ export default function AuthorsAnalyticsPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const months = timeRange === "7d" ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
         
@@ -133,6 +130,7 @@ export default function AuthorsAnalyticsPage() {
         setTopAuthors(topData);
       } catch (error) {
         console.error("Failed to fetch authors analytics:", error);
+        setError("Failed to load author analytics. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -199,20 +197,27 @@ export default function AuthorsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Hero KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Total Authors</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Total Authors</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.totalAuthors.toLocaleString() || 0}
               </p>
             </div>
@@ -222,14 +227,14 @@ export default function AuthorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">New Authors</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">New Authors</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.newAuthors.toLocaleString() || 0}
               </p>
-              <p className="mt-1 text-xs text-slate-500">This period</p>
+              <p className="mt-1 text-xs text-muted-foreground">This period</p>
             </div>
             <div className="rounded-full bg-emerald-500/20 p-3">
               <TrendingUp className="h-6 w-6 text-emerald-400" />
@@ -237,11 +242,11 @@ export default function AuthorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">PRs Created</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">PRs Created</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.prsCreated.toLocaleString() || 0}
               </p>
             </div>
@@ -251,11 +256,11 @@ export default function AuthorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">EIPs Authored</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">EIPs Authored</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.eipsAuthored.toLocaleString() || 0}
               </p>
             </div>
@@ -267,8 +272,8 @@ export default function AuthorsAnalyticsPage() {
       </div>
 
       {/* Activity Timeline */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-semibold text-white">Author Activity Timeline</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Author Activity Timeline</h2>
         <ChartContainer
           config={{
             activeAuthors: { label: "Active Authors", color: "#fbbf24" },
@@ -292,33 +297,33 @@ export default function AuthorsAnalyticsPage() {
             </LineChart>
           </ResponsiveContainer>
         </ChartContainer>
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-muted-foreground">
           Number of unique authors who created PRs each month
         </p>
       </div>
 
       {/* Success Rates */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-semibold text-white">Success Rates (Top Authors)</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Success Rates (Top Authors)</h2>
         <div className="space-y-3">
           {successRates.slice(0, 10).map((author) => (
             <div
               key={author.author}
-              className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-4"
+              className="rounded-lg border border-border/70 bg-muted/40 p-4"
             >
               <div className="mb-2 flex items-center justify-between">
-                <span className="font-medium text-slate-200">{author.author}</span>
-                <span className="text-sm text-slate-400">
+                <span className="font-medium text-foreground/90">{author.author}</span>
+                <span className="text-sm text-muted-foreground">
                   {author.totalPRs} PRs total
                 </span>
               </div>
               <div className="flex gap-2">
                 <div className="flex-1">
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Merged</span>
+                    <span className="text-muted-foreground">Merged</span>
                     <span className="text-emerald-400">{author.mergedPct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-800">
+                  <div className="h-2 rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-emerald-500"
                       style={{ width: `${author.mergedPct}%` }}
@@ -327,10 +332,10 @@ export default function AuthorsAnalyticsPage() {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Closed</span>
-                    <span className="text-slate-400">{author.closedPct}%</span>
+                    <span className="text-muted-foreground">Closed</span>
+                    <span className="text-muted-foreground">{author.closedPct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-800">
+                  <div className="h-2 rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-slate-600"
                       style={{ width: `${author.closedPct}%` }}
@@ -339,10 +344,10 @@ export default function AuthorsAnalyticsPage() {
                 </div>
                 <div className="flex-1">
                   <div className="mb-1 flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Open</span>
+                    <span className="text-muted-foreground">Open</span>
                     <span className="text-blue-400">{author.openPct}%</span>
                   </div>
-                  <div className="h-2 rounded-full bg-slate-800">
+                  <div className="h-2 rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-blue-500"
                       style={{ width: `${author.openPct}%` }}
@@ -353,48 +358,48 @@ export default function AuthorsAnalyticsPage() {
             </div>
           ))}
           {successRates.length === 0 && (
-            <p className="text-sm text-slate-500">No author success rate data available.</p>
+            <p className="text-sm text-muted-foreground">No author success rate data available.</p>
           )}
         </div>
       </div>
 
       {/* Top Authors Table */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-xl font-semibold text-white">Top Authors</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Top Authors</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Rank</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Author</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">PRs Created</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">PRs Merged</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Avg Time to Merge</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Last Activity</th>
+              <tr className="border-b border-border/70">
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Rank</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Author</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">PRs Created</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">PRs Merged</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Avg Time to Merge</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Last Activity</th>
               </tr>
             </thead>
             <tbody>
               {topAuthors.map((author, idx) => (
                 <tr
                   key={author.author}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                  className="border-b border-border/60 hover:bg-muted/40 transition-colors"
                 >
-                  <td className="py-3 px-4 text-sm text-slate-400">#{idx + 1}</td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">#{idx + 1}</td>
                   <td className="py-3 px-4">
-                    <span className="font-medium text-slate-200">{author.author}</span>
+                    <span className="font-medium text-foreground/90">{author.author}</span>
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {author.prsCreated.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {author.prsMerged.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {author.avgTimeToMerge != null
                       ? `${author.avgTimeToMerge}d`
                       : "–"}
                   </td>
-                  <td className="py-3 px-4 text-sm text-slate-400">
+                  <td className="py-3 px-4 text-sm text-muted-foreground">
                     {author.lastActivity
                       ? new Date(author.lastActivity).toLocaleDateString()
                       : "–"}
@@ -403,7 +408,7 @@ export default function AuthorsAnalyticsPage() {
               ))}
               {topAuthors.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="py-6 text-center text-sm text-slate-500">
+                  <td colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
                     No author data found for the current filters.
                   </td>
                 </tr>

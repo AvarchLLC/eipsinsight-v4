@@ -73,20 +73,20 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
         href="/p"
         className={cn(
           "group relative flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200",
-          "bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10",
-          "border border-cyan-400/30 hover:border-cyan-400/50",
-          "hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]",
-          "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
+          "persona-gradient-soft",
+          "border border-primary/30 hover:border-primary/50",
+          "persona-glow",
+          "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
           className
         )}
       >
         {/* Animated indicator */}
         <span className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-primary" />
         </span>
 
-        <Sparkles className="h-4 w-4 text-cyan-400 group-hover:text-emerald-400 transition-colors" />
+        <Sparkles className="h-4 w-4 text-primary group-hover:text-primary/80 transition-colors" />
         <span className="text-sm font-medium text-slate-700 dark:text-slate-200 group-hover:text-slate-900 dark:group-hover:text-white">
           Choose persona
         </span>
@@ -102,13 +102,13 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
           className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200",
             "bg-gradient-to-r from-slate-100 to-slate-50 dark:from-slate-800/80 dark:to-slate-800/50 hover:from-slate-200 hover:to-slate-100 dark:hover:from-slate-700/80 dark:hover:to-slate-700/50",
-            "border border-slate-200 dark:border-slate-700/50 hover:border-cyan-400/30",
-            "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
+            "border border-slate-200 dark:border-slate-700/50 hover:border-primary/30",
+            "focus:outline-none focus:ring-2 focus:ring-primary/30 focus:ring-offset-2 focus:ring-offset-white dark:focus:ring-offset-slate-950",
             "group",
             className
           )}
         >
-          <CurrentIcon className="h-4 w-4 text-cyan-400 shrink-0" />
+          <CurrentIcon className="h-4 w-4 text-primary shrink-0" />
           {!compact && (
             <>
               <div className="flex flex-col items-start leading-tight">
@@ -147,7 +147,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                 "flex items-start gap-3 p-3 cursor-pointer rounded-lg transition-colors",
                 "focus:bg-slate-100 dark:focus:bg-slate-800/50 focus:text-slate-900 dark:focus:text-white",
                 isSelected
-                  ? "bg-gradient-to-r from-cyan-500/10 to-emerald-500/10"
+                  ? "bg-primary/10"
                   : "hover:bg-slate-100 dark:hover:bg-slate-800/50"
               )}
             >
@@ -155,14 +155,14 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                 className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                   isSelected
-                    ? "bg-gradient-to-br from-emerald-500/30 to-cyan-500/30"
+                    ? "bg-primary/20"
                     : "bg-slate-100 dark:bg-slate-800"
                 )}
               >
                 <Icon
                   className={cn(
                     "h-4 w-4",
-                    isSelected ? "text-cyan-300" : "text-slate-400"
+                    isSelected ? "text-primary" : "text-slate-400"
                   )}
                 />
               </div>
@@ -178,7 +178,7 @@ export function PersonaSwitcher({ className, compact = false }: PersonaSwitcherP
                     {personaMeta.shortLabel}
                   </span>
                   {isSelected && (
-                    <Check className="h-4 w-4 text-cyan-400 shrink-0" />
+                    <Check className="h-4 w-4 text-primary shrink-0" />
                   )}
                 </div>
                 <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">

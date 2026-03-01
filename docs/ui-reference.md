@@ -23,11 +23,11 @@ Sizes should flow hierarchically. Avoid jumps that look odd (e.g. `text-4xl` nex
 
 | Level | Class | Size | Usage |
 |-------|-------|------|-------|
-| **H1 — Main page title** | `dec-title bg-linear-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl` | 30–36px | Page headers (EIPs, Dashboard) |
-| **H1 subtitle** | `mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-400` | 14px | One line under main title |
-| **H2 — Section title** | `dec-title text-xl font-semibold tracking-tight text-slate-200 sm:text-2xl` | 20–24px | Section headers (Protocol Bento, etc.) |
-| **H2 subtitle** | `mt-0.5 text-sm text-slate-500` | 14px | Section descriptions |
-| **H3 — Card/subsection** | `text-xs font-semibold uppercase tracking-wider text-slate-500` | 12px | DashCard titles, table headers |
+| **H1 — Main page title** | `dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl` | 30–36px | Page headers (EIPs, Dashboard) |
+| **H1 subtitle** | `mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base` | 14–16px | One line under main title |
+| **H2 — Section title** | `dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl` | 20–24px | Section headers (Protocol Bento, etc.) |
+| **H2 subtitle** | `mt-0.5 text-sm text-muted-foreground` | 14px | Section descriptions |
+| **H3 — Card/subsection** | `text-xs font-semibold uppercase tracking-wider text-muted-foreground` | 12px | DashCard titles, table headers |
 | **Body** | `text-sm` | 14px | Default body copy |
 | **Small** | `text-xs` | 12px | Labels, badges |
 | **Tiny** | `text-[10px]`–`text-[11px]` | 10–11px | Table cells, micro labels |
@@ -38,11 +38,11 @@ Use this pattern for primary page headers (e.g. `/`, `/dashboard`):
 
 ```tsx
 <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
-  <h1 className="dec-title bg-linear-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl">
+  <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
     Page Title
   </h1>
-  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-400">
-    Description. Powered by <span className="text-slate-300">EIPsInsight</span>.
+  <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+    Description. Powered by <span className="text-foreground/80">EIPsInsight</span>.
   </p>
 </motion.header>
 ```
@@ -75,18 +75,20 @@ Use this pattern for primary page headers (e.g. `/`, `/dashboard`):
 
 ## Colors
 
-### Primary Palette (Dark Theme)
+### Semantic Palette
 
-App uses a dark theme with cyan/emerald accents.
+Use semantic tokens only. Avoid hardcoded color scales (`slate-*`, `cyan-*`, `emerald-*`) in shared UI primitives.
 
-| Role | Tailwind | Hex (approx) | Usage |
-|------|----------|--------------|-------|
-| **Background** | `slate-950`, `slate-900` | `#020617`, `#0f172a` | Page bg, cards |
-| **Foreground** | `white`, `slate-100`, `slate-200` | — | Primary text |
-| **Muted** | `slate-400`, `slate-500` | — | Secondary text |
-| **Accent** | `cyan-300`–`cyan-500` | `#22d3ee` | Links, active states, borders |
-| **Secondary accent** | `emerald-300`–`emerald-500` | `#34d399` | Highlights, CTAs |
-| **Border** | `slate-700/50`, `cyan-400/20` | — | Dividers, card borders |
+| Role | Token/Class | Usage |
+|------|-------------|-------|
+| **Background** | `bg-background` | Page background |
+| **Foreground** | `text-foreground` | Primary text |
+| **Muted surface** | `bg-muted` / `bg-muted/60` | Chips, icon tiles, subtle containers |
+| **Muted text** | `text-muted-foreground` | Secondary copy, labels |
+| **Card** | `bg-card text-card-foreground` | Cards, elevated panels |
+| **Border** | `border-border` | Dividers, control borders |
+| **Accent/Brand** | `text-primary`, `bg-primary/10`, `border-primary/30` | Active and persona-driven accents |
+| **Focus** | `focus-visible:ring-2 focus-visible:ring-ring/40` | Keyboard focus states |
 
 ### Gradient Accents
 
@@ -120,6 +122,23 @@ from-emerald-300 via-cyan-300 to-emerald-300         — Text gradient (bg-clip-
 | Enterprise | Cyan | `cyan-500/20`, `text-cyan-400` |
 | Newcomer | Pink | `pink-500/20`, `text-pink-400` |
 
+### Persona-Swappable Accent System
+
+UI accents are persona-driven at runtime (instead of hardcoded cyan/emerald).
+
+- `PersonaProvider` sets `data-persona="<persona>"` on `<html>`.
+- `globals.css` maps each persona to `--persona-*` tokens.
+- Core theme tokens (`--primary`, `--accent`, `--ring`, `--sidebar-*`) read from `--persona-*`.
+- Result: navbar, sidebar, headers, chips, focus rings, and interactive accents switch automatically when persona changes.
+
+Primary utility classes for persona-aware styling:
+
+- `text-primary`, `bg-primary/10`, `border-primary/30`, `ring-primary/40`
+- `persona-gradient` (CTA/background gradient)
+- `persona-gradient-soft` (subtle surface tint)
+- `persona-glow` (accent glow)
+- `persona-title` (persona-aware heading gradient)
+
 ---
 
 ## Spacing & Sizing
@@ -151,10 +170,9 @@ from-emerald-300 via-cyan-300 to-emerald-300         — Text gradient (bg-clip-
 
 | Usage | Class / Value |
 |-------|---------------|
-| Active nav glow | `shadow-[0_0_12px_rgba(34,211,238,0.15)]` |
-| Card hover | `shadow-[0_0_15px_rgba(34,211,238,0.1)]` |
-| Strong active | `shadow-[0_0_20px_rgba(34,211,238,0.2)]` |
-| Icon glow | `drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]` |
+| Accent glow (persona-aware) | `persona-glow` |
+| Interactive accent state | `shadow-lg shadow-primary/20` |
+| Header separator accent | `via-primary/50` |
 | Backdrop | `backdrop-blur-xl`, `backdrop-blur-sm` |
 
 ---
@@ -174,39 +192,48 @@ from-emerald-300 via-cyan-300 to-emerald-300         — Text gradient (bg-clip-
 
 ### Buttons
 
-- **Primary CTA:** `bg-linear-to-r from-emerald-500 to-cyan-500 text-black`
-- **Secondary:** `bg-cyan-500/20 border border-cyan-500/40`
-- **Ghost:** `text-slate-300 hover:text-white`
+- **Primary CTA:** `persona-gradient text-black`
+- **Secondary:** `bg-primary/10 border border-primary/40 text-primary`
+- **Ghost:** `text-muted-foreground hover:text-foreground`
 
 ### Inputs
 
-- **Default:** `h-9 rounded-md px-3 py-1 text-sm bg-slate-800/50 border-slate-700/50`
-- **Focus:** `focus:border-cyan-500/50 focus:ring-1 focus:ring-cyan-500/30`
+- **Default:** `h-9 rounded-md px-3 py-1 text-sm bg-muted/60 border-border`
+- **Focus:** `focus:border-primary/50 focus:ring-1 focus:ring-primary/30`
 
 ### Cards
 
-- **Default:** `rounded-xl border border-slate-700/50 bg-slate-900/40`
-- **Hover:** `hover:border-cyan-500/40`
+- **Default:** `rounded-xl border border-border bg-card/60`
+- **Hover:** `hover:border-primary/40`
 
 ### Collapsible Page Header
 
 For pages with an expandable info panel (e.g. `/`, `/upgrade`):
 
-- H1: `dec-title bg-linear-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl`
-- Subtitle: `mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-400`
-- Info button: rounded-lg border, cyan hover
-- Collapsible panel: `rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60`
-- Info card titles: `text-sm font-semibold text-slate-200`
-- Info card descriptions: `text-sm text-slate-400`
+- H1: `dec-title persona-title text-3xl font-semibold tracking-tight sm:text-4xl`
+- Subtitle: `mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base`
+- Info button: rounded-lg border, `border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10`
+- Collapsible panel: `rounded-lg border border-border bg-card/60`
+- Info card titles: `text-sm font-semibold text-foreground`
+- Info card descriptions: `text-sm text-muted-foreground`
 
 ### FAQs Section
 
 - Layout: two-column (sticky sidebar + accordion) on md+
-- H2: `dec-title text-xl font-semibold tracking-tight text-slate-200 sm:text-2xl`
-- H2 subtitle: `mt-0.5 text-sm text-slate-500`
-- Accordion items: `rounded-lg border border-slate-700/50 bg-gradient-to-br from-slate-900/60 via-slate-900/50 to-slate-900/60`
-- Trigger: icon + question in `text-base font-semibold text-slate-200`
-- Content: `text-sm leading-relaxed text-slate-300`
+- H2: `dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl`
+- H2 subtitle: `mt-0.5 text-sm text-muted-foreground`
+- Accordion items: `rounded-lg border border-border bg-card/60`
+- Trigger: icon + question in `text-base font-semibold text-foreground`
+- Content: `text-sm leading-relaxed text-muted-foreground`
+
+### Tables
+
+- Table wrapper: `rounded-xl border border-border bg-card/60 backdrop-blur-sm`
+- Header row: `border-b border-border/70`
+- Header cell: `px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground`
+- Body row: `border-b border-border/60 last:border-0`
+- Body cell: `px-4 py-3 text-sm text-foreground`
+- Dense analytics variant: headers `text-[10px]`, cells `text-xs`, row padding `py-2`
 
 ### Lifecycle Funnel (Pie Chart)
 
@@ -233,3 +260,5 @@ Theme tokens in `:root` and `.dark`:
 - `--destructive`
 - `--radius`, `--radius-sm`, `--radius-md`, `--radius-lg`, etc.
 - `--sidebar-*`, `--chart-1`–`--chart-5`
+- `--persona-primary`, `--persona-accent`, `--persona-ring`
+- `--persona-accent-rgb`, `--persona-secondary-rgb`

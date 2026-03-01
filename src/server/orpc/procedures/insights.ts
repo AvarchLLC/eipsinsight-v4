@@ -10,8 +10,10 @@ const repoFilterSchema = z.object({
 async function getRepoIds(repo?: string): Promise<number[] | null> {
   if (!repo) return null;
   const rows = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
-    `SELECT id FROM repositories WHERE LOWER(type) = LOWER($1)`,
-    repo === 'eips' ? 'EIPS' : repo === 'ercs' ? 'ERCS' : 'RIPS'
+    `SELECT id
+     FROM repositories
+     WHERE LOWER(SPLIT_PART(name, '/', 2)) = LOWER($1)`,
+    repo
   );
   return rows.map((r) => r.id);
 }
@@ -26,66 +28,117 @@ export const insightsProcedures = {
     }))
     .handler(async ({ context, input }) => {
       const repoIds = await getRepoIds(input.repo);
+      const monthStart = `${input.month}-01`;
+      const [y, m] = input.month.split('-').map(Number);
+      const monthEnd = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
 
-      // Current counts from eip_snapshots (small table, very fast)
       const currentCounts = await prisma.$queryRawUnsafe<Array<{
         status: string;
-        repo_type: string;
+        repo_key: string;
         count: bigint;
       }>>(
         `SELECT
           s.status,
-          COALESCE(LOWER(r.type), 'unknown') AS repo_type,
+          COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown') AS repo_key,
           COUNT(*)::bigint AS count
         FROM eip_snapshots s
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE ($1::int[] IS NULL OR s.repository_id = ANY($1))
-        GROUP BY s.status, COALESCE(LOWER(r.type), 'unknown')
-        ORDER BY s.status`,
+        GROUP BY s.status, COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown')`,
         repoIds
       );
 
-      // Transition counts for the selected month (arrivals into each status)
-      const monthStart = `${input.month}-01`;
-      const [y, m] = input.month.split('-').map(Number);
-      const nextDate = new Date(y, m, 1);
-      const monthEnd = nextDate.toISOString().split('T')[0];
+      const getPostBoundaryAdjustments = async (boundary: string) => {
+        return prisma.$queryRawUnsafe<Array<{
+          status: string;
+          repo_key: string;
+          arrivals: bigint;
+          departures: bigint;
+        }>>(
+          `SELECT
+             x.status,
+             x.repo_key,
+             SUM(x.arrivals)::bigint AS arrivals,
+             SUM(x.departures)::bigint AS departures
+           FROM (
+             SELECT
+               e.to_status AS status,
+               COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown') AS repo_key,
+               COUNT(*)::bigint AS arrivals,
+               0::bigint AS departures
+             FROM eip_status_events e
+             LEFT JOIN repositories r ON e.repository_id = r.id
+             WHERE e.changed_at >= $1::date
+               AND ($2::int[] IS NULL OR e.repository_id = ANY($2))
+             GROUP BY e.to_status, COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown')
 
-      const deltas = await prisma.$queryRawUnsafe<Array<{
-        to_status: string;
-        repo_type: string;
-        arrivals: bigint;
-      }>>(
-        `SELECT
-          e.to_status,
-          COALESCE(LOWER(r.type), 'unknown') AS repo_type,
-          COUNT(*)::bigint AS arrivals
-        FROM eip_status_events e
-        LEFT JOIN repositories r ON e.repository_id = r.id
-        WHERE e.changed_at >= $1::date AND e.changed_at < $2::date
-          AND ($3::int[] IS NULL OR e.repository_id = ANY($3))
-        GROUP BY e.to_status, COALESCE(LOWER(r.type), 'unknown')`,
-        monthStart,
-        monthEnd,
-        repoIds
-      );
+             UNION ALL
 
-      const deltaLookup: Record<string, Record<string, number>> = {};
-      for (const d of deltas) {
-        const repo = d.repo_type || 'unknown';
-        if (!deltaLookup[d.to_status]) deltaLookup[d.to_status] = {};
-        deltaLookup[d.to_status][repo] = Number(d.arrivals);
+             SELECT
+               e.from_status AS status,
+               COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown') AS repo_key,
+               0::bigint AS arrivals,
+               COUNT(*)::bigint AS departures
+             FROM eip_status_events e
+             LEFT JOIN repositories r ON e.repository_id = r.id
+             WHERE e.changed_at >= $1::date
+               AND ($2::int[] IS NULL OR e.repository_id = ANY($2))
+             GROUP BY e.from_status, COALESCE(LOWER(SPLIT_PART(r.name, '/', 2)), 'unknown')
+           ) x
+           GROUP BY x.status, x.repo_key`,
+          boundary,
+          repoIds
+        );
+      };
+
+      const [postMonthEnd, postMonthStart] = await Promise.all([
+        getPostBoundaryAdjustments(monthEnd),
+        getPostBoundaryAdjustments(monthStart),
+      ]);
+
+      const currentMap = new Map<string, number>();
+      for (const row of currentCounts) {
+        currentMap.set(`${row.repo_key}::${row.status}`, Number(row.count));
       }
 
-      return currentCounts.map((r) => {
-        const repo = r.repo_type || 'unknown';
-        const delta = deltaLookup[r.status]?.[repo] ?? 0;
+      const buildAdjustmentMap = (rows: Array<{ status: string; repo_key: string; arrivals: bigint; departures: bigint }>) => {
+        const map = new Map<string, { arrivals: number; departures: number }>();
+        for (const row of rows) {
+          map.set(`${row.repo_key}::${row.status}`, {
+            arrivals: Number(row.arrivals),
+            departures: Number(row.departures),
+          });
+        }
+        return map;
+      };
+
+      const afterEndMap = buildAdjustmentMap(postMonthEnd);
+      const afterStartMap = buildAdjustmentMap(postMonthStart);
+
+      const keys = new Set<string>([
+        ...currentMap.keys(),
+        ...afterEndMap.keys(),
+        ...afterStartMap.keys(),
+      ]);
+
+      return Array.from(keys).map((key) => {
+        const [repo, status] = key.split('::');
+        const current = currentMap.get(key) ?? 0;
+        const afterEnd = afterEndMap.get(key) ?? { arrivals: 0, departures: 0 };
+        const afterStart = afterStartMap.get(key) ?? { arrivals: 0, departures: 0 };
+
+        // Reverse transitions after boundary to reconstruct historical snapshot.
+        const monthEndCount = current + afterEnd.departures - afterEnd.arrivals;
+        const prevMonthEndCount = current + afterStart.departures - afterStart.arrivals;
+        const safeMonthEndCount = Math.max(0, monthEndCount);
+        const safePrevMonthEndCount = Math.max(0, prevMonthEndCount);
+
         return {
-          status: r.status,
+          status,
           repo,
-          count: Number(r.count),
-          prevCount: Number(r.count) - delta,
-          delta,
+          count: safeMonthEndCount,
+          prevCount: safePrevMonthEndCount,
+          delta: safeMonthEndCount - safePrevMonthEndCount,
         };
       });
     }),
@@ -584,4 +637,3 @@ export const insightsProcedures = {
       return results.map((r) => r.month);
     }),
 };
-

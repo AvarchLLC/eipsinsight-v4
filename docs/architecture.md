@@ -23,7 +23,7 @@
 | `/settings` | User settings | ✅ |
 | `/admin/blogs` | Admin blog management | ✅ |
 | `/login` | Auth login | ✅ |
-| `/all` | **Used by navbar, editor persona** — no route; redirects to `/standards` needed | ⚠️ |
+| `/all` | Legacy alias redirected to `/standards` | ✅ |
 
 ---
 
@@ -126,13 +126,12 @@ app/
 
 | Source | Destination |
 |--------|-------------|
-| `/standards-by-repo` | `/all` ⚠️ |
+| `/standards-by-repo` | `/standards` |
+| `/all` | `/standards` |
 | `/n-w-upgrades` | `/upgrade` |
 | `/eips/:path*` | `/eip/:path*` |
 | `/ercs/:path*` | `/erc/:path*` |
 | `/rips/:path*` | `/rip/:path*` |
-
-⚠️ `/all` has no route — add `{ source: "/all", destination: "/standards", permanent: false }` to fix.
 
 ---
 
@@ -144,15 +143,13 @@ app/
 // src/lib/persona.ts
 export const PERSONA_DEFAULTS: Record<Persona, string> = {
   developer: "/upgrade",
-  editor: "/all",
+  editor: "/standards",
   researcher: "/analytics/prs",
   builder: "/erc",
   enterprise: "/upgrade",
   newcomer: "/",
 };
 ```
-
-**Note:** Editor defaults to `/all`; navbar mobile "Standards" links to `/all`. Add redirect `/all` → `/standards` in `next.config.ts`, or change persona/navbar to use `/standards` directly.
 
 ---
 

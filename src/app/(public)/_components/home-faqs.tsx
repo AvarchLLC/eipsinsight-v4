@@ -1,9 +1,11 @@
 'use client';
 
+import React from 'react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 import { motion } from 'motion/react';
 import { FileText, Layers, BookOpen } from 'lucide-react';
+import { CopyLinkButton } from '@/components/header';
 
 const TYPE_INFO = [
   {
@@ -28,7 +30,7 @@ const STATUS_TERMS = [
   { name: 'Final', description: 'The final standard. Should only be updated to correct errata.', color: 'text-emerald-600 dark:text-emerald-300' },
   { name: 'Stagnant', description: 'Inactive for 6 months or greater. Can be resurrected by moving back to Draft.', color: 'text-gray-600 dark:text-gray-400' },
   { name: 'Withdrawn', description: 'Author has withdrawn the proposal. This state has finality.', color: 'text-red-600 dark:text-red-300' },
-  { name: 'Living', description: 'Continually updated and not designed to reach finality. Notably EIP-1.', color: 'text-cyan-600 dark:text-cyan-300' },
+  { name: 'Living', description: 'Continually updated and not designed to reach finality. Notably EIP-1.', color: 'text-primary' },
 ];
 
 const STATUS_DOT_COLORS: Record<string, string> = {
@@ -119,13 +121,13 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
       title: 'Contributing',
         content: (
         <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
-          First review <Link href="/eip/1" className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300">EIP-1</Link>.
+          First review <Link href="/eip/1" className="text-primary hover:text-primary/80">EIP-1</Link>.
           Then clone the repository and add your EIP. There is a{' '}
           <a
             href="https://github.com/ethereum/EIPs/blob/master/eip-template.md?plain=1"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
+            className="text-primary hover:text-primary/80"
           >
             template EIP here
           </a>
@@ -134,7 +136,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
             href="https://github.com/ethereum/EIPs"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300"
+            className="text-primary hover:text-primary/80"
           >
             EIPs repository
           </a>
@@ -147,7 +149,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
   return (
     <section className="relative w-full py-10 sm:py-14" id="faqs">
       <div className="w-full max-w-full px-4 sm:px-6 lg:px-8 xl:px-12">
-        <div className="flex flex-col gap-8 md:flex-row md:gap-14">
+        <div className="flex flex-col gap-8 md:flex-row md:gap-12">
           {/* Left Sidebar - Sticky */}
           <div className="md:w-1/3 shrink-0">
             <motion.div
@@ -157,12 +159,17 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
               transition={{ duration: 0.4 }}
               className="sticky top-24"
             >
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-2xl">
-                Reference
-              </h2>
-              <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-                EIP types, status terms, and how to contribute.
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="dec-title persona-title text-xl font-semibold tracking-tight sm:text-2xl">
+                    Reference
+                  </h2>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                    EIP types, status terms, and how to contribute.
+                  </p>
+                </div>
+                <CopyLinkButton sectionId="faqs" className="h-8 w-8 rounded-md" />
+              </div>
             </motion.div>
           </div>
 
