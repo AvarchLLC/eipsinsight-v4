@@ -7,7 +7,7 @@ import {
   Loader2, TrendingUp, FileText, CheckCircle,
   ArrowRight, Download, Layers, Activity, Timer,
   Cpu, Network, Code, Boxes, Info, GitCommitHorizontal,
-  Zap, Eye, Bell, Pause, XCircle,
+  Zap, Eye, Bell, Pause, XCircle, AlertCircle,
 } from "lucide-react";
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
@@ -93,13 +93,13 @@ function Section({ title, icon, children, action, className }: {
   return (
     <div className={cn(
       "rounded-2xl border p-5",
-      "border-slate-200 bg-white shadow-sm dark:border-slate-700/50 dark:bg-slate-900/60",
+      "border-border bg-card/60 shadow-sm",
       className,
     )}>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <span className="text-cyan-600 dark:text-cyan-400">{icon}</span>
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{title}</h2>
+          <span className="text-primary">{icon}</span>
+          <h2 className="text-base font-semibold text-foreground">{title}</h2>
         </div>
         {action}
       </div>
@@ -120,7 +120,7 @@ function downloadCSV(headers: string[], rows: string[][], filename: string) {
 function CSVBtn({ onClick, label = "CSV" }: { onClick: () => void; label?: string }) {
   return (
     <button onClick={onClick}
-      className="inline-flex items-center gap-1.5 rounded-lg border border-slate-300 dark:border-slate-700/30 bg-cyan-500/10 dark:bg-cyan-400/5 px-3 py-1 text-[10px] font-medium text-cyan-700 dark:text-cyan-300/80 hover:bg-cyan-500/20 dark:hover:bg-cyan-400/10 hover:text-cyan-800 dark:hover:text-cyan-200 transition-colors">
+      className="inline-flex items-center gap-1.5 rounded-lg border border-border/30 bg-primary/10 px-3 py-1 text-[10px] font-medium text-primary/80 hover:bg-primary/15 hover:text-primary transition-colors">
       <Download className="h-3 w-3" /> {label}
     </button>
   );
@@ -133,6 +133,7 @@ export default function EIPsAnalyticsPage() {
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
 
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [kpis, setKpis] = useState<{ total?: number } | null>(null);
   const [ripKpis, setRipKpis] = useState<{ total?: number } | null>(null);
   const [crossTab, setCrossTab] = useState<Array<{ category: string; status: string; repo: string; count: number }>>([]);
@@ -155,6 +156,7 @@ export default function EIPsAnalyticsPage() {
   useEffect(() => {
     (async () => {
       setLoading(true);
+      setError(null);
       try {
         const [kRes, ripRes, ctRes, sdRes, cbRes] = await Promise.all([
           client.standards.getKPIs({ repo: repoParam }),
@@ -182,7 +184,10 @@ export default function EIPsAnalyticsPage() {
         setTransitions(trRes); setThroughput(tpRes); setFunnel(fnRes);
         setVelocity(velRes); setRecentChanges(rcRes);
         setCreationTrends(ctTrends); setRipCreationTrends(ripTrends); setMonthlyDelta(mdRes);
-      } catch (err) { console.error("Analytics fetch error:", err); }
+      } catch (err) {
+        console.error("Analytics fetch error:", err);
+        setError("Failed to load EIP analytics. Please try again.");
+      }
       setLoading(false);
     })();
   }, [timeRange, repoFilter, repoParam]);
@@ -318,27 +323,34 @@ export default function EIPsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-600 dark:text-cyan-400" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-8">
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* ────── 1. STATUS / CATEGORY CARDS (toggle) ────── */}
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {cardsView === "status" ? "Status" : "Category"} — [{total.toLocaleString()}]
           </span>
-          <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 p-0.5">
+          <div className="inline-flex rounded-lg border border-border bg-muted/60 p-0.5">
               <button
                 onClick={() => setCardsView("status")}
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   cardsView === "status"
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                    ? "bg-muted/60 text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Status
@@ -348,8 +360,8 @@ export default function EIPsAnalyticsPage() {
                 className={cn(
                   "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                   cardsView === "category"
-                    ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-sm"
-                    : "text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                    ? "bg-muted/60 text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
                 )}
               >
                 Category
@@ -366,23 +378,23 @@ export default function EIPsAnalyticsPage() {
               <Link key={status} href={`/explore/status?status=${encodeURIComponent(status)}`}
                 className={cn(
                   "group rounded-xl border p-4 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                  "border-slate-200 bg-white dark:border-slate-700/50 dark:bg-slate-900/60",
-                  "hover:border-slate-300 dark:hover:border-slate-600/50 hover:shadow-md dark:hover:shadow-lg",
+                  "border-border bg-white  ",
+                  "hover:border-border/70 hover:shadow-md dark:hover:shadow-lg",
                 )}>
                 <div className="flex items-center gap-2 mb-2">
                   <span style={{ color }} className="opacity-70 group-hover:opacity-100 transition-opacity">
                     {STATUS_ICONS[status]}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{status}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{status}</span>
                 </div>
-                <div className="text-2xl tabular-nums font-bold text-slate-800 dark:text-slate-100">{count.toLocaleString()}</div>
+                <div className="text-2xl tabular-nums font-bold text-foreground">{count.toLocaleString()}</div>
                 <div className="mt-1 flex items-center gap-2">
-                  <div className="flex-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800/60 overflow-hidden">
+                  <div className="flex-1 h-1 rounded-full bg-muted/60 overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, parseFloat(pct))}%`, backgroundColor: color, boxShadow: `0 0 6px ${color}40` }} />
                   </div>
                   <span className="text-[10px] tabular-nums font-medium" style={{ color }}>{pct}%</span>
                 </div>
-                <p className="mt-2 text-[10px] text-slate-500 dark:text-slate-600 leading-snug">{STATUS_DESC[status]}</p>
+                <p className="mt-2 text-[10px] text-muted-foreground leading-snug">{STATUS_DESC[status]}</p>
               </Link>
             );
           })}
@@ -406,9 +418,9 @@ export default function EIPsAnalyticsPage() {
                 className={cn(
                   "group rounded-xl border p-4 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer",
                   selectedCat === c.key
-                    ? "border-cyan-500/40 bg-cyan-500/10 dark:border-cyan-500/40 dark:bg-cyan-500/10"
-                    : "border-slate-200 bg-white dark:border-slate-700/50 dark:bg-slate-900/60",
-                  "hover:border-slate-300 dark:hover:border-slate-600/50 hover:shadow-md dark:hover:shadow-lg",
+                    ? "border-primary/40 bg-primary/10 bg-primary/10"
+                    : "border-border bg-white  ",
+                  "hover:border-border/70 hover:shadow-md dark:hover:shadow-lg",
                 )}
                 onClick={(e) => { e.preventDefault(); setSelectedCat(c.key); }}
                 onDoubleClick={() => { window.location.href = href; }}>
@@ -416,16 +428,16 @@ export default function EIPsAnalyticsPage() {
                   <span style={{ color }} className="opacity-70 group-hover:opacity-100 transition-opacity">
                     {CAT_ICONS[c.key]}
                   </span>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{c.key}</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{c.key}</span>
                 </div>
-                <div className="text-2xl tabular-nums font-bold text-slate-800 dark:text-slate-100">{c.count.toLocaleString()}</div>
+                <div className="text-2xl tabular-nums font-bold text-foreground">{c.count.toLocaleString()}</div>
                 <div className="mt-1 flex items-center gap-2">
-                  <div className="flex-1 h-1 rounded-full bg-slate-200 dark:bg-slate-800/60 overflow-hidden">
+                  <div className="flex-1 h-1 rounded-full bg-muted/60 overflow-hidden">
                     <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, parseFloat(pct))}%`, backgroundColor: color, boxShadow: `0 0 6px ${color}40` }} />
                   </div>
                   <span className="text-[10px] tabular-nums font-medium" style={{ color }}>{pct}%</span>
                 </div>
-                <p className="mt-2 text-[10px] text-slate-500 dark:text-slate-600 leading-snug">{CAT_DESC[c.key]}</p>
+                <p className="mt-2 text-[10px] text-muted-foreground leading-snug">{CAT_DESC[c.key]}</p>
               </Link>
             );
           })}
@@ -447,11 +459,11 @@ export default function EIPsAnalyticsPage() {
             </ChartContainer>
             <div className="flex-1 space-y-1 w-full">
               {catBreakdown.sort((a, b) => b.count - a.count).map(c => (
-                <div key={c.category} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/20 text-sm transition-colors">
+                <div key={c.category} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted/60 text-sm transition-colors">
                   <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: CAT_COLORS[c.category] || "#64748b", boxShadow: `0 0 4px ${CAT_COLORS[c.category]}30` }} />
-                  <span className="flex-1 text-slate-600 dark:text-slate-300 text-xs">{c.category}</span>
-                  <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200 text-xs">{c.count.toLocaleString()}</span>
-                  <span className="tabular-nums text-[10px] text-slate-500 w-10 text-right">{total > 0 ? (c.count / total * 100).toFixed(1) : 0}%</span>
+                  <span className="flex-1 text-foreground/80 text-xs">{c.category}</span>
+                  <span className="tabular-nums font-semibold text-foreground/90 text-xs">{c.count.toLocaleString()}</span>
+                  <span className="tabular-nums text-[10px] text-muted-foreground w-10 text-right">{total > 0 ? (c.count / total * 100).toFixed(1) : 0}%</span>
                 </div>
               ))}
             </div>
@@ -470,11 +482,11 @@ export default function EIPsAnalyticsPage() {
             </ChartContainer>
             <div className="flex-1 space-y-1 w-full">
               {statusDist.map(s => (
-                <div key={s.status} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/20 text-sm transition-colors">
+                <div key={s.status} className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 hover:bg-muted/60 text-sm transition-colors">
                   <span className="h-2 w-2 rounded-sm shrink-0" style={{ background: STATUS_COLORS[s.status] || "#64748b", boxShadow: `0 0 4px ${STATUS_COLORS[s.status]}30` }} />
-                  <span className="flex-1 text-slate-600 dark:text-slate-300 text-xs">{s.status}</span>
-                  <span className="tabular-nums font-semibold text-slate-700 dark:text-slate-200 text-xs">{s.count.toLocaleString()}</span>
-                  <span className="tabular-nums text-[10px] text-slate-500 w-10 text-right">{total > 0 ? (s.count / total * 100).toFixed(1) : 0}%</span>
+                  <span className="flex-1 text-foreground/80 text-xs">{s.status}</span>
+                  <span className="tabular-nums font-semibold text-foreground/90 text-xs">{s.count.toLocaleString()}</span>
+                  <span className="tabular-nums text-[10px] text-muted-foreground w-10 text-right">{total > 0 ? (s.count / total * 100).toFixed(1) : 0}%</span>
                 </div>
               ))}
             </div>
@@ -485,7 +497,7 @@ export default function EIPsAnalyticsPage() {
       {/* ────── 4. STATUS TRANSITION FLOW ────── */}
       <Section title="Status Transition Flow" icon={<ArrowRight className="h-4 w-4" />}>
         {transitionFlows.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-600">No transition data available.</p>
+          <p className="text-sm text-muted-foreground">No transition data available.</p>
         ) : (
           <div className="space-y-2">
             {transitionFlows.map((flow, i) => {
@@ -494,16 +506,16 @@ export default function EIPsAnalyticsPage() {
               return (
                 <div key={i} className="flex items-center gap-3">
                   <div className="w-40 shrink-0 text-right">
-                    <span className="text-xs text-slate-500">{flow.from}</span>
-                    <ArrowRight className="mx-1 inline h-3 w-3 text-slate-500 dark:text-slate-600" />
+                    <span className="text-xs text-muted-foreground">{flow.from}</span>
+                    <ArrowRight className="mx-1 inline h-3 w-3 text-muted-foreground" />
                     <span className="text-xs font-medium" style={{ color }}>{flow.to}</span>
                   </div>
-                  <div className="relative flex-1 h-7 rounded-lg bg-slate-100 dark:bg-slate-800/40 overflow-hidden">
+                  <div className="relative flex-1 h-7 rounded-lg bg-muted/60 overflow-hidden">
                     <div
                       className="absolute inset-y-0 left-0 rounded-lg transition-all duration-500"
                       style={{ width: `${(flow.value / maxVal) * 100}%`, background: `linear-gradient(90deg, ${color}60, ${color}30)`, boxShadow: `inset 0 0 12px ${color}20` }}
                     />
-                    <span className="relative z-10 flex h-full items-center px-3 text-[11px] tabular-nums font-bold text-slate-800 dark:text-slate-100">
+                    <span className="relative z-10 flex h-full items-center px-3 text-[11px] tabular-nums font-bold text-foreground">
                       {flow.value.toLocaleString()}
                     </span>
                   </div>
@@ -535,23 +547,23 @@ export default function EIPsAnalyticsPage() {
 
         <Section title="Governance Velocity" icon={<Timer className="h-4 w-4" />}>
           {!velocity ? (
-            <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-slate-200 dark:bg-slate-800/30 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
+            <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
           ) : (
             <div className="space-y-1.5">
               {velocity.transitions?.map((t: { from: string; to: string; medianDays?: number | null; count?: number }) => {
                 const color = STATUS_COLORS[t.to] || "#60a5fa";
                 return (
-                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-slate-100 dark:hover:bg-slate-800/15 transition-colors">
-                    <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+                  <div key={`${t.from}-${t.to}`} className="flex items-center justify-between rounded-lg px-3 py-2.5 hover:bg-muted/60 hover:bg-muted/40 transition-colors">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <span>{t.from}</span>
-                      <ArrowRight className="h-3 w-3 text-slate-500 dark:text-slate-600" />
+                      <ArrowRight className="h-3 w-3 text-muted-foreground" />
                       <span style={{ color }}>{t.to}</span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-sm tabular-nums font-semibold text-slate-700 dark:text-slate-200">
+                      <span className="text-sm tabular-nums font-semibold text-foreground/90">
                         {t.medianDays != null ? `${t.medianDays}d` : "—"}
                       </span>
-                      <span className="text-[10px] tabular-nums text-slate-500 dark:text-slate-600">({t.count} transitions)</span>
+                      <span className="text-[10px] tabular-nums text-muted-foreground">({t.count} transitions)</span>
                     </div>
                   </div>
                 );
@@ -571,24 +583,24 @@ export default function EIPsAnalyticsPage() {
       <Section title="Category × Status Cross-Tab" icon={<Layers className="h-4 w-4" />}
         action={<CSVBtn onClick={exportCrossTab} label="Export CSV" />}>
         {!catStatusMatrix ? (
-          <div className="space-y-2 py-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-4 rounded bg-slate-200 dark:bg-slate-800/30 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
+          <div className="space-y-2 py-4">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-4 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
         ) : (
           <div className="overflow-x-auto -mx-2">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/30">
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Category</th>
+                <tr className="border-b border-border/30">
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Category</th>
                   {STATUS_ORDER.map(s => (
                     <th key={s} className="px-2 py-2.5 text-right text-[10px] font-bold uppercase tracking-wider" style={{ color: `${STATUS_COLORS[s]}90` }}>{s}</th>
                   ))}
-                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">Total</th>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase">%</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-muted-foreground uppercase">Total</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-muted-foreground uppercase">%</th>
                 </tr>
               </thead>
               <tbody>
                 {categories.map(cat => (
-                  <tr key={cat} className="border-b border-slate-100 dark:border-slate-800/15 hover:bg-slate-50 dark:hover:bg-slate-800/10 transition-colors">
-                    <td className="px-3 py-2 font-medium text-slate-700 dark:text-slate-200 text-xs">
+                  <tr key={cat} className="border-b border-border/50  hover:bg-muted/40 transition-colors">
+                    <td className="px-3 py-2 font-medium text-foreground/90 text-xs">
                       <span className="inline-flex items-center gap-1.5">
                         <span className="h-1.5 w-1.5 rounded-full" style={{ background: CAT_COLORS[cat] }} />
                         {cat}
@@ -603,23 +615,23 @@ export default function EIPsAnalyticsPage() {
                               style={{ background: `${STATUS_COLORS[s]}15`, color: STATUS_COLORS[s] }}>
                               {val.toLocaleString()}
                             </span>
-                          ) : <span className="text-slate-400 dark:text-slate-800">—</span>}
+                          ) : <span className="text-muted-foreground ">—</span>}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-right tabular-nums font-bold text-slate-700 dark:text-slate-200 text-xs">{(catStatusMatrix.catTotals[cat] || 0).toLocaleString()}</td>
-                    <td className="px-3 py-2 text-right tabular-nums text-[10px] text-slate-500">{catStatusMatrix.grand > 0 ? ((catStatusMatrix.catTotals[cat] || 0) / catStatusMatrix.grand * 100).toFixed(1) : 0}%</td>
+                    <td className="px-3 py-2 text-right tabular-nums font-bold text-foreground/90 text-xs">{(catStatusMatrix.catTotals[cat] || 0).toLocaleString()}</td>
+                    <td className="px-3 py-2 text-right tabular-nums text-[10px] text-muted-foreground">{catStatusMatrix.grand > 0 ? ((catStatusMatrix.catTotals[cat] || 0) / catStatusMatrix.grand * 100).toFixed(1) : 0}%</td>
                   </tr>
                 ))}
-                <tr className="border-t border-slate-200 dark:border-slate-700/30 bg-slate-50 dark:bg-slate-800/10">
-                  <td className="px-3 py-2.5 font-bold text-slate-600 dark:text-slate-300 text-xs">Total</td>
+                <tr className="border-t border-border border-border/30 bg-muted/40">
+                  <td className="px-3 py-2.5 font-bold text-foreground/80 text-xs">Total</td>
                   {STATUS_ORDER.map(s => (
                     <td key={s} className="px-2 py-2.5 text-right tabular-nums font-bold text-xs" style={{ color: STATUS_COLORS[s] }}>
                       {(catStatusMatrix.stTotals[s] || 0).toLocaleString()}
                     </td>
                   ))}
-                  <td className="px-3 py-2.5 text-right tabular-nums font-bold text-slate-800 dark:text-slate-100 text-xs">{catStatusMatrix.grand.toLocaleString()}</td>
-                  <td className="px-3 py-2.5 text-right tabular-nums text-[10px] text-slate-500">100%</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums font-bold text-foreground text-xs">{catStatusMatrix.grand.toLocaleString()}</td>
+                  <td className="px-3 py-2.5 text-right tabular-nums text-[10px] text-muted-foreground">100%</td>
                 </tr>
               </tbody>
             </table>
@@ -633,7 +645,7 @@ export default function EIPsAnalyticsPage() {
         icon={CAT_ICONS[selectedCat] || <Layers className="h-4 w-4" />}
         action={
           <select value={selectedCat} onChange={e => setSelectedCat(e.target.value)}
-            className="rounded-lg border border-slate-300 dark:border-slate-700/30 bg-white dark:bg-slate-800/40 px-3 py-1.5 text-xs text-slate-700 dark:text-slate-300 outline-none focus:ring-1 focus:ring-cyan-500/30 transition-colors">
+            className="rounded-lg border border-border/30 bg-muted/60/60 px-3 py-1.5 text-xs text-foreground/90 outline-none focus:ring-1 focus:ring-ring/40 transition-colors">
             {[...categories, "RIPs"].filter((v, i, a) => a.indexOf(v) === i).map(c => <option key={c} value={c}>{c}</option>)}
           </select>
         }>
@@ -658,7 +670,7 @@ export default function EIPsAnalyticsPage() {
       {/* ────── 8. DISTRIBUTION OVER YEARS ────── */}
       <Section title="Distribution Over Year (by Repository)" icon={<Activity className="h-4 w-4" />}>
         {pivotedTrends.length === 0 ? (
-          <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-slate-200 dark:bg-slate-800/30 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
+          <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
         ) : (
           <ChartContainer config={{
             eips: { label: "EIPs", color: "#34D399" },
@@ -682,7 +694,7 @@ export default function EIPsAnalyticsPage() {
       {/* ────── 9. MONTHLY THROUGHPUT ────── */}
       <Section title="Monthly Throughput" icon={<Activity className="h-4 w-4" />}>
         {throughput.length === 0 ? (
-          <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-slate-200 dark:bg-slate-800/30 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
+          <div className="space-y-2 py-4">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-4 rounded bg-muted/60 animate-pulse" style={{ width: `${60 + ((i * 17) % 35)}%` }} />)}</div>
         ) : (
           <ChartContainer config={{
             draft: { label: "Draft", color: STATUS_COLORS.Draft },
@@ -691,7 +703,7 @@ export default function EIPsAnalyticsPage() {
             final: { label: "Final", color: STATUS_COLORS.Final },
           }} className="h-[340px] w-full">
             <AreaChart data={throughput}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" className="stroke-slate-200 dark:stroke-slate-700/50" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.15)" className="stroke-border/70" />
               <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
               <YAxis stroke="#64748b" fontSize={11} />
               <ChartTooltip content={<ChartTooltipContent />} />
@@ -708,15 +720,15 @@ export default function EIPsAnalyticsPage() {
       {/* ────── 10. GOVERNANCE DELTA THIS MONTH ────── */}
       <Section title={`${monthLabel} — Governance Delta`} icon={<Activity className="h-4 w-4" />}>
         {monthlyDelta.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-600">No changes this month.</p>
+          <p className="text-sm text-muted-foreground">No changes this month.</p>
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {monthlyDelta.map(d => {
               const color = STATUS_COLORS[d.status] || "#64748b";
               return (
-                <div key={d.status} className="rounded-lg border border-slate-200 dark:border-slate-800/20 bg-slate-50 dark:bg-slate-800/15 px-4 py-3 text-center">
+                <div key={d.status} className="rounded-lg border border-border/20 bg-muted/40 px-4 py-3 text-center">
                   <div className="text-2xl tabular-nums font-bold" style={{ color }}>{d.count}</div>
-                  <div className="text-[10px] text-slate-500 mt-0.5 font-medium">{d.status}</div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5 font-medium">{d.status}</div>
                 </div>
               );
             })}
@@ -727,16 +739,16 @@ export default function EIPsAnalyticsPage() {
       {/* ────── 11. RECENT GOVERNANCE ACTIVITY ────── */}
       <Section title="Recent Governance Activity" icon={<Activity className="h-4 w-4" />}>
         {recentChanges.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-600">No recent changes.</p>
+          <p className="text-sm text-muted-foreground">No recent changes.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/30">
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">#</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Title</th>
-                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-slate-500 uppercase tracking-wider">Transition</th>
-                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-slate-500 uppercase tracking-wider">When</th>
+                <tr className="border-b border-border/30">
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">#</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Title</th>
+                  <th className="px-3 py-2.5 text-left text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Transition</th>
+                  <th className="px-3 py-2.5 text-right text-[10px] font-bold text-muted-foreground uppercase tracking-wider">When</th>
                 </tr>
               </thead>
               <tbody>
@@ -746,20 +758,20 @@ export default function EIPsAnalyticsPage() {
                   const repo = String(item.repository ?? "").toLowerCase();
                   const repoPath = repo.includes("ercs") ? "ercs" : repo.includes("rips") ? "rips" : "eips";
                   return (
-                    <tr key={i} className="border-b border-slate-100 dark:border-slate-800/10 hover:bg-slate-50 dark:hover:bg-slate-800/10 transition-colors">
+                    <tr key={i} className="border-b border-border/50  hover:bg-muted/40 transition-colors">
                       <td className="px-3 py-2.5">
-                        <Link href={`/standards/${repoPath}/${item.eip}`} className="text-cyan-600 dark:text-cyan-400/80 hover:text-cyan-700 dark:hover:text-cyan-300 font-medium transition-colors">
+                        <Link href={`/standards/${repoPath}/${item.eip}`} className="text-primary/80 hover:text-primary font-medium transition-colors">
                           {item.eip_type}-{item.eip}
                         </Link>
                       </td>
-                      <td className="px-3 py-2.5 text-slate-600 dark:text-slate-300 max-w-xs truncate">{item.title}</td>
+                      <td className="px-3 py-2.5 text-foreground/80 max-w-xs truncate">{item.title}</td>
                       <td className="px-3 py-2.5">
                         <span className="inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[10px] font-medium border"
                           style={{ background: `${color}10`, color, borderColor: `${color}20` }}>
                           {item.from} → {item.to}
                         </span>
                       </td>
-                      <td className="px-3 py-2.5 text-right text-slate-500 tabular-nums">
+                      <td className="px-3 py-2.5 text-right text-muted-foreground tabular-nums">
                         {item.days === 0 ? "today" : item.days === 1 ? "1d ago" : `${item.days ?? 0}d ago`}
                       </td>
                     </tr>

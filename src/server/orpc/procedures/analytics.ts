@@ -843,7 +843,7 @@ const getRecentChangesCached = unstable_cache(
   async (repo: string | null, limit: number) => {
     const results = await prisma.$queryRawUnsafe<Array<{
       eip: string; eip_type: string; title: string; from: string; to: string;
-      days: number; statusColor: string; repository: string; changed_at: Date;
+      days: number; statusColor: string; repository: string; changed_at: Date; actor: string;
     }>>(
       `SELECT e.eip_number::text as eip,
          CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END as eip_type,
@@ -851,11 +851,30 @@ const getRecentChangesCached = unstable_cache(
          EXTRACT(DAY FROM (NOW() - se.changed_at))::int as days,
          CASE WHEN se.to_status = 'Final' THEN 'emerald'
               WHEN se.to_status IN ('Review', 'Last Call') THEN 'blue' ELSE 'slate' END as "statusColor",
-         r.name as repository, se.changed_at
+         r.name as repository, se.changed_at,
+         COALESCE(pe_actor.actor, ca_actor.actor, 'system') AS actor
        FROM eip_status_events se
        JOIN eips e ON se.eip_id = e.id
        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
        LEFT JOIN repositories r ON se.repository_id = r.id
+       LEFT JOIN LATERAL (
+         SELECT pe.actor
+         FROM pr_events pe
+         WHERE pe.repository_id = se.repository_id
+           AND (se.pr_number IS NULL OR pe.pr_number = se.pr_number)
+           AND pe.created_at <= se.changed_at + INTERVAL '1 day'
+         ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - pe.created_at))) ASC
+         LIMIT 1
+       ) pe_actor ON true
+       LEFT JOIN LATERAL (
+         SELECT ca.actor
+         FROM contributor_activity ca
+         WHERE ca.repository_id = se.repository_id
+           AND (se.pr_number IS NULL OR ca.pr_number = se.pr_number)
+           AND ca.occurred_at <= se.changed_at + INTERVAL '1 day'
+         ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - ca.occurred_at))) ASC
+         LIMIT 1
+       ) ca_actor ON true
        WHERE se.changed_at >= NOW() - INTERVAL '7 days'
          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
        ORDER BY se.changed_at DESC LIMIT $2`,
@@ -1273,6 +1292,69 @@ export const analyticsProcedures = {
         reviewer: r.reviewer,
         submittedAt: r.submitted_at,
         repoShort: r.repo_short ?? 'unknown',
+      }));
+    }),
+
+  getRecentEditorActivity: optionalAuthProcedure
+    .input(z.object({
+      limit: z.number().optional().default(50),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      onlyOpenPRs: z.boolean().optional().default(true),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        pr_number: string;
+        title: string | null;
+        editor: string;
+        event_type: string;
+        acted_at: string;
+        repo_short: string;
+        event_url: string | null;
+      }>>(
+        `
+        SELECT
+          pe.pr_number::text AS pr_number,
+          pr.title,
+          pe.actor AS editor,
+          pe.event_type,
+          pe.created_at::text AS acted_at,
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+          COALESCE(
+            pe.metadata->>'html_url',
+            CASE
+              WHEN pe.event_type IN ('commented', 'issue_comment') AND pe.metadata->>'comment_id' IS NOT NULL
+                THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#issuecomment-' || (pe.metadata->>'comment_id')
+              WHEN pe.event_type = 'review_comment' AND pe.metadata->>'comment_id' IS NOT NULL
+                THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#discussion_r' || (pe.metadata->>'comment_id')
+              WHEN pe.event_type = 'reviewed' AND pe.metadata->>'review_id' IS NOT NULL
+                THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#pullrequestreview-' || (pe.metadata->>'review_id')
+              ELSE 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text
+            END
+          ) AS event_url
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        LEFT JOIN pull_requests pr
+          ON pr.pr_number = pe.pr_number
+         AND pr.repository_id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
+          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          AND ($2::boolean = FALSE OR pr.state = 'open')
+        ORDER BY pe.created_at DESC
+        LIMIT $3
+      `,
+        input.repo ?? null,
+        input.onlyOpenPRs ?? true,
+        input.limit
+      );
+
+      return results.map((r) => ({
+        prNumber: r.pr_number,
+        title: r.title ?? '',
+        editor: r.editor,
+        eventType: r.event_type,
+        actedAt: r.acted_at,
+        repoShort: r.repo_short ?? 'unknown',
+        eventUrl: r.event_url ?? null,
       }));
     }),
 

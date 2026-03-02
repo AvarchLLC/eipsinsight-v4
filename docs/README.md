@@ -10,6 +10,7 @@
 |-----|-------------|
 | [Site Map](./sitemap.md) | Information architecture, navigation tree |
 | [Personas](./personas.md) | Persona alignment, wireframes, default landing pages |
+| [Persona Preferences Context](./persona-preferences-context.md) | What persona/accent personalization is, what preference data is stored, and why |
 | [Architecture](./architecture.md) | Routing, URLs, implementation status |
 | [Branding](./branding.md) | Tone, design cues, naming |
 | [UI Reference](./ui-reference.md) | Colors, fonts, spacing, component patterns |

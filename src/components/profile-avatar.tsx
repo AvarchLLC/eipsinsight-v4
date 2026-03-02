@@ -15,7 +15,7 @@ interface ProfileAvatarProps {
   }
   onUploadComplete?: (url: string) => void
   editable?: boolean
-  size?: 'sm' | 'md' | 'lg'
+  size?: 'xs' | 'sm' | 'md' | 'lg'
 }
 
 async function cropImageToSquare(file: File): Promise<string> {
@@ -58,6 +58,7 @@ export function ProfileAvatar({
   const [error, setError] = useState<string | null>(null)
 
   const sizeClasses = {
+    xs: 'h-7 w-7',
     sm: 'h-8 w-8',
     md: 'h-10 w-10',
     lg: 'h-20 w-20',

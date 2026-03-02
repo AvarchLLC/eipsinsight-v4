@@ -61,7 +61,7 @@ const PERSONA_INTROS: Record<Persona, PersonaIntro> = {
     subheadline:
       "Track which proposals are being considered for inclusion, monitor CFI status, and review the editorial queue for upgrade-bound EIPs.",
     ctaLabel: "Review Queue",
-    ctaLink: "/all?status=review,last-call",
+    ctaLink: "/standards?status=review,last-call",
     stats: [
       { label: "CFI Proposals", value: "8", icon: FileCode2 },
       { label: "Pending Review", value: "3", icon: Clock },

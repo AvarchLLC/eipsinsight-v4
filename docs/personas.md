@@ -116,7 +116,7 @@
 | Persona | URL | Redirects to | Source: `persona.ts` |
 |---------|-----|--------------|----------------------|
 | Developer | `/p/developer` | `/upgrade` | `PERSONA_DEFAULTS.developer` |
-| Editor | `/p/editor` | `/all` ⚠️ | Should be `/standards` or `/search` — `/all` has no route |
+| Editor | `/p/editor` | `/standards` | `PERSONA_DEFAULTS.editor` |
 | Researcher | `/p/researcher` | `/analytics/prs` | `PERSONA_DEFAULTS.researcher` |
 | Builder | `/p/builder` | `/erc` | ERC standards page |
 | Enterprise | `/p/enterprise` | `/upgrade` | `PERSONA_DEFAULTS.enterprise` |

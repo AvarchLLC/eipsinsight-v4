@@ -309,7 +309,7 @@ export const PERSONA_UPGRADE_HIGHLIGHTS: Record<Persona, UpgradeHighlight[]> = {
       title: "EIPs Awaiting Review",
       description: "Proposals that need editorial attention before inclusion",
       ctaLabel: "View Queue",
-      ctaLink: "/all?status=review",
+      ctaLink: "/standards?status=review",
     },
     {
       title: "Recent Status Changes",

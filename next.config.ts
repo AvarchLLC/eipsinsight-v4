@@ -19,8 +19,13 @@ const nextConfig: NextConfig = {
       // Legacy route redirects
       {
         source: '/standards-by-repo',
-        destination: '/all',
+        destination: '/standards',
         permanent: true,
+      },
+      {
+        source: '/all',
+        destination: '/standards',
+        permanent: false,
       },
       {
         source: '/n-w-upgrades',
