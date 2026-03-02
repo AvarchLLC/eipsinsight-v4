@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { Loader2, Users, Activity, Zap, Database } from "lucide-react";
+import { Loader2, Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
@@ -19,7 +19,6 @@ import {
   Cell,
 } from "recharts";
 import Link from "next/link";
-import { cn } from "@/lib/utils";
 
 interface ContributorKPIs {
   totalContributors: number;
@@ -104,6 +103,7 @@ const repoColors: Record<string, string> = {
 export default function ContributorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'total' | 'reviews' | 'status_changes' | 'prs_authored' | 'prs_reviewed'>('total');
   
   const [kpis, setKPIs] = useState<ContributorKPIs | null>(null);
@@ -118,6 +118,7 @@ export default function ContributorsAnalyticsPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const [kpisData, typeData, repoData, rankingsData, feedData] = await Promise.all([
           client.analytics.getContributorKPIs({}),
@@ -150,6 +151,7 @@ export default function ContributorsAnalyticsPage() {
         setLiveFeed(feedData);
       } catch (error) {
         console.error("Failed to fetch contributors analytics:", error);
+        setError("Failed to load contributor analytics. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -231,20 +233,27 @@ export default function ContributorsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Hero KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Total Contributors</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Total Contributors</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.totalContributors.toLocaleString() || 0}
               </p>
             </div>
@@ -254,11 +263,11 @@ export default function ContributorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Active (30d)</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Active (30d)</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.activeContributors30d.toLocaleString() || 0}
               </p>
             </div>
@@ -268,11 +277,11 @@ export default function ContributorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Total Activities</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Total Activities</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.totalActivities.toLocaleString() || 0}
               </p>
             </div>
@@ -282,11 +291,11 @@ export default function ContributorsAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Last 24h</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Last 24h</p>
+              <p className="text-3xl font-bold text-foreground">
                 {kpis?.last24hCount.toLocaleString() || 0}
               </p>
             </div>
@@ -299,8 +308,8 @@ export default function ContributorsAnalyticsPage() {
 
       {/* Activity by Type + Activity by Repo */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-semibold text-white">Activity by Type</h2>
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Activity by Type</h2>
           <ChartContainer
             config={Object.fromEntries(
               Object.entries(actionTypeColors).map(([type, color]) => [
@@ -329,8 +338,8 @@ export default function ContributorsAnalyticsPage() {
           </ChartContainer>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-semibold text-white">Activity by Repository</h2>
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Activity by Repository</h2>
           <ChartContainer
             config={Object.fromEntries(
               repoHeatmap.map((r) => [
@@ -358,13 +367,13 @@ export default function ContributorsAnalyticsPage() {
       </div>
 
       {/* Contributor Rankings */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Contributor Rankings</h2>
+          <h2 className="text-xl font-semibold text-foreground">Contributor Rankings</h2>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-            className="rounded-lg border border-slate-700/50 bg-slate-800/30 px-3 py-1.5 text-sm text-slate-300"
+            className="rounded-lg border border-border/70 bg-muted/40 px-3 py-1.5 text-sm text-foreground/85"
           >
             <option value="total">Total Activities</option>
             <option value="reviews">Reviews</option>
@@ -376,51 +385,51 @@ export default function ContributorsAnalyticsPage() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Rank</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Contributor</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Total</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Reviews</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Status Changes</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">PRs Authored</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">PRs Reviewed</th>
+              <tr className="border-b border-border/70">
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Rank</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Contributor</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Total</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Reviews</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Status Changes</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">PRs Authored</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">PRs Reviewed</th>
               </tr>
             </thead>
             <tbody>
               {rankings.map((contributor, idx) => (
                 <tr
                   key={contributor.actor}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                  className="border-b border-border/60 hover:bg-muted/40 transition-colors"
                 >
-                  <td className="py-3 px-4 text-sm text-slate-400">#{idx + 1}</td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">#{idx + 1}</td>
                   <td className="py-3 px-4">
                     <Link
                       href={`/analytics/contributors/${contributor.actor}`}
-                      className="font-medium text-cyan-400 hover:text-cyan-300"
+                      className="font-medium text-primary hover:text-primary"
                     >
                       {contributor.actor}
                     </Link>
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {contributor.total.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {contributor.reviews.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {contributor.statusChanges.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {contributor.prsAuthored.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {contributor.prsReviewed.toLocaleString()}
                   </td>
                 </tr>
               ))}
               {rankings.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-6 text-center text-sm text-slate-500">
+                  <td colSpan={7} className="py-6 text-center text-sm text-muted-foreground">
                     No contributor data found for the current filters.
                   </td>
                 </tr>
@@ -431,36 +440,36 @@ export default function ContributorsAnalyticsPage() {
       </div>
 
       {/* Live Activity Feed */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-semibold text-white">Live Activity Feed (Last 48h)</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Live Activity Feed (Last 48h)</h2>
         <div className="space-y-2 max-h-96 overflow-y-auto">
           {liveFeed.map((item, idx) => {
             const repoName = item.repo ? item.repo.split('/')[1] : 'Unknown';
             return (
               <div
                 key={idx}
-                className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/30 px-3 py-2 text-sm"
+                className="flex items-center justify-between rounded-lg border border-border/70 bg-muted/40 px-3 py-2 text-sm"
               >
                 <div className="flex items-center gap-3">
-                  <span className="font-medium text-slate-200">{item.actor}</span>
-                  <span className="text-slate-400">
+                  <span className="font-medium text-foreground/90">{item.actor}</span>
+                  <span className="text-muted-foreground">
                     {item.actionType.replace('_', ' ')}
                   </span>
                   {item.prNumber > 0 && (
-                    <span className="text-cyan-400">PR #{item.prNumber}</span>
+                    <span className="text-primary">PR #{item.prNumber}</span>
                   )}
                   {item.repo && (
-                    <span className="text-slate-500">{repoName}</span>
+                    <span className="text-muted-foreground">{repoName}</span>
                   )}
                 </div>
-                <span className="text-xs text-slate-500">
+                <span className="text-xs text-muted-foreground">
                   {new Date(item.occurredAt).toLocaleString()}
                 </span>
               </div>
             );
           })}
           {liveFeed.length === 0 && (
-            <p className="text-sm text-slate-500">No recent activity in the last 48 hours.</p>
+            <p className="text-sm text-muted-foreground">No recent activity in the last 48 hours.</p>
           )}
         </div>
       </div>

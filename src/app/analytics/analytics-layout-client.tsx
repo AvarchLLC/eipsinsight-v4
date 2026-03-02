@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useMemo, useCallback, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download, Calendar, Database } from "lucide-react";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 // ─── Export Helper Functions ─────────────────────────────────────
@@ -131,15 +130,6 @@ const repoOptions: { value: RepoFilter; label: string }[] = [
   { value: "rips", label: "RIPs" },
 ];
 
-const navItems = [
-  { href: "/analytics/eips", label: "EIPs" },
-  { href: "/analytics/prs", label: "PRs" },
-  { href: "/analytics/editors", label: "Editors" },
-  { href: "/analytics/reviewers", label: "Reviewers" },
-  { href: "/analytics/authors", label: "Authors" },
-  { href: "/analytics/contributors", label: "Contributors" },
-];
-
 function AnalyticsLayoutInner({
   children,
 }: {
@@ -239,17 +229,17 @@ function AnalyticsLayoutInner({
 
   return (
     <AnalyticsContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
+      <div className="min-h-screen bg-background">
         {/* Single merged header — not sticky */}
-        <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/50">
+        <div className="border-b border-border bg-card/80">
           <div className="container mx-auto px-4 py-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               {/* Title + subtitle */}
               <div>
-                <h1 className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-2xl font-semibold tracking-tight text-transparent sm:text-3xl">
+                <h1 className="dec-title persona-title text-balance text-2xl font-semibold tracking-tight leading-[1.1] sm:text-3xl">
                   {pageTitle}
                 </h1>
-                <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                <p className="mt-1 text-sm text-muted-foreground">
                   {pageSubtitle}
                 </p>
               </div>
@@ -257,12 +247,12 @@ function AnalyticsLayoutInner({
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-3">
                 {/* Time Range */}
-                <div className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 p-1.5">
-                  <Calendar className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={timeRange}
                     onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                    className="bg-transparent text-sm text-slate-700 dark:text-slate-300 border-none outline-none cursor-pointer"
+                    className="bg-transparent text-sm text-foreground/90 border-none outline-none cursor-pointer"
                   >
                     {timeRangeOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -273,12 +263,12 @@ function AnalyticsLayoutInner({
                 </div>
 
                 {/* Repo Filter */}
-                <div className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 p-1.5">
-                  <Database className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
+                  <Database className="h-4 w-4 text-muted-foreground" />
                   <select
                     value={repoFilter}
                     onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-                    className="bg-transparent text-sm text-slate-700 dark:text-slate-300 border-none outline-none cursor-pointer"
+                    className="bg-transparent text-sm text-foreground/90 border-none outline-none cursor-pointer"
                   >
                     {repoOptions.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -289,7 +279,7 @@ function AnalyticsLayoutInner({
                 </div>
 
                 {/* Snapshot Toggle */}
-                <div className="flex items-center gap-2 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 p-1.5">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
                   <button
                     onClick={() =>
                       setSnapshotMode(snapshotMode === "live" ? "snapshot" : "live")
@@ -297,8 +287,8 @@ function AnalyticsLayoutInner({
                     className={cn(
                       "px-3 py-1.5 text-xs font-medium rounded-md transition-colors",
                       snapshotMode === "live"
-                        ? "bg-cyan-500/20 text-cyan-700 dark:text-cyan-300"
-                        : "bg-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                        ? "bg-primary/15 text-primary"
+                        : "bg-transparent text-muted-foreground hover:text-foreground"
                     )}
                   >
                     {snapshotMode === "live" ? "Live" : "Snapshot"}
@@ -306,18 +296,18 @@ function AnalyticsLayoutInner({
                 </div>
 
                 {/* Export */}
-                <div className="flex items-center gap-1 rounded-lg border border-slate-300 dark:border-slate-700 bg-slate-100 dark:bg-slate-800/50 p-1.5">
+                <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/60 p-1.5">
                   <button
                     onClick={() => exportData("csv")}
-                    className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors flex items-center gap-1.5"
                   >
                     <Download className="h-3.5 w-3.5" />
                     CSV
                   </button>
-                  <div className="h-4 w-px bg-slate-300 dark:bg-slate-700" />
+                  <div className="h-4 w-px bg-border" />
                   <button
                     onClick={() => exportData("json")}
-                    className="px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
+                    className="px-3 py-1.5 text-xs font-medium text-foreground/80 hover:text-foreground transition-colors"
                   >
                     JSON
                   </button>
@@ -343,7 +333,7 @@ export default function AnalyticsLayout({
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center text-slate-500 dark:text-slate-400 text-sm">
+        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
           Loading analytics…
         </div>
       }

@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { Loader2, Users, Clock, MessageSquare } from "lucide-react";
+import { Loader2, Users, Clock, MessageSquare, AlertCircle } from "lucide-react";
 import {
   ChartContainer,
   ChartTooltip,
@@ -21,7 +21,6 @@ import {
   Legend,
   Cell,
 } from "recharts";
-import { cn } from "@/lib/utils";
 
 interface ReviewerLeaderboardRow {
   actor: string;
@@ -88,6 +87,7 @@ function getTimeWindow(timeRange: string): { from: string | undefined; to: strin
 export default function ReviewersAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   
   const [leaderboard, setLeaderboard] = useState<ReviewerLeaderboardRow[]>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
@@ -100,6 +100,7 @@ export default function ReviewersAnalyticsPage() {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+      setError(null);
       try {
         const months = timeRange === "7d" ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
         
@@ -130,6 +131,7 @@ export default function ReviewersAnalyticsPage() {
         setRepoDistribution(repoData);
       } catch (error) {
         console.error("Failed to fetch reviewers analytics:", error);
+        setError("Failed to load reviewer analytics. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -207,20 +209,27 @@ export default function ReviewersAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
       {/* Hero KPIs */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Total Reviewers</p>
-              <p className="text-3xl font-bold text-white">{leaderboard.length}</p>
+              <p className="text-sm text-muted-foreground">Total Reviewers</p>
+              <p className="text-3xl font-bold text-foreground">{leaderboard.length}</p>
             </div>
             <div className="rounded-full bg-emerald-500/20 p-3">
               <Users className="h-6 w-6 text-emerald-400" />
@@ -228,11 +237,11 @@ export default function ReviewersAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Total Reviews</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Total Reviews</p>
+              <p className="text-3xl font-bold text-foreground">
                 {leaderboard.reduce((sum, r) => sum + r.totalReviews, 0).toLocaleString()}
               </p>
             </div>
@@ -242,11 +251,11 @@ export default function ReviewersAnalyticsPage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-slate-400">Median Response Time</p>
-              <p className="text-3xl font-bold text-white">
+              <p className="text-sm text-muted-foreground">Median Response Time</p>
+              <p className="text-3xl font-bold text-foreground">
                 {(() => {
                   const medians = leaderboard
                     .map(r => r.medianResponseDays)
@@ -265,36 +274,36 @@ export default function ReviewersAnalyticsPage() {
       </div>
 
       {/* Reviewer Leaderboard */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-xl font-semibold text-white">Reviewer Leaderboard</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-xl font-semibold text-foreground">Reviewer Leaderboard</h2>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-700">
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Rank</th>
-                <th className="py-3 px-4 text-left text-sm font-medium text-slate-400">Reviewer</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Reviews</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">PRs Touched</th>
-                <th className="py-3 px-4 text-right text-sm font-medium text-slate-400">Median Response</th>
+              <tr className="border-b border-border/70">
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Rank</th>
+                <th className="py-3 px-4 text-left text-sm font-medium text-muted-foreground">Reviewer</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Reviews</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">PRs Touched</th>
+                <th className="py-3 px-4 text-right text-sm font-medium text-muted-foreground">Median Response</th>
               </tr>
             </thead>
             <tbody>
               {leaderboard.map((reviewer, idx) => (
                 <tr
                   key={reviewer.actor}
-                  className="border-b border-slate-800/50 hover:bg-slate-800/30 transition-colors"
+                  className="border-b border-border/60 hover:bg-muted/40 transition-colors"
                 >
-                  <td className="py-3 px-4 text-sm text-slate-400">#{idx + 1}</td>
+                  <td className="py-3 px-4 text-sm text-muted-foreground">#{idx + 1}</td>
                   <td className="py-3 px-4">
-                    <span className="font-medium text-slate-200">{reviewer.actor}</span>
+                    <span className="font-medium text-foreground/90">{reviewer.actor}</span>
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {reviewer.totalReviews.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {reviewer.prsTouched.toLocaleString()}
                   </td>
-                  <td className="py-3 px-4 text-right text-sm text-slate-300">
+                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
                     {reviewer.medianResponseDays != null
                       ? `${reviewer.medianResponseDays}d`
                       : "–"}
@@ -303,7 +312,7 @@ export default function ReviewersAnalyticsPage() {
               ))}
               {leaderboard.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="py-6 text-center text-sm text-slate-500">
+                  <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
                     No reviewer data found for the current filters.
                   </td>
                 </tr>
@@ -315,8 +324,8 @@ export default function ReviewersAnalyticsPage() {
 
       {/* Monthly Trend + Cycles per PR */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-semibold text-white">Review Activity Over Time</h2>
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Review Activity Over Time</h2>
           <ChartContainer
             config={Object.fromEntries(
               trendActors.map((actor, idx) => [
@@ -352,8 +361,8 @@ export default function ReviewersAnalyticsPage() {
           </ChartContainer>
         </div>
 
-        <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-semibold text-white">Review Cycles per PR</h2>
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Review Cycles per PR</h2>
           <ChartContainer
             config={{
               count: { label: "PRs", color: "#22c55e" },
@@ -377,18 +386,18 @@ export default function ReviewersAnalyticsPage() {
               </BarChart>
             </ResponsiveContainer>
           </ChartContainer>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs text-muted-foreground">
             Distribution of how many reviewers typically review each PR
           </p>
         </div>
       </div>
 
       {/* Top Reviewers by Repo */}
-      <div className="rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-semibold text-white">Reviewers by Repository</h2>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <h2 className="mb-4 text-lg font-semibold text-foreground">Reviewers by Repository</h2>
         <ChartContainer
           config={Object.fromEntries(
-            repoBars.map((r, idx) => [
+            repoBars.map((r) => [
               r.repo,
               {
                 label: r.repo,

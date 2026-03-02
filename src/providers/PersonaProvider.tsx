@@ -6,8 +6,6 @@ import { usePersonaSync } from "@/hooks/usePersonaSync";
 import { FEATURES } from "@/lib/features";
 import {
   type Persona,
-  PERSONAS,
-  PERSONA_DEFAULTS,
   getPersonaMeta,
 } from "@/lib/persona";
 
@@ -77,6 +75,10 @@ export function PersonaProvider({ children }: PersonaProviderProps) {
     }),
     [effectivePersona, isOnboarded, isHydrated, setPersona, getDefaultRoute]
   );
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute("data-persona", effectivePersona);
+  }, [effectivePersona]);
 
   return (
     <PersonaContext.Provider value={value}>{children}</PersonaContext.Provider>
