@@ -139,9 +139,6 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Overview", href: "/upgrade" },
           { title: "Previous Upgrades", href: "/upgrade/archive" },
-          { title: "Archive · Comparison", href: "/upgrade/archive#comparison" },
-          { title: "Archive · Heatmap", href: "/upgrade/archive#heatmap" },
-          { title: "Archive · Details", href: "/upgrade/archive#details" },
           { title: "Pectra", href: "/upgrade/pectra" },
           { title: "Fusaka", href: "/upgrade/fusaka" },
           { title: "Glamsterdam", href: "/upgrade/glamsterdam" },

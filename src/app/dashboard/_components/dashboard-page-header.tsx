@@ -40,7 +40,7 @@ export function DashboardPageHeader() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
-              className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl"
+              className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl"
             >
               Governance Dashboard
             </motion.h1>
@@ -48,10 +48,10 @@ export function DashboardPageHeader() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-slate-600 dark:text-slate-300"
+              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
             >
               Ethereum proposals by category, status, and repository — with CSV exports.
-              Powered by <span className="text-slate-700 dark:text-slate-200">EIPsInsight</span>.
+              Powered by <span className="text-foreground/80">EIPsInsight</span>.
             </motion.p>
           </div>
 
@@ -62,9 +62,8 @@ export function DashboardPageHeader() {
             transition={{ duration: 0.3 }}
             className={cn(
               "group relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border",
-              "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800/80",
-              "transition-all hover:border-slate-400 dark:hover:border-cyan-400/50 hover:bg-slate-100 dark:hover:bg-slate-700/80",
-              "dark:hover:shadow-lg dark:hover:shadow-cyan-500/10"
+              "border-border bg-muted/60",
+              "transition-all hover:border-primary/40 hover:bg-primary/10"
             )}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -72,8 +71,8 @@ export function DashboardPageHeader() {
           >
             <Info className={cn(
               "h-4 w-4 transition-all",
-              "text-slate-500 dark:text-slate-400 group-hover:text-slate-700 dark:group-hover:text-cyan-300",
-              isOpen && "text-slate-700 dark:text-cyan-300"
+              "text-muted-foreground group-hover:text-primary",
+              isOpen && "text-primary"
             )} />
           </motion.button>
         </div>
@@ -87,7 +86,7 @@ export function DashboardPageHeader() {
               transition={{ duration: 0.3 }}
               className="overflow-hidden"
             >
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900/90 p-6">
+              <div className="rounded-lg border border-border bg-card/60 p-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                   {infoItems.map((item, index) => {
                     const Icon = item.icon;
@@ -99,14 +98,14 @@ export function DashboardPageHeader() {
                         transition={{ duration: 0.3, delay: index * 0.1 }}
                         className="flex items-start gap-3"
                       >
-                        <div className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-600/50 shrink-0">
-                          <Icon className="h-4 w-4 text-slate-600 dark:text-cyan-400" />
+                        <div className="shrink-0 rounded-lg border border-primary/20 bg-primary/10 p-2">
+                          <Icon className="h-4 w-4 text-primary" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">
+                          <h3 className="mb-1 text-sm font-semibold text-foreground">
                             {item.title}
                           </h3>
-                          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                          <p className="text-sm leading-relaxed text-muted-foreground">
                             {item.description}
                           </p>
                         </div>

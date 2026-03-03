@@ -473,10 +473,10 @@ export default function GovernanceOverTime() {
   return (
     <section id="governance-over-time" className="relative w-full pt-2 pb-4">
       <header className="mb-4">
-        <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-800 dark:text-slate-200 sm:text-2xl">
+        <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           Governance Over Time
         </h2>
-        <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">
+        <p className="mt-0.5 text-sm text-muted-foreground">
           How proposals have evolved across categories and lifecycle stages
         </p>
       </header>
@@ -485,7 +485,7 @@ export default function GovernanceOverTime() {
           {/* Compact Insight Chip */}
           {insight && (
             <div className="mb-6 w-full max-w-full">
-              <div className="inline-flex items-center gap-2 rounded-full bg-slate-200 dark:bg-cyan-500/10 border border-slate-300 dark:border-cyan-500/20 px-4 py-1.5 text-xs text-slate-700 dark:text-cyan-300">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-xs text-primary">
                 <span>📈</span>
                 <span>{insight}</span>
               </div>
@@ -501,14 +501,14 @@ export default function GovernanceOverTime() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="rounded-2xl border border-slate-200 dark:border-slate-700/20 bg-white dark:bg-slate-900/70 p-6 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.4)]"
+                className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur-xl"
               >
                 {loading ? (
                   <div className="flex items-center justify-center h-96">
-                    <Loader2 className="h-8 w-8 animate-spin text-slate-500 dark:text-cyan-400" />
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : chartData.length === 0 ? (
-                  <div className="flex items-center justify-center h-96 text-slate-400">
+                  <div className="flex items-center justify-center h-96 text-muted-foreground">
                     No data available
                   </div>
                 ) : chartOption ? (
@@ -535,8 +535,8 @@ export default function GovernanceOverTime() {
                       onClick={() => setSelectedYear(year === selectedYear ? null : year)}
                       className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
                         selectedYear === year
-                          ? 'bg-slate-200 dark:bg-cyan-500/20 text-slate-800 dark:text-cyan-300 border border-slate-300 dark:border-cyan-500/30 dark:shadow-[0_0_8px_rgba(34,211,238,0.15)]'
-                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/40 border border-slate-300 dark:border-slate-700/30 hover:border-slate-400 dark:hover:border-slate-600/50'
+                          ? 'border border-primary/40 bg-primary/10 text-primary'
+                          : 'border border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'
                       }`}
                     >
                       {year}
@@ -546,7 +546,7 @@ export default function GovernanceOverTime() {
                     <select
                       value={selectedYear && availableYears.slice(0, 4).includes(selectedYear) ? '' : (selectedYear || '')}
                       onChange={(e) => setSelectedYear(e.target.value ? parseInt(e.target.value) : null)}
-                      className="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800/40 text-slate-700 dark:text-slate-300 text-xs focus:outline-none focus:ring-1 focus:ring-slate-400 dark:focus:ring-cyan-500/30 border border-slate-300 dark:border-slate-700/30 hover:border-slate-400 dark:hover:border-slate-600/50 transition-colors"
+                      className="rounded-lg border border-border bg-muted/50 px-3 py-1.5 text-xs text-foreground transition-colors hover:border-primary/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                     >
                       <option value="">More...</option>
                       {availableYears.slice(4).map(year => (
@@ -561,15 +561,15 @@ export default function GovernanceOverTime() {
             {/* Right: Controls + Legend */}
             <div className="space-y-4">
               {/* Compact Controls */}
-              <div className="rounded-xl border border-slate-200 dark:border-slate-700/30 bg-slate-50 dark:bg-slate-900/40 p-3 backdrop-blur-md space-y-3">
+              <div className="space-y-3 rounded-xl border border-border bg-card/60 p-3 backdrop-blur-md">
               {/* Category/Status Toggle */}
-                <div className="flex rounded-lg p-0.5 bg-slate-200 dark:bg-slate-800/30">
+                <div className="flex rounded-lg bg-muted/60 p-0.5">
                 <button
                   onClick={() => setViewMode('category')}
                     className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     viewMode === 'category'
-                        ? 'bg-slate-200 dark:bg-cyan-500/20 text-slate-800 dark:text-cyan-300'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300'
+                        ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   Category
@@ -578,8 +578,8 @@ export default function GovernanceOverTime() {
                   onClick={() => setViewMode('status')}
                     className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
                     viewMode === 'status'
-                        ? 'bg-slate-200 dark:bg-cyan-500/20 text-slate-800 dark:text-cyan-300'
-                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-300'
+                        ? 'bg-primary/10 text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   Status
@@ -587,12 +587,12 @@ export default function GovernanceOverTime() {
               </div>
 
               {/* RIP Filter */}
-                <label className="flex items-center gap-2 text-xs text-slate-400/80 cursor-pointer">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                 <input
                   type="checkbox"
                   checked={includeRIPs}
                   onChange={(e) => setIncludeRIPs(e.target.checked)}
-                    className="rounded border-slate-600/50 bg-slate-800/30 text-cyan-500 focus:ring-cyan-500"
+                    className="rounded border-border bg-muted/40 text-primary focus:ring-primary"
                 />
                 Include RIPs
               </label>
@@ -600,8 +600,8 @@ export default function GovernanceOverTime() {
 
               {/* Analytical Legend with Counts */}
               {!loading && chartData.length > 0 && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700/30 bg-slate-50 dark:bg-slate-900/40 p-3 backdrop-blur-md space-y-2">
-                  <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-2">Legend</div>
+                <div className="space-y-2 rounded-xl border border-border bg-card/60 p-3 backdrop-blur-md">
+                  <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Legend</div>
                   <div className="space-y-1.5">
                     {Object.keys(colors).map(key => {
                       const isHidden = hiddenKeys.has(key);
@@ -613,8 +613,8 @@ export default function GovernanceOverTime() {
                           onClick={() => toggleKey(key)}
                           className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-md transition-all ${
                             isHidden
-                              ? 'bg-slate-100 dark:bg-slate-800/20 text-slate-500 dark:text-slate-500/60'
-                              : 'bg-slate-200 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700/40'
+                              ? 'bg-muted/40 text-muted-foreground'
+                              : 'bg-muted/70 text-foreground hover:bg-primary/10'
                           }`}
                         >
                           <div className="flex items-center gap-2">
@@ -628,7 +628,7 @@ export default function GovernanceOverTime() {
                             />
                             <span className="text-xs font-medium">{key}</span>
                           </div>
-                          <span className="text-[10px] text-slate-500 tabular-nums">{total}</span>
+                          <span className="text-[10px] tabular-nums text-muted-foreground">{total}</span>
                         </button>
                       );
                     })}
@@ -644,16 +644,16 @@ export default function GovernanceOverTime() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4 }}
-            className="mt-8 w-full max-w-full rounded-xl border border-slate-200 dark:border-slate-700/20 bg-white dark:bg-slate-900/30 p-4 backdrop-blur-xl shadow-sm"
+            className="mt-8 w-full max-w-full rounded-xl border border-border bg-card/60 p-4 backdrop-blur-xl"
           >
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">
+              <h3 className="text-sm font-semibold text-foreground">
                 {selectedYear} · {detailedData.length} {detailedData.length === 1 ? 'proposal' : 'proposals'}
               </h3>
               {detailedData.length > 0 && (
                 <button
                   onClick={downloadCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border-0 bg-slate-200 dark:bg-cyan-400/10 text-slate-700 dark:text-cyan-300 hover:bg-slate-300 dark:hover:bg-cyan-400/15 transition-all text-xs"
+                  className="flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs text-primary transition-all hover:bg-primary/15"
                 >
                   <Download className="h-3.5 w-3.5" />
                   CSV
@@ -663,10 +663,10 @@ export default function GovernanceOverTime() {
             
             {loadingDetails ? (
               <div className="flex items-center justify-center h-32">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-500 dark:text-cyan-400" />
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
               </div>
             ) : detailedData.length === 0 ? (
-              <div className="text-center text-slate-400 py-8">
+              <div className="py-8 text-center text-muted-foreground">
                 No data available for {selectedYear}
               </div>
             ) : (
