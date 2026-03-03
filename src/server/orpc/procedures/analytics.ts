@@ -1910,6 +1910,779 @@ export const analyticsProcedures = {
       }));
     }),
 
+  // PR detail page payload (legacy parity route support)
+  getPRDetail: optionalAuthProcedure
+    .input(z.object({
+      repo: z.enum(['eips', 'ercs', 'rips']),
+      number: z.number().int().positive(),
+    }))
+    .handler(async ({ input }) => {
+      const prRows = await prisma.$queryRawUnsafe<Array<{
+        pr_number: number;
+        repository_id: number;
+        repo_name: string;
+        repo_short: string;
+        title: string | null;
+        author: string | null;
+        state: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+        merged_at: Date | null;
+        closed_at: Date | null;
+        num_commits: number | null;
+        num_files: number | null;
+        num_comments: number | null;
+        num_reviews: number | null;
+        labels: string[] | null;
+        body: string | null;
+        governance_state: string | null;
+        waiting_since: Date | null;
+        last_actor: string | null;
+        last_event_type: string | null;
+      }>>(
+        `
+        SELECT
+          pr.pr_number,
+          pr.repository_id,
+          r.name AS repo_name,
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+          pr.title,
+          pr.author,
+          pr.state,
+          pr.created_at,
+          pr.updated_at,
+          pr.merged_at,
+          pr.closed_at,
+          pr.num_commits,
+          pr.num_files,
+          pr.num_comments,
+          pr.num_reviews,
+          pr.labels,
+          pr.body,
+          gs.current_state AS governance_state,
+          gs.waiting_since,
+          gs.last_actor,
+          gs.last_event_type
+        FROM pull_requests pr
+        JOIN repositories r ON r.id = pr.repository_id
+        LEFT JOIN pr_governance_state gs
+          ON gs.pr_number = pr.pr_number
+         AND gs.repository_id = pr.repository_id
+        WHERE pr.pr_number = $1
+          AND LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2)
+        LIMIT 1
+        `,
+        input.number,
+        input.repo
+      );
+
+      const pr = prRows[0];
+      if (!pr) return null;
+
+      const reviews = await prisma.$queryRawUnsafe<Array<{
+        id: bigint;
+        reviewer: string;
+        review_state: string;
+        submitted_at: Date;
+        github_id: string | null;
+      }>>(
+        `
+        SELECT id, reviewer, review_state, submitted_at, github_id
+        FROM pr_reviews
+        WHERE pr_number = $1
+          AND repository_id = $2
+        ORDER BY submitted_at DESC
+        `,
+        pr.pr_number,
+        pr.repository_id
+      );
+
+      const events = await prisma.$queryRawUnsafe<Array<{
+        id: bigint;
+        event_type: string;
+        actor: string;
+        actor_role: string | null;
+        commit_sha: string | null;
+        created_at: Date;
+        body: string | null;
+        label: string | null;
+        review_state: string | null;
+        comment_id: string | null;
+        review_id: string | null;
+        html_url: string | null;
+        check_name: string | null;
+        check_status: string | null;
+        check_conclusion: string | null;
+        details_url: string | null;
+        unresolved: boolean | null;
+      }>>(
+        `
+        SELECT
+          e.id,
+          e.event_type,
+          e.actor,
+          e.actor_role,
+          e.commit_sha,
+          e.created_at,
+          e.metadata->>'body' AS body,
+          e.metadata->>'label' AS label,
+          e.metadata->>'review_state' AS review_state,
+          e.metadata->>'comment_id' AS comment_id,
+          e.metadata->>'review_id' AS review_id,
+          e.metadata->>'html_url' AS html_url,
+          COALESCE(e.metadata->>'check_name', e.metadata->>'name') AS check_name,
+          e.metadata->>'status' AS check_status,
+          e.metadata->>'conclusion' AS check_conclusion,
+          COALESCE(e.metadata->>'details_url', e.metadata->>'target_url') AS details_url,
+          CASE
+            WHEN LOWER(COALESCE(e.metadata->>'unresolved', '')) IN ('true', 'false')
+              THEN (e.metadata->>'unresolved')::boolean
+            WHEN LOWER(COALESCE(e.metadata->>'is_resolved', '')) IN ('true', 'false')
+              THEN NOT (e.metadata->>'is_resolved')::boolean
+            WHEN LOWER(COALESCE(e.metadata->>'resolved', '')) IN ('true', 'false')
+              THEN NOT (e.metadata->>'resolved')::boolean
+            ELSE NULL
+          END AS unresolved
+        FROM pr_events e
+        WHERE e.pr_number = $1
+          AND e.repository_id = $2
+        ORDER BY e.created_at DESC
+        `,
+        pr.pr_number,
+        pr.repository_id
+      );
+
+      const related = await prisma.$queryRawUnsafe<Array<{
+        eip_number: number;
+        title: string | null;
+        status: string | null;
+        category: string | null;
+        repo_short: string | null;
+      }>>(
+        `
+        SELECT
+          pre.eip_number,
+          e.title,
+          s.status,
+          s.category,
+          LOWER(SPLIT_PART(r2.name, '/', 2)) AS repo_short
+        FROM pull_request_eips pre
+        LEFT JOIN eips e ON e.eip_number = pre.eip_number
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r2 ON r2.id = s.repository_id
+        WHERE pre.pr_number = $1
+          AND pre.repository_id = $2
+        ORDER BY pre.eip_number ASC
+        `,
+        pr.pr_number,
+        pr.repository_id
+      );
+
+      const repoOwner = pr.repo_name || 'ethereum/EIPs';
+      const prUrl = `https://github.com/${repoOwner}/pull/${pr.pr_number}`;
+      const filesUrl = `${prUrl}/files`;
+      const commitsUrl = `${prUrl}/commits`;
+
+      const mapEventUrl = (e: {
+        html_url: string | null;
+        comment_id: string | null;
+        review_id: string | null;
+        event_type: string;
+      }) => {
+        if (e.html_url) return e.html_url;
+        if ((e.event_type === 'commented' || e.event_type === 'issue_comment') && e.comment_id) {
+          return `${prUrl}#issuecomment-${e.comment_id}`;
+        }
+        if (e.event_type === 'review_comment' && e.comment_id) {
+          return `${prUrl}#discussion_r${e.comment_id}`;
+        }
+        if (e.event_type === 'reviewed' && e.review_id) {
+          return `${prUrl}#pullrequestreview-${e.review_id}`;
+        }
+        return prUrl;
+      };
+
+      const conversationEventTypes = new Set(['commented', 'issue_comment', 'review_comment', 'reviewed']);
+      const conversationFromEvents = events
+        .filter((e) => conversationEventTypes.has(e.event_type))
+        .map((e) => ({
+          id: `event-${String(e.id)}`,
+          kind: e.event_type,
+          actor: e.actor,
+          actorRole: e.actor_role,
+          createdAt: e.created_at.toISOString(),
+          reviewState: e.review_state,
+          body: e.body,
+          url: mapEventUrl(e),
+          unresolved: e.unresolved,
+        }));
+
+      const conversationFromReviews = reviews.map((r) => ({
+        id: `review-${String(r.id)}`,
+        kind: 'reviewed',
+        actor: r.reviewer,
+        actorRole: 'REVIEWER',
+        createdAt: r.submitted_at.toISOString(),
+        reviewState: r.review_state,
+        body: null as string | null,
+        url: r.github_id ? `${prUrl}#pullrequestreview-${r.github_id}` : prUrl,
+        unresolved: null as boolean | null,
+      }));
+
+      const conversation = [...conversationFromEvents, ...conversationFromReviews]
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      const timeline = events.map((e) => ({
+        id: `timeline-${String(e.id)}`,
+        type: e.event_type,
+        actor: e.actor,
+        actorRole: e.actor_role,
+        createdAt: e.created_at.toISOString(),
+        summary: e.label
+          ? `${e.event_type.replace(/_/g, ' ')}: ${e.label}`
+          : e.review_state
+            ? `${e.event_type.replace(/_/g, ' ')} (${e.review_state})`
+            : e.event_type.replace(/_/g, ' '),
+        url: mapEventUrl(e),
+        commitSha: e.commit_sha,
+      }));
+
+      const checksRaw = events.filter((e) => e.check_name || e.check_status || e.check_conclusion);
+      const checks = checksRaw.map((e) => ({
+        id: `check-${String(e.id)}`,
+        name: e.check_name || 'Unnamed check',
+        status: (e.check_conclusion || e.check_status || 'unknown').toLowerCase(),
+        url: e.details_url || mapEventUrl(e),
+      }));
+      const failedChecks = checks.filter((c) => ['failure', 'failed', 'timed_out', 'cancelled', 'error'].includes(c.status));
+      const pendingChecks = checks.filter((c) => ['queued', 'in_progress', 'pending', 'requested', 'waiting'].includes(c.status));
+      const passedChecks = checks.filter((c) => ['success', 'passed', 'completed'].includes(c.status));
+
+      const approvals = reviews.filter((r) => r.review_state === 'APPROVED').length;
+      const changesRequested = reviews.filter((r) => r.review_state === 'CHANGES_REQUESTED').length;
+
+      const checklist = {
+        editorApprovalRequired: true,
+        editorApprovalMet: approvals > 0,
+        ciGreenRequired: checks.length > 0,
+        ciGreenMet: failedChecks.length === 0 && pendingChecks.length === 0,
+        requiredReviewsMet: approvals > 0 && changesRequested === 0,
+        templateComplianceMet: true,
+      };
+
+      const blockers: string[] = [];
+      if (failedChecks.length > 0) blockers.push(`Failing checks: ${failedChecks.slice(0, 2).map((c) => c.name).join(', ')}`);
+      if (pendingChecks.length > 0) blockers.push(`Checks still running: ${pendingChecks.slice(0, 2).map((c) => c.name).join(', ')}`);
+      if (changesRequested > 0) blockers.push(`${changesRequested} review(s) requested changes`);
+      if (approvals === 0) blockers.push('Missing reviewer/editor approval');
+      if ((pr.state || '').toLowerCase() !== 'open') blockers.push(`PR is ${pr.state?.toLowerCase() || 'closed'}`);
+
+      const nextActions: string[] = [];
+      if (failedChecks.length > 0) nextActions.push('Fix failing CI checks');
+      if (changesRequested > 0) nextActions.push('Address requested changes and request re-review');
+      if (approvals === 0) nextActions.push('Get at least one approval from reviewer/editor');
+      if (nextActions.length === 0) nextActions.push('Ready for merge from governance perspective');
+
+      const relatedProposals = related.map((r) => {
+        const kind = r.category === 'ERC' ? 'ERC' : (r.repo_short === 'rips' ? 'RIP' : 'EIP');
+        return {
+          kind,
+          number: r.eip_number,
+          title: r.title,
+          status: r.status,
+          category: r.category,
+          repo: r.repo_short || (kind === 'RIP' ? 'rips' : kind === 'ERC' ? 'ercs' : 'eips'),
+          url: kind === 'RIP' ? `/rip/${r.eip_number}` : kind === 'ERC' ? `/erc/${r.eip_number}` : `/eip/${r.eip_number}`,
+        };
+      });
+
+      return {
+        pr: {
+          number: pr.pr_number,
+          repositoryId: pr.repository_id,
+          repo: pr.repo_short,
+          repoName: pr.repo_name,
+          title: pr.title,
+          author: pr.author,
+          state: pr.state,
+          createdAt: pr.created_at?.toISOString() ?? null,
+          updatedAt: pr.updated_at?.toISOString() ?? null,
+          mergedAt: pr.merged_at?.toISOString() ?? null,
+          closedAt: pr.closed_at?.toISOString() ?? null,
+          commits: pr.num_commits ?? 0,
+          files: pr.num_files ?? 0,
+          comments: pr.num_comments ?? 0,
+          reviews: pr.num_reviews ?? 0,
+          labels: pr.labels ?? [],
+          body: pr.body ?? null,
+          githubUrl: prUrl,
+          filesUrl,
+          commitsUrl,
+        },
+        governance: {
+          stage: pr.governance_state || 'NO_STATE',
+          waitingSince: pr.waiting_since?.toISOString() ?? null,
+          lastActor: pr.last_actor,
+          lastEventType: pr.last_event_type,
+          checklist,
+          blockers,
+          nextActions,
+        },
+        checks: {
+          total: checks.length,
+          passed: passedChecks.length,
+          failed: failedChecks.length,
+          pending: pendingChecks.length,
+          failedChecks: failedChecks,
+          items: checks,
+        },
+        relatedProposals,
+        conversation,
+        timeline,
+      };
+    }),
+
+  // Issue detail page payload (legacy parity route support)
+  getIssueDetail: optionalAuthProcedure
+    .input(z.object({
+      repo: z.enum(['eips', 'ercs', 'rips']),
+      number: z.number().int().positive(),
+    }))
+    .handler(async ({ input, context }) => {
+      const issueRows = await prisma.$queryRawUnsafe<Array<{
+        issue_number: number;
+        repository_id: number;
+        repo_name: string;
+        repo_short: string;
+        title: string | null;
+        author: string | null;
+        state: string | null;
+        created_at: Date | null;
+        updated_at: Date | null;
+        closed_at: Date | null;
+        labels: string[] | null;
+        num_comments: number | null;
+        body: string | null;
+      }>>(
+        `
+        SELECT
+          i.issue_number,
+          i.repository_id,
+          r.name AS repo_name,
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+          i.title,
+          i.author,
+          i.state,
+          i.created_at,
+          i.updated_at,
+          i.closed_at,
+          i.labels,
+          i.num_comments,
+          i.body
+        FROM issues i
+        JOIN repositories r ON r.id = i.repository_id
+        WHERE i.issue_number = $1
+          AND LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2)
+        LIMIT 1
+        `,
+        input.number,
+        input.repo
+      );
+
+      const issue = issueRows[0];
+      if (!issue) return null;
+
+      const events = await prisma.$queryRawUnsafe<Array<{
+        id: bigint;
+        event_type: string;
+        actor: string;
+        actor_role: string | null;
+        created_at: Date;
+        github_id: string | null;
+        body: string | null;
+        label: string | null;
+        html_url: string | null;
+        comment_id: string | null;
+        review_id: string | null;
+        milestone: string | null;
+        assignee: string | null;
+        referenced_url: string | null;
+        related_pr_number: number | null;
+      }>>(
+        `
+        SELECT
+          e.id,
+          e.event_type,
+          e.actor,
+          e.actor_role,
+          e.created_at,
+          e.github_id,
+          e.metadata->>'body' AS body,
+          COALESCE(e.metadata->>'label', e.metadata->>'name') AS label,
+          e.metadata->>'html_url' AS html_url,
+          e.metadata->>'comment_id' AS comment_id,
+          e.metadata->>'review_id' AS review_id,
+          COALESCE(e.metadata->>'milestone', e.metadata->>'milestone_title') AS milestone,
+          COALESCE(e.metadata->>'assignee', e.metadata->>'assignee_login') AS assignee,
+          COALESCE(e.metadata->>'referenced_url', e.metadata->>'source_url', e.metadata->>'target_url') AS referenced_url,
+          CASE
+            WHEN COALESCE(e.metadata->>'pr_number', '') ~ '^[0-9]+$' THEN (e.metadata->>'pr_number')::int
+            ELSE NULL
+          END AS related_pr_number
+        FROM issue_events e
+        WHERE e.issue_number = $1
+          AND e.repository_id = $2
+        ORDER BY e.created_at DESC
+        `,
+        issue.issue_number,
+        issue.repository_id
+      );
+
+      const issueEipLinks = await prisma.$queryRawUnsafe<Array<{
+        eip_number: number;
+        title: string | null;
+        status: string | null;
+        category: string | null;
+        repo_short: string | null;
+      }>>(
+        `
+        SELECT
+          ie.eip_number,
+          e.title,
+          s.status,
+          s.category,
+          LOWER(SPLIT_PART(r2.name, '/', 2)) AS repo_short
+        FROM issue_eips ie
+        LEFT JOIN eips e ON e.eip_number = ie.eip_number
+        LEFT JOIN LATERAL (
+          SELECT s.status, s.category, s.repository_id
+          FROM eip_snapshots s
+          WHERE s.eip_id = e.id
+          ORDER BY s.updated_at DESC NULLS LAST
+          LIMIT 1
+        ) s ON TRUE
+        LEFT JOIN repositories r2 ON r2.id = s.repository_id
+        WHERE ie.issue_number = $1
+          AND ie.repository_id = $2
+        ORDER BY ie.eip_number ASC
+        `,
+        issue.issue_number,
+        issue.repository_id
+      );
+
+      const issueUrl = `https://github.com/${issue.repo_name}/issues/${issue.issue_number}`;
+
+      const mapEventUrl = (e: {
+        html_url: string | null;
+        comment_id: string | null;
+        review_id: string | null;
+        event_type: string;
+      }) => {
+        if (e.html_url) return e.html_url;
+        if ((e.event_type === 'commented' || e.event_type === 'issue_comment') && e.comment_id) {
+          return `${issueUrl}#issuecomment-${e.comment_id}`;
+        }
+        if (e.event_type === 'review_comment' && e.comment_id) {
+          return `${issueUrl}#discussion_r${e.comment_id}`;
+        }
+        if (e.event_type === 'reviewed' && e.review_id) {
+          return `${issueUrl}#pullrequestreview-${e.review_id}`;
+        }
+        return issueUrl;
+      };
+
+      const textPool = [
+        issue.title || '',
+        issue.body || '',
+        ...events.map((e) => e.body || ''),
+      ].join('\n');
+
+      const proposalRegex = /\b(EIP|ERC|RIP)[-\s#:]?(\d{1,6})\b/gi;
+      const proposalFromText = new Map<string, { kind: 'EIP' | 'ERC' | 'RIP'; number: number }>();
+      let proposalMatch: RegExpExecArray | null;
+      while ((proposalMatch = proposalRegex.exec(textPool)) !== null) {
+        const kind = proposalMatch[1].toUpperCase() as 'EIP' | 'ERC' | 'RIP';
+        const number = Number(proposalMatch[2]);
+        if (!Number.isFinite(number)) continue;
+        proposalFromText.set(`${kind}-${number}`, { kind, number });
+      }
+
+      const linkedPRNumbers = new Set<number>();
+      const pullUrlRegex = /\/pull\/(\d+)\b/gi;
+      let pullMatch: RegExpExecArray | null;
+      while ((pullMatch = pullUrlRegex.exec(textPool)) !== null) {
+        const n = Number(pullMatch[1]);
+        if (Number.isFinite(n)) linkedPRNumbers.add(n);
+      }
+      for (const e of events) {
+        if (e.related_pr_number != null) linkedPRNumbers.add(e.related_pr_number);
+        if (e.referenced_url) {
+          let m: RegExpExecArray | null;
+          while ((m = pullUrlRegex.exec(e.referenced_url)) !== null) {
+            const n = Number(m[1]);
+            if (Number.isFinite(n)) linkedPRNumbers.add(n);
+          }
+        }
+      }
+
+      const linkedPRArray = Array.from(linkedPRNumbers).sort((a, b) => a - b);
+      const linkedPRRows = linkedPRArray.length
+        ? await prisma.$queryRawUnsafe<Array<{
+            pr_number: number;
+            title: string | null;
+            state: string | null;
+            updated_at: Date | null;
+            merged_at: Date | null;
+          }>>(
+            `
+            SELECT pr.pr_number, pr.title, pr.state, pr.updated_at, pr.merged_at
+            FROM pull_requests pr
+            WHERE pr.repository_id = $1
+              AND pr.pr_number = ANY($2::int[])
+            ORDER BY pr.pr_number DESC
+            `,
+            issue.repository_id,
+            linkedPRArray
+          )
+        : [];
+
+      const mergedLinkedPR = linkedPRRows.find((r) => (r.state || '').toLowerCase() === 'merged' || r.merged_at != null);
+
+      const tableProposalMap = new Map<string, {
+        kind: 'EIP' | 'ERC' | 'RIP';
+        number: number;
+        title: string | null;
+        status: string | null;
+        category: string | null;
+        repo: string;
+        upgrades: string[];
+      }>();
+      for (const row of issueEipLinks) {
+        const inferredKind = row.category === 'ERC' ? 'ERC' : (row.repo_short === 'rips' ? 'RIP' : 'EIP');
+        const repo = row.repo_short || (inferredKind === 'RIP' ? 'rips' : inferredKind === 'ERC' ? 'ercs' : 'eips');
+        tableProposalMap.set(`${inferredKind}-${row.eip_number}`, {
+          kind: inferredKind,
+          number: row.eip_number,
+          title: row.title,
+          status: row.status,
+          category: row.category,
+          repo,
+          upgrades: [],
+        });
+      }
+
+      for (const value of proposalFromText.values()) {
+        const k = `${value.kind}-${value.number}`;
+        if (!tableProposalMap.has(k)) {
+          tableProposalMap.set(k, {
+            kind: value.kind,
+            number: value.number,
+            title: null,
+            status: null,
+            category: null,
+            repo: value.kind === 'RIP' ? 'rips' : value.kind === 'ERC' ? 'ercs' : 'eips',
+            upgrades: [],
+          });
+        }
+      }
+
+      const allEipNumbers = Array.from(new Set(Array.from(tableProposalMap.values()).map((v) => v.number)));
+      if (allEipNumbers.length > 0) {
+        const upgradeRows = await prisma.$queryRawUnsafe<Array<{
+          eip_number: number;
+          slug: string;
+          name: string | null;
+        }>>(
+          `
+          SELECT
+            ucc.eip_number,
+            u.slug,
+            u.name
+          FROM upgrade_composition_current ucc
+          JOIN upgrades u ON u.id = ucc.upgrade_id
+          WHERE ucc.eip_number = ANY($1::int[])
+          `,
+          allEipNumbers
+        );
+        for (const row of upgradeRows) {
+          for (const entry of tableProposalMap.values()) {
+            if (entry.number === row.eip_number) {
+              const label = row.name || row.slug;
+              if (!entry.upgrades.includes(label)) entry.upgrades.push(label);
+            }
+          }
+        }
+      }
+
+      const relatedProposals = Array.from(tableProposalMap.values())
+        .sort((a, b) => a.number - b.number)
+        .map((p) => ({
+          kind: p.kind,
+          number: p.number,
+          title: p.title,
+          status: p.status,
+          category: p.category,
+          repo: p.repo,
+          upgrades: p.upgrades,
+          url: p.kind === 'RIP' ? `/rip/${p.number}` : p.kind === 'ERC' ? `/erc/${p.number}` : `/eip/${p.number}`,
+        }));
+
+      const labelHistory = events
+        .filter((e) => (e.event_type === 'labeled' || e.event_type === 'unlabeled') && !!e.label)
+        .map((e) => ({
+          id: `label-${String(e.id)}`,
+          action: e.event_type === 'labeled' ? 'added' : 'removed',
+          label: e.label || 'unknown',
+          actor: e.actor,
+          createdAt: e.created_at.toISOString(),
+        }))
+        .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+
+      const assignees = Array.from(new Set(
+        events
+          .filter((e) => (e.event_type === 'assigned' || e.event_type === 'unassigned') && !!e.assignee)
+          .map((e) => e.assignee!)
+      ));
+
+      const milestoneEvent = events.find((e) =>
+        (e.event_type === 'milestoned' || e.event_type === 'demilestoned') && e.milestone
+      );
+      const currentMilestone = milestoneEvent?.milestone || null;
+
+      let viewerHandle: string | null = null;
+      if (context.user?.id) {
+        const viewer = await prisma.user.findUnique({
+          where: { id: context.user.id },
+          select: { name: true },
+        });
+        if (viewer?.name && !viewer.name.includes(' ')) viewerHandle = viewer.name.toLowerCase();
+      }
+
+      const mentionRegex = /@([a-z0-9_-]+)/gi;
+      const conversation = events
+        .filter((e) => ['commented', 'issue_comment', 'edited'].includes(e.event_type) || !!e.body)
+        .map((e) => {
+          const mentions = new Set<string>();
+          if (e.body) {
+            let m: RegExpExecArray | null;
+            while ((m = mentionRegex.exec(e.body)) !== null) {
+              mentions.add(m[1].toLowerCase());
+            }
+          }
+          return {
+            id: `event-${String(e.id)}`,
+            kind: e.event_type,
+            actor: e.actor,
+            actorRole: e.actor_role,
+            createdAt: e.created_at.toISOString(),
+            body: e.body,
+            url: mapEventUrl(e),
+            mentions: Array.from(mentions),
+            isEditorLike: (e.actor_role || '').toLowerCase().includes('editor') || (e.actor_role || '').toLowerCase().includes('reviewer'),
+            label: e.label,
+          };
+        })
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+      const timeline = events.map((e) => ({
+        id: `timeline-${String(e.id)}`,
+        type: e.event_type,
+        actor: e.actor,
+        actorRole: e.actor_role,
+        createdAt: e.created_at.toISOString(),
+        summary: e.label
+          ? `${e.event_type.replace(/_/g, ' ')}: ${e.label}`
+          : e.milestone
+            ? `${e.event_type.replace(/_/g, ' ')}: ${e.milestone}`
+            : e.assignee
+              ? `${e.event_type.replace(/_/g, ' ')}: ${e.assignee}`
+              : e.event_type.replace(/_/g, ' '),
+        url: mapEventUrl(e),
+      }));
+
+      const normalizedLabels = (issue.labels || []).map((l) => l.toLowerCase());
+      let impactType: 'INFORMATIONAL' | 'DISCUSSION' | 'BLOCKING' | 'DECISION' | 'EDITORIAL' = 'INFORMATIONAL';
+      const impactSignals: string[] = [];
+
+      if (normalizedLabels.some((l) => l.includes('last call'))) {
+        impactType = 'DECISION';
+        impactSignals.push('Last Call label present');
+      }
+      if (normalizedLabels.some((l) => l.includes('process') || l.includes('editor'))) {
+        impactType = impactType === 'DECISION' ? 'DECISION' : 'EDITORIAL';
+        impactSignals.push('Process/editor label detected');
+      }
+      if (normalizedLabels.some((l) => l.includes('block') || l.includes('objection'))) {
+        impactType = 'BLOCKING';
+        impactSignals.push('Blocking/objection label detected');
+      }
+      if (mergedLinkedPR) {
+        impactType = 'DECISION';
+        impactSignals.push(`Resolved via PR #${mergedLinkedPR.pr_number}`);
+      }
+      if (impactType === 'INFORMATIONAL' && ((issue.num_comments || 0) > 10 || conversation.length > 10)) {
+        impactType = 'DISCUSSION';
+        impactSignals.push('High discussion activity');
+      }
+      if (impactSignals.length === 0) impactSignals.push('No strong governance signal detected');
+
+      const governanceImpactSummary =
+        impactType === 'BLOCKING'
+          ? 'Issue likely blocks progress until concerns are resolved.'
+          : impactType === 'DECISION'
+            ? 'Issue likely influenced or finalized a governance decision.'
+            : impactType === 'EDITORIAL'
+              ? 'Issue appears to be editorial/process clarification.'
+              : impactType === 'DISCUSSION'
+                ? 'Issue appears to be ongoing governance discussion.'
+                : 'Issue appears informational with limited governance impact.';
+
+      const linkedPRs = linkedPRRows.map((r) => ({
+        number: r.pr_number,
+        title: r.title,
+        state: r.state,
+        updatedAt: r.updated_at?.toISOString() ?? null,
+        relationship: mergedLinkedPR?.pr_number === r.pr_number ? 'Resolved via' : 'Referenced in',
+        url: `https://github.com/${issue.repo_name}/pull/${r.pr_number}`,
+      }));
+
+      return {
+        issue: {
+          number: issue.issue_number,
+          repositoryId: issue.repository_id,
+          repo: issue.repo_short,
+          repoName: issue.repo_name,
+          title: issue.title,
+          author: issue.author,
+          state: issue.state,
+          createdAt: issue.created_at?.toISOString() ?? null,
+          updatedAt: issue.updated_at?.toISOString() ?? null,
+          closedAt: issue.closed_at?.toISOString() ?? null,
+          labels: issue.labels ?? [],
+          comments: issue.num_comments ?? 0,
+          body: issue.body ?? '',
+          githubUrl: issueUrl,
+        },
+        metadata: {
+          assignees,
+          milestone: currentMilestone,
+        },
+        viewer: {
+          handle: viewerHandle,
+        },
+        governanceImpact: {
+          type: impactType,
+          summary: governanceImpactSummary,
+          signals: impactSignals,
+        },
+        labelHistory,
+        relatedProposals,
+        linkedPRs,
+        conversation,
+        timeline,
+      };
+    }),
+
   // ——— Contributors Analytics ———
   getContributorKPIs: optionalAuthProcedure
     .input(z.object({}))

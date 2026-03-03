@@ -21,7 +21,6 @@ const STATIC_PUBLIC_PATHS = [
   "/insights",
   "/insights/editorial-commentary",
   "/insights/governance-and-process",
-  "/insights/upgrade-insights",
   "/insights/year-month-analysis",
   "/resources",
   "/resources/blogs",

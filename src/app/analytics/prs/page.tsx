@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import {
@@ -659,6 +660,7 @@ export default function PRsAnalyticsPage() {
               {openPRs.map((pr) => {
                 const [org, repoName] = pr.repo.split("/");
                 const url = `https://github.com/${org}/${repoName}/pull/${pr.prNumber}`;
+                const repoShort = repoName.toLowerCase();
                 return (
                   <tr
                     key={`${pr.repo}-${pr.prNumber}`}
@@ -668,10 +670,23 @@ export default function PRsAnalyticsPage() {
                     )}
                   >
                     <td className="py-2 pr-4">
-                      <a href={url} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-primary hover:text-primary font-medium">
-                        #{pr.prNumber} <ArrowUpRight className="h-3 w-3" />
-                      </a>
+                      <div className="inline-flex items-center gap-2">
+                        <Link
+                          href={`/pr/${repoShort}/${pr.prNumber}`}
+                          className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
+                        >
+                          #{pr.prNumber}
+                        </Link>
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                          title="Open on GitHub"
+                        >
+                          <ArrowUpRight className="h-3 w-3" />
+                        </a>
+                      </div>
                     </td>
                     <td className="py-2 pr-4 text-foreground/90 max-w-xs truncate">
                       {pr.title || <span className="text-muted-foreground">No title</span>}

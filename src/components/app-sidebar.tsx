@@ -173,7 +173,6 @@ const sidebarSections: SidebarSection[] = [
           { title: "Overview", href: "/insights" },
           { title: "Year-Month Analysis", href: "/insights/year-month-analysis" },
           { title: "Governance & Process", href: "/insights/governance-and-process" },
-          { title: "Upgrade Insights", href: "/insights/upgrade-insights" },
           { title: "Editorial Commentary", href: "/insights/editorial-commentary" },
         ],
       },

@@ -995,36 +995,42 @@ function SearchPageContent() {
                         <ul className="space-y-2">
                           {issueResults.map((r) => {
                             const repoName = r.repo.split("/")[1] || r.repo;
+                            const repoShortRaw = (r.repo.split("/")[1] || "").toLowerCase();
+                            const issueRepo = repoShortRaw === "ercs" ? "ercs" : repoShortRaw === "rips" ? "rips" : "eips";
+                            const internalIssueUrl = `/issue/${issueRepo}/${r.issueNumber}`;
                             const issueUrl = `https://github.com/${r.repo}/issues/${r.issueNumber}`;
                             return (
                               <li key={`${r.repo}-${r.issueNumber}`}>
-                                <a
-                                  href={issueUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block rounded-xl border border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-950/80 p-3 hover:border-cyan-500/50 hover:bg-slate-100 dark:hover:bg-slate-900/80 transition-colors"
-                                >
+                                <div className="rounded-xl border border-slate-200 dark:border-slate-800/60 bg-slate-50 dark:bg-slate-950/80 p-3 hover:border-cyan-500/50 hover:bg-slate-100 dark:hover:bg-slate-900/80 transition-colors">
                                   <div className="flex flex-wrap items-center justify-between gap-2">
                                     <div className="flex items-center gap-2">
-                                      <span className="font-mono text-xs font-semibold text-cyan-600 dark:text-cyan-300 flex items-center gap-1">
+                                      <Link href={internalIssueUrl} className="font-mono text-xs font-semibold text-cyan-600 dark:text-cyan-300 hover:underline">
                                         #{r.issueNumber}
-                                        <ExternalLink className="h-3 w-3" />
+                                      </Link>
+                                      <span
+                                        className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
+                                          r.state === "open"
+                                            ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
+                                            : "bg-slate-500/20 text-slate-300 border-slate-400/30"
+                                        }`}
+                                      >
+                                        {r.state || "Closed"}
                                       </span>
-                                    <span
-                                      className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wide ${
-                                        r.state === "open"
-                                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-400/30"
-                                          : "bg-slate-500/20 text-slate-300 border-slate-400/30"
-                                      }`}
-                                    >
-                                      {r.state || "Closed"}
-                                    </span>
                                     </div>
+                                    <a
+                                      href={issueUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-[10px] text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-300"
+                                      aria-label={`Open issue #${r.issueNumber} on GitHub`}
+                                    >
+                                      GitHub <ExternalLink className="h-3 w-3" />
+                                    </a>
                                     <span className="text-[10px] text-slate-500">{repoName}</span>
                                   </div>
-                                  <p className="mt-1 text-sm font-medium text-slate-800 dark:text-slate-100">
+                                  <Link href={internalIssueUrl} className="mt-1 block text-sm font-medium text-slate-800 hover:text-cyan-700 dark:text-slate-100 dark:hover:text-cyan-300">
                                     {r.title || "Untitled issue"}
-                                  </p>
+                                  </Link>
                                   <div className="mt-1.5 flex flex-wrap items-center gap-2">
                                     {r.author && (
                                       <p className="text-xs text-slate-500">
@@ -1049,7 +1055,7 @@ function SearchPageContent() {
                                       </div>
                                     )}
                                   </div>
-                                </a>
+                                </div>
                               </li>
                             );
                           })}
