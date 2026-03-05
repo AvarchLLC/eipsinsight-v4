@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, Clock, MessageSquare, AlertCircle } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 import {
   ChartContainer,
   ChartTooltip,
@@ -88,6 +89,7 @@ export default function ReviewersAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   
   const [leaderboard, setLeaderboard] = useState<ReviewerLeaderboardRow[]>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
@@ -129,6 +131,7 @@ export default function ReviewersAnalyticsPage() {
         setMonthlyTrend(trendData);
         setCyclesData(cyclesDataRes);
         setRepoDistribution(repoData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch reviewers analytics:", error);
         setError("Failed to load reviewer analytics. Please try again.");
@@ -275,7 +278,10 @@ export default function ReviewersAnalyticsPage() {
 
       {/* Reviewer Leaderboard */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Reviewer Leaderboard</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground">Reviewer Leaderboard</h2>
+          <LastUpdated timestamp={dataUpdatedAt} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

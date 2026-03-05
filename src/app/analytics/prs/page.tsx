@@ -35,6 +35,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { cn } from "@/lib/utils";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 // ─── Types ────────────────────────────────────────────────────────
 
@@ -190,6 +191,7 @@ export default function PRsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
 
   const [monthlySeries, setMonthlySeries] = useState<PRMonthlyPoint[]>([]);
   const [heroMonth, setHeroMonth] = useState<PRMonthHero | null>(null);
@@ -248,6 +250,7 @@ export default function PRsAnalyticsPage() {
 
         const openExport = await client.analytics.getPROpenExport({ repo: repoParam });
         setOpenPRs(openExport.slice(0, 50));
+        setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Failed to fetch PR analytics:", err);
         setError("Failed to load PR analytics. Please try again.");
@@ -417,7 +420,7 @@ export default function PRsAnalyticsPage() {
       </div>
 
       {/* ────── Monthly Activity (negative chart) ────── */}
-      <Section title="Monthly PR Throughput" icon={<BarChart3 className="h-4 w-4" />}>
+      <Section title="Monthly PR Throughput" icon={<BarChart3 className="h-4 w-4" />} action={<LastUpdated timestamp={dataUpdatedAt} />}>
         {monthlyChartData.length === 0 ? (
           <p className="text-sm text-muted-foreground">No monthly data available.</p>
         ) : (

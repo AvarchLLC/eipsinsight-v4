@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, TrendingUp, GitPullRequest, FileText, AlertCircle } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 import {
   ChartContainer,
   ChartTooltip,
@@ -86,6 +87,7 @@ export default function AuthorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   
   const [kpis, setKPIs] = useState<AuthorKPIs | null>(null);
   const [activityTimeline, setActivityTimeline] = useState<ActivityTimelinePoint[]>([]);
@@ -128,6 +130,7 @@ export default function AuthorsAnalyticsPage() {
         setActivityTimeline(timelineData);
         setSuccessRates(successData);
         setTopAuthors(topData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch authors analytics:", error);
         setError("Failed to load author analytics. Please try again.");
@@ -365,7 +368,10 @@ export default function AuthorsAnalyticsPage() {
 
       {/* Top Authors Table */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Top Authors</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground">Top Authors</h2>
+          <LastUpdated timestamp={dataUpdatedAt} />
+        </div>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

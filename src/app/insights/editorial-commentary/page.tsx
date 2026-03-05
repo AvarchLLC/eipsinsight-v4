@@ -18,6 +18,7 @@ import {
 import { client } from "@/lib/orpc";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import { cn } from "@/lib/utils";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#22d3ee",
@@ -95,6 +96,7 @@ export default function EditorialCommentaryPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [timeline, setTimeline] = useState<TimelineData | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
 
   const handleSearch = async () => {
     const num = parseInt(query.replace(/[^0-9]/g, ""), 10);
@@ -111,6 +113,7 @@ export default function EditorialCommentaryPage() {
         setError(`No indexed lifecycle data found for EIP-${num}.`);
       } else {
         setTimeline(result as TimelineData);
+        setDataUpdatedAt(new Date());
       }
     } catch (e) {
       console.error(e);
@@ -301,11 +304,18 @@ export default function EditorialCommentaryPage() {
             <section className="rounded-xl border border-border/60 bg-card/60 p-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div>
-                  <h2 className="dec-title persona-title text-2xl font-semibold tracking-tight text-foreground">
-                    EIP-{timeline.eipNumber}
-                  </h2>
-                  <p className="mt-1 text-base text-foreground/90">{timeline.title ?? "Untitled"}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">Author: {timeline.author ?? "Unknown"}</p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <h2 className="dec-title persona-title text-2xl font-semibold tracking-tight text-foreground">
+                        EIP-{timeline.eipNumber}
+                      </h2>
+                      <p className="mt-1 text-base text-foreground/90">{timeline.title ?? "Untitled"}</p>
+                      <p className="mt-1 text-sm text-muted-foreground">Author: {timeline.author ?? "Unknown"}</p>
+                    </div>
+                    <div className="ml-auto">
+                      <LastUpdated timestamp={dataUpdatedAt} />
+                    </div>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {timeline.currentStatus && (

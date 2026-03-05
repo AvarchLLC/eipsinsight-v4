@@ -18,6 +18,7 @@ import {
 } from "recharts";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 // ─── THEME COLORS (matches governance-over-time.tsx) ─────────────
 
@@ -134,6 +135,7 @@ export default function EIPsAnalyticsPage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   const [kpis, setKpis] = useState<{ total?: number } | null>(null);
   const [ripKpis, setRipKpis] = useState<{ total?: number } | null>(null);
   const [crossTab, setCrossTab] = useState<Array<{ category: string; status: string; repo: string; count: number }>>([]);
@@ -184,6 +186,7 @@ export default function EIPsAnalyticsPage() {
         setTransitions(trRes); setThroughput(tpRes); setFunnel(fnRes);
         setVelocity(velRes); setRecentChanges(rcRes);
         setCreationTrends(ctTrends); setRipCreationTrends(ripTrends); setMonthlyDelta(mdRes);
+        setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Analytics fetch error:", err);
         setError("Failed to load EIP analytics. Please try again.");
@@ -447,7 +450,7 @@ export default function EIPsAnalyticsPage() {
 
       {/* ────── 2. COMPOSITION CHARTS (side by side) ────── */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Section title="Category Composition" icon={<Layers className="h-4 w-4" />}>
+        <Section title="Category Composition" icon={<Layers className="h-4 w-4" />} action={<LastUpdated timestamp={dataUpdatedAt} />}>
           <div className="flex flex-col items-center gap-4 md:flex-row">
             <ChartContainer config={{ value: { label: "Count" } }} className="h-[260px] w-full max-w-[300px]">
               <PieChart>
@@ -470,7 +473,7 @@ export default function EIPsAnalyticsPage() {
           </div>
         </Section>
 
-        <Section title="Status Composition" icon={<Activity className="h-4 w-4" />}>
+        <Section title="Status Composition" icon={<Activity className="h-4 w-4" />} action={<LastUpdated timestamp={dataUpdatedAt} />}>
           <div className="flex flex-col items-center gap-4 md:flex-row">
             <ChartContainer config={{ value: { label: "Count" } }} className="h-[260px] w-full max-w-[300px]">
               <PieChart>
@@ -495,7 +498,7 @@ export default function EIPsAnalyticsPage() {
       </div>
 
       {/* ────── 4. STATUS TRANSITION FLOW ────── */}
-      <Section title="Status Transition Flow" icon={<ArrowRight className="h-4 w-4" />}>
+      <Section title="Status Transition Flow" icon={<ArrowRight className="h-4 w-4" />} action={<LastUpdated timestamp={dataUpdatedAt} />}>
         {transitionFlows.length === 0 ? (
           <p className="text-sm text-muted-foreground">No transition data available.</p>
         ) : (

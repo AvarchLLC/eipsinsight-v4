@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#64748b",
@@ -56,6 +57,7 @@ function DrilldownPageContent() {
   const pageSize = 8;
 
   const [loading, setLoading] = useState(true);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [data, setData] = useState<Awaited<ReturnType<typeof client.insights.getMonthlyDrilldown>> | null>(null);
   const [editors, setEditors] = useState<Array<{ editor: string; reviews: number; prsTouched: number; comments: number }>>([]);
@@ -92,6 +94,7 @@ function DrilldownPageContent() {
 
         setData(drilldown);
         setEditors(editorRows);
+        setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Monthly insight load failed", err);
       } finally {
@@ -427,6 +430,9 @@ function DrilldownPageContent() {
             </div>
           ) : (
             <>
+              <div className="flex justify-end mb-2">
+                <LastUpdated timestamp={dataUpdatedAt} />
+              </div>
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
                 <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">

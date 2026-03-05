@@ -22,6 +22,7 @@ import {
   Legend,
   Cell,
 } from "recharts";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 interface EditorLeaderboardRow {
   actor: string;
@@ -99,6 +100,7 @@ export default function EditorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   
   const [leaderboard, setLeaderboard] = useState<EditorLeaderboardRow[]>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
@@ -180,6 +182,7 @@ export default function EditorsAnalyticsPage() {
         setMonthlyTrend(trendData);
         setCategoryCoverage(categoryData);
         setRepoDistribution(repoData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch editors analytics:", error);
         setError("Failed to load editor analytics. Please try again.");
@@ -344,17 +347,20 @@ export default function EditorsAnalyticsPage() {
       {/* Editor Leaderboard */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-foreground">
-            Editor Leaderboard
-            {timeRange === "this_month" && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">
-                — {new Date().toLocaleString('en', { month: 'long', year: 'numeric' })}
-              </span>
-            )}
-            {timeRange === "all" && (
-              <span className="ml-2 text-sm font-normal text-muted-foreground">— All-Time Contributions</span>
-            )}
-          </h2>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-xl font-semibold text-foreground">
+              Editor Leaderboard
+              {timeRange === "this_month" && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">
+                  — {new Date().toLocaleString('en', { month: 'long', year: 'numeric' })}
+                </span>
+              )}
+              {timeRange === "all" && (
+                <span className="ml-2 text-sm font-normal text-muted-foreground">— All-Time Contributions</span>
+              )}
+            </h2>
+            <LastUpdated timestamp={dataUpdatedAt} />
+          </div>
           <button
             onClick={downloadLeaderboardCSV}
             disabled={exporting || leaderboard.length === 0 || !isPaidMember}

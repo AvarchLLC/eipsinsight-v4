@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
 import {
   ChartContainer,
   ChartTooltip,
@@ -104,6 +105,7 @@ export default function ContributorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   const [sortBy, setSortBy] = useState<'total' | 'reviews' | 'status_changes' | 'prs_authored' | 'prs_reviewed'>('total');
   
   const [kpis, setKPIs] = useState<ContributorKPIs | null>(null);
@@ -149,6 +151,7 @@ export default function ContributorsAnalyticsPage() {
         setActivityByRepo(repoData);
         setRankings(rankingsData);
         setLiveFeed(feedData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch contributors analytics:", error);
         setError("Failed to load contributor analytics. Please try again.");
@@ -369,7 +372,10 @@ export default function ContributorsAnalyticsPage() {
       {/* Contributor Rankings */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-foreground">Contributor Rankings</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground">Contributor Rankings</h2>
+            <LastUpdated timestamp={dataUpdatedAt} />
+          </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
