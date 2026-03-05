@@ -12,20 +12,20 @@ interface ViewToggleProps {
 
 export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
   return (
-    <div className="flex items-center gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40">
+    <div className="flex items-center gap-1 rounded-lg border border-border bg-card/60 p-1">
       <button
         onClick={() => onViewChange('list')}
         className={cn(
           "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
           view === 'list'
-            ? "text-slate-900 dark:text-white"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
+            ? "text-foreground"
+            : "text-muted-foreground hover:text-foreground"
         )}
       >
         {view === 'list' && (
           <motion.div
             layoutId="view-toggle-bg"
-            className="absolute inset-0 rounded-md bg-cyan-500/20 border border-cyan-400/30"
+            className="absolute inset-0 rounded-md border border-primary/30 bg-primary/10"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
         )}
@@ -37,14 +37,14 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
         className={cn(
           "relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all",
           view === 'grid'
-            ? "text-slate-900 dark:text-white"
-            : "text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-300"
+            ? "text-foreground"
+            : "text-muted-foreground hover:text-foreground"
         )}
       >
         {view === 'grid' && (
           <motion.div
             layoutId="view-toggle-bg"
-            className="absolute inset-0 rounded-md bg-cyan-500/20 border border-cyan-400/30"
+            className="absolute inset-0 rounded-md border border-primary/30 bg-primary/10"
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
           />
         )}

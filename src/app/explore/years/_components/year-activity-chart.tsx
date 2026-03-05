@@ -1,17 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import ReactECharts from 'echarts-for-react';
 import { motion } from 'motion/react';
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
-import { Download } from 'lucide-react';
+import { Download, Info, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
 
@@ -35,8 +27,94 @@ function escapeCSV(val: string): string {
   return val;
 }
 
+function getPeak(data: MonthlyData[], key: keyof MonthlyData): MonthlyData | null {
+  if (data.length === 0) return null;
+  return data.reduce((peak, item) => ((item[key] as number) > (peak[key] as number) ? item : peak), data[0]);
+}
+
 export function YearActivityChart({ data, year, loading }: YearActivityChartProps) {
   const [downloading, setDownloading] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
+
+  const peakMonth = useMemo(() => getPeak(data, 'eipsTouched'), [data]);
+  const peakStatusMonth = useMemo(() => getPeak(data, 'statusChanges'), [data]);
+
+  const chartOption = useMemo(() => ({
+    color: ['#22d3ee', '#10b981', '#f59e0b'],
+    tooltip: {
+      trigger: 'axis',
+      axisPointer: { type: 'shadow' },
+      backgroundColor: 'rgba(2,6,23,0.95)',
+      borderColor: 'rgba(148,163,184,0.25)',
+      textStyle: { color: '#e2e8f0' },
+    },
+    legend: {
+      top: 0,
+      textStyle: { color: '#94a3b8', fontSize: 12 },
+    },
+    grid: {
+      left: 0,
+      right: 10,
+      top: 36,
+      bottom: 8,
+      containLabel: true,
+    },
+    xAxis: {
+      type: 'category',
+      data: data.map((item) => item.month),
+      axisLine: { lineStyle: { color: 'rgba(148,163,184,0.25)' } },
+      axisLabel: { color: '#94a3b8', fontSize: 12 },
+      axisTick: { show: false },
+    },
+    yAxis: {
+      type: 'value',
+      axisLine: { show: false },
+      axisTick: { show: false },
+      splitLine: { lineStyle: { color: 'rgba(148,163,184,0.12)', type: 'dashed' } },
+      axisLabel: { color: '#94a3b8', fontSize: 12 },
+    },
+    series: [
+      {
+        name: 'EIPs Touched',
+        type: 'bar',
+        data: data.map((item) => item.eipsTouched),
+        barMaxWidth: 26,
+        itemStyle: { borderRadius: [6, 6, 0, 0] },
+        markPoint: peakMonth
+          ? {
+              symbolSize: 42,
+              data: [
+                {
+                  name: 'Peak Activity',
+                  coord: [peakMonth.month, peakMonth.eipsTouched],
+                  value: peakMonth.eipsTouched,
+                },
+              ],
+              itemStyle: { color: '#0ea5e9' },
+              label: { color: '#e2e8f0', fontSize: 11, formatter: 'Peak\n{c}' },
+            }
+          : undefined,
+      },
+      {
+        name: 'New EIPs',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { width: 2 },
+        data: data.map((item) => item.newEIPs),
+      },
+      {
+        name: 'Status Changes',
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        lineStyle: { width: 2 },
+        data: data.map((item) => item.statusChanges),
+      },
+    ],
+  }), [data, peakMonth]);
 
   const handleDownloadCSV = async () => {
     setDownloading(true);
@@ -111,7 +189,7 @@ export function YearActivityChart({ data, year, loading }: YearActivityChartProp
         ]);
       }
 
-      const csv = [headers.join(','), ...rows.map(row => row.join(','))].join('\n');
+      const csv = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
       const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
       link.href = URL.createObjectURL(blob);
@@ -124,10 +202,11 @@ export function YearActivityChart({ data, year, loading }: YearActivityChartProp
       setDownloading(false);
     }
   };
+
   if (loading) {
     return (
-      <div className="h-80 bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/40 shadow-sm dark:shadow-none animate-pulse flex items-center justify-center">
-        <span className="text-slate-500 dark:text-slate-500">Loading chart...</span>
+      <div className="h-80 rounded-xl border border-border bg-card/60 animate-pulse flex items-center justify-center">
+        <span className="text-muted-foreground">Loading chart...</span>
       </div>
     );
   }
@@ -137,106 +216,67 @@ export function YearActivityChart({ data, year, loading }: YearActivityChartProp
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className={cn(
-        "p-6 rounded-xl",
-        "bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40",
-        "shadow-sm dark:shadow-none ring-1 ring-slate-200/50 dark:ring-transparent",
-        "backdrop-blur-sm"
-      )}
+      className="rounded-xl border border-border bg-card/60 p-6 backdrop-blur-sm"
     >
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h3 className="dec-title text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
-            EIP Activity in {year}
-          </h3>
-          <p className="text-sm text-slate-600 dark:text-slate-400">
-            Monthly breakdown of EIP activity
+          <div className="flex items-center gap-2">
+            <h3 className="dec-title text-xl font-semibold tracking-tight text-foreground">Monthly Activity Pattern</h3>
+            <button
+              type="button"
+              onClick={() => setShowInfo((prev) => !prev)}
+              aria-expanded={showInfo}
+              aria-label="Toggle metric definitions"
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/50 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+            >
+              <Info className="h-4 w-4" />
+            </button>
+          </div>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Peak activity: <span className="text-foreground">{peakMonth?.month ?? 'N/A'}</span>
+            {peakMonth ? ` (${peakMonth.eipsTouched.toLocaleString()} EIPs touched)` : ''}
+            {peakStatusMonth ? ` • Peak status churn: ${peakStatusMonth.month}` : ''}
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={handleDownloadCSV}
-            disabled={loading || downloading}
-            className={cn(
-              "inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-              "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300",
-              "hover:bg-slate-200 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed"
-            )}
-          >
-            <Download className="h-4 w-4" />
-            {downloading ? 'Downloading…' : 'Download CSV'}
-          </button>
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-cyan-500" />
-              <span className="text-slate-600 dark:text-slate-400">EIPs Touched</span>
+        <button
+          type="button"
+          onClick={handleDownloadCSV}
+          disabled={loading || downloading}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition-colors',
+            'hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50'
+          )}
+        >
+          <Download className="h-4 w-4" />
+          {downloading ? 'Downloading...' : 'Download Detailed CSV'}
+        </button>
+      </div>
+
+      {showInfo && (
+        <div className="mb-4 rounded-lg border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <div className="rounded-md border border-border/70 bg-muted/30 px-2.5 py-2">
+              <span className="font-semibold text-foreground">EIPs Touched:</span> Unique proposals with at least one status event during the month.
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-emerald-500" />
-              <span className="text-slate-600 dark:text-slate-400">New EIPs</span>
+            <div className="rounded-md border border-border/70 bg-muted/30 px-2.5 py-2">
+              <span className="font-semibold text-foreground">New EIPs:</span> Proposals created in that month.
             </div>
-            <div className="flex items-center gap-1.5">
-              <div className="h-3 w-3 rounded bg-amber-500" />
-              <span className="text-slate-600 dark:text-slate-400">Status Changes</span>
+            <div className="rounded-md border border-border/70 bg-muted/30 px-2.5 py-2">
+              <span className="font-semibold text-foreground">Status Changes:</span> Total lifecycle transitions recorded across proposals.
             </div>
           </div>
         </div>
+      )}
+
+      <div className="mb-4 rounded-lg border border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+        <div className="inline-flex items-center gap-1.5">
+          <TrendingUp className="h-3.5 w-3.5 text-primary" />
+          This view highlights monthly proposal throughput and governance churn signals for {year}.
+        </div>
       </div>
 
-      <div className="h-72">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart
-            data={data}
-            margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="rgba(148, 163, 184, 0.2)"
-              vertical={false}
-            />
-            <XAxis
-              dataKey="month"
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#64748b', fontSize: 12 }}
-            />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={{ fill: '#64748b', fontSize: 12 }}
-            />
-            <Tooltip
-              cursor={{ fill: 'rgba(148, 163, 184, 0.15)' }}
-              contentStyle={{
-                backgroundColor: 'rgb(30, 41, 59)',
-                border: '1px solid rgb(51, 65, 85)',
-                borderRadius: '0.5rem',
-                boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.2)',
-              }}
-              itemStyle={{ color: '#e2e8f0' }}
-              labelStyle={{ color: '#f8fafc', fontWeight: 600 }}
-            />
-            <Bar
-              dataKey="eipsTouched"
-              name="EIPs Touched"
-              fill="#22d3ee"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="newEIPs"
-              name="New EIPs"
-              fill="#34d399"
-              radius={[4, 4, 0, 0]}
-            />
-            <Bar
-              dataKey="statusChanges"
-              name="Status Changes"
-              fill="#fbbf24"
-              radius={[4, 4, 0, 0]}
-            />
-          </BarChart>
-        </ResponsiveContainer>
+      <div className="h-[340px] w-full">
+        <ReactECharts option={chartOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
       </div>
     </motion.div>
   );

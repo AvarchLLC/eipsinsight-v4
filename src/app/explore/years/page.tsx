@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { Calendar, ArrowLeft } from 'lucide-react';
+import { Calendar, ArrowLeft, Sparkles, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
 import Link from 'next/link';
@@ -45,6 +45,39 @@ interface EIP {
   updatedAt: string | null;
 }
 
+interface AISummaryResponse {
+  summary: string;
+  source: "cohere" | "fallback";
+}
+
+function getDelta(current: number, previous?: number): { value: number; pct: number } | null {
+  if (previous == null || previous <= 0) return null;
+  const value = current - previous;
+  return { value, pct: (value / previous) * 100 };
+}
+
+function toDeltaLabel(delta: { value: number; pct: number } | null): string {
+  if (!delta) return 'No baseline';
+  return `${delta.value >= 0 ? '↑' : '↓'} ${Math.abs(delta.pct).toFixed(1)}% vs previous year`;
+}
+
+function getYearCharacter(params: {
+  totalNewEIPs: number;
+  statusChanges: number;
+  totalPRs: number;
+}): string {
+  const { totalNewEIPs, statusChanges, totalPRs } = params;
+  if (totalNewEIPs === 0) return 'Low Activity Year';
+  const churnRatio = statusChanges / Math.max(totalNewEIPs, 1);
+  const prRatio = totalPRs / Math.max(totalNewEIPs, 1);
+
+  if (churnRatio > 9) return 'Governance Cleanup Year';
+  if (prRatio > 5.5) return 'Debate Heavy Year';
+  if (totalNewEIPs > 220) return 'Expansion Phase';
+  if (statusChanges > 1200) return 'Transition Heavy Year';
+  return 'Steady Governance Year';
+}
+
 function YearsPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -64,8 +97,80 @@ function YearsPageContent() {
   const [statsLoading, setStatsLoading] = useState(true);
   const [chartLoading, setChartLoading] = useState(true);
   const [tableLoading, setTableLoading] = useState(true);
+  const [aiNarrative, setAiNarrative] = useState<string | null>(null);
+  const [aiNarrativeSource, setAiNarrativeSource] = useState<"cohere" | "fallback" | null>(null);
 
   const pageSize = 20;
+  const isCurrentYear = selectedYear === currentYear;
+
+  const selectedYearData = years.find((item) => item.year === selectedYear) ?? null;
+  const previousYearData = years.find((item) => item.year === selectedYear - 1) ?? null;
+  const peakMonth = chartData.length
+    ? chartData.reduce((peak, item) => (item.eipsTouched > peak.eipsTouched ? item : peak), chartData[0])
+    : null;
+  const statusPeakMonth = chartData.length
+    ? chartData.reduce((peak, item) => (item.statusChanges > peak.statusChanges ? item : peak), chartData[0])
+    : null;
+  const newEipsDelta = getDelta(selectedYearData?.newEIPs ?? 0, previousYearData?.newEIPs);
+  const statusDelta = getDelta(selectedYearData?.statusChanges ?? 0, previousYearData?.statusChanges);
+  const prsDelta = getDelta(selectedYearData?.activePRs ?? 0, previousYearData?.activePRs);
+  const yearCharacter = getYearCharacter({
+    totalNewEIPs: selectedYearData?.newEIPs ?? stats?.totalNewEIPs ?? 0,
+    statusChanges: selectedYearData?.statusChanges ?? 0,
+    totalPRs: selectedYearData?.activePRs ?? stats?.totalPRs ?? 0,
+  });
+
+  useEffect(() => {
+    if (!selectedYearData) return;
+
+    const controller = new AbortController();
+    const loadSummary = async () => {
+      try {
+        const response = await fetch('/api/year-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            year: selectedYear,
+            isCurrentYear,
+            metrics: {
+              newEIPs: selectedYearData.newEIPs,
+              statusChanges: selectedYearData.statusChanges,
+              prs: selectedYearData.activePRs,
+            },
+            deltas: {
+              newEIPsPct: newEipsDelta?.pct ?? null,
+              statusChangesPct: statusDelta?.pct ?? null,
+              prsPct: prsDelta?.pct ?? null,
+            },
+            peaks: {
+              throughputMonth: peakMonth?.month ?? null,
+              governanceChurnMonth: statusPeakMonth?.month ?? null,
+            },
+          }),
+          signal: controller.signal,
+        });
+
+        if (!response.ok) return;
+        const data = (await response.json()) as AISummaryResponse;
+        setAiNarrative(data.summary);
+        setAiNarrativeSource(data.source);
+      } catch {
+        // Keep deterministic narrative fallback already rendered in UI.
+      }
+    };
+
+    void loadSummary();
+    return () => controller.abort();
+  }, [
+    selectedYear,
+    isCurrentYear,
+    selectedYearData,
+    newEipsDelta?.pct,
+    statusDelta?.pct,
+    prsDelta?.pct,
+    peakMonth?.month,
+    statusPeakMonth?.month,
+  ]);
 
   // Fetch years overview (runs once)
   useEffect(() => {
@@ -77,15 +182,21 @@ function YearsPageContent() {
 
   // Fetch stats, chart, and table in parallel when year changes
   useEffect(() => {
-    setStatsLoading(true);
-    setChartLoading(true);
-    setTableLoading(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (!cancelled) {
+        setStatsLoading(true);
+        setChartLoading(true);
+        setTableLoading(true);
+      }
+    });
 
     Promise.allSettled([
       client.explore.getYearStats({ year: selectedYear }),
       client.explore.getYearActivityChart({ year: selectedYear }),
       client.explore.getEIPsByYear({ year: selectedYear, limit: pageSize, offset: (page - 1) * pageSize }),
     ]).then(([statsRes, chartRes, eipsRes]) => {
+      if (cancelled) return;
       if (statsRes.status === 'fulfilled') setStats(statsRes.value);
       if (chartRes.status === 'fulfilled') setChartData(chartRes.value);
       if (eipsRes.status === 'fulfilled') {
@@ -93,10 +204,13 @@ function YearsPageContent() {
         setTotalEips(eipsRes.value.total);
       }
     }).finally(() => {
-      setStatsLoading(false);
-      setChartLoading(false);
-      setTableLoading(false);
+      if (!cancelled) {
+        setStatsLoading(false);
+        setChartLoading(false);
+        setTableLoading(false);
+      }
     });
+    return () => { cancelled = true; };
   }, [selectedYear, page]);
 
   const handleYearSelect = (year: number) => {
@@ -111,47 +225,40 @@ function YearsPageContent() {
 
   return (
     <div className="bg-background relative w-full overflow-hidden min-h-screen">
-      {/* Background gradient - cyan/emerald accent */}
       <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.06),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(34,211,238,0.08),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(52,211,153,0.04),transparent_50%)] dark:bg-[radial-gradient(ellipse_at_bottom_right,rgba(52,211,153,0.05),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(var(--persona-accent-rgb),0.12),transparent_50%)]" />
       </div>
 
-      {/* Header */}
       <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
-          {/* Back link */}
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <Link
             href="/explore"
             className={cn(
               "inline-flex items-center gap-2 mb-6",
-              "text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+              "text-sm text-muted-foreground hover:text-foreground transition-colors"
             )}
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
           </Link>
 
-          {/* Page Title */}
-          <div className="flex items-center gap-4">
-            <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-cyan-500/15 border border-cyan-400/40 dark:border-cyan-400/30 shadow-sm shadow-cyan-200/40 dark:shadow-cyan-500/15">
-              <Calendar className="h-7 w-7 text-cyan-600 dark:text-cyan-400" />
+          <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+            <div className="inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+              <Calendar className="h-3.5 w-3.5" />
+              Explore
             </div>
-            <div>
-              <h1 className="dec-title text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">
-                Browse by Year
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">
-                Explore EIP activity and proposals from {selectedYear}
-              </p>
-            </div>
-          </div>
+            <h1 className="dec-title persona-title mt-3 text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Yearly Governance Intelligence
+            </h1>
+            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Interpretable annual activity for Ethereum proposals. Powered by <span className="text-foreground/80">EIPsInsight</span>.
+            </p>
+          </motion.header>
         </div>
       </section>
 
-      {/* Year Timeline */}
       <section className="relative w-full py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           {!loading && years.length > 0 && (
             <YearTimeline
               years={years}
@@ -164,15 +271,68 @@ function YearsPageContent() {
 
       <SectionSeparator />
 
-      {/* Year Overview Panel */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
-          <h2 className="dec-title text-xl font-semibold tracking-tight text-slate-900 dark:text-white sm:text-2xl mb-4">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+          <div className="mb-4 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                  {selectedYear} Narrative Summary
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {aiNarrative ?? (isCurrentYear ? (
+                    <>
+                      {selectedYear} is a <span className="text-foreground">live year-to-date snapshot</span>.
+                      {' '}Metrics are still collecting, so trends are directional.
+                    </>
+                  ) : (
+                    <>
+                      {selectedYear} was a <span className="text-foreground">{yearCharacter}</span>.
+                      {peakMonth ? ` Peak monthly throughput appeared in ${peakMonth.month}.` : ''}
+                      {statusPeakMonth ? ` Governance churn peaked in ${statusPeakMonth.month}.` : ''}
+                    </>
+                  ))}
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                {aiNarrativeSource === "cohere"
+                  ? "AI Insight (Cohere)"
+                  : isCurrentYear
+                    ? 'Live YTD (Still Collecting)'
+                    : yearCharacter}
+              </span>
+            </div>
+            <div className="mt-4 grid gap-2 sm:grid-cols-3">
+              <div className="rounded-lg border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                New EIPs: <span className="font-medium text-foreground">{selectedYearData?.newEIPs.toLocaleString() ?? 0}</span>
+                <span className="ml-2 text-primary">
+                  {isCurrentYear ? `${toDeltaLabel(newEipsDelta)} (directional)` : toDeltaLabel(newEipsDelta)}
+                </span>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                PR Activity: <span className="font-medium text-foreground">{selectedYearData?.activePRs.toLocaleString() ?? 0}</span>
+                <span className="ml-2 text-primary">
+                  {isCurrentYear ? `${toDeltaLabel(prsDelta)} (directional)` : toDeltaLabel(prsDelta)}
+                </span>
+              </div>
+              <div className="rounded-lg border border-border bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                Status Changes: <span className="font-medium text-foreground">{selectedYearData?.statusChanges.toLocaleString() ?? 0}</span>
+                <span className="ml-2 text-primary">
+                  {isCurrentYear ? `${toDeltaLabel(statusDelta)} (directional)` : toDeltaLabel(statusDelta)}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <h3 className="dec-title mb-4 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {selectedYear} Overview
-          </h2>
+          </h3>
           <YearOverviewPanel
-            year={selectedYear}
+            isCurrentYear={isCurrentYear}
             stats={stats}
+            selectedYearData={selectedYearData}
+            previousYearData={previousYearData}
             loading={statsLoading}
           />
         </div>
@@ -180,9 +340,8 @@ function YearsPageContent() {
 
       <SectionSeparator />
 
-      {/* Activity Chart */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
           <YearActivityChart
             data={chartData}
             year={selectedYear}
@@ -193,9 +352,12 @@ function YearsPageContent() {
 
       <SectionSeparator />
 
-      {/* EIP Table */}
       <section className="relative w-full py-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 xl:px-12">
+        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+          <div className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+            Move from macro trends to proposal-level evidence.
+          </div>
           <YearEIPTable
             eips={eips}
             total={totalEips}
@@ -217,7 +379,7 @@ export default function YearsPage() {
   return (
     <Suspense fallback={
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="animate-pulse text-slate-400">Loading...</div>
+        <div className="animate-pulse text-muted-foreground">Loading...</div>
       </div>
     }>
       <YearsPageContent />

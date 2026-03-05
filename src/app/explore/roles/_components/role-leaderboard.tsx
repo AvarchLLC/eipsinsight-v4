@@ -14,6 +14,7 @@ interface LeaderboardEntry {
   comments: number;
   prsCreated: number;
   prsMerged: number;
+  prsTouched: number;
   avgResponseHours: number | null;
   lastActivity: string | null;
   role: string | null;
@@ -22,6 +23,8 @@ interface LeaderboardEntry {
 interface RoleLeaderboardProps {
   entries: LeaderboardEntry[];
   loading: boolean;
+  title?: string;
+  subtitle?: string;
 }
 
 const rankIcons: Record<number, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
@@ -43,14 +46,19 @@ function formatLastActivity(dateStr: string | null): string {
   return `${Math.floor(diffDays / 30)}mo ago`;
 }
 
-export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
+export function RoleLeaderboard({
+  entries,
+  loading,
+  title = 'Top participants',
+  subtitle = 'Ranked by total actions in selected filters',
+}: RoleLeaderboardProps) {
   if (loading) {
     return (
-      <div className="h-full rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 overflow-hidden">
+      <div className="h-full overflow-hidden rounded-xl border border-border bg-card/60">
         <div className="p-4">
           <div className="animate-pulse space-y-3">
             {[...Array(10)].map((_, i) => (
-              <div key={i} className="h-12 bg-slate-200 dark:bg-slate-800 rounded-lg" />
+              <div key={i} className="h-12 rounded-lg bg-muted" />
             ))}
           </div>
         </div>
@@ -60,8 +68,8 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
 
   if (entries.length === 0) {
     return (
-      <div className="h-full rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 p-12 flex items-center justify-center">
-        <p className="text-slate-500 dark:text-slate-400">No leaderboard data available</p>
+      <div className="flex h-full items-center justify-center rounded-xl border border-border bg-card/60 p-12">
+        <p className="text-muted-foreground">No people found for current filters.</p>
       </div>
     );
   }
@@ -70,53 +78,50 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-full flex flex-col rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 overflow-hidden shadow-sm dark:shadow-none"
+      className="flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card/60"
     >
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700/40 shrink-0">
-        <h3 className="dec-title text-base font-semibold text-slate-900 dark:text-white">
-          Leaderboard
-        </h3>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-          Ranked by contribution score
-        </p>
+      <div className="shrink-0 border-b border-border px-4 py-3">
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">People</p>
+        <h3 className="dec-title mt-1 text-xl font-semibold tracking-tight text-foreground">{title}</h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">{subtitle}</p>
       </div>
 
       {/* Table */}
       <div className="flex-1 min-h-0 max-h-[420px] overflow-auto">
         <table className="w-full">
-          <thead className="sticky top-0 bg-white dark:bg-slate-900/95 backdrop-blur-sm z-10">
-            <tr className="border-b border-slate-200 dark:border-slate-700/40">
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-12">
+          <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm">
+            <tr className="border-b border-border/70">
+              <th className="w-12 px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 #
               </th>
-              <th className="px-3 py-2.5 text-left text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                Contributor
+              <th className="px-3 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Person
               </th>
-              <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+              <th className="w-16 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <div className="flex items-center justify-center gap-1">
                   <GitPullRequest className="h-3 w-3" />
-                  PRs
+                  Touched
                 </div>
               </th>
-              <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+              <th className="w-16 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <div className="flex items-center justify-center gap-1">
                   <MessageSquare className="h-3 w-3" />
                   Actions
                 </div>
               </th>
-              <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-16">
+              <th className="w-16 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 <div className="flex items-center justify-center gap-1">
                   <Trophy className="h-3 w-3" />
                   Score
                 </div>
               </th>
-              <th className="px-3 py-2.5 text-center text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider w-20">
+              <th className="w-20 px-3 py-2.5 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Last Active
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/30">
+          <tbody className="divide-y divide-border/60">
             {entries.map((entry, index) => {
               const rankConfig = rankIcons[entry.rank];
               const RankIcon = rankConfig?.icon;
@@ -130,8 +135,8 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                   transition={{ delay: index * 0.02 }}
                   className={cn(
                     "h-14 transition-colors",
-                    isTop3 && "bg-slate-50/80 dark:bg-slate-800/20",
-                    "hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                    isTop3 && "bg-primary/5",
+                    "hover:bg-muted/40"
                   )}
                 >
                   <td className="px-3 py-0">
@@ -144,7 +149,7 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                           <RankIcon className={cn("h-4 w-4", rankConfig.color)} />
                         </div>
                       ) : (
-                        <span className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+                        <span className="text-sm font-semibold text-muted-foreground">
                           {entry.rank}
                         </span>
                       )}
@@ -152,30 +157,26 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                   </td>
                   <td className="px-3 py-0">
                     <Link
-                      href={`https://github.com/${entry.actor}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href={`/people/${encodeURIComponent(entry.actor)}`}
                       className="flex items-center gap-3 group h-14"
                     >
                       <img
                         src={`https://github.com/${entry.actor}.png?size=64`}
                         alt={entry.actor}
-                        className="h-8 w-8 rounded-full border-2 border-slate-200 dark:border-slate-700 group-hover:border-violet-400/50 dark:group-hover:border-violet-400/50 transition-colors shrink-0"
+                        className="h-8 w-8 shrink-0 rounded-full border-2 border-border transition-colors group-hover:border-primary/40"
                         onError={(e) => {
                           e.currentTarget.onerror = null;
                           e.currentTarget.src = `data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect fill="%2364748b" width="32" height="32" rx="16"/><text x="16" y="20" text-anchor="middle" fill="white" font-size="14" font-weight="600">${entry.actor.charAt(0).toUpperCase()}</text></svg>`;
                         }}
                       />
-                      <div className="min-w-0">
-                        <span className="font-medium text-slate-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors block truncate">
+                        <div className="min-w-0">
+                        <span className="block truncate font-medium text-foreground transition-colors group-hover:text-primary">
                           {entry.actor}
                         </span>
                         {entry.role && (
                           <span className={cn(
-                            "inline-flex mt-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
-                            entry.role === 'EDITOR' && "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400",
-                            entry.role === 'REVIEWER' && "bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-400",
-                            entry.role === 'CONTRIBUTOR' && "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                            "mt-0.5 inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium uppercase",
+                            "border-primary/25 bg-primary/10 text-primary"
                           )}>
                             {entry.role}
                           </span>
@@ -184,22 +185,22 @@ export function RoleLeaderboard({ entries, loading }: RoleLeaderboardProps) {
                     </Link>
                   </td>
                   <td className="px-3 py-0 text-center align-middle">
-                    <span className="font-semibold text-slate-900 dark:text-white">
-                      {entry.prsReviewed.toLocaleString()}
+                    <span className="font-semibold text-foreground">
+                      {entry.prsTouched.toLocaleString()}
                     </span>
                   </td>
                   <td className="px-3 py-0 text-center align-middle">
-                    <span className="font-semibold text-slate-900 dark:text-white">
+                    <span className="font-semibold text-foreground">
                       {entry.comments.toLocaleString()}
                     </span>
                   </td>
                   <td className="px-3 py-0 text-center align-middle">
-                    <span className="font-bold text-amber-600 dark:text-amber-400">
+                    <span className="font-bold text-primary">
                       {entry.totalScore.toLocaleString()}
                     </span>
                   </td>
                   <td className="px-3 py-0 text-center align-middle">
-                    <span className="text-xs text-slate-600 dark:text-slate-400">
+                    <span className="text-xs text-muted-foreground">
                       {formatLastActivity(entry.lastActivity)}
                     </span>
                   </td>

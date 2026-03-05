@@ -13,6 +13,8 @@ interface StatusFlow {
 interface StatusFlowGraphProps {
   data: StatusFlow[];
   loading: boolean;
+  selectedStatus?: string | null;
+  onSelectStatus?: (status: string | null) => void;
 }
 
 const statusColors: Record<string, { bg: string; border: string; text: string; glow: string; bar: string }> = {
@@ -72,11 +74,11 @@ const statusColors: Record<string, { bg: string; border: string; text: string; g
 const mainFlow = ['Draft', 'Review', 'Last Call', 'Final'];
 const sideStatuses = ['Stagnant', 'Withdrawn', 'Living'];
 
-export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
+export function StatusFlowGraph({ data, loading, selectedStatus, onSelectStatus }: StatusFlowGraphProps) {
   if (loading) {
     return (
-      <div className="p-6 rounded-xl bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40">
-        <div className="h-24 animate-pulse bg-slate-200 dark:bg-slate-800 rounded" />
+      <div className="rounded-xl border border-border bg-card/60 p-6">
+        <div className="h-24 animate-pulse rounded bg-muted" />
       </div>
     );
   }
@@ -89,15 +91,23 @@ export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "p-4 sm:p-6 rounded-xl",
-        "bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700/40",
-        "backdrop-blur-sm"
-      )}
+      className="rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm sm:p-6"
     >
-      <h3 className="dec-title text-base sm:text-lg font-semibold text-slate-900 dark:text-white mb-4 sm:mb-6">
-        Status Pipeline
-      </h3>
+      <div className="mb-4 flex items-start justify-between gap-2 sm:mb-6">
+        <div>
+          <h3 className="dec-title text-xl font-semibold tracking-tight text-foreground">Status Pipeline</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">Click a stage to filter results below.</p>
+        </div>
+        {selectedStatus && onSelectStatus && (
+          <button
+            type="button"
+            onClick={() => onSelectStatus(null)}
+            className="rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          >
+            Clear stage
+          </button>
+        )}
+      </div>
 
       {/* Main Flow */}
       <div className="flex flex-nowrap items-stretch justify-between overflow-x-auto gap-2 sm:gap-0 mb-6 sm:mb-8 pb-2 -mx-1">
@@ -115,23 +125,28 @@ export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
                 className="flex flex-col items-center"
               >
                 {/* Status Box */}
-                <div className={cn(
-                  "relative px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2",
+                <button
+                  type="button"
+                  onClick={() => onSelectStatus?.(selectedStatus === status ? null : status)}
+                  className={cn(
+                  "relative px-3 sm:px-4 py-2 sm:py-3 rounded-lg border-2 transition-all",
                   "flex flex-col items-center min-w-[80px] sm:min-w-[100px]",
                   color.bg,
                   color.border,
-                  count > 0 && `shadow-lg ${color.glow}`
+                  count > 0 && `shadow-lg ${color.glow}`,
+                  selectedStatus === status && "ring-2 ring-primary/40 border-primary/60",
+                  "hover:border-primary/50 hover:bg-primary/10"
                 )}>
                   <span className={cn("text-sm font-semibold", color.text)}>
                     {status}
                   </span>
-                  <span className="text-lg sm:text-2xl font-bold text-slate-900 dark:text-white mt-0.5 sm:mt-1">
+                  <span className="mt-0.5 text-lg font-bold text-foreground sm:mt-1 sm:text-2xl">
                     {count.toLocaleString()}
                   </span>
-                </div>
+                </button>
 
                 {/* Progress bar */}
-                <div className="w-full h-1.5 mt-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${widthPercent}%` }}
@@ -149,8 +164,8 @@ export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
                   transition={{ delay: index * 0.1 + 0.2 }}
                   className="flex items-center px-2"
                 >
-                  <div className="w-8 h-0.5 bg-gradient-to-r from-slate-400 to-slate-500 dark:from-slate-600 dark:to-slate-700" />
-                  <ArrowRight className="h-5 w-5 text-slate-500" />
+                  <div className="h-0.5 w-8 bg-gradient-to-r from-border to-border/70" />
+                  <ArrowRight className="h-5 w-5 text-muted-foreground" />
                 </motion.div>
               )}
             </React.Fragment>
@@ -160,8 +175,8 @@ export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
 
       {/* Side Statuses */}
       {sideWithCounts.length > 0 && (
-        <div className="flex items-center justify-center gap-6 pt-4 border-t border-slate-200 dark:border-slate-700/40">
-          <span className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+        <div className="flex items-center justify-center gap-6 border-t border-border pt-4">
+          <span className="text-xs uppercase tracking-wider text-muted-foreground">
             Other statuses:
           </span>
           {sideWithCounts.map((status, index) => {
@@ -169,24 +184,27 @@ export function StatusFlowGraph({ data, loading }: StatusFlowGraphProps) {
             const color = statusColors[status] ?? statusColors['Stagnant'];
 
             return (
-              <motion.div
+              <motion.button
                 key={status}
+                type="button"
+                onClick={() => onSelectStatus?.(selectedStatus === status ? null : status)}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 + index * 0.1 }}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 rounded-lg border",
-                  color.bg,
-                  color.border
+                  "flex items-center gap-2 rounded-lg border px-3 py-1.5 transition-colors",
+                  color.bg, color.border,
+                  selectedStatus === status && "ring-2 ring-primary/40 border-primary/60",
+                  "hover:border-primary/50 hover:bg-primary/10"
                 )}
               >
                 <span className={cn("text-sm font-medium", color.text)}>
                   {status}
                 </span>
-                <span className="font-bold text-slate-900 dark:text-white">
+                <span className="font-bold text-foreground">
                   {count.toLocaleString()}
                 </span>
-              </motion.div>
+              </motion.button>
             );
           })}
         </div>

@@ -23,13 +23,13 @@ const TYPE_INFO = [
 ];
 
 const STATUS_TERMS = [
-  { name: 'Idea', description: 'An idea that is pre-draft. This is not tracked within the EIP Repository.', color: 'text-purple-600 dark:text-purple-300' },
-  { name: 'Draft', description: 'The first formally tracked stage of an EIP in development.', color: 'text-slate-600 dark:text-slate-300' },
-  { name: 'Review', description: "An EIP Author marks an EIP as ready for and requesting Peer Review.", color: 'text-amber-600 dark:text-amber-300' },
-  { name: 'Last Call', description: 'The final review window for an EIP before moving to Final, typically 14 days.', color: 'text-orange-600 dark:text-orange-300' },
-  { name: 'Final', description: 'The final standard. Should only be updated to correct errata.', color: 'text-emerald-600 dark:text-emerald-300' },
-  { name: 'Stagnant', description: 'Inactive for 6 months or greater. Can be resurrected by moving back to Draft.', color: 'text-gray-600 dark:text-gray-400' },
-  { name: 'Withdrawn', description: 'Author has withdrawn the proposal. This state has finality.', color: 'text-red-600 dark:text-red-300' },
+  { name: 'Idea', description: 'An idea that is pre-draft. This is not tracked within the EIP Repository.', color: 'text-primary' },
+  { name: 'Draft', description: 'The first formally tracked stage of an EIP in development.', color: 'text-muted-foreground' },
+  { name: 'Review', description: "An EIP Author marks an EIP as ready for and requesting Peer Review.", color: 'text-muted-foreground' },
+  { name: 'Last Call', description: 'The final review window for an EIP before moving to Final, typically 14 days.', color: 'text-muted-foreground' },
+  { name: 'Final', description: 'The final standard. Should only be updated to correct errata.', color: 'text-muted-foreground' },
+  { name: 'Stagnant', description: 'Inactive for 6 months or greater. Can be resurrected by moving back to Draft.', color: 'text-muted-foreground' },
+  { name: 'Withdrawn', description: 'Author has withdrawn the proposal. This state has finality.', color: 'text-muted-foreground' },
   { name: 'Living', description: 'Continually updated and not designed to reach finality. Notably EIP-1.', color: 'text-primary' },
 ];
 
@@ -61,23 +61,23 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
         <div className="space-y-0">
           {TYPE_INFO.map((type, i) => (
             <div key={type.name}>
-              {i > 0 && <hr className="border-slate-200 dark:border-slate-700/40 my-4" />}
+              {i > 0 && <hr className="my-4 border-border" />}
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-800 dark:text-slate-200">{type.name}</span>
-                <span className="text-xs tabular-nums text-slate-600 dark:text-slate-500">
+                <span className="text-sm font-semibold text-foreground">{type.name}</span>
+                <span className="text-xs tabular-nums text-muted-foreground">
                   ({type.name === 'Standards Track' ? standardsTrackTotal.toLocaleString() : getCatCount(type.name).toLocaleString()})
                 </span>
               </div>
-              <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">{type.description}</p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{type.description}</p>
               {'subcategories' in type && type.subcategories && (
                 <div className="mt-2 ml-4 space-y-1.5">
                   {type.subcategories.map((sub) => (
                     <div key={sub.name} className="text-sm">
-                      <span className="font-medium text-slate-600 dark:text-slate-400">{sub.name}</span>
-                      <span className="ml-1 text-xs tabular-nums text-slate-600">
+                      <span className="font-medium text-muted-foreground">{sub.name}</span>
+                      <span className="ml-1 text-xs tabular-nums text-muted-foreground">
                         ({getCatCount(sub.name).toLocaleString()})
                       </span>
-                      <span className="ml-1.5 text-slate-500">— {sub.description}</span>
+                      <span className="ml-1.5 text-muted-foreground">— {sub.description}</span>
                     </div>
                   ))}
                 </div>
@@ -95,19 +95,19 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
         <div className="space-y-0">
           {STATUS_TERMS.map((term, i) => (
             <div key={term.name}>
-              {i > 0 && <hr className="border-slate-200 dark:border-slate-700/40 my-3" />}
+              {i > 0 && <hr className="my-3 border-border" />}
               <div className="flex gap-2.5">
                 <span
-                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[term.name] || 'bg-purple-400'}`}
+                  className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${STATUS_DOT_COLORS[term.name] || 'bg-primary'}`}
                 />
                 <div>
                   <span className={`text-sm font-semibold ${term.color}`}>{term.name}</span>
                   {term.name !== 'Idea' && (
-                    <span className="ml-1.5 text-xs tabular-nums text-slate-600">
+                    <span className="ml-1.5 text-xs tabular-nums text-muted-foreground">
                       ({getStatusCount(term.name).toLocaleString()})
                     </span>
                   )}
-                  <p className="mt-0.5 text-sm text-slate-600 dark:text-slate-500">{term.description}</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">{term.description}</p>
                 </div>
               </div>
             </div>
@@ -120,7 +120,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
       icon: BookOpen,
       title: 'Contributing',
         content: (
-        <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+        <p className="text-sm leading-relaxed text-muted-foreground">
           First review <Link href="/eip/1" className="text-primary hover:text-primary/80">EIP-1</Link>.
           Then clone the repository and add your EIP. There is a{' '}
           <a
@@ -164,7 +164,7 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
                   <h2 className="dec-title persona-title text-xl font-semibold tracking-tight sm:text-2xl">
                     Reference
                   </h2>
-                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
+                  <p className="mt-0.5 text-sm text-muted-foreground">
                     EIP types, status terms, and how to contribute.
                   </p>
                 </div>
@@ -188,14 +188,14 @@ export default function HomeFAQs({ categoryBreakdown, statusDist }: HomeFAQsProp
                   >
                     <AccordionItem
                       value={item.id}
-                      className="rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/60 dark:via-slate-900/50 dark:to-slate-900/60 px-4 shadow-sm transition-colors hover:border-slate-300 dark:hover:border-slate-700/60"
+                      className="rounded-lg border border-border bg-card/60 px-4 transition-colors hover:border-primary/40"
                     >
-                      <AccordionTrigger className="cursor-pointer items-center py-4 hover:no-underline data-[state=open]:border-b data-[state=open]:border-slate-200 dark:data-[state=open]:border-slate-700/40 data-[state=open]:pb-4">
+                      <AccordionTrigger className="cursor-pointer items-center py-4 hover:no-underline data-[state=open]:border-b data-[state=open]:border-border data-[state=open]:pb-4">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-slate-300 dark:border-slate-600/50 bg-slate-100 dark:bg-slate-800/50">
-                            <IconComponent className="h-4 w-4 text-slate-600 dark:text-slate-300" />
+                          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-muted/60">
+                            <IconComponent className="h-4 w-4 text-muted-foreground" />
                           </div>
-                          <span className="text-base font-semibold text-slate-800 dark:text-slate-200">{item.title}</span>
+                          <span className="text-base font-semibold text-foreground">{item.title}</span>
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pb-5 pt-0">

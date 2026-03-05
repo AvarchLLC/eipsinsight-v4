@@ -21,7 +21,6 @@ interface UpgradeBlogCarouselProps {
 
 export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isHovered, setIsHovered] = useState(false);
 
   if (!posts || posts.length === 0) return null;
 
@@ -42,16 +41,16 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
     <div className="relative w-full">
       <div className="flex items-center justify-between mb-3">
         <div>
-          <h3 className="text-sm sm:text-base font-bold text-white mb-1">Related Articles</h3>
-          <p className="text-xs text-slate-400">Latest updates and insights about {upgradeName}</p>
+          <h3 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Related Articles</h3>
+          <p className="mt-0.5 text-sm text-muted-foreground">Latest updates and insights about {upgradeName}</p>
         </div>
         <div className="flex items-center gap-1.5">
           <button
             onClick={goPrev}
             disabled={currentIndex === 0}
             className={cn(
-              'p-1.5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-slate-400',
-              'hover:border-cyan-400/50 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all',
+              'p-1.5 rounded-lg border border-border bg-muted/60 text-muted-foreground',
+              'hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all',
               'disabled:opacity-30 disabled:cursor-not-allowed'
             )}
             aria-label="Previous"
@@ -62,8 +61,8 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
             onClick={goNext}
             disabled={currentIndex >= maxIndex}
             className={cn(
-              'p-1.5 rounded-lg border border-slate-700/40 bg-slate-900/50 text-slate-400',
-              'hover:border-cyan-400/50 hover:text-cyan-300 hover:bg-cyan-500/10 transition-all',
+              'p-1.5 rounded-lg border border-border bg-muted/60 text-muted-foreground',
+              'hover:border-primary/40 hover:text-primary hover:bg-primary/10 transition-all',
               'disabled:opacity-30 disabled:cursor-not-allowed'
             )}
             aria-label="Next"
@@ -73,18 +72,14 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
         </div>
       </div>
 
-      <div
-        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5"
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
         {visibleItems.map((post, idx) => (
           <motion.div
             key={`${post.link}-${idx}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: idx * 0.1 }}
-            className="group relative rounded-lg border border-slate-700/40 bg-slate-950/50 overflow-hidden hover:border-cyan-400/50 transition-all"
+            className="group relative overflow-hidden rounded-lg border border-border bg-card/60 transition-all hover:border-primary/40"
           >
             <Link
               href={post.link}
@@ -92,7 +87,7 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
               rel="noopener noreferrer"
               className="block"
             >
-              <div className="relative h-28 sm:h-32 overflow-hidden bg-slate-900/50">
+              <div className="relative h-28 overflow-hidden bg-muted/40 sm:h-32">
                 {post.image.startsWith('http') ? (
                   <img
                     src={post.image}
@@ -107,16 +102,16 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
                     className="object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 )}
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-background/70 via-transparent to-transparent" />
               </div>
               <div className="p-2.5">
-                <h4 className="text-sm font-semibold text-white mb-2 line-clamp-2 group-hover:text-cyan-300 transition-colors">
+                <h4 className="mb-2 line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
                   {post.title}
                 </h4>
-                <p className="text-xs text-slate-400 line-clamp-2 leading-relaxed mb-2">
+                <p className="mb-2 line-clamp-2 text-xs leading-relaxed text-muted-foreground">
                   {post.content}
                 </p>
-                <div className="flex items-center gap-1 text-xs text-cyan-400 group-hover:text-cyan-300 transition-colors">
+                <div className="flex items-center gap-1 text-xs text-primary transition-colors group-hover:text-primary/90">
                   <span>Read more</span>
                   <ExternalLink className="h-3 w-3" />
                 </div>
@@ -135,8 +130,8 @@ export function UpgradeBlogCarousel({ posts, upgradeName }: UpgradeBlogCarouselP
               className={cn(
                 'h-1.5 rounded-full transition-all',
                 idx === currentIndex
-                  ? 'w-6 bg-cyan-400'
-                  : 'w-1.5 bg-slate-700/50 hover:bg-slate-600/50'
+                  ? 'w-6 bg-primary'
+                  : 'w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/60'
               )}
               aria-label={`Go to slide ${idx + 1}`}
             />

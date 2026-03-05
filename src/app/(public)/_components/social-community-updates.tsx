@@ -159,9 +159,9 @@ const getColorClasses = (color: string) => {
   const colors: Record<string, { border: string; bg: string; icon: string }> = {
     emerald: { border: 'border-primary/30', bg: 'bg-primary/10', icon: 'text-primary' },
     cyan: { border: 'border-primary/30', bg: 'bg-primary/10', icon: 'text-primary' },
-    violet: { border: 'border-violet-400/30', bg: 'bg-violet-500/10', icon: 'text-violet-500' },
-    indigo: { border: 'border-indigo-400/30', bg: 'bg-indigo-500/10', icon: 'text-indigo-500' },
-    slate: { border: 'border-slate-400/30', bg: 'bg-slate-500/10', icon: 'text-slate-500' },
+    violet: { border: 'border-primary/30', bg: 'bg-primary/10', icon: 'text-primary' },
+    indigo: { border: 'border-primary/30', bg: 'bg-primary/10', icon: 'text-primary' },
+    slate: { border: 'border-border', bg: 'bg-muted/60', icon: 'text-muted-foreground' },
   };
   return colors[color] || colors.cyan;
 };
@@ -174,7 +174,7 @@ export default function SocialCommunityUpdates() {
           <h2 className="dec-title persona-title text-2xl font-semibold tracking-tight sm:text-3xl">
           Social & Community Updates
           </h2>
-          <p className="mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400">
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             Discussions, channels, and events across the Ethereum standards ecosystem.
           </p>
         </div>
@@ -191,14 +191,14 @@ export default function SocialCommunityUpdates() {
               href={stat.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="group flex items-center gap-3 rounded-lg border border-slate-200/80 bg-slate-50/80 p-3 transition hover:border-primary/40 hover:bg-white/95 dark:border-slate-700/50 dark:bg-slate-900/50 dark:hover:bg-slate-900/70"
+              className="group flex items-center gap-3 rounded-lg border border-border bg-card/60 p-3 transition hover:border-primary/40 hover:bg-muted/60"
             >
               <div className={cn('rounded-lg border p-2', colors.bg, colors.border)}>
                 <Icon className={cn('h-4 w-4', colors.icon)} />
               </div>
               <div className="min-w-0">
-                <p className="text-lg font-bold leading-none text-slate-900 dark:text-slate-100">{stat.value}</p>
-                <p className="text-xs text-slate-600 dark:text-slate-400">{stat.label}</p>
+                <p className="text-lg font-bold leading-none text-foreground">{stat.value}</p>
+                <p className="text-xs text-muted-foreground">{stat.label}</p>
               </div>
               <span className="ml-auto text-xs font-semibold text-primary">{stat.trend}</span>
             </a>
@@ -208,7 +208,7 @@ export default function SocialCommunityUpdates() {
 
       <div className="grid items-start gap-4 xl:grid-cols-[2fr_1fr]">
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Active Discussions</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Discussions</h3>
           {communityDiscussions.map((discussion) => (
             <motion.a
               key={discussion.id}
@@ -216,11 +216,11 @@ export default function SocialCommunityUpdates() {
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ y: -1 }}
-              className="group flex flex-col rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 transition hover:border-primary/40 dark:border-slate-700/50 dark:bg-slate-900/50"
+              className="group flex flex-col rounded-lg border border-border bg-card/60 p-3 transition hover:border-primary/40"
             >
               <div className="mb-1 flex items-center gap-2">
                 {discussion.isHot && (
-                  <span className="inline-flex items-center gap-1 rounded-full border border-orange-400/30 bg-orange-500/10 px-2 py-0.5 text-[10px] font-semibold text-orange-700 dark:text-orange-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                     <Zap className="h-3 w-3" /> Hot
                   </span>
                 )}
@@ -228,18 +228,18 @@ export default function SocialCommunityUpdates() {
                   {discussion.category}
                 </span>
               </div>
-              <p className="text-sm font-medium text-slate-900 transition group-hover:text-primary dark:text-slate-100">
+              <p className="text-sm font-medium text-foreground transition group-hover:text-primary">
                 {discussion.title}
               </p>
-              <div className="mt-2 flex items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="inline-flex items-center gap-1"><MessageCircle className="h-3 w-3" />{discussion.replies}</span>
                 <span className="inline-flex items-center gap-1"><TrendingUp className="h-3 w-3" />{discussion.views}</span>
                 <span className="ml-auto">{discussion.lastActive}</span>
               </div>
             </motion.a>
           ))}
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-700/50 dark:bg-slate-900/50">
-            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">Watchlist Topics</h4>
+          <div className="rounded-lg border border-border bg-card/60 p-3">
+            <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Watchlist Topics</h4>
             <div className="grid gap-2 sm:grid-cols-2">
               {['Account Abstraction', 'Rollup Standards (RIP/RRC)', 'Pectra Follow-ups', 'EIP Process & Tooling'].map((topic) => (
                 <a
@@ -247,7 +247,7 @@ export default function SocialCommunityUpdates() {
                   href="https://ethereum-magicians.org/"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="rounded-md border border-slate-200/80 bg-white/80 px-2.5 py-2 text-xs text-slate-700 transition hover:border-primary/40 hover:text-primary dark:border-slate-700/50 dark:bg-slate-900/60 dark:text-slate-300"
+                  className="rounded-md border border-border bg-muted/50 px-2.5 py-2 text-xs text-muted-foreground transition hover:border-primary/40 hover:text-primary"
                 >
                   {topic}
                 </a>
@@ -257,70 +257,70 @@ export default function SocialCommunityUpdates() {
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Community Channels</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community Channels</h3>
           {communityChannels.map((channel) => {
             const Icon = channel.icon;
             const colors = getColorClasses(channel.color);
             return (
-              <a key={channel.name} href={channel.url} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 transition hover:border-primary/40 dark:border-slate-700/50 dark:bg-slate-900/50">
+              <a key={channel.name} href={channel.url} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-lg border border-border bg-card/60 p-3 transition hover:border-primary/40">
                 <div className={cn('rounded-lg border p-2', colors.bg, colors.border)}>
                   <Icon className={cn('h-4 w-4', colors.icon)} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{channel.name}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{channel.description}</p>
-                  <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{channel.members}</p>
+                  <p className="text-sm font-semibold text-foreground">{channel.name}</p>
+                  <p className="text-xs text-muted-foreground">{channel.description}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{channel.members}</p>
                 </div>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition group-hover:opacity-100" />
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
               </a>
             );
           })}
-          <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Upcoming Events</h3>
+          <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Upcoming Events</h3>
           {upcomingEvents.map((event) => {
             const Icon = event.icon;
             return (
-              <a key={event.id} href={event.url} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 transition hover:border-primary/40 dark:border-slate-700/50 dark:bg-slate-900/50">
+              <a key={event.id} href={event.url} target="_blank" rel="noopener noreferrer" className="group flex items-start gap-3 rounded-lg border border-border bg-card/60 p-3 transition hover:border-primary/40">
                 <div className="rounded-lg border border-primary/30 bg-primary/10 p-2">
                   <Icon className="h-4 w-4 text-primary" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-slate-900 dark:text-slate-100">{event.title}</p>
-                  <p className="text-xs text-slate-500 dark:text-slate-400">{event.date} · {event.time}</p>
+                  <p className="text-sm font-medium text-foreground">{event.title}</p>
+                  <p className="text-xs text-muted-foreground">{event.date} · {event.time}</p>
                 </div>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-slate-400 opacity-0 transition group-hover:opacity-100" />
+                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
               </a>
             );
           })}
 
-          <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Community Resources</h3>
-          <div className="rounded-lg border border-slate-200/80 bg-slate-50/70 p-3 dark:border-slate-700/50 dark:bg-slate-900/50">
+          <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community Resources</h3>
+          <div className="rounded-lg border border-border bg-card/60 p-3">
             <div className="space-y-2 text-sm">
               <a
                 href="https://eips.ethereum.org/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-between text-slate-700 transition hover:text-primary dark:text-slate-300"
+                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
               >
                 <span>Official EIPs Website</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400 opacity-0 transition group-hover:opacity-100" />
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
               </a>
               <a
                 href="https://github.com/ethereum/EIPs"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-between text-slate-700 transition hover:text-primary dark:text-slate-300"
+                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
               >
                 <span>EIPs GitHub Repository</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400 opacity-0 transition group-hover:opacity-100" />
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
               </a>
               <a
                 href="https://ethresear.ch/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center justify-between text-slate-700 transition hover:text-primary dark:text-slate-300"
+                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
               >
                 <span>Ethereum Research</span>
-                <ExternalLink className="h-3.5 w-3.5 text-slate-400 opacity-0 transition group-hover:opacity-100" />
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
               </a>
             </div>
           </div>

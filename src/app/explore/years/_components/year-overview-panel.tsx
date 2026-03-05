@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'motion/react';
-import { FileText, GitPullRequest, TrendingUp, Layers } from 'lucide-react';
+import { FileText, GitPullRequest, Shuffle, TrendingUp, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface YearStats {
@@ -13,75 +13,110 @@ interface YearStats {
 }
 
 interface YearOverviewPanelProps {
-  year: number;
+  isCurrentYear?: boolean;
   stats: YearStats | null;
+  selectedYearData?: {
+    newEIPs: number;
+    statusChanges: number;
+    activePRs: number;
+  } | null;
+  previousYearData?: {
+    newEIPs: number;
+    statusChanges: number;
+    activePRs: number;
+  } | null;
   loading: boolean;
 }
 
 const statCards = [
   {
-    key: 'totalNewEIPs',
+    key: 'newEIPs',
     label: 'New EIPs',
     icon: FileText,
-    color: {
-      bg: 'bg-cyan-500/15 dark:bg-cyan-500/10',
-      border: 'border-cyan-400/40 dark:border-cyan-400/20',
-      icon: 'text-cyan-600 dark:text-cyan-400',
-      value: 'text-cyan-700 dark:text-cyan-300',
-    },
+    tone: 'text-primary',
+  },
+  {
+    key: 'statusChanges',
+    label: 'Status Changes',
+    icon: Shuffle,
+    tone: 'text-primary',
+  },
+  {
+    key: 'activePRs',
+    label: 'PR Activity',
+    icon: GitPullRequest,
+    tone: 'text-primary',
   },
   {
     key: 'mostCommonStatus',
     label: 'Most Common Status',
     icon: TrendingUp,
-    color: {
-      bg: 'bg-emerald-500/15 dark:bg-emerald-500/10',
-      border: 'border-emerald-400/40 dark:border-emerald-400/20',
-      icon: 'text-emerald-600 dark:text-emerald-400',
-      value: 'text-emerald-700 dark:text-emerald-300',
-    },
+    tone: 'text-foreground',
   },
   {
     key: 'mostActiveCategory',
     label: 'Most Active Category',
     icon: Layers,
-    color: {
-      bg: 'bg-violet-500/15 dark:bg-violet-500/10',
-      border: 'border-violet-400/40 dark:border-violet-400/20',
-      icon: 'text-violet-600 dark:text-violet-400',
-      value: 'text-violet-700 dark:text-violet-300',
-    },
-  },
-  {
-    key: 'totalPRs',
-    label: 'Total PRs',
-    icon: GitPullRequest,
-    color: {
-      bg: 'bg-amber-500/15 dark:bg-amber-500/10',
-      border: 'border-amber-400/40 dark:border-amber-400/20',
-      icon: 'text-amber-600 dark:text-amber-400',
-      value: 'text-amber-700 dark:text-amber-300',
-    },
+    tone: 'text-foreground',
   },
 ];
 
-export function YearOverviewPanel({ year, stats, loading }: YearOverviewPanelProps) {
+function getDelta(current: number, previous?: number): { value: number; percentage: number } | null {
+  if (previous == null || previous <= 0) return null;
+  const value = current - previous;
+  return {
+    value,
+    percentage: (value / previous) * 100,
+  };
+}
+
+function formatDelta(delta: ReturnType<typeof getDelta>): string {
+  if (!delta) return 'No baseline';
+  const arrow = delta.value >= 0 ? '↑' : '↓';
+  return `${arrow} ${Math.abs(delta.percentage).toFixed(1)}% vs previous year`;
+}
+
+export function YearOverviewPanel({
+  isCurrentYear = false,
+  stats,
+  selectedYearData,
+  previousYearData,
+  loading,
+}: YearOverviewPanelProps) {
   if (loading) {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="h-24 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-24 bg-muted rounded-xl animate-pulse" />
         ))}
       </div>
     );
   }
 
+  const valueByKey = {
+    newEIPs: selectedYearData?.newEIPs ?? stats?.totalNewEIPs ?? 0,
+    statusChanges: selectedYearData?.statusChanges ?? 0,
+    activePRs: selectedYearData?.activePRs ?? stats?.totalPRs ?? 0,
+    mostCommonStatus: stats?.mostCommonStatus ?? 'N/A',
+    mostActiveCategory: stats?.mostActiveCategory ?? 'N/A',
+  } as const;
+
+  const deltaByKey = {
+    newEIPs: getDelta(valueByKey.newEIPs, previousYearData?.newEIPs),
+    statusChanges: getDelta(valueByKey.statusChanges, previousYearData?.statusChanges),
+    activePRs: getDelta(valueByKey.activePRs, previousYearData?.activePRs),
+  } as const;
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
       {statCards.map((card, index) => {
         const Icon = card.icon;
-        const value = stats ? stats[card.key as keyof YearStats] : null;
+        const value = valueByKey[card.key as keyof typeof valueByKey];
         const displayValue = typeof value === 'number' ? value.toLocaleString() : value || 'N/A';
+        const delta =
+          card.key === 'newEIPs' || card.key === 'statusChanges' || card.key === 'activePRs'
+            ? deltaByKey[card.key as keyof typeof deltaByKey]
+            : null;
 
         return (
           <motion.div
@@ -90,27 +125,34 @@ export function YearOverviewPanel({ year, stats, loading }: YearOverviewPanelPro
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: index * 0.05 }}
             className={cn(
-              "relative p-4 rounded-xl border",
-              "bg-white dark:bg-slate-900/50 backdrop-blur-sm",
-              "shadow-sm dark:shadow-none ring-1 ring-slate-200/50 dark:ring-transparent",
-              card.color.border
+              "relative p-4 rounded-xl border border-border bg-card/60 backdrop-blur-sm",
+              "ring-1 ring-border/50"
             )}
           >
             <div className="flex items-center gap-2 mb-2">
               <div className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-lg",
-                card.color.bg
+                "flex h-8 w-8 items-center justify-center rounded-lg border border-primary/30 bg-primary/10"
               )}>
-                <Icon className={cn("h-4 w-4", card.color.icon)} />
+                <Icon className="h-4 w-4 text-primary" />
               </div>
-              <span className="text-xs text-slate-600 dark:text-slate-400">{card.label}</span>
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{card.label}</span>
             </div>
             <p className={cn(
-              "dec-title text-2xl font-bold tracking-tight",
-              card.color.value
+              "dec-title text-2xl font-semibold tracking-tight",
+              card.tone
             )}>
               {displayValue}
             </p>
+            {delta && (
+              <p className={cn(
+                "mt-1 text-xs",
+                delta.value >= 0 ? "text-emerald-400" : "text-amber-400"
+              )}>
+                {isCurrentYear
+                  ? `${delta.value >= 0 ? '↑' : '↓'} ${Math.abs(delta.percentage).toFixed(1)}% vs last full year (directional)`
+                  : formatDelta(delta)}
+              </p>
+            )}
           </motion.div>
         );
       })}

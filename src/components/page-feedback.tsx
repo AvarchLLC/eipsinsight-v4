@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { MessageSquare, Loader2, Trash2, Send, AlertCircle } from "lucide-react";
+import { MessageSquare, Loader2, Trash2, Send, ChevronDown, ChevronUp } from "lucide-react";
 import { toast } from "sonner";
 import { client } from "@/lib/orpc";
 import { useSession } from "@/hooks/useSession";
@@ -43,6 +43,7 @@ export function PageFeedback() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const fetchFeedbacks = useCallback(async () => {
     setLoading(true);
@@ -117,26 +118,55 @@ export function PageFeedback() {
   };
 
   const severityColors = {
-    low: "bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300",
-    medium: "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300",
-    high: "bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300",
-    critical: "bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300",
+    low: "bg-blue-500/15 text-blue-700 dark:text-blue-300 border border-blue-500/25",
+    medium: "bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/25",
+    high: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/25",
+    critical: "bg-red-500/15 text-red-700 dark:text-red-300 border border-red-500/25",
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          Feedback
-        </CardTitle>
-        <CardDescription>Help us improve this page by sharing your feedback</CardDescription>
+    <Card className="mx-auto w-full max-w-7xl rounded-xl border border-border bg-card/60">
+      <CardHeader className="px-4 py-4 sm:px-6">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground">
+              <span className="persona-glow inline-flex h-7 w-7 items-center justify-center rounded-lg border border-primary/35 bg-primary/12 text-primary">
+                <MessageSquare className="h-4 w-4" />
+              </span>
+              Page Feedback
+            </CardTitle>
+            <CardDescription className="mt-1 text-sm text-muted-foreground">
+              Help us improve this page by sharing feedback, bugs, or feature suggestions.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setIsExpanded((v) => !v)}
+            className={cn(
+              "shrink-0 border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10",
+              isExpanded && "border-primary/40 text-primary"
+            )}
+          >
+            {isExpanded ? (
+              <>
+                Collapse <ChevronUp className="ml-1 h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Give feedback <ChevronDown className="ml-1 h-4 w-4" />
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-6">
+      {isExpanded && (
+      <CardContent className="space-y-4 px-4 pb-5 sm:px-6">
         {/* Feedback form */}
-        <div className="space-y-3 border-b border-slate-200 dark:border-slate-700 pb-6">
+        <div className="space-y-3 border-b border-border pb-4">
           <div className="space-y-2">
-            <label htmlFor="feedback" className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor="feedback" className="text-sm font-medium text-foreground">
               Your feedback
             </label>
             <textarea
@@ -146,14 +176,14 @@ export function PageFeedback() {
               placeholder="Let us know what you think. What can we improve?"
               disabled={sessionLoading}
               maxLength={2000}
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-3 py-2 text-sm resize-none placeholder:text-slate-500 dark:placeholder:text-slate-400 disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+              rows={2}
+              className="w-full resize-none rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label htmlFor="category" className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="category" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Category
               </label>
               <select
@@ -161,7 +191,7 @@ export function PageFeedback() {
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
                 disabled={sessionLoading}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full rounded-lg border border-border bg-muted/60 px-2.5 py-1.5 text-sm text-foreground disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               >
                 <option value="general">General</option>
                 <option value="bug">Bug Report</option>
@@ -172,7 +202,7 @@ export function PageFeedback() {
             </div>
 
             <div className="space-y-1.5">
-              <label htmlFor="severity" className="text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor="severity" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
                 Severity (optional)
               </label>
               <select
@@ -180,7 +210,7 @@ export function PageFeedback() {
                 value={selectedSeverity}
                 onChange={(e) => setSelectedSeverity(e.target.value as FeedbackSeverity)}
                 disabled={sessionLoading}
-                className="w-full rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 px-2.5 py-1.5 text-sm disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
+                className="w-full rounded-lg border border-border bg-muted/60 px-2.5 py-1.5 text-sm text-foreground disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
@@ -190,16 +220,16 @@ export function PageFeedback() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
                 checked={isAnonymous}
                 onChange={(e) => setIsAnonymous(e.target.checked)}
                 disabled={sessionLoading}
-                className="rounded"
+                className="rounded border-border bg-muted/60 text-primary focus-visible:ring-ring/40"
               />
-              <span className="text-sm text-slate-600 dark:text-slate-400">
+              <span className="text-sm text-muted-foreground">
                 Submit anonymously
               </span>
             </label>
@@ -207,6 +237,7 @@ export function PageFeedback() {
               type="button"
               onClick={handleSubmitFeedback}
               disabled={!feedbackContent.trim() || isSubmitting || sessionLoading}
+              className="persona-gradient border border-primary/35 text-black hover:opacity-90 disabled:opacity-60"
             >
               {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -221,10 +252,10 @@ export function PageFeedback() {
         {/* Feedbacks list */}
         {sessionLoading || loading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-6 w-6 animate-spin text-cyan-600 dark:text-cyan-400" />
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : feedbacks.length === 0 ? (
-          <div className="text-center py-10 text-slate-500 dark:text-slate-400">
+          <div className="py-10 text-center text-muted-foreground">
             <MessageSquare className="h-10 w-10 mx-auto mb-3 opacity-20" />
             <p className="text-sm">No feedback yet on this page</p>
           </div>
@@ -233,12 +264,12 @@ export function PageFeedback() {
             {feedbacks.map((feedback) => (
               <div
                 key={feedback.id}
-                className="rounded-lg border border-slate-200 dark:border-slate-700 p-4 bg-slate-50/30 dark:bg-slate-900/20"
+                className="rounded-lg border border-border bg-muted/30 p-4 transition-colors hover:bg-primary/5"
               >
                 <div className="flex items-start justify-between gap-3 mb-2">
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="text-sm font-medium text-slate-900 dark:text-white">
+                      <span className="text-sm font-medium text-foreground">
                         {feedback.is_anonymous ? "Anonymous" : feedback.user_name || "Anonymous"}
                       </span>
                       <span className={cn(
@@ -247,11 +278,11 @@ export function PageFeedback() {
                       )}>
                         {feedback.severity}
                       </span>
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300">
+                      <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                         {feedback.category}
                       </span>
                     </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                    <p className="text-xs text-muted-foreground">
                       {new Date(feedback.created_at).toLocaleString()}
                     </p>
                   </div>
@@ -273,7 +304,7 @@ export function PageFeedback() {
                   )}
                 </div>
 
-                <p className="text-sm text-slate-700 dark:text-slate-300 whitespace-pre-wrap wrap-break-word">
+                <p className="text-sm whitespace-pre-wrap break-words text-foreground/90">
                   {feedback.content}
                 </p>
               </div>
@@ -281,6 +312,7 @@ export function PageFeedback() {
           </div>
         )}
       </CardContent>
+      )}
     </Card>
   );
 }

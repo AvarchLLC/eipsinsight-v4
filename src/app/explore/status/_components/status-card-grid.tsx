@@ -9,6 +9,7 @@ import Link from 'next/link';
 interface EIP {
   id: number;
   number: number;
+  kind: string;
   title: string;
   type: string | null;
   status: string;
@@ -23,13 +24,13 @@ interface StatusCardGridProps {
 }
 
 const statusColors: Record<string, { bg: string; border: string; text: string }> = {
-  'Draft': { bg: 'bg-slate-100 dark:bg-slate-500/10', border: 'border-slate-400/40 dark:border-slate-500/30', text: 'text-slate-700 dark:text-slate-300' },
-  'Review': { bg: 'bg-blue-100 dark:bg-blue-500/10', border: 'border-blue-400/40 dark:border-blue-500/30', text: 'text-blue-700 dark:text-blue-300' },
-  'Last Call': { bg: 'bg-amber-100 dark:bg-amber-500/10', border: 'border-amber-400/40 dark:border-amber-500/30', text: 'text-amber-800 dark:text-amber-300' },
-  'Final': { bg: 'bg-emerald-100 dark:bg-emerald-500/10', border: 'border-emerald-400/40 dark:border-emerald-500/30', text: 'text-emerald-800 dark:text-emerald-300' },
-  'Stagnant': { bg: 'bg-orange-100 dark:bg-orange-500/10', border: 'border-orange-400/40 dark:border-orange-500/30', text: 'text-orange-800 dark:text-orange-300' },
-  'Withdrawn': { bg: 'bg-red-100 dark:bg-red-500/10', border: 'border-red-400/40 dark:border-red-500/30', text: 'text-red-800 dark:text-red-300' },
-  'Living': { bg: 'bg-cyan-100 dark:bg-cyan-500/10', border: 'border-cyan-400/40 dark:border-cyan-500/30', text: 'text-cyan-800 dark:text-cyan-300' },
+  'Draft': { bg: 'bg-slate-500/15', border: 'border-slate-500/30', text: 'text-slate-700 dark:text-slate-300' },
+  'Review': { bg: 'bg-amber-500/15', border: 'border-amber-500/30', text: 'text-amber-700 dark:text-amber-300' },
+  'Last Call': { bg: 'bg-orange-500/15', border: 'border-orange-500/30', text: 'text-orange-700 dark:text-orange-300' },
+  'Final': { bg: 'bg-emerald-500/15', border: 'border-emerald-500/30', text: 'text-emerald-700 dark:text-emerald-300' },
+  'Stagnant': { bg: 'bg-gray-500/15', border: 'border-gray-500/30', text: 'text-gray-700 dark:text-gray-300' },
+  'Withdrawn': { bg: 'bg-red-500/15', border: 'border-red-500/30', text: 'text-red-700 dark:text-red-300' },
+  'Living': { bg: 'bg-cyan-500/15', border: 'border-cyan-500/30', text: 'text-cyan-700 dark:text-cyan-300' },
 };
 
 const categoryColors: Record<string, string> = {
@@ -51,11 +52,13 @@ function formatDaysInStatus(days: number | null): string {
 }
 
 export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
+  const proposalHref = (eip: EIP) => eip.kind === 'ERC' ? `/erc/${eip.number}` : eip.kind === 'RIP' ? `/rip/${eip.number}` : `/eip/${eip.number}`;
+  const proposalLabel = (eip: EIP) => `${eip.kind}-${eip.number}`;
   if (loading) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {[...Array(8)].map((_, i) => (
-          <div key={i} className="h-40 bg-slate-200 dark:bg-slate-800 rounded-xl animate-pulse" />
+          <div key={i} className="h-40 rounded-xl bg-muted animate-pulse" />
         ))}
       </div>
     );
@@ -63,8 +66,8 @@ export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
 
   if (eips.length === 0) {
     return (
-      <div className="bg-white dark:bg-slate-900/50 rounded-xl border border-slate-200 dark:border-slate-700/40 p-12 text-center">
-        <p className="text-slate-600 dark:text-slate-400">No EIPs match the current filters</p>
+      <div className="rounded-xl border border-border bg-card/60 p-12 text-center">
+        <p className="text-muted-foreground">No EIPs match the current filters</p>
       </div>
     );
   }
@@ -76,7 +79,7 @@ export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
         const catColor = categoryColors[eip.category || ''] || 'bg-slate-100 dark:bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-400/40 dark:border-slate-500/30';
 
         return (
-          <Link key={eip.id} href={`/eips/${eip.number}`}>
+          <Link key={eip.id} href={proposalHref(eip)}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -84,21 +87,21 @@ export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
               whileHover={{ scale: 1.02, y: -4 }}
               className={cn(
                 "relative p-4 rounded-xl cursor-pointer",
-                "bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-transparent backdrop-blur-sm",
-                "hover:shadow-lg transition-all duration-200",
+                "bg-card/60 border border-border backdrop-blur-sm",
+                "transition-all duration-200 hover:border-primary/40 hover:bg-primary/5",
                 statusColor.border
               )}
             >
               {/* Header */}
               <div className="flex items-start justify-between mb-3">
-                <span className="text-lg font-bold text-cyan-600 dark:text-cyan-400">
-                  EIP-{eip.number}
+                <span className="text-lg font-bold text-primary">
+                  {proposalLabel(eip)}
                 </span>
-                <ArrowRight className="h-4 w-4 text-slate-500" />
+                <ArrowRight className="h-4 w-4 text-muted-foreground" />
               </div>
 
               {/* Title */}
-              <h3 className="text-sm font-medium text-slate-900 dark:text-white mb-3 line-clamp-2">
+              <h3 className="mb-3 line-clamp-2 text-sm font-medium text-foreground">
                 {eip.title}
               </h3>
 
@@ -113,7 +116,7 @@ export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
               )}
 
               {/* Footer */}
-              <div className="flex items-center justify-between pt-3 border-t border-slate-200 dark:border-slate-700/50">
+              <div className="flex items-center justify-between border-t border-border/60 pt-3">
                 <span className={cn(
                   "px-2 py-0.5 rounded-full text-xs font-medium",
                   statusColor.bg,
@@ -121,7 +124,7 @@ export function StatusCardGrid({ eips, loading }: StatusCardGridProps) {
                 )}>
                   {eip.status}
                 </span>
-                <div className="flex items-center gap-1 text-xs text-slate-600 dark:text-slate-500">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
                   <Clock className="h-3 w-3" />
                   {formatDaysInStatus(eip.daysInStatus)}
                 </div>

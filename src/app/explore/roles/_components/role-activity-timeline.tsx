@@ -74,26 +74,26 @@ function getPRLink(event: ActivityEvent): string {
 }
 
 const eventConfigLight: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; label: string }> = {
-  'APPROVED': { icon: CheckCircle2, color: 'text-emerald-600 dark:text-emerald-400', label: 'approved' },
-  'CHANGES_REQUESTED': { icon: XCircle, color: 'text-orange-600 dark:text-orange-400', label: 'requested changes on' },
-  'COMMENTED': { icon: MessageSquare, color: 'text-blue-600 dark:text-blue-400', label: 'commented on' },
-  'REVIEWED': { icon: Eye, color: 'text-violet-600 dark:text-violet-400', label: 'reviewed' },
-  'MERGED': { icon: GitPullRequest, color: 'text-cyan-600 dark:text-cyan-400', label: 'merged' },
-  'OPENED': { icon: FileEdit, color: 'text-amber-600 dark:text-amber-400', label: 'opened' },
-  'CLOSED': { icon: XCircle, color: 'text-red-600 dark:text-red-400', label: 'closed' },
+  'APPROVED': { icon: CheckCircle2, color: 'text-primary', label: 'approved' },
+  'CHANGES_REQUESTED': { icon: XCircle, color: 'text-amber-500', label: 'requested changes on' },
+  'COMMENTED': { icon: MessageSquare, color: 'text-primary', label: 'commented on' },
+  'REVIEWED': { icon: Eye, color: 'text-primary', label: 'reviewed' },
+  'MERGED': { icon: GitPullRequest, color: 'text-emerald-500', label: 'merged' },
+  'OPENED': { icon: FileEdit, color: 'text-primary', label: 'opened' },
+  'CLOSED': { icon: XCircle, color: 'text-rose-500', label: 'closed' },
 };
 
 export function RoleActivityTimeline({ events, loading }: RoleActivityTimelineProps) {
   if (loading) {
     return (
-      <div className="h-full min-h-0 rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 p-4">
+      <div className="h-full min-h-0 rounded-xl border border-border bg-card/60 p-4">
         <div className="animate-pulse space-y-4">
           {[...Array(5)].map((_, i) => (
             <div key={i} className="flex gap-3">
-              <div className="h-8 w-8 rounded-full bg-slate-200 dark:bg-slate-800 shrink-0" />
+              <div className="h-8 w-8 shrink-0 rounded-full bg-muted" />
               <div className="flex-1">
-                <div className="h-4 w-3/4 bg-slate-200 dark:bg-slate-800 rounded mb-2" />
-                <div className="h-3 w-1/4 bg-slate-200 dark:bg-slate-800 rounded" />
+                <div className="mb-2 h-4 w-3/4 rounded bg-muted" />
+                <div className="h-3 w-1/4 rounded bg-muted" />
               </div>
             </div>
           ))}
@@ -104,8 +104,8 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
 
   if (events.length === 0) {
     return (
-      <div className="h-full min-h-0 rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 p-6 flex items-center justify-center">
-        <p className="text-slate-500 dark:text-slate-400 text-sm">No recent activity</p>
+      <div className="flex h-full min-h-0 items-center justify-center rounded-xl border border-border bg-card/60 p-6">
+        <p className="text-sm text-muted-foreground">No timeline events in this filter range. Try widening repo/category/time window.</p>
       </div>
     );
   }
@@ -114,16 +114,16 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="h-full min-h-0 flex flex-col rounded-xl border border-slate-200 dark:border-slate-700/40 bg-white dark:bg-slate-900/50 overflow-hidden shadow-sm dark:shadow-none"
+      className="flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-border bg-card/60"
     >
-      <div className="px-4 py-3 border-b border-slate-200 dark:border-slate-700/40 flex items-center gap-2 shrink-0">
-        <Clock className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-        <h3 className="dec-title text-sm font-semibold text-slate-900 dark:text-white">Recent Activity</h3>
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3">
+        <Clock className="h-4 w-4 text-muted-foreground" />
+        <h3 className="dec-title text-sm font-semibold text-foreground">Recent Activity</h3>
       </div>
 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 scrollbar-thin">
         <div className="relative">
-          <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200 dark:bg-slate-700/50" />
+          <div className="absolute bottom-0 left-4 top-0 w-px bg-border/70" />
 
           <div className="space-y-4">
             {events.map((event, index) => {
@@ -144,7 +144,7 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
                 >
                   <div className={cn(
                     "relative z-10 flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    "bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                    "border border-border bg-muted/60"
                   )}>
                     <Icon className={cn("h-3.5 w-3.5", config.color)} />
                   </div>
@@ -152,34 +152,29 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
                   <div className="flex-1 min-w-0 pt-0.5">
                     <p className="text-xs leading-snug">
                       <Link 
-                        href={`https://github.com/${event.actor}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-slate-900 dark:text-white hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                        href={`/people/${encodeURIComponent(event.actor)}`}
+                        className="font-medium text-foreground transition-colors hover:text-primary"
                       >
                         {event.actor}
                       </Link>
                       {event.role && (
                         <span className={cn(
-                          "mx-1 px-1.5 py-0.5 rounded text-[10px] font-medium uppercase",
-                          event.role === 'EDITOR' && "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-400",
-                          event.role === 'REVIEWER' && "bg-violet-100 dark:bg-violet-500/20 text-violet-700 dark:text-violet-400",
-                          event.role === 'CONTRIBUTOR' && "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                          "mx-1 rounded-md border border-primary/25 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium uppercase text-primary"
                         )}>
                           {event.role}
                         </span>
                       )}
-                      <span className="text-slate-500 dark:text-slate-400"> {config.label} </span>
+                      <span className="text-muted-foreground"> {config.label} </span>
                       <Link
                         href={getPRLink(event)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-violet-600 dark:text-cyan-400 font-medium hover:underline transition-colors"
+                        className="font-medium text-primary transition-colors hover:underline"
                       >
                         PR #{event.prNumber}
                       </Link>
                     </p>
-                    <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
                       {formatTimeAgo(event.createdAt)}
                     </p>
                   </div>

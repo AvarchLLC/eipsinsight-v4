@@ -718,18 +718,18 @@ model upgrade_meta_eip_events {
 }
 
 model Feedback {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   page_path    String
-  category     String   // "bug", "feature", "content", "ui", "other"
-  severity     String   // "low", "medium", "high", "critical"
+  category     String
+  severity     String
   content      String
-  status       String   @default("new") // "new", "in-review", "resolved"
-  is_anonymous Boolean  @default(false)
+  status       String    @default("new")
+  is_anonymous Boolean   @default(false)
   user_id      String?
-  user         User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  created_at   DateTime @default(now())
-  updated_at   DateTime @updatedAt
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
   deleted_at   DateTime?
+  user         User?     @relation(fields: [user_id], references: [id])
 
   @@index([page_path])
   @@index([status])
@@ -738,19 +738,19 @@ model Feedback {
 }
 
 model PageComment {
-  id           String          @id @default(cuid())
+  id           String        @id @default(cuid())
   page_path    String
   parent_id    String?
   content      String
-  is_anonymous Boolean         @default(false)
+  is_anonymous Boolean       @default(false)
   user_id      String?
-  user         User?           @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  parent       PageComment?    @relation("PageCommentReplies", fields: [parent_id], references: [id], onDelete: Cascade)
-  replies      PageComment[]   @relation("PageCommentReplies")
-  votes        CommentVote[]
-  created_at   DateTime        @default(now())
-  updated_at   DateTime        @updatedAt
+  created_at   DateTime      @default(now())
+  updated_at   DateTime      @updatedAt
   deleted_at   DateTime?
+  votes        CommentVote[]
+  parent       PageComment?  @relation("PageCommentReplies", fields: [parent_id], references: [id], onDelete: Cascade)
+  replies      PageComment[] @relation("PageCommentReplies")
+  user         User?         @relation(fields: [user_id], references: [id])
 
   @@index([page_path])
   @@index([parent_id])
@@ -759,15 +759,15 @@ model PageComment {
 }
 
 model CommentVote {
-  id           String      @id @default(cuid())
-  comment_id   String
-  user_id      String?
-  vote_type    String      // "upvote" or "downvote"
-  user_ip      String?     // for anonymous users
-  comment      PageComment @relation(fields: [comment_id], references: [id], onDelete: Cascade)
-  created_at   DateTime    @default(now())
+  id         String      @id @default(cuid())
+  comment_id String
+  user_id    String?
+  vote_type  String
+  user_ip    String?
+  created_at DateTime    @default(now())
+  comment    PageComment @relation(fields: [comment_id], references: [id], onDelete: Cascade)
 
-  @@unique([comment_id, user_id, user_ip]) // one vote per user per comment
+  @@unique([comment_id, user_id, user_ip])
   @@index([comment_id])
   @@map("comment_vote")
 }

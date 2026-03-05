@@ -78,25 +78,25 @@ const STATUS_PIE_COLORS: Record<string, string> = {
 };
 
 const BADGE_COLORS: Record<string, string> = {
-  Draft: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30',
+  Draft: 'bg-slate-500/20 text-muted-foreground border-slate-500/30',
   Review: 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30',
   'Last Call': 'bg-orange-500/20 text-orange-700 dark:text-orange-300 border-orange-500/30',
   Final: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
   Living: 'bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-500/30',
   Stagnant: 'bg-gray-500/20 text-gray-700 dark:text-gray-300 border-gray-500/30',
   Withdrawn: 'bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30',
-  Unknown: 'bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/30',
+  Unknown: 'bg-slate-500/20 text-muted-foreground border-slate-500/30',
 };
 
 const ACTIVITY_CARD_TINT: Record<string, string> = {
-  Final: 'bg-emerald-50/70 border-emerald-200/70 dark:bg-emerald-500/10 dark:border-emerald-400/25',
-  Review: 'bg-amber-50/70 border-amber-200/70 dark:bg-amber-500/10 dark:border-amber-400/25',
-  'Last Call': 'bg-orange-50/70 border-orange-200/70 dark:bg-orange-500/10 dark:border-orange-400/25',
-  Draft: 'bg-slate-50/80 border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-700/50',
-  Living: 'bg-cyan-50/70 border-cyan-200/70 dark:bg-cyan-500/10 dark:border-cyan-400/25',
-  Stagnant: 'bg-gray-50/80 border-gray-200/80 dark:bg-gray-500/10 dark:border-gray-400/25',
-  Withdrawn: 'bg-red-50/70 border-red-200/70 dark:bg-red-500/10 dark:border-red-400/25',
-  Unknown: 'bg-slate-50/80 border-slate-200/80 dark:bg-slate-900/60 dark:border-slate-700/50',
+  Final: 'bg-card/60 border-border',
+  Review: 'bg-card/60 border-border',
+  'Last Call': 'bg-card/60 border-border',
+  Draft: 'bg-card/60 border-border',
+  Living: 'bg-card/60 border-border',
+  Stagnant: 'bg-card/60 border-border',
+  Withdrawn: 'bg-card/60 border-border',
+  Unknown: 'bg-card/60 border-border',
 };
 
 const statusIconMap: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -137,20 +137,20 @@ type BucketTheme = {
 };
 
 const DEFAULT_BUCKET_THEME: BucketTheme = {
-  border: 'border-slate-200/80 dark:border-slate-700/50',
-  surface: 'bg-white/90 dark:bg-slate-900/55',
-  title: 'text-slate-900 dark:text-slate-100',
-  iconWrap: 'bg-slate-100 dark:bg-slate-800/60',
-  icon: 'text-slate-600 dark:text-slate-300',
+  border: 'border-border',
+  surface: 'bg-card/60',
+  title: 'text-foreground',
+  iconWrap: 'bg-muted/60',
+  icon: 'text-muted-foreground',
 };
 
 const BUCKET_THEME_BY_STATUS: Record<string, BucketTheme> = {
-  Draft: { border: 'border-slate-300/80 dark:border-slate-600/60', surface: 'bg-slate-50/80 dark:bg-slate-900/55', title: 'text-slate-700 dark:text-slate-200', iconWrap: 'bg-slate-100 dark:bg-slate-800/70', icon: 'text-slate-500 dark:text-slate-300' },
-  Review: { border: 'border-blue-300/80 dark:border-blue-500/35', surface: 'bg-blue-50/65 dark:bg-blue-500/8', title: 'text-blue-700 dark:text-blue-300', iconWrap: 'bg-blue-100 dark:bg-blue-500/15', icon: 'text-blue-500 dark:text-blue-300' },
-  'Last Call': { border: 'border-amber-300/80 dark:border-amber-500/35', surface: 'bg-amber-50/70 dark:bg-amber-500/8', title: 'text-amber-700 dark:text-amber-300', iconWrap: 'bg-amber-100 dark:bg-amber-500/15', icon: 'text-amber-500 dark:text-amber-300' },
-  Final: { border: 'border-emerald-300/80 dark:border-emerald-500/35', surface: 'bg-emerald-50/70 dark:bg-emerald-500/8', title: 'text-emerald-700 dark:text-emerald-300', iconWrap: 'bg-emerald-100 dark:bg-emerald-500/15', icon: 'text-emerald-500 dark:text-emerald-300' },
-  Stagnant: { border: 'border-orange-300/80 dark:border-orange-500/35', surface: 'bg-orange-50/70 dark:bg-orange-500/8', title: 'text-orange-700 dark:text-orange-300', iconWrap: 'bg-orange-100 dark:bg-orange-500/15', icon: 'text-orange-500 dark:text-orange-300' },
-  Withdrawn: { border: 'border-rose-300/80 dark:border-rose-500/35', surface: 'bg-rose-50/70 dark:bg-rose-500/8', title: 'text-rose-700 dark:text-rose-300', iconWrap: 'bg-rose-100 dark:bg-rose-500/15', icon: 'text-rose-500 dark:text-rose-300' },
+  Draft: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  Review: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  'Last Call': { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  Final: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  Stagnant: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  Withdrawn: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
 };
 
 function monthLabel(monthYear: string) {
@@ -255,9 +255,9 @@ function formatEditorAction(eventType: string) {
 function getBucketTheme(dimension: Dimension, bucket: string): BucketTheme {
   if (dimension === 'status') return BUCKET_THEME_BY_STATUS[bucket] || DEFAULT_BUCKET_THEME;
   if (dimension === 'repo') {
-    if (bucket === 'RIPs') return { border: 'border-violet-300/80 dark:border-violet-500/35', surface: 'bg-violet-50/70 dark:bg-violet-500/8', title: 'text-violet-700 dark:text-violet-300', iconWrap: 'bg-violet-100 dark:bg-violet-500/15', icon: 'text-violet-500 dark:text-violet-300' };
-    if (bucket === 'ERCs') return { border: 'border-emerald-300/80 dark:border-emerald-500/35', surface: 'bg-emerald-50/70 dark:bg-emerald-500/8', title: 'text-emerald-700 dark:text-emerald-300', iconWrap: 'bg-emerald-100 dark:bg-emerald-500/15', icon: 'text-emerald-500 dark:text-emerald-300' };
-    if (bucket === 'EIPs') return { border: 'border-cyan-300/80 dark:border-cyan-500/35', surface: 'bg-cyan-50/70 dark:bg-cyan-500/8', title: 'text-cyan-700 dark:text-cyan-300', iconWrap: 'bg-cyan-100 dark:bg-cyan-500/15', icon: 'text-cyan-500 dark:text-cyan-300' };
+    if (bucket === 'RIPs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
+    if (bucket === 'ERCs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
+    if (bucket === 'EIPs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
   }
   return DEFAULT_BUCKET_THEME;
 }
@@ -541,11 +541,11 @@ export default function EIPsHomePage() {
   };
 
   const sectionTitleClass =
-    'dec-title text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl';
+    'dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl';
   const sectionSubtitleClass =
-    'mt-1 text-sm leading-relaxed text-slate-600 dark:text-slate-400';
+    'mt-1 text-sm leading-relaxed text-muted-foreground';
   const panelTitleClass =
-    'text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100 sm:text-lg';
+    'text-base font-semibold tracking-tight text-foreground sm:text-lg';
 
   return (
     <div className="w-full px-3 py-6 sm:px-6 lg:px-8 xl:px-12">
@@ -553,7 +553,7 @@ export default function EIPsHomePage() {
         <EIPsPageHeader />
       </motion.div>
 
-      <hr className="mb-6 border-slate-200 dark:border-slate-800/50" />
+      <hr className="mb-6 border-border" />
 
       <div className="mb-3 space-y-2">
         <div className="flex items-start justify-between gap-3">
@@ -565,11 +565,11 @@ export default function EIPsHomePage() {
           <div className="overflow-x-auto pb-1">
             <motion.div
               layout
-              className="inline-flex min-w-max items-center rounded-xl border border-slate-300/70 bg-white/85 p-1 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/60"
+              className="inline-flex min-w-max items-center rounded-xl border border-border bg-muted/60 p-1 shadow-sm"
             >
               <button
                 onClick={() => setDimension('status')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'status' ? 'text-primary' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'status' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Activity className="h-4 w-4" /> Status
                 {dimension === 'status' && (
@@ -582,7 +582,7 @@ export default function EIPsHomePage() {
               </button>
               <button
                 onClick={() => setDimension('category')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'category' ? 'text-primary' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'category' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <Layers className="h-4 w-4" /> Category
                 {dimension === 'category' && (
@@ -595,7 +595,7 @@ export default function EIPsHomePage() {
               </button>
               <button
                 onClick={() => setDimension('repo')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'repo' ? 'text-primary' : 'text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'}`}
+                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'repo' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
               >
                 <GitBranch className="h-4 w-4" /> Repo
                 {dimension === 'repo' && (
@@ -616,12 +616,12 @@ export default function EIPsHomePage() {
           Array.from({ length: 8 }).map((_, i) => (
             <div
               key={`dist-skeleton-${i}`}
-              className="rounded-xl border border-slate-200/80 bg-white/80 p-3 dark:border-slate-700/50 dark:bg-slate-900/55"
+              className="rounded-xl border border-border bg-card/60 p-3"
             >
-              <div className="mb-2 h-7 w-7 animate-pulse rounded-lg bg-slate-200 dark:bg-slate-800/70" />
-              <div className="mb-1 h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-              <div className="mb-2 h-7 w-16 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-              <div className="h-1.5 w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800/70" />
+              <div className="mb-2 h-7 w-7 animate-pulse rounded-lg bg-muted" />
+              <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
+              <div className="mb-2 h-7 w-16 animate-pulse rounded bg-muted" />
+              <div className="h-1.5 w-full animate-pulse rounded-full bg-muted" />
             </div>
           ))
         ) : (
@@ -629,13 +629,13 @@ export default function EIPsHomePage() {
         <motion.button
           whileHover={{ y: -1 }}
           onClick={() => setActiveBucket(null)}
-          className={`rounded-xl border px-3 py-2 text-left transition ${activeBucket === null ? 'border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'border-slate-200/80 bg-white/85 hover:border-slate-300 dark:border-slate-700/50 dark:bg-slate-900/55 dark:hover:border-slate-600'}`}
+          className={`rounded-xl border px-3 py-2 text-left transition ${activeBucket === null ? 'border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'border-border bg-card/60 hover:border-primary/40'}`}
         >
           <div className="mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Layers className="h-3 w-3" />
           </div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-slate-500">Total</p>
-          <p className="mt-0.5 text-lg font-semibold leading-none text-slate-900 dark:text-slate-100 sm:text-xl">{totalCount.toLocaleString()}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
+          <p className="mt-0.5 text-lg font-semibold leading-none text-foreground sm:text-xl">{totalCount.toLocaleString()}</p>
         </motion.button>
 
         {distribution.map((row) => {
@@ -653,17 +653,17 @@ export default function EIPsHomePage() {
               key={row.bucket}
               whileHover={{ y: -1 }}
               onClick={() => setActiveBucket((prev) => (prev === row.bucket ? null : row.bucket))}
-              className={`rounded-xl border px-3 py-2 text-left transition ${selected ? 'border-primary/60 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'hover:border-slate-300 dark:hover:border-slate-600'} ${theme.border} ${theme.surface}`}
+              className={`rounded-xl border px-3 py-2 text-left transition ${selected ? 'border-primary/60 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'hover:border-primary/40'} ${theme.border} ${theme.surface}`}
             >
               <div className={`mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg ${theme.iconWrap}`}>
                 <Icon className={`h-3.5 w-3.5 ${theme.icon}`} />
               </div>
               <div className="mb-0.5 flex items-center justify-between gap-2">
                 <p className={`truncate text-[13px] font-medium leading-tight ${theme.title}`}>{row.bucket}</p>
-                <span className="text-[10px] text-slate-500">{pct}%</span>
+                <span className="text-[10px] text-muted-foreground">{pct}%</span>
               </div>
-              <p className="text-xl font-semibold leading-none tracking-tight text-slate-900 dark:text-slate-100 sm:text-2xl">{row.count.toLocaleString()}</p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-slate-200/90 dark:bg-slate-800">
+              <p className="text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">{row.count.toLocaleString()}</p>
+              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/80">
                 <div className={`h-full ${barColor}`} style={{ width: `${Math.max(8, (row.count / maxCardCount) * 100)}%` }} />
               </div>
             </motion.button>
@@ -673,11 +673,11 @@ export default function EIPsHomePage() {
         )}
       </div>
 
-      <div className="mb-6 overflow-hidden rounded-xl border border-slate-200/80 bg-white/90 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
+      <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card/60">
         <div className="overflow-x-auto">
           <table className="min-w-[980px] text-sm">
             <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50 text-left text-xs uppercase tracking-wider text-slate-600 dark:border-slate-700/60 dark:bg-slate-900/70 dark:text-slate-400">
+              <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {[
                   ['github', 'GitHub'],
                   ['eip', 'EIP'],
@@ -688,35 +688,35 @@ export default function EIPsHomePage() {
                   ['status', 'Status'],
                 ].map(([key, label]) => (
                   <th key={key} className="px-2 py-2">
-                    <button onClick={() => toggleSort(key as SortBy)} className="inline-flex items-center gap-1 hover:text-slate-700 dark:hover:text-slate-200">
+                    <button onClick={() => toggleSort(key as SortBy)} className="inline-flex items-center gap-1 hover:text-foreground">
                       {label}
                       {sortBy === key ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3" />}
                     </button>
                   </th>
                 ))}
               </tr>
-              <tr className="border-b border-slate-200/70 bg-slate-50/70 dark:border-slate-700/50 dark:bg-slate-900/50">
-                <th className="px-2 py-2"><input value={columnSearch.github} onChange={(e) => handleColumnSearch('github', e.target.value)} placeholder="/EIPs" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.eip} onChange={(e) => handleColumnSearch('eip', e.target.value)} placeholder="EIP-1559 / 1559" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.title} onChange={(e) => handleColumnSearch('title', e.target.value)} placeholder="Title" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.author} onChange={(e) => handleColumnSearch('author', e.target.value)} placeholder="Author" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.type} onChange={(e) => handleColumnSearch('type', e.target.value)} placeholder="Type" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.category} onChange={(e) => handleColumnSearch('category', e.target.value)} placeholder="Category" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
-                <th className="px-2 py-2"><input value={columnSearch.status} onChange={(e) => handleColumnSearch('status', e.target.value)} placeholder="Status" className="h-8 w-full rounded-md border border-slate-300/70 bg-white px-2 text-xs text-slate-700 outline-none focus:border-primary/50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200" /></th>
+              <tr className="border-b border-border/60 bg-muted/40">
+                <th className="px-2 py-2"><input value={columnSearch.github} onChange={(e) => handleColumnSearch('github', e.target.value)} placeholder="/EIPs" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.eip} onChange={(e) => handleColumnSearch('eip', e.target.value)} placeholder="EIP-1559 / 1559" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.title} onChange={(e) => handleColumnSearch('title', e.target.value)} placeholder="Title" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.author} onChange={(e) => handleColumnSearch('author', e.target.value)} placeholder="Author" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.type} onChange={(e) => handleColumnSearch('type', e.target.value)} placeholder="Type" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.category} onChange={(e) => handleColumnSearch('category', e.target.value)} placeholder="Category" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-2 py-2"><input value={columnSearch.status} onChange={(e) => handleColumnSearch('status', e.target.value)} placeholder="Status" className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
               </tr>
             </thead>
             <tbody>
               {showTableSkeleton ? (
                 Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b border-slate-100 dark:border-slate-800">
+                  <tr key={i} className="border-b border-border/60">
                     <td colSpan={7} className="px-2 py-3">
-                      <div className="h-5 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
+                      <div className="h-5 animate-pulse rounded bg-muted" />
                     </td>
                   </tr>
                 ))
               ) : (
                 (tableData?.rows || []).map((row) => (
-                  <tr key={`${row.repo}-${row.kind}-${row.number}`} className="border-b border-slate-100 text-slate-700 hover:bg-slate-50/80 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-900/60">
+                  <tr key={`${row.repo}-${row.kind}-${row.number}`} className="border-b border-border/60 text-foreground hover:bg-muted/40">
                     <td className="px-2 py-2">
                       <a
                         href={githubProposalUrl(row.kind, row.number)}
@@ -730,8 +730,8 @@ export default function EIPsHomePage() {
                     <td className="px-2 py-2 font-medium text-primary">
                       <Link href={proposalUrl(row.repo, row.kind, row.number)} className="hover:underline">{row.kind}-{row.number}</Link>
                     </td>
-                    <td className="max-w-[420px] px-2 py-2 text-slate-900 dark:text-slate-100">{row.title || `${row.kind}-${row.number}`}</td>
-                    <td className="px-2 py-2 text-slate-600 dark:text-slate-300">
+                    <td className="max-w-[420px] px-2 py-2 text-foreground">{row.title || `${row.kind}-${row.number}`}</td>
+                    <td className="px-2 py-2 text-muted-foreground">
                       {(() => {
                         const author = row.author?.trim() || '';
                         if (!author) return '-';
@@ -754,7 +754,7 @@ export default function EIPsHomePage() {
                         );
                       })()}
                     </td>
-                    <td className="px-2 py-2 text-slate-600 dark:text-slate-300">{row.type || '-'}</td>
+                    <td className="px-2 py-2 text-muted-foreground">{row.type || '-'}</td>
                     <td className="px-2 py-2">{row.category}</td>
                     <td className="px-2 py-2"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${BADGE_COLORS[row.status] || BADGE_COLORS.Unknown}`}>{row.status}</span></td>
                   </tr>
@@ -764,19 +764,19 @@ export default function EIPsHomePage() {
           </table>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-200/80 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-700/50 dark:bg-slate-900/70 dark:text-slate-400">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
           <span>{tableData?.total.toLocaleString() || 0} results</span>
           <div className="flex items-center gap-2">
             <button
               onClick={clearFilters}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 text-slate-600 hover:border-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+              className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
             >
               Reset Filters
             </button>
             <button
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={page <= 1}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
             >
               Prev
             </button>
@@ -784,7 +784,7 @@ export default function EIPsHomePage() {
             <button
               onClick={() => setPage((p) => Math.min(tableData?.totalPages || 1, p + 1))}
               disabled={page >= (tableData?.totalPages || 1)}
-              className="rounded-md border border-slate-300 bg-white px-2 py-1 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
             >
               Next
             </button>
@@ -793,21 +793,21 @@ export default function EIPsHomePage() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
+        <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Activity className="h-4 w-4 text-primary" />
                 <h3 className={panelTitleClass}>{monthLabel(FEB_2026)} Insight (Status Changes)</h3>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Monthly status transition distribution and totals.
               </p>
             </div>
             <button
               onClick={downloadDetailedCSV}
               disabled={downloading}
-              className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
             >
               <Download className="h-3.5 w-3.5" /> {downloading ? 'Exporting...' : 'Detailed CSV'}
             </button>
@@ -816,7 +816,7 @@ export default function EIPsHomePage() {
           <div className="grid items-center gap-4 md:grid-cols-[220px_1fr]">
             <div className="h-[180px] w-full sm:h-[220px]">
               {showInsightSkeleton ? (
-                <div className="h-full w-full animate-pulse rounded-full bg-slate-200 dark:bg-slate-800/70" />
+                <div className="h-full w-full animate-pulse rounded-full bg-muted" />
               ) : (
                 <>
                   <ReactECharts
@@ -824,8 +824,8 @@ export default function EIPsHomePage() {
                     style={{ height: '100%', width: '100%' }}
                     opts={{ renderer: 'svg' }}
                   />
-                  <p className="mt-1 text-center text-xs text-slate-500 dark:text-slate-400">
-                    Total changes: <span className="font-semibold text-slate-700 dark:text-slate-200">{febInsightTotal}</span>
+                  <p className="mt-1 text-center text-xs text-muted-foreground">
+                    Total changes: <span className="font-semibold text-foreground">{febInsightTotal}</span>
                   </p>
                 </>
               )}
@@ -833,18 +833,18 @@ export default function EIPsHomePage() {
             <div className="space-y-2">
               {showInsightSkeleton
                 ? Array.from({ length: 5 }).map((_, i) => (
-                    <div key={`insight-skeleton-${i}`} className="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200/80 dark:bg-slate-900/60 dark:ring-slate-700/50">
-                      <div className="mb-1 h-4 w-28 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-                      <div className="h-1.5 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800/70" />
+                    <div key={`insight-skeleton-${i}`} className="rounded-lg bg-muted/40 p-2.5 ring-1 ring-border">
+                      <div className="mb-1 h-4 w-28 animate-pulse rounded bg-muted" />
+                      <div className="h-1.5 animate-pulse rounded-full bg-muted" />
                     </div>
                   ))
                 : febDelta.map((row) => (
-                    <div key={row.status} className="rounded-lg bg-slate-50 p-2.5 ring-1 ring-slate-200/80 dark:bg-slate-900/60 dark:ring-slate-700/50">
+                    <div key={row.status} className="rounded-lg bg-muted/40 p-2.5 ring-1 ring-border">
                       <div className="mb-1 flex items-center justify-between text-sm">
-                        <span className="text-slate-900 dark:text-slate-100">{row.status}</span>
+                        <span className="text-foreground">{row.status}</span>
                         <span className="font-semibold text-primary">{row.count}</span>
                       </div>
-                      <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                      <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
                         <div className={`h-full ${STATUS_COLORS[row.status] || 'bg-cyan-500'}`} style={{ width: `${Math.max(8, (row.count / maxInsight) * 100)}%` }} />
                       </div>
                     </div>
@@ -853,21 +853,21 @@ export default function EIPsHomePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
+        <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />
+                <Trophy className="h-4 w-4 text-primary" />
                 <h3 className={panelTitleClass}>Editor Leaderboard ({monthLabel(FEB_2026)})</h3>
               </div>
-              <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-0.5 text-xs text-muted-foreground">
                 Ranked by PRs touched and editorial actions in the month.
               </p>
             </div>
             <button
               onClick={downloadLeaderboardDetailedCSV}
               disabled={downloadingLeaderboard}
-              className="inline-flex items-center gap-1 rounded-md border border-emerald-400/40 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 hover:bg-emerald-500/20 dark:text-emerald-300 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
             >
               <Download className="h-3.5 w-3.5" /> {downloadingLeaderboard ? 'Exporting...' : 'Detailed CSV'}
             </button>
@@ -876,33 +876,33 @@ export default function EIPsHomePage() {
           <div className="space-y-2">
             {showEditorSkeleton
               ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={`editor-skeleton-${i}`} className="rounded-lg p-2.5 ring-1 ring-slate-200/80 dark:ring-slate-700/50">
+                  <div key={`editor-skeleton-${i}`} className="rounded-lg p-2.5 ring-1 ring-border">
                     <div className="mb-2 flex items-center gap-2">
-                      <div className="h-8 w-8 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800/70" />
+                      <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
                       <div className="flex-1">
-                        <div className="mb-1 h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-                        <div className="h-3 w-36 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
+                        <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
+                        <div className="h-3 w-36 animate-pulse rounded bg-muted" />
                       </div>
                     </div>
-                    <div className="h-1.5 animate-pulse rounded-full bg-slate-200 dark:bg-slate-800/70" />
+                    <div className="h-1.5 animate-pulse rounded-full bg-muted" />
                   </div>
                 ))
               : febEditors.map((row, idx) => (
-                  <div key={row.actor} className={`rounded-lg p-2.5 ring-1 ${idx === 0 ? 'bg-amber-50 ring-amber-300/60 dark:bg-amber-500/10 dark:ring-amber-400/30' : 'bg-slate-50 ring-slate-200/80 dark:bg-slate-900/60 dark:ring-slate-700/50'}`}>
+                  <div key={row.actor} className={`rounded-lg p-2.5 ring-1 ${idx === 0 ? 'bg-primary/10 ring-primary/30' : 'bg-muted/40 ring-border'}`}>
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-slate-300/80 dark:ring-slate-700/60">
+                        <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-border">
                           <Image src={editorAvatar(row.actor)} alt={row.actor} width={32} height={32} className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">#{idx + 1} {row.actor}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">{row.totalActions} actions across {row.prsTouched} PRs</p>
+                          <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
+                          <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
                         </div>
                       </div>
-                      <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-300">{row.prsTouched}</span>
+                      <span className="text-sm font-semibold text-primary">{row.prsTouched}</span>
                     </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                      <div className="h-full bg-emerald-500" style={{ width: `${Math.max(8, (row.prsTouched / maxEditor) * 100)}%` }} />
+                    <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
+                      <div className="h-full bg-primary" style={{ width: `${Math.max(8, (row.prsTouched / maxEditor) * 100)}%` }} />
                     </div>
                   </div>
                 ))}
@@ -910,7 +910,7 @@ export default function EIPsHomePage() {
         </div>
       </div>
 
-      <hr className="my-6 border-slate-200 dark:border-slate-800/50" />
+      <hr className="my-6 border-border" />
 
       <section className="mb-6 w-full" id="recent-governance-activity">
         <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -928,10 +928,10 @@ export default function EIPsHomePage() {
           <div>
             {!recentChanges ? (
               <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-5 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />)}
+                {Array.from({ length: 5 }).map((_, i) => <div key={i} className="h-5 animate-pulse rounded bg-muted" />)}
               </div>
             ) : recentChanges.length === 0 ? (
-              <p className="text-sm text-slate-600 dark:text-slate-400">No recent status changes.</p>
+              <p className="text-sm text-muted-foreground">No recent status changes.</p>
             ) : (
               <div className="space-y-2">
                 {recentChanges.map((change) => {
@@ -942,24 +942,24 @@ export default function EIPsHomePage() {
                       <button
                         type="button"
                         onClick={() => setOpenActivities((prev) => ({ ...prev, [id]: !prev[id] }))}
-                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-slate-100/80 dark:hover:bg-slate-800/40 sm:items-center"
+                        className="flex w-full items-start gap-3 px-3 py-2.5 text-left hover:bg-muted/50 sm:items-center"
                       >
-                        <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-slate-300/80 dark:ring-slate-700/60">
+                        <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-border">
                           <Image src={activityAvatar(change.actor)} alt={change.actor || 'system'} width={32} height={32} className="h-full w-full object-cover" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">{change.actor || 'system'}</span>
+                            <span className="truncate text-sm font-medium text-foreground">{change.actor || 'system'}</span>
                             <span className={`h-2 w-2 rounded-full ${STATUS_COLORS[change.to] || 'bg-cyan-500'}`} />
-                            <span className="rounded-full bg-slate-200/80 px-2 py-0.5 text-[10px] font-medium text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                            <span className="rounded-full bg-muted/80 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                               {change.from ? `${change.from} -> ${change.to}` : `to ${change.to}`}
                             </span>
                           </div>
-                          <p className="truncate text-sm text-slate-700 dark:text-slate-300">
+                          <p className="truncate text-sm text-muted-foreground">
                             {change.eip_type}-{change.eip}: {change.title || 'Untitled proposal'}
                           </p>
                         </div>
-                        <div className="flex items-center gap-2 text-xs tabular-nums text-slate-500 dark:text-slate-400">
+                        <div className="flex items-center gap-2 text-xs tabular-nums text-muted-foreground">
                           <span>{change.days === 0 ? 'today' : `${change.days}d ago`}</span>
                           {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                         </div>
@@ -971,12 +971,12 @@ export default function EIPsHomePage() {
                             animate={{ height: 'auto', opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.2 }}
-                            className="overflow-hidden border-t border-slate-200/80 px-3 py-2 dark:border-slate-700/50"
+                            className="overflow-hidden border-t border-border px-3 py-2"
                           >
-                            <div className="grid gap-1 text-xs text-slate-600 dark:text-slate-400 sm:grid-cols-2">
-                              <div>Repository: <span className="font-medium text-slate-800 dark:text-slate-200">{change.repository || 'Unknown'}</span></div>
-                              <div>Status: <span className="font-medium text-slate-800 dark:text-slate-200">{change.from || 'Unknown'} {'->'} {change.to}</span></div>
-                              <div>Proposal: <span className="font-medium text-slate-800 dark:text-slate-200">{change.eip_type}-{change.eip}</span></div>
+                            <div className="grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                              <div>Repository: <span className="font-medium text-foreground">{change.repository || 'Unknown'}</span></div>
+                              <div>Status: <span className="font-medium text-foreground">{change.from || 'Unknown'} {'->'} {change.to}</span></div>
+                              <div>Proposal: <span className="font-medium text-foreground">{change.eip_type}-{change.eip}</span></div>
                               <div>
                                 Open:&nbsp;
                                 <Link href={`/${change.eip_type === 'RIP' ? 'rip' : change.eip_type === 'ERC' ? 'erc' : 'eip'}/${change.eip}`} className="font-medium text-primary hover:underline">
@@ -994,24 +994,24 @@ export default function EIPsHomePage() {
             )}
           </div>
 
-          <aside className="rounded-xl border border-slate-200/80 bg-white/90 p-3 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
+          <aside className="rounded-xl border border-border bg-card/60 p-3 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Latest Editor Activity (Open PRs)</h3>
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <h3 className="text-sm font-semibold text-foreground">Latest Editor Activity (Open PRs)</h3>
+              <span className="rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {recentEditorActivities.length}
               </span>
             </div>
             <div className="space-y-2">
               {loading && recentEditorActivities.length === 0 ? (
                 Array.from({ length: 6 }).map((_, i) => (
-                  <div key={`review-skeleton-${i}`} className="rounded-lg border border-slate-200/80 p-2 dark:border-slate-700/50">
-                    <div className="mb-1 h-3 w-24 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-                    <div className="mb-1 h-3 w-full animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
-                    <div className="h-2 w-20 animate-pulse rounded bg-slate-200 dark:bg-slate-800/70" />
+                  <div key={`review-skeleton-${i}`} className="rounded-lg border border-border p-2">
+                    <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
+                    <div className="mb-1 h-3 w-full animate-pulse rounded bg-muted" />
+                    <div className="h-2 w-20 animate-pulse rounded bg-muted" />
                   </div>
                 ))
               ) : recentEditorActivities.length === 0 ? (
-                <p className="text-sm text-slate-600 dark:text-slate-400">No editor activity found for open PRs.</p>
+                <p className="text-sm text-muted-foreground">No editor activity found for open PRs.</p>
               ) : (
                 recentEditorActivities.slice(0, 5).map((item, idx) => (
                   <a
@@ -1022,20 +1022,20 @@ export default function EIPsHomePage() {
                     className="block rounded-lg border border-slate-200/80 bg-slate-50/70 p-2.5 transition hover:border-primary/50 hover:bg-slate-50 dark:border-slate-700/50 dark:bg-slate-900/60 dark:hover:bg-slate-900/75"
                   >
                     <div className="mb-1 flex items-center gap-2">
-                      <div className="h-7 w-7 overflow-hidden rounded-full ring-1 ring-slate-300/80 dark:ring-slate-700/60">
+                      <div className="h-7 w-7 overflow-hidden rounded-full ring-1 ring-border">
                         <Image src={editorAvatar(item.editor)} alt={item.editor} width={28} height={28} className="h-full w-full object-cover" />
                       </div>
                       <div className="min-w-0">
-                        <p className="truncate text-xs font-medium text-slate-900 dark:text-slate-100">{item.editor}</p>
-                        <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                        <p className="truncate text-xs font-medium text-foreground">{item.editor}</p>
+                        <p className="text-[11px] text-muted-foreground">
                           {formatEditorAction(item.eventType)} · {new Date(item.actedAt).toLocaleString()}
                         </p>
                       </div>
                     </div>
-                    <p className="line-clamp-2 text-xs text-slate-700 dark:text-slate-300">
+                    <p className="line-clamp-2 text-xs text-muted-foreground">
                       {item.title || `PR #${item.prNumber}`}
                     </p>
-                    <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-slate-200/70 px-2 py-0.5 text-[10px] text-slate-700 dark:bg-slate-800 dark:text-slate-300">
+                    <div className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-muted/70 px-2 py-0.5 text-[10px] text-muted-foreground">
                       <GitPullRequest className="h-3 w-3" />
                       {item.repoShort.toUpperCase()} PR #{item.prNumber}
                     </div>
@@ -1047,13 +1047,13 @@ export default function EIPsHomePage() {
         </div>
       </section>
 
-      <hr className="my-6 border-slate-200 dark:border-slate-800/50" />
+      <hr className="my-6 border-border" />
 
       <section className="mb-6">
         <SocialCommunityUpdates />
       </section>
 
-      <hr className="my-6 border-slate-200 dark:border-slate-800/50" />
+      <hr className="my-6 border-border" />
 
       <section>
         <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
