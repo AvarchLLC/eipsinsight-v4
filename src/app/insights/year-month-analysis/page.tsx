@@ -13,6 +13,9 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { StatusTransitionStackedChart } from "@/components/analytics/StatusTransitionStackedChart";
+import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#64748b",
@@ -56,9 +59,11 @@ function DrilldownPageContent() {
   const pageSize = 8;
 
   const [loading, setLoading] = useState(true);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [data, setData] = useState<Awaited<ReturnType<typeof client.insights.getMonthlyDrilldown>> | null>(null);
   const [editors, setEditors] = useState<Array<{ editor: string; reviews: number; prsTouched: number; comments: number }>>([]);
+  const [statusTransitionData, setStatusTransitionData] = useState<Array<Record<string, string | number>>>([]);
   const [columnSearch, setColumnSearch] = useState<Record<string, string>>({});
   const [tableStatusFilter, setTableStatusFilter] = useState<string | null>(null);
   const [tableRepoFilter, setTableRepoFilter] = useState<"eips" | "ercs" | "rips" | null>(null);
@@ -72,7 +77,7 @@ function DrilldownPageContent() {
     const run = async () => {
       setLoading(true);
       try {
-        const [drilldown, editorRows] = await Promise.all([
+        const [drilldown, editorRows, statusData] = await Promise.all([
           client.insights.getMonthlyDrilldown({
             repo: tableRepoFilter ?? repo,
             month,
@@ -88,10 +93,16 @@ function DrilldownPageContent() {
             month,
             repo: repo === "all" ? undefined : repo,
           }),
+          client.insights.getStatusTransitionData({
+            repo: repo === "all" ? undefined : repo,
+            month,
+          }),
         ]);
 
         setData(drilldown);
         setEditors(editorRows);
+        setStatusTransitionData(statusData);
+        setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Monthly insight load failed", err);
       } finally {
@@ -427,6 +438,9 @@ function DrilldownPageContent() {
             </div>
           ) : (
             <>
+              <div className="flex justify-end mb-2">
+                <LastUpdated timestamp={dataUpdatedAt} />
+              </div>
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
                 <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">
@@ -505,6 +519,20 @@ function DrilldownPageContent() {
                   </div>
                 </div>
               </div>
+
+              {statusTransitionData.length > 0 && (
+                <>
+                  <StatusTransitionStackedChart
+                    data={statusTransitionData}
+                    colors={STATUS_COLORS}
+                    title="Proposal Status Distribution"
+                    description={`Current snapshot of proposal counts across all statuses for ${monthLabel(month)}`}
+                  />
+                  <AnalyticsAnnotation>
+                    Status transitions reveal the lifecycle of proposals from Draft to Final, highlighting review bottlenecks and approval flows.
+                  </AnalyticsAnnotation>
+                </>
+              )}
 
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">

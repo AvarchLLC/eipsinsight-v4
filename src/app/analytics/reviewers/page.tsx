@@ -3,7 +3,15 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { Loader2, Users, Clock, MessageSquare, AlertCircle } from "lucide-react";
+import { Loader2, Users, Clock, MessageSquare, AlertCircle, Search, ChevronLeft, ChevronRight, Info } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { ReviewerFocusMatrix } from "@/components/analytics/ReviewerFocusMatrix";
+import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
+import {
+  Tooltip,
+  TooltipTrigger,
+  TooltipContent,
+} from "@/components/ui/tooltip";
 import {
   ChartContainer,
   ChartTooltip,
@@ -88,11 +96,23 @@ export default function ReviewersAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   
   const [leaderboard, setLeaderboard] = useState<ReviewerLeaderboardRow[]>([]);
   const [monthlyTrend, setMonthlyTrend] = useState<MonthlyTrendPoint[]>([]);
   const [cyclesData, setCyclesData] = useState<CyclesData[]>([]);
   const [repoDistribution, setRepoDistribution] = useState<RepoDistribution[]>([]);
+  
+  // Leaderboard pagination and filtering
+  const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState<"reviews" | "prs" | "response">("reviews");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
+  // Focus matrix pagination and filtering
+  const [focusMatrixSearch, setFocusMatrixSearch] = useState("");
+  const [focusMatrixSort, setFocusMatrixSort] = useState<"name" | "total">("name");
+  const [focusMatrixPage, setFocusMatrixPage] = useState(1);
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
@@ -129,6 +149,7 @@ export default function ReviewersAnalyticsPage() {
         setMonthlyTrend(trendData);
         setCyclesData(cyclesDataRes);
         setRepoDistribution(repoData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch reviewers analytics:", error);
         setError("Failed to load reviewer analytics. Please try again.");
@@ -167,6 +188,47 @@ export default function ReviewersAnalyticsPage() {
     });
     return Array.from(actors).slice(0, 8); // Limit to 8 for readability
   }, [monthlyTrend]);
+
+  // Filter and sort leaderboard
+  const filteredAndSortedLeaderboard = useMemo(() => {
+    let filtered = leaderboard.filter((reviewer) =>
+      reviewer.actor.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Sort based on selected metric
+    switch (sortBy) {
+      case "reviews":
+        filtered.sort((a, b) => b.totalReviews - a.totalReviews);
+        break;
+      case "prs":
+        filtered.sort((a, b) => b.prsTouched - a.prsTouched);
+        break;
+      case "response":
+        filtered.sort((a, b) => {
+          const aVal = a.medianResponseDays ?? Infinity;
+          const bVal = b.medianResponseDays ?? Infinity;
+          return aVal - bVal;
+        });
+        break;
+    }
+
+    return filtered;
+  }, [leaderboard, searchQuery, sortBy]);
+
+  // Pagination
+  const totalPages = Math.ceil(
+    filteredAndSortedLeaderboard.length / itemsPerPage
+  );
+  const validPage = Math.min(currentPage, Math.max(1, totalPages));
+  const paginatedLeaderboard = filteredAndSortedLeaderboard.slice(
+    (validPage - 1) * itemsPerPage,
+    validPage * itemsPerPage
+  );
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, sortBy]);
 
   // Export functionality
   useAnalyticsExport(() => {
@@ -275,7 +337,35 @@ export default function ReviewersAnalyticsPage() {
 
       {/* Reviewer Leaderboard */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-xl font-semibold text-foreground">Reviewer Leaderboard</h2>
+        <div className="mb-6 flex items-center justify-between">
+          <h2 className="text-xl font-semibold text-foreground">Reviewer Leaderboard</h2>
+          <LastUpdated timestamp={dataUpdatedAt} />
+        </div>
+
+        {/* Filters and Search */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search reviewer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background pl-9 pr-4 py-2 text-sm placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as "reviews" | "prs" | "response")}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="reviews">Sort by Reviews (High to Low)</option>
+            <option value="prs">Sort by PRs Touched (High to Low)</option>
+            <option value="response">Sort by Response Time (Low to High)</option>
+          </select>
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
@@ -288,38 +378,129 @@ export default function ReviewersAnalyticsPage() {
               </tr>
             </thead>
             <tbody>
-              {leaderboard.map((reviewer, idx) => (
-                <tr
-                  key={reviewer.actor}
-                  className="border-b border-border/60 hover:bg-muted/40 transition-colors"
-                >
-                  <td className="py-3 px-4 text-sm text-muted-foreground">#{idx + 1}</td>
-                  <td className="py-3 px-4">
-                    <span className="font-medium text-foreground/90">{reviewer.actor}</span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
-                    {reviewer.totalReviews.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
-                    {reviewer.prsTouched.toLocaleString()}
-                  </td>
-                  <td className="py-3 px-4 text-right text-sm text-foreground/85">
-                    {reviewer.medianResponseDays != null
-                      ? `${reviewer.medianResponseDays}d`
-                      : "–"}
-                  </td>
-                </tr>
-              ))}
-              {leaderboard.length === 0 && (
+              {paginatedLeaderboard.map((reviewer, idx) => {
+                const actualRank = (validPage - 1) * itemsPerPage + idx + 1;
+                return (
+                  <tr
+                    key={reviewer.actor}
+                    className="border-b border-border/60 hover:bg-muted/40 transition-colors"
+                  >
+                    <td className="py-3 px-4 text-sm text-muted-foreground">#{actualRank}</td>
+                    <td className="py-3 px-4">
+                      <span className="font-medium text-foreground/90">{reviewer.actor}</span>
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-foreground/85">
+                      {reviewer.totalReviews.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-foreground/85">
+                      {reviewer.prsTouched.toLocaleString()}
+                    </td>
+                    <td className="py-3 px-4 text-right text-sm text-foreground/85">
+                      {reviewer.medianResponseDays != null
+                        ? `${reviewer.medianResponseDays}d`
+                        : "–"}
+                    </td>
+                  </tr>
+                );
+              })}
+              {paginatedLeaderboard.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-6 text-center text-sm text-muted-foreground">
-                    No reviewer data found for the current filters.
+                    {searchQuery ? "No reviewers match your search." : "No reviewer data found for the current filters."}
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {filteredAndSortedLeaderboard.length > 0 && (
+          <div className="mt-6 flex items-center justify-between border-t border-border/70 pt-4">
+            <div className="text-xs text-muted-foreground">
+              Showing {(validPage - 1) * itemsPerPage + 1}–
+              {Math.min(validPage * itemsPerPage, filteredAndSortedLeaderboard.length)} of{" "}
+              {filteredAndSortedLeaderboard.length} reviewers
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                disabled={validPage === 1}
+                className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </button>
+              <div className="flex items-center gap-2 px-2 text-sm text-muted-foreground">
+                Page {validPage} of {totalPages === 0 ? 1 : totalPages}
+              </div>
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                disabled={validPage === totalPages || totalPages === 0}
+                className="inline-flex items-center gap-1 rounded-lg border border-input px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Reviewer Domain Focus */}
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <div className="mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground">Reviewer Domain Focus</h2>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button className="inline-flex items-center justify-center rounded-full w-5 h-5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                <p className="font-medium mb-1">Repository specialization analysis</p>
+                <p className="text-xs text-muted-foreground">Shows which reviewers specialize in different repository types (EIPs, ERCs, RIPs). Each card displays review distribution and identifies the reviewer's primary focus area.</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <LastUpdated timestamp={dataUpdatedAt} />
+        </div>
+
+        {/* Filters and Search */}
+        <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="relative flex-1 sm:max-w-xs">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search reviewer..."
+              value={focusMatrixSearch}
+              onChange={(e) => setFocusMatrixSearch(e.target.value)}
+              className="w-full rounded-lg border border-input bg-background pl-9 pr-4 py-2 text-sm placeholder-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          <select
+            value={focusMatrixSort}
+            onChange={(e) => setFocusMatrixSort(e.target.value as "name" | "total")}
+            className="rounded-lg border border-input bg-background px-3 py-2 text-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+          >
+            <option value="name">Sort by Name (A-Z)</option>
+            <option value="total">Sort by Total Reviews (High to Low)</option>
+          </select>
+        </div>
+
+        <ReviewerFocusMatrix 
+          data={repoDistribution}
+          searchQuery={focusMatrixSearch}
+          sortBy={focusMatrixSort}
+          currentPage={focusMatrixPage}
+          onPageChange={setFocusMatrixPage}
+          itemsPerPage={5}
+        />
+        <AnalyticsAnnotation>
+          Repository focus patterns highlight where reviewers concentrate their efforts across EIPs, ERCs, and RIPs.
+        </AnalyticsAnnotation>
       </div>
 
       {/* Monthly Trend + Cycles per PR */}

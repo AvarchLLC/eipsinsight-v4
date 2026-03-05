@@ -271,7 +271,9 @@ export default function EIPsAnalyticsPage() {
     if (total === 0) return "No governance records available for the selected filter.";
     const biggest = [...statusDist].sort((a, b) => b.count - a.count)[0];
     const draftToFinal = velocity?.draftToFinalMedian;
-    const speedCopy = draftToFinal ? `Median draft-to-final is ${draftToFinal} days.` : "Median decision speed is still being computed.";
+    const speedCopy = draftToFinal
+      ? `Median draft-to-final is ${draftToFinal} days.`
+      : "Median decision speed is still being computed.";
     return `${biggest?.status || "Draft"} is the largest bucket (${biggest?.count?.toLocaleString() || 0}). Active pipeline is ${activeCount.toLocaleString()}, with ${stagnantCount.toLocaleString()} stalled proposals (${stagnantRate.toFixed(1)}%). ${speedCopy}`;
   }, [activeCount, stagnantCount, stagnantRate, statusDist, total, velocity?.draftToFinalMedian]);
 
@@ -282,7 +284,6 @@ export default function EIPsAnalyticsPage() {
         const fromRank = STATUS_RANK[t.from];
         const toRank = STATUS_RANK[t.to];
         if (fromRank == null || toRank == null) return false;
-        // Sankey requires a DAG. Keep forward governance motion only.
         return toRank > fromRank;
       })
       .sort((a, b) => b.value - a.value);
@@ -589,7 +590,7 @@ export default function EIPsAnalyticsPage() {
       share_percent: total > 0 ? (((statusCountMap[status] || 0) / total) * 100).toFixed(2) : "0.00",
     }));
     downloadObjectCSV(withMeta("pipeline_status", rows), `eips-pipeline-status-${new Date().toISOString().slice(0, 10)}.csv`);
-  }, [STATUS_ORDER, statusCountMap, total, withMeta]);
+  }, [statusCountMap, total, withMeta]);
 
   const exportCompositionCSV = useCallback(() => {
     const rows = catBreakdown.map((c) => ({
@@ -833,8 +834,7 @@ export default function EIPsAnalyticsPage() {
                 </tr>
               </thead>
               <tbody>
-                {recentChanges.slice(0, 15).map((raw, idx) => {
-                  const row = raw as RecentChangeRow;
+                {recentChanges.slice(0, 15).map((row, idx) => {
                   const to = row.to || "Draft";
                   const color = STATUS_COLORS[to] || "#64748b";
                   const repo = String(row.repository || "").toLowerCase();

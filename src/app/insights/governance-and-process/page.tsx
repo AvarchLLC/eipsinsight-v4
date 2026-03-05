@@ -6,6 +6,8 @@ import { ArrowLeft, ChevronDown, Download, Loader2 } from "lucide-react";
 import ReactECharts from "echarts-for-react";
 import { client } from "@/lib/orpc";
 import { PageHeader, SectionSeparator } from "@/components/header";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
 
 const STATE_ORDER = ["STALLED", "WAITING_ON_EDITOR", "WAITING_ON_AUTHOR", "MERGED", "CLOSED"] as const;
 const STATE_COLORS: Record<string, string> = {
@@ -376,6 +378,11 @@ export default function GovernanceProcessPage() {
           </div>
         ) : (
           <>
+            {syncMeta?.lastSyncAt && (
+              <div className="flex justify-end">
+                <LastUpdated timestamp={syncMeta.lastSyncAt} />
+              </div>
+            )}
             <div className="rounded-lg border border-border/60 bg-muted/40 px-4 py-2.5">
               <div className="flex items-start gap-2.5">
                 <span className="mt-1.5 h-2 w-2 rounded-full bg-primary" />
@@ -446,6 +453,9 @@ export default function GovernanceProcessPage() {
                     </div>
                   ))}
                 </div>
+                <AnalyticsAnnotation>
+                  Governance states indicate current PR status—tracking proposals awaiting editor review, author updates, or in stalled condition.
+                </AnalyticsAnnotation>
                 <div className="mt-2.5 border-t border-border/60 pt-3 text-xs text-muted-foreground">
                   <span className="font-medium text-foreground/90">EIPsInsight.com</span>
                   <span className="mx-1.5">•</span>

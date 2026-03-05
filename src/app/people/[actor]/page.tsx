@@ -15,6 +15,7 @@ import { client } from "@/lib/orpc";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ActivityTimelineSection, type ActivityDetail } from "@/components/people/activity-timeline-section";
 import { RepositoryBreakdownSection } from "@/components/people/repository-breakdown-section";
+import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import {
   ChartContainer,
   ChartTooltip,
@@ -136,6 +137,18 @@ export default function PersonProfilePage() {
         actor: actorParam,
         limit: 400,
         months: 24,
+        from: range.fromIso ?? undefined,
+        to: range.toIso ?? undefined,
+      }),
+    enabled: actorParam.length > 0,
+    staleTime: 60_000,
+  });
+
+  const dailyActivityQuery = useQuery({
+    queryKey: ["contributor-daily-activity", actorParam, range.fromIso, range.toIso],
+    queryFn: () =>
+      client.analytics.getContributorDailyActivity({
+        actor: actorParam,
         from: range.fromIso ?? undefined,
         to: range.toIso ?? undefined,
       }),
@@ -401,6 +414,21 @@ export default function PersonProfilePage() {
             </p>
           </div>
         </div>
+      </section>
+
+      <section className="mb-6 rounded-xl border border-slate-200 bg-white/90 p-4 dark:border-slate-700/50 dark:bg-slate-900/50">
+        <h2 className="mb-4 text-sm font-medium text-slate-800 dark:text-slate-200">Daily Activity</h2>
+        {dailyActivityQuery.isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-cyan-500" />
+          </div>
+        ) : dailyActivityQuery.data && dailyActivityQuery.data.length > 0 ? (
+          <ContributorHeatmap data={dailyActivityQuery.data} />
+        ) : (
+          <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-8 text-center dark:border-slate-700 dark:bg-slate-900/50">
+            <p className="text-sm text-slate-500 dark:text-slate-400">No activity data available for the selected range</p>
+          </div>
+        )}
       </section>
 
       <section className="mb-6 rounded-xl border border-slate-200 bg-white/90 p-4 dark:border-slate-700/50 dark:bg-slate-900/50">

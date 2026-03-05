@@ -4,6 +4,9 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Loader2, Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
+import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
+import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
 import {
   ChartContainer,
   ChartTooltip,
@@ -52,6 +55,11 @@ interface LiveFeedItem {
   prNumber: number;
   repo: string | null;
   occurredAt: string;
+}
+
+interface DailyActivityData {
+  date: string;
+  count: number;
 }
 
 function getTimeWindow(timeRange: string): { from: string | undefined; to: string | undefined } {
@@ -104,6 +112,7 @@ export default function ContributorsAnalyticsPage() {
   const { timeRange, repoFilter } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
   const [sortBy, setSortBy] = useState<'total' | 'reviews' | 'status_changes' | 'prs_authored' | 'prs_reviewed'>('total');
   
   const [kpis, setKPIs] = useState<ContributorKPIs | null>(null);
@@ -111,6 +120,7 @@ export default function ContributorsAnalyticsPage() {
   const [activityByRepo, setActivityByRepo] = useState<ActivityByRepo[]>([]);
   const [rankings, setRankings] = useState<ContributorRanking[]>([]);
   const [liveFeed, setLiveFeed] = useState<LiveFeedItem[]>([]);
+  const [dailyActivity, setDailyActivity] = useState<DailyActivityData[]>([]);
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
@@ -120,7 +130,7 @@ export default function ContributorsAnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [kpisData, typeData, repoData, rankingsData, feedData] = await Promise.all([
+        const [kpisData, typeData, repoData, rankingsData, feedData, dailyActivityData] = await Promise.all([
           client.analytics.getContributorKPIs({}),
           client.analytics.getContributorActivityByType({
             repo: repoParam,
@@ -142,6 +152,11 @@ export default function ContributorsAnalyticsPage() {
             hours: 48,
             limit: 50,
           }),
+          client.analytics.getContributorDailyActivity({
+            repo: repoParam,
+            from,
+            to,
+          }),
         ]);
 
         setKPIs(kpisData);
@@ -149,6 +164,8 @@ export default function ContributorsAnalyticsPage() {
         setActivityByRepo(repoData);
         setRankings(rankingsData);
         setLiveFeed(feedData);
+        setDailyActivity(dailyActivityData);
+        setDataUpdatedAt(new Date());
       } catch (error) {
         console.error("Failed to fetch contributors analytics:", error);
         setError("Failed to load contributor analytics. Please try again.");
@@ -306,6 +323,18 @@ export default function ContributorsAnalyticsPage() {
         </div>
       </div>
 
+      {/* Contributor Activity Heatmap */}
+      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-foreground">Contributor Activity</h2>
+          <LastUpdated timestamp={dataUpdatedAt} />
+        </div>
+        <ContributorHeatmap data={dailyActivity} />
+        <AnalyticsAnnotation>
+          Activity patterns reveal contributor engagement trends across commits, reviews, and PR interactions.
+        </AnalyticsAnnotation>
+      </div>
+
       {/* Activity by Type + Activity by Repo */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
@@ -369,7 +398,10 @@ export default function ContributorsAnalyticsPage() {
       {/* Contributor Rankings */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-foreground">Contributor Rankings</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-semibold text-foreground">Contributor Rankings</h2>
+            <LastUpdated timestamp={dataUpdatedAt} />
+          </div>
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}

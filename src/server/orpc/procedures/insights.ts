@@ -1217,9 +1217,76 @@ export const insightsProcedures = {
       };
     }),
 
-  // ──── 15) Available months ────
+  // ──── 15) Status transition by month ────
+  getStatusTransitionData: optionalAuthProcedure
+    .input(z.object({
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      month: z.string().regex(/^\d{4}-\d{2}$/),
+    }))
+    .handler(async ({ context, input }): Promise<Array<Record<string, string | number>>> => {
+      const repoIds = await getRepoIds(input.repo);
+      
+      const months = [input.month];
+      
+      if (months.length === 0) {
+        return [];
+      }
+
+      // Get status counts for each month
+      const statusByMonth = await prisma.$queryRawUnsafe<Array<{
+        month: string;
+        status: string;
+        count: number;
+      }>>(
+        `WITH monthly_snapshots AS (
+           SELECT
+             TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM') AS month,
+             s.status,
+             COUNT(*) OVER (
+               PARTITION BY TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM'), s.status
+             ) AS cnt,
+             ROW_NUMBER() OVER (
+               PARTITION BY TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM'), s.status
+               ORDER BY s.updated_at DESC
+             ) AS rn
+           FROM eip_snapshots s
+           LEFT JOIN repositories r ON s.repository_id = r.id
+           WHERE ($1::int[] IS NULL OR s.repository_id = ANY($1))
+             AND TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM') = ANY($2::text[])
+         )
+         SELECT
+           month,
+           status,
+           cnt AS count
+         FROM monthly_snapshots
+         WHERE rn = 1
+         ORDER BY month, status`,
+        repoIds,
+        months
+      );
+
+      // Transform into the format needed by the chart
+      const result: Array<Record<string, string | number>> = months.map(month => {
+        const d = new Date(`${month}-01T00:00:00Z`);
+        const monthName = d.toLocaleString("en-US", { month: "short", year: "numeric" });
+        return { month: monthName };
+      });
+
+      // Map status counts into result
+      for (const row of statusByMonth) {
+        const monthIndex = months.indexOf(row.month);
+        if (monthIndex >= 0 && result[monthIndex]) {
+          result[monthIndex][row.status] = row.count;
+        }
+      }
+
+      return result;
+    }),
+
+  // ──── 16) Available months ────
   getAvailableMonths: optionalAuthProcedure
-    .handler(async ({ context }) => {// Use eip_snapshots updated_at for speed instead of scanning eip_status_events
+    .handler(async ({ context }) => {
+      // Use eip_snapshots updated_at for speed instead of scanning eip_status_events
       const results = await prisma.$queryRawUnsafe<Array<{ month: string }>>(
         `SELECT DISTINCT TO_CHAR(date_trunc('month', s.updated_at), 'YYYY-MM') AS month
          FROM eip_snapshots s

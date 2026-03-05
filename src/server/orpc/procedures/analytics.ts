@@ -3541,6 +3541,81 @@ export const analyticsProcedures = {
       }));
     }),
 
+  getContributorDailyActivity: optionalAuthProcedure
+    .input(z.object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+      actor: z.string().optional(),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        date: string;
+        count: bigint;
+      }>>(
+        `
+        SELECT
+          TO_CHAR(date_trunc('day', ca.occurred_at), 'YYYY-MM-DD') AS date,
+          COUNT(*)::bigint AS count
+        FROM contributor_activity ca
+        LEFT JOIN repositories r ON r.id = ca.repository_id
+        WHERE ($1::text IS NULL OR ca.actor = $1)
+          AND ($2::text IS NULL OR ca.occurred_at >= $2::timestamp)
+          AND ($3::text IS NULL OR ca.occurred_at <= $3::timestamp)
+          AND ($4::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($4))
+        GROUP BY date_trunc('day', ca.occurred_at)
+        ORDER BY date ASC
+      `,
+        input.actor ?? null,
+        input.from ?? null,
+        input.to ?? null,
+        input.repo ?? null
+      );
+
+      return results.map((r) => ({
+        date: r.date,
+        count: Number(r.count),
+      }));
+    }),
+
+  getEditorDailyActivity: optionalAuthProcedure
+    .input(z.object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+      actor: z.string().optional(),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        date: string;
+        count: bigint;
+      }>>(
+        `
+        SELECT
+          TO_CHAR(date_trunc('day', pe.created_at), 'YYYY-MM-DD') AS date,
+          COUNT(*)::bigint AS count
+        FROM pr_events pe
+        LEFT JOIN repositories r ON r.id = pe.repository_id
+        WHERE pe.actor_role = 'EDITOR'
+          AND ($1::text IS NULL OR pe.actor = $1)
+          AND ($2::text IS NULL OR pe.created_at >= $2::timestamp)
+          AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
+          AND ($4::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($4))
+        GROUP BY date_trunc('day', pe.created_at)
+        ORDER BY date ASC
+      `,
+        input.actor ?? null,
+        input.from ?? null,
+        input.to ?? null,
+        input.repo ?? null
+      );
+
+      return results.map((r) => ({
+        date: r.date,
+        count: Number(r.count),
+      }));
+    }),
+
   // ——— Authors Analytics ———
   getAuthorKPIs: optionalAuthProcedure
     .input(z.object({
