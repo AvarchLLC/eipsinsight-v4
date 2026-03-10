@@ -1,81 +1,296 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Shield, Mail, Database, Lock, Eye, UserCheck, Cookie, Bell, FileText } from 'lucide-react';
+import {
+  Shield,
+  Mail,
+  Database,
+  Lock,
+  Eye,
+  UserCheck,
+  Cookie,
+  Bell,
+  FileText,
+  ChevronRight,
+} from 'lucide-react';
 
-const sections = [
-  { id: 'introduction', label: 'Introduction', icon: FileText },
-  { id: 'information-we-collect', label: 'Information We Collect', icon: Database },
-  { id: 'how-we-use', label: 'How We Use Your Information', icon: Eye },
-  { id: 'data-security', label: 'Data Security', icon: Lock },
-  { id: 'data-sharing', label: 'Data Sharing', icon: UserCheck },
-  { id: 'your-rights', label: 'Your Privacy Rights', icon: Bell },
-  { id: 'cookies', label: 'Cookies Policy', icon: Cookie },
-  { id: 'third-party', label: 'Third-Party Services', icon: Database },
-  { id: 'data-retention', label: 'Data Retention', icon: Database },
-  { id: 'children', label: 'Children\'s Privacy', icon: Shield },
-  { id: 'changes', label: 'Changes to Policy', icon: Bell },
-  { id: 'contact', label: 'Contact Us', icon: Mail },
+type LegalSection = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  body: React.ReactNode;
+};
+
+const privacySections: LegalSection[] = [
+  {
+    id: 'introduction',
+    label: 'Introduction',
+    icon: FileText,
+    body: (
+      <>
+        <p>
+          Welcome to EIPs Insight. We are committed to protecting your privacy and securing the personal information you share when you use the platform.
+        </p>
+        <p>
+          This policy explains what data we collect, how we use it, where third parties are involved, and what rights you may have depending on your jurisdiction.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'information-we-collect',
+    label: 'Information We Collect',
+    icon: Database,
+    body: (
+      <>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Personal information</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Name and email address</li>
+            <li>GitHub account information used during authentication</li>
+            <li>Profile information and preferences</li>
+            <li>Payment and billing information handled through Stripe</li>
+          </ul>
+        </div>
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Usage information</h3>
+          <ul className="mt-2 list-disc space-y-1 pl-5">
+            <li>Page views, clicks, and navigation patterns</li>
+            <li>Search queries, filters, and saved preferences</li>
+            <li>API usage and token activity</li>
+            <li>Device, browser, IP address, and timestamps</li>
+          </ul>
+        </div>
+      </>
+    ),
+  },
+  {
+    id: 'how-we-use',
+    label: 'How We Use Data',
+    icon: Eye,
+    body: (
+      <>
+        <p>We use collected information to operate and improve the service.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Authenticate users and manage accounts</li>
+          <li>Process subscriptions and billing</li>
+          <li>Personalize views, persona settings, and recommendations</li>
+          <li>Track API usage and enforce access rules</li>
+          <li>Send product, security, and operational notices</li>
+          <li>Analyze usage patterns and improve performance</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'data-security',
+    label: 'Data Security',
+    icon: Lock,
+    body: (
+      <>
+        <p>We use industry-standard controls to reduce risk and protect account data.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>HTTPS/TLS for encrypted transport</li>
+          <li>Secure authentication infrastructure</li>
+          <li>Hashed API tokens with scoped permissions</li>
+          <li>Access controls and ongoing monitoring</li>
+        </ul>
+        <p>
+          No system can guarantee absolute security. We aim for reasonable, modern protections and continuously improve controls over time.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'data-sharing',
+    label: 'Data Sharing',
+    icon: UserCheck,
+    body: (
+      <>
+        <p>We do not sell personal information. We may share data only in limited cases:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>With service providers such as Stripe, hosting, and infrastructure vendors</li>
+          <li>When legally required</li>
+          <li>During business transfers such as acquisition or restructuring</li>
+          <li>When you explicitly authorize sharing</li>
+          <li>When information is already public by your own action</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'your-rights',
+    label: 'Your Privacy Rights',
+    icon: Bell,
+    body: (
+      <>
+        <p>Depending on your location, you may be able to request:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Access to the personal data we hold about you</li>
+          <li>Correction of inaccurate information</li>
+          <li>Deletion of personal information</li>
+          <li>Export in a portable format</li>
+          <li>Objection to certain processing activities</li>
+        </ul>
+        <p>To exercise these rights, contact us using the email listed below.</p>
+      </>
+    ),
+  },
+  {
+    id: 'cookies',
+    label: 'Cookies',
+    icon: Cookie,
+    body: (
+      <>
+        <p>We use cookies and similar technologies for:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Essential site functionality and authentication</li>
+          <li>Preference persistence such as theme and persona</li>
+          <li>Analytics to understand usage patterns</li>
+        </ul>
+        <p>You can control cookies through browser settings, though disabling them may reduce functionality.</p>
+      </>
+    ),
+  },
+  {
+    id: 'third-party',
+    label: 'Third-Party Services',
+    icon: Database,
+    body: (
+      <>
+        <p>We integrate with third-party services to operate the product:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>GitHub for authentication and public governance data context</li>
+          <li>Stripe for payments and billing</li>
+          <li>Infrastructure and hosting providers to run the platform</li>
+        </ul>
+        <p>Those providers maintain their own privacy policies and operational controls.</p>
+      </>
+    ),
+  },
+  {
+    id: 'data-retention',
+    label: 'Data Retention',
+    icon: Database,
+    body: (
+      <>
+        <p>
+          We retain personal information only as long as necessary for the purposes described here, unless a longer retention period is required by law, accounting, or security needs.
+        </p>
+        <p>
+          When accounts are deleted, we will delete or anonymize personal information where reasonably possible, subject to those obligations.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'children',
+    label: 'Children’s Privacy',
+    icon: Shield,
+    body: (
+      <>
+        <p>
+          Our services are not intended for children under 13. If we become aware that we have collected personal information from a child under 13, we will take steps to remove it.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'changes',
+    label: 'Changes to Policy',
+    icon: Bell,
+    body: (
+      <>
+        <p>
+          We may update this Privacy Policy to reflect changes in the product, operational practices, or legal requirements. Material changes will be reflected on this page with an updated effective date.
+        </p>
+        <p>We encourage periodic review if you rely on the service for ongoing usage.</p>
+      </>
+    ),
+  },
+  {
+    id: 'contact',
+    label: 'Contact',
+    icon: Mail,
+    body: (
+      <>
+        <p>If you have questions or requests related to this policy or our data practices, contact us at:</p>
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm font-medium text-foreground">
+            Email:{' '}
+            <a href="mailto:dev@avarch.com" className="text-primary hover:text-primary/80">
+              dev@avarch.com
+            </a>
+          </p>
+        </div>
+      </>
+    ),
+  },
 ];
 
 export default function PrivacyPolicyPage() {
   const [activeSection, setActiveSection] = useState('introduction');
 
+  const sections = useMemo(() => privacySections, []);
+
   useEffect(() => {
-    const observerOptions = {
-      rootMargin: '-100px 0px -66% 0px',
-      threshold: 0.1,
+    const elements = sections
+      .map((section) => document.getElementById(section.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!elements.length) return;
+
+    let frameId: number | null = null;
+
+    const updateActiveSection = () => {
+      const threshold = 140;
+      const candidates = elements.map((element) => ({
+        id: element.id,
+        top: element.getBoundingClientRect().top,
+      }));
+
+      const passed = candidates.filter((candidate) => candidate.top <= threshold);
+      const currentId =
+        passed.length > 0
+          ? passed.sort((a, b) => b.top - a.top)[0].id
+          : candidates.sort((a, b) => Math.abs(a.top - threshold) - Math.abs(b.top - threshold))[0]?.id ?? elements[0].id;
+
+      setActiveSection((previous) => (previous === currentId ? previous : currentId));
+      frameId = null;
     };
 
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
-        }
-      });
+    const onScroll = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateActiveSection);
     };
 
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    updateActiveSection();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
 
-    sections.forEach((section) => {
-      const element = document.getElementById(section.id);
-      if (element) observer.observe(element);
-    });
-
-    return () => observer.disconnect();
-  }, []);
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [sections]);
 
   const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const offsetTop = element.offsetTop - 120;
-      window.scrollTo({
-        top: offsetTop,
-        behavior: 'smooth',
-      });
-    }
+    setActiveSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <div className="w-full px-3 py-8 sm:px-4 lg:px-6">
-      <div className="mx-auto flex w-full max-w-screen-2xl gap-8">
-        {/* Sidebar Table of Contents */}
-        <aside className="hidden lg:block lg:w-72">
-          <div className="sticky top-24">
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.4 }}
-            >
-              <div className="mb-4 flex items-center gap-2 px-1">
-                <FileText className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                <h3 className="text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-                  On This Page
-                </h3>
-              </div>
-              <nav className="relative space-y-1 border-l-2 border-slate-200 dark:border-slate-700">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[260px_minmax(0,1fr)] xl:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
+              <nav className="mt-3 border-l-2 border-border/70">
                 {sections.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
@@ -83,377 +298,91 @@ export default function PrivacyPolicyPage() {
                     <button
                       key={section.id}
                       onClick={() => scrollToSection(section.id)}
-                      className={`relative flex w-full items-center gap-2.5 py-2.5 pl-5 pr-3 text-left text-[13px] transition ${
+                      className={`relative flex w-full items-center gap-2 py-2.5 pl-4 pr-2 text-left text-[13px] transition-colors ${
                         isActive
-                          ? 'text-cyan-700 dark:text-cyan-300'
-                          : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                          ? 'font-medium text-primary'
+                          : 'text-muted-foreground hover:text-foreground'
                       }`}
                     >
-                      {isActive && (
-                        <motion.div
-                          layoutId="active-indicator"
-                          className="absolute -left-0.5 top-0 h-full w-1 rounded-r bg-cyan-600 dark:bg-cyan-400"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-cyan-600 dark:text-cyan-400' : ''}`} />
+                      {isActive && <span className="absolute -left-px top-0 h-full w-0.5 rounded-r bg-primary" />}
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
                       <span className="truncate">{section.label}</span>
                     </button>
                   );
                 })}
               </nav>
-            </motion.div>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="min-w-0 flex-1"
-        >
-          {/* Header */}
-          <div className="mb-8">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-lg bg-cyan-500/10 px-3 py-1.5 ring-1 ring-cyan-400/30">
-              <Shield className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                Legal Document
-              </span>
             </div>
-            <h1 className="mb-3 text-4xl font-bold text-slate-900 dark:text-slate-100">
-              Privacy Policy
-            </h1>
-            <p className="text-slate-600 dark:text-slate-400">
-              Last updated: February 27, 2026
-            </p>
-          </div>
+          </aside>
 
-          <div className="space-y-12">
-            {/* Introduction */}
-            <section id="introduction" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 inline-flex items-center gap-2">
-                <FileText className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Introduction
-                </h2>
+          <main className="min-w-0">
+            <section className="mb-8">
+              <div className="mb-3 inline-flex h-7 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Legal
               </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                Welcome to EIPs Insight. We are committed to protecting your privacy and ensuring the security of your personal information. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our platform.
+              <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+                Privacy Policy
+              </h1>
+              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                How EIPsInsight collects, uses, stores, and protects personal information across accounts, billing, preferences, and product usage.
               </p>
-              <p>
-                By accessing or using EIPs Insight, you agree to the terms of this Privacy Policy. If you do not agree with the terms, please do not access or use our services.
-              </p>
-            </div>
-          </section>
-
-          {/* Information We Collect */}
-          <section id="information-we-collect" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Information We Collect
-              </h2>
-            </div>
-            <div className="space-y-4 text-slate-700 dark:text-slate-300">
-              <div>
-                <h3 className="mb-2 font-semibold text-slate-900 dark:text-slate-100">
-                  Personal Information
-                </h3>
-                <p>When you create an account or use our services, we may collect:</p>
-                <ul className="ml-6 mt-2 list-disc space-y-1">
-                  <li>Name and email address</li>
-                  <li>GitHub account information (username, profile data)</li>
-                  <li>Profile information and preferences</li>
-                  <li>Payment and billing information (processed securely through Stripe)</li>
-                </ul>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex h-8 items-center rounded-full border border-border bg-muted/40 px-3 text-xs text-muted-foreground">
+                  Last updated: February 27, 2026
+                </span>
+                <Link
+                  href="/terms"
+                  className="inline-flex h-8 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                >
+                  Terms of Service
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
               </div>
-              <div>
-                <h3 className="mb-2 font-semibold text-slate-900 dark:text-slate-100">
-                  Usage Information
-                </h3>
-                <p>We automatically collect information about your interaction with our platform:</p>
-                <ul className="ml-6 mt-2 list-disc space-y-1">
-                  <li>Page views, clicks, and navigation patterns</li>
-                  <li>Search queries and filter preferences</li>
-                  <li>API usage and token activity</li>
-                  <li>Device information, browser type, and IP address</li>
-                  <li>Timestamps of your activities</li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="mb-2 font-semibold text-slate-900 dark:text-slate-100">
-                  Cookies and Tracking Technologies
-                </h3>
-                <p>
-                  We use cookies and similar tracking technologies to enhance your experience, remember your preferences, and analyze site usage. You can control cookie settings through your browser preferences.
-                </p>
-              </div>
-            </div>
-          </section>
+            </section>
 
-          {/* How We Use Your Information */}
-          <section id="how-we-use" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Eye className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                How We Use Your Information
-              </h2>
+            <div className="space-y-6">
+              {sections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <section
+                    key={section.id}
+                    id={section.id}
+                    className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6 backdrop-blur-sm"
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Section</p>
+                        <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                          {section.label}
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                      {section.body}
+                    </div>
+                  </section>
+                );
+              })}
             </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>We use the collected information for the following purposes:</p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>To provide, maintain, and improve our services</li>
-                <li>To authenticate users and manage accounts</li>
-                <li>To process subscription payments and manage billing</li>
-                <li>To personalize your experience and deliver relevant content</li>
-                <li>To track API usage and enforce rate limits</li>
-                <li>To send important updates, security alerts, and notifications</li>
-                <li>To analyze usage patterns and improve platform performance</li>
-                <li>To detect, prevent, and address technical issues or fraud</li>
-                <li>To comply with legal obligations and enforce our terms of service</li>
-              </ul>
-            </div>
-          </section>
 
-          {/* Data Security */}
-          <section id="data-security" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Lock className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Data Security
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                We implement industry-standard security measures to protect your personal information:
-              </p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>Encrypted data transmission using HTTPS/TLS</li>
-                <li>Secure authentication with Better Auth integration</li>
-                <li>Hashed API tokens with scoped permissions</li>
-                <li>Regular security audits and updates</li>
-                <li>Access controls and monitoring</li>
-              </ul>
-              <p className="mt-3">
-                However, no method of transmission over the Internet or electronic storage is 100% secure. While we strive to use commercially acceptable means to protect your data, we cannot guarantee absolute security.
-              </p>
-            </div>
-          </section>
-
-          {/* Data Sharing */}
-          <section id="data-sharing" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <UserCheck className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Data Sharing and Disclosure
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>We do not sell your personal information. We may share your data only in the following circumstances:</p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>
-                  <strong>Service Providers:</strong> With third-party vendors who perform services on our behalf (e.g., Stripe for payment processing, hosting providers)
-                </li>
-                <li>
-                  <strong>Legal Requirements:</strong> When required by law, court order, or government regulation
-                </li>
-                <li>
-                  <strong>Business Transfers:</strong> In connection with a merger, acquisition, or sale of assets
-                </li>
-                <li>
-                  <strong>With Your Consent:</strong> When you explicitly authorize us to share your information
-                </li>
-                <li>
-                  <strong>Public Information:</strong> Information you choose to make public (e.g., public profile data, comments on proposals)
-                </li>
-              </ul>
-            </div>
-          </section>
-
-          {/* Your Rights */}
-          <section id="your-rights" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Bell className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Your Privacy Rights
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>Depending on your location, you may have the following rights:</p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>
-                  <strong>Access:</strong> Request a copy of the personal information we hold about you
-                </li>
-                <li>
-                  <strong>Correction:</strong> Request correction of inaccurate or incomplete data
-                </li>
-                <li>
-                  <strong>Deletion:</strong> Request deletion of your personal information
-                </li>
-                <li>
-                  <strong>Data Portability:</strong> Request export of your data in a portable format
-                </li>
-                <li>
-                  <strong>Opt-Out:</strong> Unsubscribe from marketing communications
-                </li>
-                <li>
-                  <strong>Objection:</strong> Object to certain data processing activities
-                </li>
-              </ul>
-              <p className="mt-3">
-                To exercise these rights, please contact us at the email address provided below.
-              </p>
-            </div>
-          </section>
-
-          {/* Cookies */}
-          <section id="cookies" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Cookie className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Cookies Policy
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>We use cookies and similar technologies for:</p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>
-                  <strong>Essential Cookies:</strong> Required for basic site functionality and authentication
-                </li>
-                <li>
-                  <strong>Preference Cookies:</strong> Remember your settings and preferences (theme, persona)
-                </li>
-                <li>
-                  <strong>Analytics Cookies:</strong> Help us understand how users interact with our platform
-                </li>
-              </ul>
-              <p className="mt-3">
-                You can manage cookie preferences through your browser settings. Note that disabling certain cookies may affect platform functionality.
-              </p>
-            </div>
-          </section>
-
-          {/* Third-Party Services */}
-          <section id="third-party" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Third-Party Services
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>Our platform integrates with third-party services:</p>
-              <ul className="ml-6 list-disc space-y-1">
-                <li>
-                  <strong>GitHub:</strong> For authentication and accessing public GitHub data
-                </li>
-                <li>
-                  <strong>Stripe:</strong> For secure payment processing
-                </li>
-                <li>
-                  <strong>Hosting Providers:</strong> For platform infrastructure
-                </li>
-              </ul>
-              <p className="mt-3">
-                These third parties have their own privacy policies. We recommend reviewing them to understand how they handle your data.
-              </p>
-            </div>
-          </section>
-
-          {/* Data Retention */}
-          <section id="data-retention" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Data Retention
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                We retain your personal information only for as long as necessary to fulfill the purposes outlined in this Privacy Policy, unless a longer retention period is required or permitted by law.
-              </p>
-              <p>
-                When you delete your account, we will delete or anonymize your personal information, except where we are required to retain it for legal, accounting, or security purposes.
-              </p>
-            </div>
-          </section>
-
-          {/* Children's Privacy */}
-          <section id="children" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Shield className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Children's Privacy
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                Our services are not intended for individuals under the age of 13. We do not knowingly collect personal information from children under 13. If we become aware that we have collected such information, we will take steps to delete it.
-              </p>
-            </div>
-          </section>
-
-          {/* Changes to Privacy Policy */}
-          <section id="changes" className="scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Bell className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Changes to This Privacy Policy
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                We may update this Privacy Policy from time to time to reflect changes in our practices or legal requirements. We will notify you of any material changes by posting the new policy on this page and updating the "Last updated" date.
-              </p>
-              <p>
-                We encourage you to review this Privacy Policy periodically to stay informed about how we protect your information.
-              </p>
-            </div>
-          </section>
-
-          {/* Contact */}
-          <section id="contact" className="scroll-mt-28 rounded-xl border border-cyan-400/40 bg-cyan-500/10 p-6 shadow-sm ring-1 ring-cyan-400/30">
-            <div className="mb-4 inline-flex items-center gap-2">
-              <Mail className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-              <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                Contact Us
-              </h2>
-            </div>
-            <div className="space-y-3 text-slate-700 dark:text-slate-300">
-              <p>
-                If you have any questions, concerns, or requests regarding this Privacy Policy or our data practices, please contact us at:
-              </p>
-              <div className="rounded-lg bg-white/70 p-4 dark:bg-slate-900/70">
-                <p className="font-medium text-slate-900 dark:text-slate-100">
-                  Email: <a href="mailto:dev@avarch.com" className="text-cyan-700 hover:underline dark:text-cyan-300">dev@avarch.com</a>
-                </p>
-              </div>
-            </div>
-          </section>
-
-          {/* Footer Navigation */}
-          <div className="flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/80 pt-6 dark:border-slate-700/50">
-            <Link
-              href="/"
-              className="text-sm text-cyan-700 hover:underline dark:text-cyan-300"
-            >
-              ← Back to Home
-            </Link>
-            <div className="flex gap-4 text-sm">
-              <Link
-                href="/terms"
-                className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-              >
-                Terms of Service
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+              <Link href="/" className="text-sm text-primary hover:text-primary/80">
+                Back to Home
               </Link>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <Link href="/terms" className="text-muted-foreground hover:text-foreground">
+                  Terms of Service
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground">
+                  About
+                </Link>
+              </div>
             </div>
-          </div>
+          </main>
         </div>
-      </motion.div>
-
-    </div>
+      </div>
     </div>
   );
 }

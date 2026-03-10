@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { SCOPE_CATEGORIES, SCOPE_DESCRIPTIONS, type ApiScope } from '@/lib/apiScopes'
+import { toast } from 'sonner'
 
 interface CreateTokenDialogProps {
   isOpen: boolean
@@ -67,6 +68,7 @@ export function CreateTokenDialog({
     if (createdToken) {
       navigator.clipboard.writeText(createdToken.plainToken)
       setCopied(true)
+      toast.success('API token copied')
       setTimeout(() => setCopied(false), 2000)
     }
   }
@@ -118,7 +120,7 @@ export function CreateTokenDialog({
                 </Button>
               </div>
               <p className="text-xs text-amber-300">
-                ⚠️ Store this token securely. We can't show it again.
+                {"⚠️ Store this token securely. We can\u2019t show it again."}
               </p>
             </div>
 

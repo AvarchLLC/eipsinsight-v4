@@ -11,8 +11,8 @@ import {
   GitPullRequest,
   ArrowUpRight,
   AlertCircle,
+  Download,
   Clock,
-  Tag,
   Activity,
   Layers,
   BarChart3,
@@ -157,6 +157,29 @@ function Section({ title, icon, children, action, className, id }: {
   );
 }
 
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+function GraphFooter({ nextUpdateAt }: { nextUpdateAt: Date }) {
+  return (
+    <div className="mt-3 flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+      <span className="font-medium text-foreground/80">EIPsInsight.com</span>
+      <span className="inline-flex items-center gap-1">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+        Next Update: {formatDateTime(nextUpdateAt)}
+      </span>
+    </div>
+  );
+}
+
 export default function PRsAnalyticsPage() {
   const searchParams = useSearchParams();
   const highlightedPr = Number(searchParams.get("pr") ?? NaN);
@@ -295,6 +318,7 @@ export default function PRsAnalyticsPage() {
   }, [monthlySeries]);
 
   const monthContext = selectedMonth || heroMonth?.month || "Latest";
+  const nextUpdateAt = useMemo(() => new Date(dataUpdatedAt.getTime() + 24 * 60 * 60 * 1000), [dataUpdatedAt]);
 
   const backlogOption = useMemo(() => {
     const states = govWaitStates;
@@ -383,48 +407,84 @@ export default function PRsAnalyticsPage() {
     };
   }, [crossTabData, crossTabMode, govWaitStates, processCategories]);
 
-  const repoCategoryOption = useMemo(() => {
-    const byRepo = { EIPs: 0, ERCs: 0, RIPs: 0 };
-    openPRs.forEach((pr) => {
-      const name = pr.repo.toLowerCase();
-      if (name.includes("/ercs")) byRepo.ERCs += 1;
-      else if (name.includes("/rips")) byRepo.RIPs += 1;
-      else byRepo.EIPs += 1;
-    });
-    const rows = [
-      { name: "EIPs", value: byRepo.EIPs, itemStyle: { color: "#34D399" } },
-      { name: "ERCs", value: byRepo.ERCs, itemStyle: { color: "#60A5FA" } },
-      { name: "RIPs", value: byRepo.RIPs, itemStyle: { color: "#FB923C" } },
-    ];
-    return {
-      backgroundColor: "transparent",
-      tooltip: { trigger: "item", confine: true },
-      legend: { orient: "vertical", right: 12, top: "center", textStyle: { color: "var(--foreground)", fontSize: 12 } },
-      series: [
-        {
-          type: "pie",
-          radius: ["52%", "74%"],
-          center: ["34%", "50%"],
-          label: { show: false },
-          data: rows,
-          itemStyle: { borderColor: "rgba(2,6,23,0.4)", borderWidth: 2 },
-        },
-      ],
-      title: [
-        {
-          text: rows.reduce((sum, r) => sum + r.value, 0).toLocaleString(),
-          subtext: "Open PRs",
-          left: "34%",
-          top: "46%",
-          textAlign: "center",
-          textStyle: { color: "var(--foreground)", fontSize: 32, fontWeight: 700 },
-          subtextStyle: { color: "var(--muted-foreground)", fontSize: 12 },
-        },
-      ],
-    };
-  }, [openPRs]);
-
   const totalOpen = openSummary?.totalOpen ?? 0;
+
+  const downloadReports = () => {
+    const generatedAt = new Date();
+    const metadata = {
+      report_name: "PR Analytics Detailed Report",
+      generated_at: generatedAt.toISOString(),
+      repo_filter: repoFilter,
+      time_range: timeRange,
+      month_context: monthContext,
+    };
+
+    const rows: Array<Record<string, string | number | null>> = [];
+
+    monthlySeries.forEach((m) =>
+      rows.push({
+        section: "monthly_activity",
+        ...metadata,
+        month: m.month,
+        created: m.created,
+        merged: m.merged,
+        closed: m.closed,
+        open_at_month_end: m.openAtMonthEnd,
+      }),
+    );
+
+    processCategories.forEach((p) =>
+      rows.push({
+        section: "open_pr_process_classification",
+        ...metadata,
+        category: p.category,
+        count: p.count,
+      }),
+    );
+
+    govWaitStates.forEach((g) =>
+      rows.push({
+        section: "governance_waiting_state",
+        ...metadata,
+        state: g.state,
+        label: g.label,
+        count: g.count,
+        median_wait_days: g.medianWaitDays,
+        oldest_pr_number: g.oldestPRNumber,
+        oldest_wait_days: g.oldestWaitDays,
+      }),
+    );
+
+    openPRs.forEach((pr) =>
+      rows.push({
+        section: "open_pr_rows",
+        ...metadata,
+        pr_number: pr.prNumber,
+        repo: pr.repo,
+        title: pr.title,
+        author: pr.author,
+        governance_state: pr.governanceState,
+        waiting_since: pr.waitingSince,
+        last_event_type: pr.lastEventType,
+        linked_eips: pr.linkedEIPs,
+        created_at: pr.createdAt,
+      }),
+    );
+
+    const headers = Array.from(new Set(rows.flatMap((r) => Object.keys(r))));
+    const escapeCsv = (value: unknown) => `"${String(value ?? "").replaceAll(`"`, `""`)}"`;
+    const csv = [headers.join(","), ...rows.map((r) => headers.map((h) => escapeCsv(r[h])).join(","))].join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `pr-analytics-reports-${repoFilter}-${monthContext}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
 
   useAnalyticsExport(() => {
     const combined: Record<string, unknown>[] = [];
@@ -480,6 +540,13 @@ export default function PRsAnalyticsPage() {
         icon={<BarChart3 className="h-4 w-4" />}
         action={
           <div className="flex items-center gap-2">
+            <button
+              onClick={downloadReports}
+              className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download Reports
+            </button>
             <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">Context: {monthContext}</span>
             <button
               onClick={() => setSelectedMonth(monthlySeries.length ? monthlySeries[monthlySeries.length - 1].month : null)}
@@ -508,6 +575,7 @@ export default function PRsAnalyticsPage() {
             />
           </div>
         )}
+        <GraphFooter nextUpdateAt={nextUpdateAt} />
       </Section>
 
       <div className="grid gap-6 xl:grid-cols-2">
@@ -520,6 +588,7 @@ export default function PRsAnalyticsPage() {
             </div>
           )}
           <p className="mt-2 text-[10px] text-muted-foreground">Stack sum = total open PRs for month context (latest snapshot). </p>
+          <GraphFooter nextUpdateAt={nextUpdateAt} />
         </Section>
 
         <Section
@@ -550,18 +619,9 @@ export default function PRsAnalyticsPage() {
             </div>
           )}
           <p className="mt-2 text-[10px] text-muted-foreground">Estimated breakdown based on current totals (backend cross-tab endpoint pending).</p>
+          <GraphFooter nextUpdateAt={nextUpdateAt} />
         </Section>
       </div>
-
-      <Section title="Category Breakdown" icon={<Tag className="h-4 w-4" />}>
-        {openPRs.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No category data available.</p>
-        ) : (
-          <div className="h-[320px] w-full">
-            <ReactECharts option={repoCategoryOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-          </div>
-        )}
-      </Section>
 
       <details className="rounded-xl border border-border bg-card/50">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-foreground">

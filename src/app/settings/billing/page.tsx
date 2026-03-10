@@ -5,6 +5,7 @@ import { useSession } from "@/hooks/useSession";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2, CreditCard, Calendar, TrendingUp, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 interface SubscriptionData {
   tier: string;
@@ -62,6 +63,7 @@ export default function BillingPage() {
           setMessage(
             "Subscription activated successfully! Thank you for subscribing."
           );
+          toast.success("Subscription activated");
         }
 
         // Refetch subscription data after sync
@@ -113,7 +115,7 @@ export default function BillingPage() {
       window.location.href = url;
     } catch (error) {
       console.error("Error opening customer portal:", error);
-      alert("Failed to open subscription management. Please try again.");
+      toast.error("Failed to open subscription management");
     } finally {
       setPortalLoading(false);
     }
@@ -133,10 +135,11 @@ export default function BillingPage() {
       setMessage(
         "Subscription will cancel at the end of the current billing period."
       );
+      toast.success("Subscription cancellation scheduled");
       await refreshSubscription();
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      alert("Failed to cancel subscription. Please try again.");
+      toast.error("Failed to cancel subscription");
     } finally {
       setActionLoading(null);
     }
@@ -152,10 +155,11 @@ export default function BillingPage() {
       }
 
       setMessage("Subscription resumed successfully.");
+      toast.success("Subscription resumed");
       await refreshSubscription();
     } catch (error) {
       console.error("Error resuming subscription:", error);
-      alert("Failed to resume subscription. Please try again.");
+      toast.error("Failed to resume subscription");
     } finally {
       setActionLoading(null);
     }
@@ -173,7 +177,7 @@ export default function BillingPage() {
   const isFreeTier = tier === "free";
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-8 px-4 py-10 sm:px-6 lg:px-8">
+    <div className="page-shell-narrow space-y-8 py-10">
       <div className="flex flex-col gap-2">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
           Billing

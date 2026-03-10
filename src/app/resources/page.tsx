@@ -1,403 +1,585 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  HelpCircle,
-  FileText,
-  Video,
-  Newspaper,
   BookOpen,
-  ChevronRight,
-  ChevronLeft,
-  Github,
   ExternalLink,
-  Users,
-  Target,
+  FileText,
+  Github,
+  HeartHandshake,
+  HelpCircle,
   Lightbulb,
-  Heart,
+  Newspaper,
+  Target,
+  Users,
+  Video,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { team } from "@/data/resources/team";
+import { featuredResources } from "@/data/resources/featured";
 import { grants } from "@/data/resources/grants";
 import { partners } from "@/data/resources/partners";
-import { featuredResources } from "@/data/resources/featured";
+import { team } from "@/data/resources/team";
 
-// ──────── Resource Categories ────────
-const resourceCategories = [
+type FeaturedTab = "featured" | "trending" | "latest";
+
+const learningPaths = [
   {
-    title: "FAQ",
-    description: "Common questions about EIPs and governance.",
-    icon: HelpCircle,
-    href: "/resources/faq",
-    color: "cyan",
-  },
-  {
-    title: "Blogs",
-    description: "Deep dives and explainers.",
-    icon: FileText,
-    href: "/resources/blogs",
-    color: "emerald",
-  },
-  {
-    title: "Videos",
-    description: "Talks, walkthroughs, and explainers.",
-    icon: Video,
-    href: "/resources/videos",
-    color: "purple",
-  },
-  {
-    title: "News",
-    description: "Latest updates in the EIP ecosystem.",
-    icon: Newspaper,
-    href: "/resources/news",
-    color: "amber",
-  },
-  {
-    title: "Documentation",
-    description: "Official specs and guides.",
-    icon: BookOpen,
+    title: "New To EIPs",
+    estimate: "~10 min",
+    description: "Understand what Ethereum Improvement Proposals are and how decisions move through governance.",
     href: "/resources/docs",
-    color: "blue",
+    links: ["What is an EIP?", "How governance works", "Key proposals explained"],
+  },
+  {
+    title: "Contributors",
+    estimate: "~30 min",
+    description: "Learn how to draft proposals, collaborate in PRs, and navigate editorial workflow.",
+    href: "/tools/eip-builder",
+    links: ["How to write an EIP", "PR process", "Editor workflow"],
+  },
+  {
+    title: "Researchers",
+    estimate: "~20 min",
+    description: "Analyze proposal movement, governance trends, and contributor networks.",
+    href: "/analytics/eips",
+    links: ["EIP analytics", "Governance patterns", "Contributor networks"],
   },
 ];
 
-const colorClasses: Record<string, { bg: string; text: string; border: string; glow: string }> = {
-  cyan: {
-    bg: "bg-cyan-500/20",
-    text: "text-cyan-600 dark:text-cyan-400",
-    border: "border-cyan-500/40",
-    glow: "hover:shadow-[0_0_20px_rgba(34,211,238,0.3)]",
+const resourceCategories = [
+  {
+    title: "FAQ",
+    group: "Learn",
+    description: "Quick explanations and common governance questions.",
+    count: "20+ answers",
+    href: "/resources/faq",
+    icon: HelpCircle,
   },
-  emerald: {
-    bg: "bg-emerald-500/20",
-    text: "text-emerald-600 dark:text-emerald-400",
-    border: "border-emerald-500/40",
-    glow: "hover:shadow-[0_0_20px_rgba(52,211,153,0.3)]",
+  {
+    title: "Documentation",
+    group: "Docs",
+    description: "Specs, process guides, and proposal references.",
+    count: "Core guides",
+    href: "/resources/docs",
+    icon: BookOpen,
   },
-  purple: {
-    bg: "bg-purple-500/20",
-    text: "text-purple-600 dark:text-purple-400",
-    border: "border-purple-500/40",
-    glow: "hover:shadow-[0_0_20px_rgba(168,85,247,0.3)]",
+  {
+    title: "Blogs",
+    group: "Media",
+    description: "Deep analysis and commentary on proposals.",
+    count: "Long-form analysis",
+    href: "/resources/blogs",
+    icon: FileText,
   },
-  amber: {
-    bg: "bg-amber-500/20",
-    text: "text-amber-600 dark:text-amber-400",
-    border: "border-amber-500/40",
-    glow: "hover:shadow-[0_0_20px_rgba(251,191,36,0.3)]",
+  {
+    title: "Videos",
+    group: "Media",
+    description: "Walkthroughs and explainers for protocol changes.",
+    count: "Explainer library",
+    href: "/resources/videos",
+    icon: Video,
   },
-  blue: {
-    bg: "bg-blue-500/20",
-    text: "text-blue-600 dark:text-blue-400",
-    border: "border-blue-500/40",
-    glow: "hover:shadow-[0_0_20px_rgba(59,130,246,0.3)]",
+  {
+    title: "News",
+    group: "Updates",
+    description: "Recent ecosystem and governance updates.",
+    count: "Latest updates",
+    href: "/resources/news",
+    icon: Newspaper,
   },
+];
+
+const communityResources = [
+  {
+    name: "Ethereum Magicians",
+    description: "Public forum for EIP discussions and proposal reviews.",
+    href: "https://ethereum-magicians.org/",
+  },
+  {
+    name: "EthResearch",
+    description: "Research-first discussions on protocol design and roadmap ideas.",
+    href: "https://ethresear.ch/",
+  },
+  {
+    name: "GitHub Discussions",
+    description: "Track proposal PRs and issue-level governance context.",
+    href: "https://github.com/ethereum/EIPs",
+  },
+];
+
+const whyEipsInsight = [
+  {
+    title: "Observability",
+    description: "Track proposal progress, status changes, and editorial workload with clear views.",
+    icon: Target,
+  },
+  {
+    title: "Context",
+    description: "Connect standards, PRs, and governance events to understand why changes happen.",
+    icon: Lightbulb,
+  },
+  {
+    title: "Coordination",
+    description: "Support builders, editors, and researchers with shared operational visibility.",
+    icon: Users,
+  },
+];
+
+const deepLearningBlocks = [
+  {
+    title: "Monthly Insight",
+    description: "Follow status changes by type and category with charts and detailed drilldowns.",
+    href: "/insights",
+  },
+  {
+    title: "Advanced Tooling",
+    description: "Use editor trackers, PR/issue explorers, and dependency tooling for workflow clarity.",
+    href: "/tools",
+  },
+  {
+    title: "Detailed Proposal Database",
+    description: "Explore proposal pages with status history, metadata, and linked governance activity.",
+    href: "/standards",
+  },
+  {
+    title: "Expert Analysis",
+    description: "Read structured commentary on high-impact EIPs and protocol-level implications.",
+    href: "/insights/editorial-commentary",
+  },
+  {
+    title: "Community Engagement",
+    description: "Join open discussions with contributors, researchers, and standards participants.",
+    href: "https://ethereum-magicians.org/",
+    external: true,
+  },
+  {
+    title: "Educational Resources",
+    description: "Start from fundamentals and progress into standards process and governance analytics.",
+    href: "/resources/docs",
+  },
+];
+
+const recommendedReading = [
+  { title: "What Is an EIP?", href: "/resources/docs" },
+  { title: "EIP Lifecycle (Draft to Final)", href: "/resources/docs" },
+  { title: "How ERC Standards Work", href: "/erc" },
+  { title: "Explore High-Impact EIPs", href: "/explore/trending" },
+];
+
+const partnerRoleMap: Record<string, string> = {
+  EtherWorld: "Media & ecosystem amplification",
+  "ECH (Ethereum Cat Herders)": "Coordination & standards operations",
 };
 
-const badgeColors: Record<string, string> = {
-  significant: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
-  medium: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/40",
-  small: "bg-slate-500/20 text-slate-700 dark:text-slate-300 border-slate-500/40",
+const teamAvatarMap: Record<string, string> = {
+  "Pooja Ranjan": "/team/pooja_ranjan.jpg",
+  "Yash Kamal Chaturvedi": "/team/yash.jpg",
+  "Dhanush Naik": "/team/Dhanush.jpg",
+  "Ayush Shetty": "/team/ayush.jpg",
+};
+
+const grantBadgeTone: Record<string, string> = {
+  significant: "border-emerald-500/40 bg-emerald-500/20 text-emerald-300",
+  medium: "border-blue-500/40 bg-blue-500/20 text-blue-300",
+  small: "border-slate-500/40 bg-slate-500/20 text-slate-300",
 };
 
 export default function ResourcesPage() {
-  const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState<FeaturedTab>("featured");
 
-  const nextFeatured = () => {
-    setFeaturedIndex((prev) => (prev + 1) % featuredResources.length);
-  };
-
-  const prevFeatured = () => {
-    setFeaturedIndex((prev) =>
-      prev === 0 ? featuredResources.length - 1 : prev - 1
-    );
-  };
+  const featuredByTab = useMemo(() => {
+    const featured = featuredResources;
+    const trending = [featuredResources[2], featuredResources[1], featuredResources[0], featuredResources[3]].filter(Boolean);
+    const latest = [...featuredResources].reverse();
+    return { featured, trending, latest };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* ──── Hero ──── */}
-      <section className="border-b border-slate-200 dark:border-slate-800/50 bg-white/80 dark:bg-slate-900/30 backdrop-blur-sm">
-        <div className="container mx-auto px-4 py-16 md:py-24">
-          <h1 className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-3xl font-semibold tracking-tight text-transparent sm:text-4xl mb-4">
-            Resources
-          </h1>
-          <p className="text-sm leading-relaxed text-slate-600 dark:text-slate-400 max-w-3xl">
-            Learn, explore, and stay updated with Ethereum improvements. Explore FAQs, blogs, videos, news, and documentation to deepen your understanding of EIPs, ERCs, and RIPs.
-          </p>
-        </div>
-      </section>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto w-full max-w-7xl space-y-16 px-4 py-8 sm:px-6 lg:px-8">
+        <section className="rounded-xl border border-border bg-card/60 p-6 sm:p-8">
+          <header>
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Ethereum Standards Knowledge Hub
+            </h1>
+            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Learn EIPs/ERCs/RIPs from fundamentals to advanced governance analysis. Discover structured reading paths, deep resources, and ecosystem links in one place.
+            </p>
+          </header>
 
-      <div className="container mx-auto px-4 py-12 space-y-20">
-        {/* ──── Section 1: Resource Categories ──── */}
-        <section>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <Link
+              href="/resources/docs"
+              className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-primary/10 px-3 text-sm text-primary transition hover:bg-primary/15"
+            >
+              Understand EIP Process
+            </Link>
+            <Link
+              href="/explore/trending"
+              className="inline-flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              Explore Trending Proposals
+            </Link>
+            <Link
+              href="/tools/eip-builder"
+              className="inline-flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              Learn How To Write an EIP
+            </Link>
+            <Link
+              href="/resources/videos"
+              className="inline-flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              Watch Explainers
+            </Link>
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Learning Paths</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Start Where You Are</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Guided paths for newcomers, contributors, and researchers.</p>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-3">
+            {learningPaths.map((path) => (
+              <div key={path.title} className="rounded-xl border border-border bg-card/60 p-4">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="text-lg font-semibold text-foreground">{path.title}</h3>
+                  <span className="inline-flex rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    {path.estimate}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">{path.description}</p>
+                <ul className="mt-3 space-y-1">
+                  {path.links.map((item) => (
+                    <li key={item} className="text-sm text-muted-foreground">• {item}</li>
+                  ))}
+                </ul>
+                <Link
+                  href={path.href}
+                  className="mt-4 inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+                >
+                  Open path
+                </Link>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Recommended Reading</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Start Here First</h2>
+          </div>
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+            {recommendedReading.map((item) => (
+              <Link
+                key={item.title}
+                href={item.href}
+                className="rounded-lg border border-border bg-muted/30 p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:bg-primary/5 hover:shadow-lg hover:shadow-primary/10"
+              >
+                <p className="text-sm font-semibold text-foreground">{item.title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">Open guide →</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Resource Categories</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Learn, Docs, Media, Updates</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Pick a format quickly, then go deeper by topic and workflow.</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             {resourceCategories.map((category) => {
               const Icon = category.icon;
-              const colors = colorClasses[category.color];
               return (
                 <Link
                   key={category.title}
                   href={category.href}
+                  className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <div className="mb-3 inline-flex rounded-md border border-border bg-muted/60 p-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{category.group}</p>
+                  <h3 className="mt-1 text-base font-semibold text-foreground">{category.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{category.description}</p>
+                  <p className="mt-3 text-xs text-primary">{category.count} →</p>
+                </Link>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Featured Content</p>
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">What To Read Next</h2>
+            </div>
+            <div className="inline-flex rounded-md border border-border bg-muted/50 p-0.5">
+              {(["featured", "trending", "latest"] as FeaturedTab[]).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
                   className={cn(
-                    "group relative overflow-hidden rounded-xl border bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm transition-all duration-300",
-                    "hover:-translate-y-1",
-                    colors.border,
-                    colors.glow
+                    "rounded-sm px-3 py-1.5 text-xs font-medium capitalize transition-colors",
+                    activeTab === tab ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
-                  <div className={cn("rounded-full p-3 mb-4 inline-flex", colors.bg)}>
-                    <Icon className={cn("h-6 w-6", colors.text)} />
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                    {category.title}
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    {category.description}
-                  </p>
-                  <span className={cn("text-xs font-medium", colors.text)}>
-                    Browse →
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ──── Section 2: Featured Content ──── */}
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Featured Content</h2>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={prevFeatured}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-200 dark:bg-slate-700/50 transition-colors"
-                aria-label="Previous"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                onClick={nextFeatured}
-                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-200 dark:bg-slate-700/50 transition-colors"
-                aria-label="Next"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {featuredResources.map((resource, index) => {
-              const isVisible = index === featuredIndex || index === (featuredIndex + 1) % featuredResources.length || index === (featuredIndex + 2) % featuredResources.length || index === (featuredIndex + 3) % featuredResources.length;
-              
-              if (!isVisible) return null;
-
-              const typeColors: Record<string, string> = {
-                blog: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/40",
-                video: "bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/40",
-                news: "bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/40",
-                doc: "bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/40",
-              };
-
-              return (
-                <Link
-                  key={resource.id}
-                  href={resource.link}
-                  className="group rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-600 hover:shadow-lg"
-                >
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border mb-3",
-                      typeColors[resource.type]
-                    )}
-                  >
-                    {resource.type.charAt(0).toUpperCase() + resource.type.slice(1)}
-                  </span>
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2 group-hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors">
-                    {resource.title}
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 line-clamp-2">
-                    {resource.description}
-                  </p>
-                  <span className="text-xs text-cyan-600 dark:text-cyan-400 font-medium">
-                    {resource.type === "video" ? "Watch" : "Read"} →
-                  </span>
-                </Link>
-              );
-            })}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {featuredByTab[activeTab].slice(0, 4).map((resource) => (
+              <Link
+                key={`${activeTab}-${resource.id}`}
+                href={resource.link}
+                className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
+              >
+                <span className="inline-flex rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {resource.type}
+                </span>
+                <h3 className="mt-3 text-base font-semibold text-foreground">{resource.title}</h3>
+                <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{resource.description}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">
+                  Open resource
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              </Link>
+            ))}
           </div>
         </section>
 
-        {/* ──── Section 3: About EIPsInsight ──── */}
-        <section className="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-8 md:p-12 backdrop-blur-sm">
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 text-center">
-            About EIPsInsight
-          </h2>
-          <p className="text-slate-700 dark:text-slate-300 text-center max-w-3xl mx-auto mb-8 leading-relaxed">
-            We specialize in tools designed to provide clear, visual insights into the activity of Ethereum Improvement Proposals (EIPs), Ethereum Request for Comments (ERCs), and Rollup Improvement Proposals (RIPs). Our platform tracks progress, governance signals, and workload distribution among EIP Editors.
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Deep Learning</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Go Beyond Basics</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {deepLearningBlocks.map((block) => (
+              <Link
+                key={block.title}
+                href={block.href}
+                target={block.external ? "_blank" : undefined}
+                rel={block.external ? "noreferrer" : undefined}
+                className="rounded-lg border border-border bg-muted/30 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
+              >
+                <h3 className="text-sm font-semibold text-foreground">{block.title}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{block.description}</p>
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Join The Discussion</h2>
+          </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            {communityResources.map((resource) => (
+              <a
+                key={resource.name}
+                href={resource.href}
+                target="_blank"
+                rel="noreferrer"
+                className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
+              >
+                <h3 className="text-base font-semibold text-foreground">{resource.name}</h3>
+                <p className="mt-0.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  {resource.name.includes("Magicians")
+                    ? "Discussion forum"
+                    : resource.name.includes("EthResearch")
+                    ? "Research forum"
+                    : "Code & governance activity"}
+                </p>
+                <p className="mt-1 text-sm text-muted-foreground">{resource.description}</p>
+                <span className="mt-3 inline-flex items-center gap-1 text-xs text-primary">
+                  Visit
+                  <ExternalLink className="h-3 w-3" />
+                </span>
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card/60 p-6 sm:p-8">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Why EIPsInsight Exists</p>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            EIPsInsight helps developers and researchers understand Ethereum standards through analytics, governance tracking, and contributor insights.
           </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <div className="text-center">
-              <div className="rounded-full bg-cyan-500/20 p-4 inline-flex mb-3">
-                <Target className="h-6 w-6 text-cyan-600 dark:text-cyan-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                Observability
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                See what&apos;s happening across standards.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="rounded-full bg-emerald-500/20 p-4 inline-flex mb-3">
-                <Lightbulb className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                Context
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Understand why things change.
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="rounded-full bg-purple-500/20 p-4 inline-flex mb-3">
-                <Users className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-              </div>
-              <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-2">
-                Coordination
-              </h3>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Help editors and contributors collaborate.
-              </p>
-            </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-3">
+            {whyEipsInsight.map((item) => {
+              const Icon = item.icon;
+              return (
+                <div key={item.title} className="rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="inline-flex rounded-md border border-border bg-muted/60 p-2">
+                    <Icon className="h-4 w-4 text-primary" />
+                  </div>
+                  <h3 className="mt-3 text-sm font-semibold text-foreground">{item.title}</h3>
+                  <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
+                </div>
+              );
+            })}
           </div>
         </section>
 
-        {/* ──── Section 4: Our Team ──── */}
-        <section>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6">Our Team</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Team</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">People Behind The Platform</h2>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {team.map((member) => (
-              <div
-                key={member.name}
-                className="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm text-center"
-              >
-                <div className="rounded-full bg-gradient-to-br from-cyan-500/20 via-emerald-500/20 to-purple-500/20 w-20 h-20 mx-auto mb-4 flex items-center justify-center text-2xl font-bold text-slate-900 dark:text-white border border-slate-600">
-                  {member.name.split(" ").map((n) => n[0]).join("")}
+              <div key={member.name} className="rounded-xl border border-border bg-card/60 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full border border-border bg-muted/60 text-sm font-semibold text-foreground">
+                    {teamAvatarMap[member.name] ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={teamAvatarMap[member.name]} alt={member.name} className="h-full w-full object-cover" />
+                    ) : (
+                      member.name.split(" ").map((n) => n[0]).join("")
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-sm font-semibold text-foreground">{member.name}</h3>
+                    <p className="text-sm text-muted-foreground">{member.role}</p>
+                    <span className="mt-1 inline-flex items-center gap-1 rounded-full border border-emerald-500/40 bg-emerald-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+                      Active
+                    </span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">
-                  {member.name}
-                </h3>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-3">{member.role}</p>
-                <div className="flex items-center justify-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2 py-0.5 text-xs font-medium text-emerald-700 dark:text-emerald-300 border border-emerald-500/40">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    Active
-                  </span>
-                  {member.github && (
+                <div className="mt-3 flex items-center gap-2">
+                  {member.github ? (
                     <a
                       href={`https://github.com/${member.github}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors"
+                      className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 text-xs text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
                     >
-                      <Github className="h-4 w-4" />
+                      <Github className="h-3.5 w-3.5" />
+                      GitHub
                     </a>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))}
           </div>
         </section>
 
-        {/* ──── Section 5: Support EIPsInsight ──── */}
-        <section>
-          <div className="text-center mb-8">
-            <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-2">
-              Support EIPsInsight
-            </h2>
-            <p className="text-slate-600 dark:text-slate-400">
-              We welcome contributions, partnerships, and funding opportunities.
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Funding & Collaboration</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Support The Platform</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              EIPsInsight is an open analytics platform supported by grants, contributors, and ecosystem partners.
             </p>
           </div>
-
-          <div className="space-y-6 mb-8">
+          <div className="space-y-3">
             {grants.map((grant) => (
-              <div
-                key={grant.id}
-                className="rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm"
-              >
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-3">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
-                      {grant.title}
-                    </h3>
-                    <span
-                      className={cn(
-                        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border",
-                        badgeColors[grant.badge]
-                      )}
-                    >
-                      {grant.badge.charAt(0).toUpperCase() + grant.badge.slice(1)}
+              <div key={grant.id} className="rounded-xl border border-border bg-card/60 p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-foreground">{grant.title}</h3>
+                  <span className={cn("inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider", grantBadgeTone[grant.badge])}>
+                    {grant.badge}
+                  </span>
+                  {grant.date ? (
+                    <span className="inline-flex rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {grant.date}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {grant.tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center rounded-md px-2 py-0.5 text-xs font-medium bg-slate-200 dark:bg-slate-700/50 text-slate-700 dark:text-slate-300 border border-slate-300 dark:border-slate-600/30"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
+                  ) : null}
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{grant.description}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{grant.description}</p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {grant.tags.map((tag) => (
+                    <span key={tag} className="inline-flex rounded-md border border-border bg-muted/30 px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-4">
+          <div className="flex flex-wrap gap-2">
             <a
               href="https://github.com/AvarchLLC/eipsinsight-v4"
               target="_blank"
               rel="noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-slate-900 dark:text-white bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-200 dark:bg-slate-700/50 hover:border-slate-600 transition-colors"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
             >
               <Github className="h-4 w-4" />
               Contribute on GitHub
             </a>
-            <button className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-slate-900 dark:text-white bg-cyan-500/20 border border-cyan-500/40 rounded-lg hover:bg-cyan-500/30 hover:border-cyan-400 transition-colors">
-              <Heart className="h-4 w-4" />
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm text-primary transition hover:bg-primary/15">
+              <HeartHandshake className="h-4 w-4" />
               Partner with Us
             </button>
+            <a
+              href="mailto:hello@eipsinsight.com?subject=Grant%20Proposal%20for%20EIPsInsight"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              Suggest a Grant
+            </a>
+            <a
+              href="mailto:hello@eipsinsight.com?subject=Sponsorship%20Inquiry%20for%20EIPsInsight"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
+            >
+              Sponsor Development
+            </a>
           </div>
         </section>
 
-        {/* ──── Section 6: Our Partners ──── */}
-        <section>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white mb-6 text-center">
-            Our Partners
-          </h2>
-          <div className="flex flex-wrap items-center justify-center gap-8">
+        <section className="space-y-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Partners</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Ecosystem Partners</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Organizations supporting analytics, research, and coordination around Ethereum standards.
+            </p>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
             {partners.map((partner) => (
               <a
                 key={partner.name}
                 href={partner.website}
                 target="_blank"
                 rel="noreferrer"
-                className="group rounded-xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/40 p-6 backdrop-blur-sm hover:border-slate-600 transition-all hover:shadow-lg"
+                className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
               >
-                <p className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors flex items-center gap-2">
+                <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
                   {partner.name}
-                  <ExternalLink className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                </h3>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {partnerRoleMap[partner.name] || "Ecosystem support partner"}
                 </p>
               </a>
             ))}
-            <button className="rounded-xl border border-dashed border-slate-600 bg-slate-900/20 p-6 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:border-slate-500 transition-colors">
-              <p className="text-sm font-medium">+ Become a partner</p>
-            </button>
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-border bg-card/60 p-4">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Need A Quick Start?</h3>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Link href="/resources/docs" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
+              Start with Docs
+            </Link>
+            <Link href="/insights" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
+              Explore Insights
+            </Link>
+            <Link href="/tools" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
+              Open Tooling
+            </Link>
+            <Link href="/feedback" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
+              Share Feedback
+            </Link>
           </div>
         </section>
       </div>

@@ -1,8 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Video, Loader2, Plus, Pencil, ChevronLeft, ChevronRight, Play, Sparkles, Filter, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import {
+  ArrowLeft,
+  Video,
+  Loader2,
+  Pencil,
+  ChevronLeft,
+  ChevronRight,
+  Play,
+  Filter,
+  X,
+  ExternalLink,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import { client } from "@/lib/orpc";
 
 type VideoItem = {
@@ -20,6 +31,14 @@ type VideoItem = {
 
 const VIDEOS_PER_PAGE = 9;
 
+function formatDate(date: Date | string) {
+  return new Date(date).toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function VideosPage() {
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -29,10 +48,10 @@ export default function VideosPage() {
   const [allTags, setAllTags] = useState<string[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
 
-  // Load available tags
   useEffect(() => {
-    client.video.getAllTags()
-      .then(tags => setAllTags(tags))
+    client.video
+      .getAllTags()
+      .then((tags) => setAllTags(tags))
       .catch(() => setAllTags([]));
   }, []);
 
@@ -43,26 +62,24 @@ export default function VideosPage() {
     const offset = (currentPage - 1) * VIDEOS_PER_PAGE;
 
     Promise.all([
-      client.video.list({ 
-        publishedOnly: true, 
-        limit: VIDEOS_PER_PAGE, 
+      client.video.list({
+        publishedOnly: true,
+        limit: VIDEOS_PER_PAGE,
         offset,
         tags: selectedTags.length > 0 ? selectedTags : undefined,
       }),
-      client.account.getMe().then((u) => u.role === "admin").catch(() => false),
+      client.account.getMe().then((user) => user.role === "admin").catch(() => false),
     ])
-      .then(([res, admin]) => {
-        if (!cancelled) {
-          setVideos(res.videos as VideoItem[]);
-          setTotal(res.total);
-          setIsAdmin(admin);
-        }
+      .then(([response, admin]) => {
+        if (cancelled) return;
+        setVideos(response.videos as VideoItem[]);
+        setTotal(response.total);
+        setIsAdmin(admin);
       })
       .catch(() => {
-        if (!cancelled) {
-          setVideos([]);
-          setTotal(0);
-        }
+        if (cancelled) return;
+        setVideos([]);
+        setTotal(0);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -74,12 +91,10 @@ export default function VideosPage() {
   }, [currentPage, selectedTags]);
 
   const toggleTag = (tag: string) => {
-    setSelectedTags(prev => 
-      prev.includes(tag) 
-        ? prev.filter(t => t !== tag)
-        : [...prev, tag]
+    setSelectedTags((previous) =>
+      previous.includes(tag) ? previous.filter((value) => value !== tag) : [...previous, tag],
     );
-    setCurrentPage(1); // Reset to first page when filtering
+    setCurrentPage(1);
   };
 
   const clearFilters = () => {
@@ -88,48 +103,49 @@ export default function VideosPage() {
   };
 
   const totalPages = Math.ceil(total / VIDEOS_PER_PAGE);
+  const featuredVideo = videos[0] ?? null;
+  const archiveVideos = featuredVideo ? videos.slice(1) : videos;
+  const hasFilters = selectedTags.length > 0;
+
+  const intentLinks = useMemo(
+    () => [
+      { title: "Watch explainers", href: "#video-library" },
+      { title: "Browse protocol walkthroughs", href: "#video-grid" },
+      { title: "Open documentation", href: "/resources/docs" },
+    ],
+    [],
+  );
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950">
-      {/* Enhanced Hero Section */}
-      <section className="relative overflow-hidden border-b border-slate-200 dark:border-slate-800/50 bg-white dark:bg-slate-900/50 backdrop-blur-sm">
-        {/* Decorative background */}
-        <div className="absolute inset-0 overflow-hidden">
-          <div className="absolute -top-40 -right-40 h-80 w-80 rounded-full bg-cyan-500/5 dark:bg-cyan-500/10 blur-3xl" />
-          <div className="absolute -bottom-40 -left-40 h-80 w-80 rounded-full bg-emerald-500/5 dark:bg-emerald-500/10 blur-3xl" />
-        </div>
-
-        <div className="container relative mx-auto px-4 py-12">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <section className="mb-8">
           <Link
             href="/resources"
-            className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors mb-6 group"
+            className="mb-5 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition-transform" />
+            <ArrowLeft className="h-4 w-4" />
             Back to Resources
           </Link>
-          
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-6">
+
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="flex items-center gap-3 mb-3">
-                <Play className="h-8 w-8 text-cyan-600 dark:text-cyan-400" />
-                <span className="inline-block px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-xs font-semibold text-cyan-700 dark:text-cyan-300">
-                  <Sparkles className="inline h-3 w-3 mr-1" />
-                  Video Library
-                </span>
+              <div className="mb-3 inline-flex h-7 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Resources
               </div>
-              <h1 className="dec-title bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 bg-clip-text text-4xl sm:text-5xl font-bold tracking-tight text-transparent mb-3">
-                Learn with Videos
+              <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+                Videos
               </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-300 max-w-md">
-                Curated educational content, talks, and walkthroughs about Ethereum standards and EIPs.
+              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Watch explainers, talks, and walkthroughs that make Ethereum standards, governance shifts, and proposal mechanics easier to understand.
               </p>
             </div>
-            
+
             {isAdmin && (
-              <div className="flex gap-2 flex-wrap sm:flex-nowrap">
+              <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href="/admin?tab=videos"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all hover:shadow-md"
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card/60 px-3 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 >
                   <Pencil className="h-4 w-4" />
                   Manage Videos
@@ -137,201 +153,284 @@ export default function VideosPage() {
               </div>
             )}
           </div>
-        </div>
-      </section>
 
-      {/* Tag Filter Section */}
-      {allTags.length > 0 && (
-        <div className="w-full px-2 sm:px-3 lg:px-4 py-6 border-b border-slate-200 dark:border-slate-800/50 bg-white/50 dark:bg-slate-900/30 backdrop-blur-sm">
-          <div className="container mx-auto max-w-7xl">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <div className="mt-6 flex flex-wrap gap-2">
+            {intentLinks.map((link) => (
+              <Link
+                key={link.title}
+                href={link.href}
+                className="inline-flex h-8 items-center rounded-full border border-border bg-muted/50 px-3 text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+              >
+                {link.title}
+              </Link>
+            ))}
+          </div>
+        </section>
+
+        <section
+          id="video-library"
+          className="mb-8 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm sm:p-5"
+        >
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Video Library</p>
+              <h2 className="mt-1 dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                Watch by topic
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Filter talks and explainers by tags to narrow in on upgrades, standards, or governance themes.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2">
                 <Filter className="h-4 w-4" />
-                Filter by Tags:
-              </div>
-              <div className="flex flex-wrap gap-2 flex-1">
-                {allTags.map(tag => (
+                {total} video{total === 1 ? "" : "s"}
+              </span>
+              {hasFilters && (
+                <button
+                  onClick={clearFilters}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                >
+                  <X className="h-4 w-4" />
+                  Clear filters
+                </button>
+              )}
+            </div>
+          </div>
+
+          {allTags.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              {allTags.map((tag) => {
+                const selected = selectedTags.includes(tag);
+                return (
                   <button
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200 ${
-                      selectedTags.includes(tag)
-                        ? "bg-linear-to-r from-emerald-500 to-cyan-500 text-white shadow-md shadow-cyan-500/30 scale-105"
-                        : "bg-slate-100 dark:bg-slate-800/50 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700"
+                    className={`inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-all ${
+                      selected
+                        ? "border-primary/40 bg-primary/10 text-primary"
+                        : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                     }`}
                   >
                     {tag}
                   </button>
-                ))}
-              </div>
-              {selectedTags.length > 0 && (
-                <button
-                  onClick={clearFilters}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                >
-                  <X className="h-4 w-4" />
-                  Clear
-                </button>
-              )}
+                );
+              })}
             </div>
-            {selectedTags.length > 0 && (
-              <div className="mt-3 text-sm text-slate-600 dark:text-slate-400">
-                Showing {total} video{total !== 1 ? 's' : ''} with tag{selectedTags.length !== 1 ? 's' : ''}: {selectedTags.join(', ')}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          )}
 
-      <div className="w-full px-2 sm:px-3 lg:px-4 py-16">
+          {hasFilters && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Showing {total} video{total === 1 ? "" : "s"} for {selectedTags.join(", ")}.
+            </p>
+          )}
+        </section>
+
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-32 gap-4">
-            <div className="relative">
-              <div className="absolute inset-0 bg-linear-to-r from-cyan-500 to-emerald-500 rounded-full blur-2xl opacity-20" />
-              <Loader2 className="relative h-12 w-12 animate-spin text-cyan-600 dark:text-cyan-400" />
-            </div>
-            <p className="text-slate-600 dark:text-slate-400">Loading videos...</p>
+          <div className="flex flex-col items-center justify-center gap-4 py-28">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Loading videos…</p>
           </div>
         ) : videos.length === 0 ? (
-          <div className="text-center py-32 max-w-2xl mx-auto">
-            <div className="inline-flex items-center justify-center h-24 w-24 rounded-full bg-linear-to-br from-purple-500/20 to-pink-500/20 border border-purple-500/30 mb-8">
-              <Video className="h-12 w-12 text-purple-600 dark:text-purple-400" />
+          <section className="mx-auto max-w-2xl rounded-xl border border-border bg-card/60 px-6 py-16 text-center backdrop-blur-sm">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-border bg-muted/50">
+              <Video className="h-8 w-8 text-primary" />
             </div>
-            <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mb-4">
-              Video Collection Coming Soon
+            <h2 className="mt-6 dec-title text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              No videos yet
             </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-400 mb-4">
-              We&apos;re carefully curating high-quality educational videos, talks, and tutorials about Ethereum standards.
+            <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              We&apos;re curating walkthroughs, talks, and standards explainers. Use documentation and blogs for now, then come back for recorded deep dives.
             </p>
-            <p className="text-sm text-slate-500 dark:text-slate-500 mb-8">
-              Check back soon for in-depth explorations of EIPs and the Ethereum ecosystem.
-            </p>
-            {isAdmin && (
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
               <Link
-                href="/admin/videos/new"
-                className="inline-flex items-center gap-2 px-6 py-3 text-base font-semibold text-white bg-linear-to-r from-emerald-500 to-cyan-500 rounded-lg hover:from-emerald-400 hover:to-cyan-400 transition-all shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/40 hover:scale-105"
+                href="/resources/docs"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 text-sm font-medium text-primary transition-all hover:bg-primary/15"
               >
-                <Plus className="h-5 w-5" />
-                Be the First to Add
+                Open Documentation
               </Link>
-            )}
-          </div>
+              <Link
+                href="/resources/blogs"
+                className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+              >
+                Read Commentary
+              </Link>
+            </div>
+          </section>
         ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-16">
-              {videos.map((video, index) => (
-                <div
-                  key={video.id}
-                  className="group relative rounded-2xl overflow-hidden transition-all duration-500 hover:scale-105"
-                  style={{
-                    animation: `slideInUp 0.6s ease-out ${index * 50}ms backwards`
-                  }}
-                >
-                  <style>{`
-                    @keyframes slideInUp {
-                      from {
-                        opacity: 0;
-                        transform: translateY(20px);
-                      }
-                      to {
-                        opacity: 1;
-                        transform: translateY(0);
-                      }
-                    }
-                  `}</style>
-                  
-                  {/* Card background with gradient border effect */}
-                  <div className="absolute inset-0 bg-linear-to-br from-slate-200/50 to-slate-300/50 dark:from-slate-700/50 dark:to-slate-800/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                  
-                  {/* Main card */}
-                  <div className="relative rounded-2xl border border-slate-200 dark:border-slate-700/50 bg-white dark:bg-slate-900/60 overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-cyan-500/20 dark:hover:shadow-cyan-500/10 transition-all duration-300 backdrop-blur-sm">
-                    {/* Video embed container */}
-                    <div className="relative aspect-video bg-slate-900 overflow-hidden">
-                      {/* Play button overlay */}
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 bg-black/30 z-10">
-                        <div className="h-16 w-16 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center border border-white/40">
-                          <Play className="h-8 w-8 text-white fill-white ml-1" />
-                        </div>
-                      </div>
+            {featuredVideo && (
+              <section className="mb-10 grid gap-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(280px,0.8fr)]">
+                <div className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm">
+                  <div className="aspect-video overflow-hidden bg-muted">
+                    <iframe
+                      src={`https://www.youtube.com/embed/${featuredVideo.youtubeVideoId}`}
+                      title={featuredVideo.title}
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="h-full w-full"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border bg-card/60 p-5 backdrop-blur-sm">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Featured Video</p>
+                  <h2 className="mt-2 dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                    {featuredVideo.title}
+                  </h2>
+                  {featuredVideo.description && (
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground sm:text-base">
+                      {featuredVideo.description}
+                    </p>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatDate(featuredVideo.createdAt)}</span>
+                    {featuredVideo.tags && featuredVideo.tags.length > 0 && (
+                      <>
+                        <span>•</span>
+                        <span>{featuredVideo.tags.slice(0, 3).join(" • ")}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {featuredVideo.tags && featuredVideo.tags.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {featuredVideo.tags.map((tag) => (
+                        <button
+                          key={tag}
+                          onClick={() => toggleTag(tag)}
+                          className="inline-flex h-8 items-center rounded-full border border-border bg-muted/40 px-3 text-xs font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
+                        >
+                          {tag}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex flex-wrap gap-2">
+                    <a
+                      href={featuredVideo.youtubeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 text-sm font-medium text-primary transition-all hover:bg-primary/15"
+                    >
+                      <Play className="h-4 w-4" />
+                      Watch on YouTube
+                    </a>
+                    <a
+                      href={featuredVideo.youtubeUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
+                    >
+                      Share video
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </div>
+                </div>
+              </section>
+            )}
+
+            <section id="video-grid">
+              <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Library</p>
+                  <h2 className="mt-1 dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                    More videos
+                  </h2>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Browse explainers, interviews, and protocol walkthroughs from the current selection.
+                  </p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Page {currentPage} of {totalPages || 1}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
+                {archiveVideos.map((video) => (
+                  <article
+                    key={video.id}
+                    className="group overflow-hidden rounded-xl border border-border bg-card/60 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:bg-card/80"
+                  >
+                    <div className="aspect-video overflow-hidden bg-muted">
                       <iframe
                         src={`https://www.youtube.com/embed/${video.youtubeVideoId}`}
                         title={video.title}
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
-                        className="w-full h-full group-hover:scale-110 transition-transform duration-300"
-                      ></iframe>
+                        className="h-full w-full"
+                      />
                     </div>
-                    
-                    {/* Content section */}
-                    <div className="p-6 space-y-3">
-                      <h3 className="text-lg font-bold text-slate-900 dark:text-white line-clamp-2 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
+                    <div className="p-4">
+                      <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        <span>{formatDate(video.createdAt)}</span>
+                        {video.tags && video.tags.length > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>{video.tags[0]}</span>
+                          </>
+                        )}
+                      </div>
+                      <h3 className="mt-3 text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-primary">
                         {video.title}
                       </h3>
                       {video.description && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 group-hover:line-clamp-3 transition-all">
-                          {video.description}
-                        </p>
+                        <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{video.description}</p>
                       )}
                       {video.tags && video.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {video.tags.map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-cyan-500/10 border border-cyan-500/30 text-cyan-700 dark:text-cyan-300"
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {video.tags.slice(0, 4).map((tag) => (
+                            <button
+                              key={tag}
+                              onClick={() => toggleTag(tag)}
+                              className="inline-flex h-7 items-center rounded-full border border-border bg-muted/40 px-2.5 text-[11px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:bg-primary/10 hover:text-primary"
                             >
                               {tag}
-                            </span>
+                            </button>
                           ))}
                         </div>
                       )}
-                      <div className="pt-2 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-500">
-                        <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                        <span>Featured Content</span>
-                      </div>
                     </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            </section>
 
             {totalPages > 1 && (
-              <div className="flex flex-col items-center gap-8">
-                <div className="text-center text-sm text-slate-600 dark:text-slate-400">
-                  Page <span className="font-semibold text-slate-900 dark:text-white">{currentPage}</span> of <span className="font-semibold text-slate-900 dark:text-white">{totalPages}</span>
-                </div>
-                
-                <div className="flex items-center gap-3 flex-wrap justify-center">
+              <div className="mt-10 flex flex-col items-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-2">
                   <button
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setCurrentPage((page) => Math.max(1, page - 1))}
                     disabled={currentPage === 1}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     Previous
                   </button>
-                  
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800/50 rounded-lg p-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                      (page) => (
-                        <button
-                          key={page}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-1.5 text-sm font-semibold rounded-md transition-all duration-200 ${
-                            page === currentPage
-                              ? "bg-linear-to-r from-emerald-500 to-cyan-500 text-white shadow-md shadow-cyan-500/30"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-700/50"
-                          }`}
-                        >
-                          {page}
-                        </button>
-                      )
-                    )}
+
+                  <div className="flex items-center gap-1 rounded-lg border border-border bg-card/60 p-1">
+                    {Array.from({ length: totalPages }, (_, index) => index + 1).map((page) => (
+                      <button
+                        key={page}
+                        onClick={() => setCurrentPage(page)}
+                        className={`h-8 min-w-8 rounded-md px-2 text-sm font-medium transition-all ${
+                          page === currentPage
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                        }`}
+                      >
+                        {page}
+                      </button>
+                    ))}
                   </div>
-                  
+
                   <button
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setCurrentPage((page) => Math.min(totalPages, page + 1))}
                     disabled={currentPage === totalPages}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-40 disabled:cursor-not-allowed transition-all duration-200 hover:shadow-md"
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     Next
                     <ChevronRight className="h-4 w-4" />

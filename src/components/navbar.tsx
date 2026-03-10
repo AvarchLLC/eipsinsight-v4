@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
   Menu,
@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemedLogoGif } from "@/components/themed-logo-gif";
+import { toast } from "sonner";
 
 // Mobile navigation items (same as sidebar)
 const mobileNavItems = [
@@ -49,7 +50,7 @@ const mobileNavItems = [
 ];
 
 const PERSONA_TONE: Record<string, string> = {
-  emerald: "text-emerald-400 border-emerald-400/35 bg-emerald-500/12",
+  emerald: "text-emerald-300 border-emerald-400/35 bg-emerald-500/12",
   baby: "text-sky-300 border-sky-300/35 bg-sky-400/12",
   orange: "text-orange-300 border-orange-300/35 bg-orange-500/12",
   purple: "text-purple-300 border-purple-300/35 bg-purple-500/12",
@@ -83,6 +84,7 @@ const PERSONA_HOVER_TONE: Record<string, string> = {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [membershipTier, setMembershipTier] = useState<string>("free");
@@ -126,6 +128,18 @@ export default function Navbar() {
   const PersonaIcon = currentPersona?.icon;
   const hasPersona = persona !== null;
   const currentPersonaTone = currentPersona ? PERSONA_TONE[currentPersona.color] : "";
+
+  const handleSignOut = async () => {
+    try {
+      await authClient.signOut();
+      toast.success("Signed out");
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      toast.error("Failed to sign out");
+    }
+  };
 
   return (
     <nav
@@ -173,13 +187,11 @@ export default function Navbar() {
                 <DropdownMenuTrigger asChild>
                   <button
                     className={cn(
-                      "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-all",
-                      "border",
+                      "flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all duration-200",
                       "hover:scale-[1.02]",
-                      "text-xs",
                       hasPersona 
-                        ? cn("text-foreground", currentPersonaTone)
-                        : "border-primary/40 bg-primary/10 text-primary animate-pulse"
+                        ? cn("text-foreground", currentPersonaTone, "hover:border-primary/40")
+                        : "animate-pulse border-primary/40 bg-primary/10 text-primary"
                     )}
                   >
                     {hasPersona && PersonaIcon ? (
@@ -195,7 +207,7 @@ export default function Navbar() {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent
                   align="end"
-                  className="w-64 border-border bg-popover/95 backdrop-blur-xl p-1"
+                  className="w-64 border-border bg-popover/95 p-1 backdrop-blur-xl"
                 >
                   {!hasPersona && (
                     <div className="mb-1 border-b border-border px-2 py-2 text-xs text-muted-foreground">
@@ -214,10 +226,10 @@ export default function Navbar() {
                         key={personaId}
                         onClick={() => handlePersonaChange(personaId)}
                         className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-2.5 transition-all",
+                          "flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-2.5 transition-all duration-200",
                           isSelected
                             ? cn(tone, "shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.18)]")
-                            : hoverTone
+                            : cn("bg-transparent text-foreground", hoverTone)
                         )}
                       >
                         <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", iconTone)}>
@@ -242,7 +254,7 @@ export default function Navbar() {
             {!session?.user ? (
               <Button
                 size="sm"
-                className="rounded-lg persona-gradient text-black h-8 px-3 text-xs hover:opacity-90"
+                className="h-8 rounded-lg persona-gradient px-3 text-xs text-primary-foreground hover:opacity-90"
                 asChild
               >
                 <Link href="/login">Sign in</Link>
@@ -250,7 +262,7 @@ export default function Navbar() {
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card p-0 transition-all hover:border-primary/50 hover:bg-muted/60">
+                  <button className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card p-0 transition-all duration-200 hover:border-primary/50 hover:bg-muted/60">
                     <ProfileAvatar user={session.user} size="xs" />
                   </button>
                 </DropdownMenuTrigger>
@@ -285,10 +297,7 @@ export default function Navbar() {
                     <DropdownMenuSeparator className="mx-2 my-1 border-border" />
                     <DropdownMenuItem
                       className="flex items-center gap-2 px-4 py-2 text-foreground"
-                      onClick={async () => {
-                        await authClient.signOut();
-                        window.location.href = "/";
-                      }}
+                      onClick={handleSignOut}
                     >
                       <LogOut className="h-4 w-4 text-rose-500 dark:text-rose-300" />
                       <span className="text-sm">Sign out</span>
@@ -342,10 +351,9 @@ export default function Navbar() {
                 type="search"
                 placeholder="Search EIPs, ERCs, authors…"
                 className={cn(
-                  "w-full rounded-lg border border-border bg-muted/50",
-                  "px-10 py-2.5 text-sm text-foreground",
+                  "h-9 w-full rounded-md border border-border bg-muted/60 px-10 text-sm text-foreground",
                   "placeholder:text-muted-foreground",
-                  "focus:outline-none focus:ring-2 focus:ring-ring/40"
+                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                 )}
               />
             </div>
@@ -439,7 +447,7 @@ export default function Navbar() {
               {!session?.user ? (
                 <Button
                   size="sm"
-                  className="rounded-lg persona-gradient text-black h-8 px-3 text-xs hover:opacity-90"
+                  className="h-8 rounded-lg persona-gradient px-3 text-xs text-primary-foreground hover:opacity-90"
                   asChild
                 >
                   <Link href="/login">Sign in</Link>
@@ -454,10 +462,7 @@ export default function Navbar() {
                     variant="ghost"
                     size="sm"
                     className="text-rose-400 hover:text-rose-300 h-8 px-2 text-xs"
-                    onClick={async () => {
-                      await authClient.signOut();
-                      window.location.href = "/";
-                    }}
+                    onClick={handleSignOut}
                   >
                     Sign out
                   </Button>

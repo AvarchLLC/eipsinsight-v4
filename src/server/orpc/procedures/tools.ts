@@ -359,8 +359,8 @@ const repoIds = await getRepoIds(input.repo);
   getOpenPRBoard: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
-      govState: z.string().optional(),
-      processType: z.string().optional(),
+      govState: z.union([z.string(), z.array(z.string())]).optional(),
+      processType: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
       page: z.number().default(1),
       pageSize: z.number().default(10),
@@ -368,6 +368,8 @@ const repoIds = await getRepoIds(input.repo);
     .handler(async ({ context, input }) => {
 const { repo, govState, processType, search, page, pageSize } = input;
       const offset = (page - 1) * pageSize;
+      const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
+      const processTypes = typeof processType === 'string' ? [processType] : (processType ?? []);
 
       const results = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -403,8 +405,8 @@ const { repo, govState, processType, search, page, pageSize } = input;
         ),
         filtered AS (
           SELECT * FROM base
-          WHERE ($2::text IS NULL OR gov_state = $2)
-            AND ($3::text IS NULL OR process_type = $3)
+          WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
+            AND ($3::text[] IS NULL OR cardinality($3::text[]) = 0 OR process_type = ANY($3::text[]))
             AND ($4::text IS NULL OR (
               pr_number::text LIKE '%' || $4 || '%'
               OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($4) || '%'
@@ -415,7 +417,7 @@ const { repo, govState, processType, search, page, pageSize } = input;
         FROM filtered f
         ORDER BY f.wait_days DESC
         LIMIT $5 OFFSET $6
-      `, repo || null, govState || null, processType || null, search || null, pageSize, offset);
+      `, repo || null, govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset);
 
       const total = results.length > 0 ? Number(results[0].total_count) : 0;
 
@@ -443,11 +445,12 @@ const { repo, govState, processType, search, page, pageSize } = input;
   getOpenPRBoardStats: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
-      govState: z.string().optional(),
+      govState: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
 const { repo, govState, search } = input;
+      const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
 
       // Process type counts (filtered by govState + search, NOT by processType)
       const ptResults = await prisma.$queryRawUnsafe<Array<{
@@ -467,7 +470,7 @@ const { repo, govState, search } = input;
         )
         SELECT process_type, COUNT(*)::bigint AS count
         FROM base
-        WHERE ($2::text IS NULL OR gov_state = $2)
+        WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
           AND ($3::text IS NULL OR (
             pr_number::text LIKE '%' || $3 || '%'
             OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
@@ -475,7 +478,7 @@ const { repo, govState, search } = input;
           ))
         GROUP BY process_type
         ORDER BY count DESC
-      `, repo || null, govState || null, search || null);
+      `, repo || null, govStates.length ? govStates : null, search || null);
 
       // Governance state counts (NOT filtered by govState—so user sees all state counts)
       const gsResults = await prisma.$queryRawUnsafe<Array<{

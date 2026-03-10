@@ -59,6 +59,7 @@ import { cn } from "@/lib/utils";
 import { StandardsPageHeader } from "@/app/standards/_components/standards-page-header";
 import { CopyLinkButton } from "@/components/header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "sonner";
 
 // ──────── Types ────────
 type RepoTab = "all" | "eips" | "ercs" | "rips";
@@ -435,6 +436,9 @@ function StandardsPageContent() {
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
+    toast.success("CSV downloaded", {
+      description: filename,
+    });
   };
 
   const handleCSVDownload = useCallback(async () => {
@@ -448,6 +452,7 @@ function StandardsPageContent() {
       downloadCSV(result.filename, result.csv);
     } catch (err) {
       console.error("CSV export failed:", err);
+      toast.error("Failed to export CSV");
     }
   }, [repoParam, selectedStatuses, selectedTypes, selectedCategories]);
 

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useMemo, useCallback, Suspe
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Download, Calendar, Database } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 // ─── Export Helper Functions ─────────────────────────────────────
 
@@ -92,7 +93,7 @@ export function useAnalyticsExport(
 
       if (exportData.length === 0) {
         console.warn("No data to export");
-        alert("No data available to export");
+        toast.error("No data available to export");
         return;
       }
 
@@ -106,6 +107,10 @@ export function useAnalyticsExport(
         const json = JSON.stringify(exportData, null, 2);
         downloadFile(json, fullFilename, "application/json");
       }
+
+      toast.success(`${format.toUpperCase()} export started`, {
+        description: fullFilename,
+      });
     };
 
     window.addEventListener("analytics-export", handleExport);
@@ -232,7 +237,7 @@ function AnalyticsLayoutInner({
       <div className="min-h-screen bg-background">
         {/* Single merged header — not sticky */}
         <div className="border-b border-border bg-card/80">
-          <div className="container mx-auto px-4 py-5">
+          <div className="page-shell py-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               {/* Title + subtitle */}
               <div>
@@ -317,7 +322,7 @@ function AnalyticsLayoutInner({
           </div>
         </div>
 
-        <div className="container mx-auto px-4 py-6">
+        <div className="page-shell py-6">
           <main className="min-w-0">{children}</main>
         </div>
       </div>

@@ -49,14 +49,14 @@ type AuthorSearchRaw = Partial<AuthorResult> & {
   reviewCount?: number;
 };
 
-// Status color mapping (light + dark mode)
 const statusColors: Record<string, { bg: string; text: string; border: string }> = {
-  'Draft': { bg: 'bg-cyan-500/20', text: 'text-cyan-600 dark:text-cyan-300', border: 'border-cyan-400/30' },
-  'Review': { bg: 'bg-blue-500/20', text: 'text-blue-600 dark:text-blue-300', border: 'border-blue-400/30' },
-  'Last Call': { bg: 'bg-amber-500/20', text: 'text-amber-600 dark:text-amber-300', border: 'border-amber-400/30' },
-  'Final': { bg: 'bg-emerald-500/20', text: 'text-emerald-600 dark:text-emerald-300', border: 'border-emerald-400/30' },
-  'Stagnant': { bg: 'bg-slate-500/20', text: 'text-slate-600 dark:text-slate-300', border: 'border-slate-400/30' },
-  'Withdrawn': { bg: 'bg-red-500/20', text: 'text-red-600 dark:text-red-300', border: 'border-red-400/30' },
+  Draft: { bg: 'bg-slate-500/20', text: 'text-slate-300', border: 'border-slate-400/30' },
+  Review: { bg: 'bg-amber-500/20', text: 'text-amber-300', border: 'border-amber-400/30' },
+  'Last Call': { bg: 'bg-orange-500/20', text: 'text-orange-300', border: 'border-orange-400/30' },
+  Final: { bg: 'bg-emerald-500/20', text: 'text-emerald-300', border: 'border-emerald-400/30' },
+  Living: { bg: 'bg-cyan-500/20', text: 'text-cyan-300', border: 'border-cyan-400/30' },
+  Stagnant: { bg: 'bg-gray-500/20', text: 'text-gray-300', border: 'border-gray-400/30' },
+  Withdrawn: { bg: 'bg-red-500/20', text: 'text-red-300', border: 'border-red-400/30' },
 };
 
 export function SearchBar() {
@@ -236,10 +236,10 @@ export function SearchBar() {
   const hasResults = allResults.length > 0;
 
   return (
-    <div className="relative w-full max-w-3xl mx-auto">
+    <div className="relative mx-auto w-full max-w-3xl">
       <div className="relative">
         {/* Search Icon */}
-        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500 dark:text-cyan-400/80 pointer-events-none" />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         
         {/* Search Input */}
         <input
@@ -272,19 +272,16 @@ export function SearchBar() {
             setTimeout(() => setShowDropdown(false), 200);
           }}
           className={cn(
-            "w-full pl-12 pr-12 py-3 text-base",
-            "rounded-full border border-slate-300 dark:border-slate-700",
-            "bg-white/95 dark:bg-slate-950/90 backdrop-blur-sm",
-            "text-slate-900 dark:text-slate-100 placeholder:text-slate-500 dark:placeholder:text-slate-400",
-            "focus:outline-none focus:ring-2 focus:ring-cyan-400/30 focus:border-cyan-400/60",
-            "transition-all"
+            "h-10 w-full rounded-lg border border-border bg-muted/60 pl-10 pr-10 text-sm text-foreground",
+            "placeholder:text-muted-foreground backdrop-blur-sm transition-all duration-200",
+            "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:border-primary/40"
           )}
         />
         
         {/* Loading / Clear Button */}
         <div className="absolute right-4 top-1/2 -translate-y-1/2">
           {loading ? (
-            <Loader2 className="h-4 w-4 text-slate-500 dark:text-cyan-400 animate-spin" />
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           ) : query ? (
             <button
               onClick={() => {
@@ -292,7 +289,7 @@ export function SearchBar() {
                 setShowDropdown(false);
                 inputRef.current?.focus();
               }}
-              className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+              className="text-muted-foreground transition-colors hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -304,21 +301,21 @@ export function SearchBar() {
       {showDropdown && (query.trim() || hasResults) && (
         <div
           ref={dropdownRef}
-          className="absolute mt-3 w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl"
+          className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl"
           style={{ maxHeight: '480px' }}
         >
           {loading ? (
             <div className="p-8 text-center">
-              <Loader2 className="h-8 w-8 text-slate-500 dark:text-cyan-400 animate-spin mx-auto mb-3" />
-              <p className="text-slate-600 dark:text-slate-400 text-sm">Searching...</p>
+              <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Searching...</p>
             </div>
           ) : !hasResults ? (
             <div className="p-8 text-center">
-              <Search className="h-12 w-12 text-slate-400 dark:text-slate-500/50 mx-auto mb-3" />
-              <p className="text-slate-700 dark:text-slate-300 font-semibold text-base mb-1">
+              <Search className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              <p className="mb-1 text-base font-semibold text-foreground">
                 No results found
               </p>
-              <p className="text-slate-500 dark:text-slate-400 text-sm">
+              <p className="text-sm text-muted-foreground">
                 Try searching for an EIP number, title, author, or status
               </p>
             </div>
@@ -326,9 +323,9 @@ export function SearchBar() {
             <div className="max-h-[480px] overflow-y-auto">
               {/* Proposals Section */}
               {results.proposals.length > 0 && (
-                <div className="border-b border-slate-200 dark:border-slate-800/80">
-                  <div className="sticky top-0 z-10 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                    <h3 className="text-xs font-semibold text-slate-600 dark:text-cyan-300 uppercase tracking-wider flex items-center gap-2">
+                <div className="border-b border-border/80">
+                  <div className="sticky top-0 z-10 border-b border-border bg-muted/80 px-4 py-2 backdrop-blur-sm">
+                    <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <FileText className="h-3.5 w-3.5" />
                       Proposals ({results.proposals.length})
                     </h3>
@@ -343,16 +340,16 @@ export function SearchBar() {
                         data-index={index}
                         onClick={() => handleResultClick(result)}
                         className={cn(
-                          "cursor-pointer p-4 transition-all border-b border-slate-200 dark:border-slate-800/70 last:border-0",
+                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
                           isSelected 
-                            ? "bg-slate-100 dark:bg-slate-900/90 border-l-2 border-l-cyan-400" 
-                            : "hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                            ? "border-l-2 border-l-primary bg-primary/10"
+                            : "hover:bg-muted/50"
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="text-sm font-bold text-cyan-700 dark:text-cyan-300 font-mono">
+                              <span className="font-mono text-sm font-bold text-primary">
                                 {result.repo.toUpperCase()}-{result.number}
                               </span>
                               <span className={cn(
@@ -364,23 +361,23 @@ export function SearchBar() {
                                 {result.status}
                               </span>
                               {result.category && (
-                                <span className="px-2 py-0.5 text-xs font-medium rounded-md bg-slate-200 dark:bg-slate-800/50 text-slate-600 dark:text-slate-300">
+                                <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
                                   {result.category}
                                 </span>
                               )}
                             </div>
-                            <div className="text-sm text-slate-900 dark:text-white font-medium mb-1 line-clamp-2">
+                            <div className="mb-1 line-clamp-2 text-sm font-medium text-foreground">
                               {result.title}
                             </div>
-                            {result.author && (
-                              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1 truncate">
+                            {result.author ? (
+                              <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
                                 <Users className="h-3 w-3" />
                                 {result.author.split(',')[0]}
                                 {result.author.split(',').length > 1 && ` +${result.author.split(',').length - 1} more`}
                               </div>
-                            )}
+                            ) : null}
                           </div>
-                          <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0 mt-1" />
+                          <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
                       </div>
                     );
@@ -390,9 +387,9 @@ export function SearchBar() {
               
               {/* Authors Section */}
               {results.authors.length > 0 && (
-                <div className="border-b border-slate-200 dark:border-slate-800/80">
-                  <div className="sticky top-0 z-10 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                    <h3 className="text-xs font-semibold text-slate-600 dark:text-violet-300 uppercase tracking-wider flex items-center gap-2">
+                <div className="border-b border-border/80">
+                  <div className="sticky top-0 z-10 border-b border-border bg-muted/80 px-4 py-2 backdrop-blur-sm">
+                    <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <Users className="h-3.5 w-3.5" />
                       Authors ({results.authors.length})
                     </h3>
@@ -407,30 +404,30 @@ export function SearchBar() {
                         data-index={globalIndex}
                         onClick={() => handleResultClick(result)}
                         className={cn(
-                          "cursor-pointer p-4 transition-all border-b border-slate-200 dark:border-slate-800/70 last:border-0",
+                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
                           isSelected 
-                            ? "bg-slate-100 dark:bg-slate-900/90 border-l-2 border-l-violet-400" 
-                            : "hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                            ? "border-l-2 border-l-primary bg-primary/10"
+                            : "hover:bg-muted/50"
                         )}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-violet-500 to-pink-500 flex items-center justify-center flex-shrink-0">
-                              <span className="text-white font-bold text-sm">
+                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                              <span className="text-sm font-bold text-primary">
                                 {result.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                              <div className="truncate text-sm font-semibold text-foreground">
                                 {result.name}
                               </div>
-                              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
                                 <FileText className="h-3 w-3" />
                                 {result.contributionCount} contribution{result.contributionCount !== 1 ? 's' : ''}
                               </div>
                             </div>
                           </div>
-                          <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
                       </div>
                     );
@@ -441,8 +438,8 @@ export function SearchBar() {
               {/* Pull Requests Section */}
               {results.prs.length > 0 && (
                 <div>
-                  <div className="sticky top-0 z-10 px-4 py-2.5 bg-slate-100 dark:bg-slate-900/90 border-b border-slate-200 dark:border-slate-800 backdrop-blur-sm">
-                    <h3 className="text-xs font-semibold text-slate-600 dark:text-blue-300 uppercase tracking-wider flex items-center gap-2">
+                  <div className="sticky top-0 z-10 border-b border-border bg-muted/80 px-4 py-2 backdrop-blur-sm">
+                    <h3 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                       <GitPullRequest className="h-3.5 w-3.5" />
                       Pull Requests ({results.prs.length})
                     </h3>
@@ -457,39 +454,38 @@ export function SearchBar() {
                         data-index={globalIndex}
                         onClick={() => handleResultClick(result)}
                         className={cn(
-                          "cursor-pointer p-4 transition-all border-b border-slate-200 dark:border-slate-800/70 last:border-0",
+                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
                           isSelected 
-                            ? "bg-slate-100 dark:bg-slate-900/90 border-l-2 border-l-blue-400" 
-                            : "hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                            ? "border-l-2 border-l-primary bg-primary/10"
+                            : "hover:bg-muted/50"
                         )}
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-1">
-                              <span className="text-sm font-bold text-blue-700 dark:text-blue-300 font-mono">
+                              <span className="font-mono text-sm font-bold text-primary">
                                 #{result.prNumber}
                               </span>
                               {result.state && (
                                 <span className={cn(
                                   "px-2 py-0.5 text-xs font-medium rounded-md",
-                                  result.state === 'open' ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-300" :
-                                  result.state === 'closed' ? "bg-slate-500/20 text-slate-600 dark:text-slate-300" :
-                                  "bg-slate-500/20 text-slate-600 dark:text-slate-300"
+                                  result.state === 'open' ? "bg-emerald-500/20 text-emerald-300" :
+                                  "bg-slate-500/20 text-slate-300"
                                 )}>
                                   {result.state}
                                 </span>
                               )}
                             </div>
                             {result.title && (
-                              <div className="text-sm text-slate-900 dark:text-white line-clamp-2">
+                              <div className="line-clamp-2 text-sm text-foreground">
                                 {result.title}
                               </div>
                             )}
-                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            <div className="mt-1 text-xs text-muted-foreground">
                               {result.repo}
                             </div>
                           </div>
-                          <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 flex-shrink-0" />
+                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
                       </div>
                     );
@@ -499,24 +495,24 @@ export function SearchBar() {
               
               {/* Keyboard hints */}
               {hasResults && (
-                <div className="px-4 py-3 bg-slate-100 dark:bg-slate-900/60 border-t border-slate-200 dark:border-slate-800">
+                <div className="border-t border-border bg-muted/60 px-4 py-3">
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-4">
-                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                        <kbd className="px-2 py-1 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-semibold text-slate-600 dark:text-slate-300">↑</kbd>
-                        <kbd className="px-2 py-1 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-semibold text-slate-600 dark:text-slate-300">↓</kbd>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <kbd className="rounded border border-border bg-background px-2 py-1 font-mono font-semibold text-foreground">↑</kbd>
+                        <kbd className="rounded border border-border bg-background px-2 py-1 font-mono font-semibold text-foreground">↓</kbd>
                         <span className="ml-1">Navigate</span>
                       </span>
-                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                        <kbd className="px-2 py-1 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-semibold text-slate-600 dark:text-slate-300">↵</kbd>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <kbd className="rounded border border-border bg-background px-2 py-1 font-mono font-semibold text-foreground">↵</kbd>
                         <span>Select</span>
                       </span>
-                      <span className="flex items-center gap-1.5 text-slate-500 dark:text-slate-400">
-                        <kbd className="px-2 py-1 bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded shadow-sm font-mono font-semibold text-slate-600 dark:text-slate-300">Esc</kbd>
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <kbd className="rounded border border-border bg-background px-2 py-1 font-mono font-semibold text-foreground">Esc</kbd>
                         <span>Close</span>
                       </span>
                     </div>
-                    <span className="text-slate-600 dark:text-slate-500 text-xs">
+                    <span className="text-xs text-muted-foreground">
                       {allResults.length} result{allResults.length !== 1 ? 's' : ''}
                     </span>
                   </div>

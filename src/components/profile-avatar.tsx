@@ -4,6 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Loader2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { client } from '@/lib/orpc'
+import { toast } from 'sonner'
 
 interface ProfileAvatarProps {
   user: {
@@ -80,9 +81,12 @@ export function ProfileAvatar({
         fileName: file.name,
         base64Data: base64,
       })
+      toast.success('Avatar uploaded')
       onUploadComplete?.(result.url)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed')
+      const message = err instanceof Error ? err.message : 'Upload failed'
+      setError(message)
+      toast.error(message)
     } finally {
       setUploading(false)
       if (fileInputRef.current) fileInputRef.current.value = ''

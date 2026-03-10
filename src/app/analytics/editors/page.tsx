@@ -7,23 +7,7 @@ import { client } from "@/lib/orpc";
 import { Loader2, UserCheck, Clock, FileText, Download, AlertCircle, FileCheck, Zap } from "lucide-react";
 import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from "@/components/ui/chart";
-import {
-  BarChart,
-  Bar,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  ResponsiveContainer,
-  Legend,
-  Cell,
-} from "recharts";
+import ReactECharts from "echarts-for-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 
 interface EditorLeaderboardRow {
@@ -215,10 +199,11 @@ export default function EditorsAnalyticsPage() {
       const repoName = r.repo.split('/')[1] || r.repo;
       totals[repoName] = (totals[repoName] || 0) + r.count;
     });
+    const total = Object.values(totals).reduce((s, v) => s + v, 0);
     return [
-      { name: "EIPs", count: totals["EIPs"] || 0, color: repoColors["ethereum/EIPs"] },
-      { name: "ERCs", count: totals["ERCs"] || 0, color: repoColors["ethereum/ERCs"] },
-      { name: "RIPs", count: totals["RIPs"] || 0, color: repoColors["ethereum/RIPs"] },
+      { name: "EIPs", count: totals["EIPs"] || 0, pct: total > 0 ? ((totals["EIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/EIPs"] },
+      { name: "ERCs", count: totals["ERCs"] || 0, pct: total > 0 ? ((totals["ERCs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/ERCs"] },
+      { name: "RIPs", count: totals["RIPs"] || 0, pct: total > 0 ? ((totals["RIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/RIPs"] },
     ];
   }, [repoDistribution]);
 
@@ -251,6 +236,106 @@ export default function EditorsAnalyticsPage() {
     });
     return Array.from(actors).slice(0, 8); // Limit to 8 for readability
   }, [monthlyTrend]);
+
+  const totalReviews = useMemo(() => leaderboard.reduce((sum, e) => sum + e.totalReviews, 0), [leaderboard]);
+  const totalProcessed = useMemo(() => leaderboard.reduce((sum, e) => sum + e.prsTouched, 0), [leaderboard]);
+  const avgResponseDays = useMemo(() => {
+    const medians = leaderboard.map(e => e.medianResponseDays).filter((d): d is number => d !== null);
+    if (medians.length === 0) return null;
+    return medians.reduce((a, b) => a + b, 0) / medians.length;
+  }, [leaderboard]);
+
+  const trendOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    tooltip: { trigger: "axis" },
+    legend: {
+      top: 0,
+      textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+      type: "scroll",
+    },
+    grid: { top: 36, left: 28, right: 20, bottom: 28 },
+    xAxis: {
+      type: "category",
+      data: monthlyTrend.map((m) => m.month),
+      axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+      axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+    },
+    yAxis: {
+      type: "value",
+      axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+      splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } },
+    },
+    series: trendActors.map((actor, idx) => ({
+      name: actor,
+      type: "line",
+      smooth: true,
+      symbol: "none",
+      lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
+      data: monthlyTrend.map((p) => Number(p[actor] || 0)),
+    })),
+  }), [monthlyTrend, trendActors]);
+
+  const categoryOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
+    grid: { top: 16, left: 90, right: 18, bottom: 24 },
+    xAxis: {
+      type: "value",
+      axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+      splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } },
+    },
+    yAxis: {
+      type: "category",
+      data: categoryData.map((c) => c.category),
+      axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+      axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+    },
+    series: [
+      {
+        type: "bar",
+        data: categoryData.map((entry) => ({
+          value: entry.count,
+          itemStyle: { color: categoryColors[entry.category.toLowerCase()] || "#94a3b8", borderRadius: [0, 8, 8, 0] },
+        })),
+      },
+    ],
+  }), [categoryData]);
+
+  const repoOption = useMemo(() => ({
+    backgroundColor: "transparent",
+    tooltip: { trigger: "item" },
+    legend: {
+      orient: "vertical",
+      right: 8,
+      top: "middle",
+      textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+    },
+    series: [
+      {
+        type: "pie",
+        radius: ["52%", "72%"],
+        center: ["34%", "50%"],
+        label: { show: false },
+        data: repoCards.map((r) => ({
+          name: r.name,
+          value: r.count,
+          itemStyle: { color: r.color },
+        })),
+        itemStyle: { borderColor: "rgba(2,6,23,0.4)", borderWidth: 2 },
+      },
+    ],
+    title: [
+      {
+        text: repoCards.reduce((s, r) => s + r.count, 0).toLocaleString(),
+        subtext: "Total",
+        left: "34%",
+        top: "45%",
+        textAlign: "center",
+        textStyle: { color: "var(--foreground)", fontSize: 28, fontWeight: 700 },
+        subtextStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+      },
+    ],
+  }), [repoCards]);
 
   // Export functionality
   useAnalyticsExport(() => {
@@ -309,7 +394,7 @@ export default function EditorsAnalyticsPage() {
       )}
 
       {/* Hero KPIs */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
@@ -326,9 +411,7 @@ export default function EditorsAnalyticsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">Total Reviews</p>
-              <p className="text-3xl font-bold text-foreground">
-                {leaderboard.reduce((sum, e) => sum + e.totalReviews, 0).toLocaleString()}
-              </p>
+              <p className="text-3xl font-bold text-foreground">{totalReviews.toLocaleString()}</p>
             </div>
             <div className="rounded-full bg-blue-500/20 p-3">
               <FileText className="h-6 w-6 text-blue-400" />
@@ -339,101 +422,93 @@ export default function EditorsAnalyticsPage() {
         <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-muted-foreground">Median Response Time</p>
-              <p className="text-3xl font-bold text-foreground">
-                {(() => {
-                  const medians = leaderboard
-                    .map(e => e.medianResponseDays)
-                    .filter((d): d is number => d !== null);
-                  if (medians.length === 0) return "–";
-                  const overall = medians.reduce((a, b) => a + b, 0) / medians.length;
-                  return `${Math.round(overall)}d`;
-                })()}
-              </p>
+              <p className="text-sm text-muted-foreground">Avg Response Time</p>
+              <p className="text-3xl font-bold text-foreground">{avgResponseDays != null ? `${Math.round(avgResponseDays)}d` : "–"}</p>
             </div>
             <div className="rounded-full bg-amber-500/20 p-3">
               <Clock className="h-6 w-6 text-amber-400" />
             </div>
           </div>
         </div>
+
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm text-muted-foreground">Category Coverage</p>
+              <p className="text-3xl font-bold text-foreground">{categoryData.length}</p>
+            </div>
+            <div className="rounded-full bg-emerald-500/20 p-3">
+              <UserCheck className="h-6 w-6 text-emerald-400" />
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Editor Performance Overview */}
-      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+      {/* Editorial Health */}
+      <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Editor Performance Overview</h2>
-            <p className="text-sm text-muted-foreground">Activity patterns and key metrics</p>
+            <h2 className="text-lg font-semibold text-foreground">Editorial Health</h2>
+            <p className="text-sm text-muted-foreground">How quickly editors respond and how much load they handle.</p>
           </div>
           <LastUpdated timestamp={dataUpdatedAt} />
         </div>
 
-        {/* Velocity Metrics - Compact Row */}
         <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {/* Average Response Time */}
           <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-4">
             <div className="rounded-full bg-blue-500/10 p-2.5">
               <Clock className="h-5 w-5 text-blue-500" />
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Avg Response Time</p>
-              <p className="text-xl font-bold text-foreground">
-                {(() => {
-                  const medians = leaderboard
-                    .map(e => e.medianResponseDays)
-                    .filter((d): d is number => d !== null);
-                  if (medians.length === 0) return "—";
-                  const avg = medians.reduce((a, b) => a + b, 0) / medians.length;
-                  return (
-                    <>
-                      {avg.toFixed(1)}
-                      <span className="ml-1 text-sm font-normal text-muted-foreground">days</span>
-                    </>
-                  );
-                })()}
-              </p>
+              <p className="text-xl font-bold text-foreground">{avgResponseDays != null ? `${avgResponseDays.toFixed(1)} days` : "—"}</p>
             </div>
           </div>
 
-          {/* Total Reviews */}
           <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-4">
             <div className="rounded-full bg-emerald-500/10 p-2.5">
               <FileCheck className="h-5 w-5 text-emerald-500" />
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">Total Reviews</p>
-              <p className="text-xl font-bold text-foreground">
-                {leaderboard.reduce((sum, e) => sum + e.totalReviews, 0).toLocaleString()}
-              </p>
+              <p className="text-xl font-bold text-foreground">{totalReviews.toLocaleString()}</p>
             </div>
           </div>
 
-          {/* PRs Processed */}
           <div className="flex items-center gap-3 rounded-lg border border-border/50 bg-muted/30 p-4">
             <div className="rounded-full bg-purple-500/10 p-2.5">
               <Zap className="h-5 w-5 text-purple-500" />
             </div>
             <div>
               <p className="text-xs font-medium text-muted-foreground">PRs Processed</p>
-              <p className="text-xl font-bold text-foreground">
-                {leaderboard.reduce((sum, e) => sum + e.prsTouched, 0).toLocaleString()}
-              </p>
+              <p className="text-xl font-bold text-foreground">{totalProcessed.toLocaleString()}</p>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Activity Heatmap */}
-        <div>
-          <h3 className="mb-3 text-sm font-medium text-muted-foreground">Daily Activity Pattern</h3>
-          <ContributorHeatmap data={dailyActivity} />
-          <AnalyticsAnnotation>
-            Editor activity reflects proposal processing volume and editorial engagement over time.
-          </AnalyticsAnnotation>
+      {/* Monthly Trend + Category Coverage */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Review Load Over Time</h2>
+          <div className="h-72 w-full">
+            <ReactECharts option={trendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+          <h2 className="mb-4 text-lg font-semibold text-foreground">Category Coverage</h2>
+          <div className="h-64 w-full">
+            <ReactECharts option={categoryOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            How many editors are actively covering each standards category.
+          </p>
         </div>
       </div>
 
       {/* Editor Leaderboard */}
-      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+      <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-4 flex items-center justify-between">
           <div className="flex flex-col gap-1">
             <h2 className="text-xl font-semibold text-foreground">
@@ -447,7 +522,6 @@ export default function EditorsAnalyticsPage() {
                 <span className="ml-2 text-sm font-normal text-muted-foreground">— All-Time Contributions</span>
               )}
             </h2>
-            <LastUpdated timestamp={dataUpdatedAt} />
           </div>
           <button
             onClick={downloadLeaderboardCSV}
@@ -491,9 +565,7 @@ export default function EditorsAnalyticsPage() {
                     {editor.prsTouched.toLocaleString()}
                   </td>
                   <td className="py-3 px-4 text-right text-sm text-foreground/85">
-                    {editor.medianResponseDays != null
-                      ? `${editor.medianResponseDays}d`
-                      : "–"}
+                    {editor.medianResponseDays != null ? `${editor.medianResponseDays}d` : "–"}
                   </td>
                 </tr>
               ))}
@@ -509,101 +581,22 @@ export default function EditorsAnalyticsPage() {
         </div>
       </div>
 
-      {/* Monthly Trend + Repo Distribution */}
+      {/* Repo Distribution + Daily Activity */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <h2 className="mb-4 text-lg font-semibold text-foreground">Review Load Over Time</h2>
-          <ChartContainer
-            config={Object.fromEntries(
-              trendActors.map((actor, idx) => [
-                actor,
-                {
-                  label: actor,
-                  color: `hsl(${(idx * 360) / trendActors.length}, 70%, 50%)`,
-                },
-              ])
-            )}
-            className="h-72 w-full"
-          >
-            <ResponsiveContainer>
-              <LineChart data={monthlyTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="month" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
-                {trendActors.map((actor, idx) => (
-                  <Line
-                    key={actor}
-                    type="monotone"
-                    dataKey={actor}
-                    stroke={`hsl(${(idx * 360) / trendActors.length}, 70%, 50%)`}
-                    strokeWidth={2}
-                    dot={false}
-                    name={actor}
-                  />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
+        <div className="rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
           <h2 className="mb-4 text-lg font-semibold text-foreground">Repo Distribution</h2>
-          <div className="space-y-4">
-            {repoCards.map((repo) => (
-              <div key={repo.name} className="rounded-lg border border-border/70 bg-muted/40 p-4">
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-sm font-medium text-foreground/85">{repo.name}</span>
-                  <span className="text-lg font-bold text-foreground">{repo.count.toLocaleString()}</span>
-                </div>
-                <div className="h-2 rounded-full bg-muted">
-                  <div
-                    className="h-full rounded-full transition-all"
-                    style={{
-                      width: `${Math.min(100, (repo.count / Math.max(...repoCards.map(r => r.count), 1)) * 100)}%`,
-                      backgroundColor: repo.color,
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
+          <div className="h-64 w-full">
+            <ReactECharts option={repoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
           </div>
         </div>
-      </div>
 
-      {/* Category Coverage */}
-      <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Category Coverage</h2>
-        <ChartContainer
-          config={Object.fromEntries(
-            Object.entries(categoryColors).map(([cat, color]) => [
-              cat,
-              { label: cat, color },
-            ])
-          )}
-          className="h-64 w-full"
-        >
-          <ResponsiveContainer>
-            <BarChart data={categoryData} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis type="number" stroke="#94a3b8" />
-              <YAxis dataKey="category" type="category" stroke="#94a3b8" width={100} />
-              <ChartTooltip content={<ChartTooltipContent />} />
-              <Bar dataKey="count" radius={[0, 8, 8, 0]}>
-                {categoryData.map((entry, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={categoryColors[entry.category.toLowerCase()] || "#94a3b8"}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </ChartContainer>
-        <p className="mt-2 text-xs text-muted-foreground">
-          Number of editors active in each category
-        </p>
+        <div className="lg:col-span-2 rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
+          <h2 className="mb-3 text-lg font-semibold text-foreground">Daily Editorial Activity</h2>
+          <ContributorHeatmap data={dailyActivity} />
+          <AnalyticsAnnotation>
+            Daily editorial activity across the selected time range. Darker cells indicate higher engagement.
+          </AnalyticsAnnotation>
+        </div>
       </div>
 
       {/* Upgrade Modal */}

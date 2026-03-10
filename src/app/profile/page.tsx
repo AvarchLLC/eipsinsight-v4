@@ -19,6 +19,7 @@ import {
   ExternalLink,
   Loader2,
 } from "lucide-react";
+import { toast } from "sonner";
 
 interface SubscriptionData {
   tier: string;
@@ -73,7 +74,7 @@ export default function ProfilePage() {
       window.location.href = url;
     } catch (error) {
       console.error("Error opening customer portal:", error);
-      alert("Failed to open subscription management. Please try again.");
+      toast.error("Failed to open subscription management");
     } finally {
       setPortalLoading(false);
     }
@@ -93,10 +94,11 @@ export default function ProfilePage() {
       setMessage(
         "Subscription will cancel at the end of the current billing period."
       );
+      toast.success("Subscription cancellation scheduled");
       await refreshSubscription();
     } catch (error) {
       console.error("Error cancelling subscription:", error);
-      alert("Failed to cancel subscription. Please try again.");
+      toast.error("Failed to cancel subscription");
     } finally {
       setActionLoading(null);
     }
@@ -112,10 +114,11 @@ export default function ProfilePage() {
       }
 
       setMessage("Subscription resumed successfully.");
+      toast.success("Subscription resumed");
       await refreshSubscription();
     } catch (error) {
       console.error("Error resuming subscription:", error);
-      alert("Failed to resume subscription. Please try again.");
+      toast.error("Failed to resume subscription");
     } finally {
       setActionLoading(null);
     }
@@ -123,7 +126,7 @@ export default function ProfilePage() {
 
   if (isLoading || tierLoading) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="page-shell py-10">
         <div className="animate-pulse space-y-6">
           <div className="h-32 w-32 rounded-full bg-muted" />
           <div className="h-8 w-72 rounded-lg bg-muted" />
@@ -139,7 +142,7 @@ export default function ProfilePage() {
 
   if (!session?.user) {
     return (
-      <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="page-shell py-10">
         <div className="rounded-xl border border-border bg-card/60 p-8">
           <h1 className="mb-2 dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">You are not signed in</h1>
           <p className="mb-6 text-muted-foreground">Please log in to view your profile.</p>
@@ -164,7 +167,7 @@ export default function ProfilePage() {
   const isPaid = membershipTier !== "free";
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="page-shell py-10">
       <div className="mb-8 flex flex-col gap-2">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
           Profile

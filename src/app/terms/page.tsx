@@ -1,439 +1,376 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { 
-  FileText, 
-  Mail, 
-  Shield, 
-  Lock, 
-  UserCheck, 
-  Bell, 
+import {
+  FileText,
+  Mail,
+  Shield,
+  Lock,
+  UserCheck,
+  Bell,
   AlertTriangle,
   Scale,
   Globe,
   Ban,
-  CheckCircle2
+  CheckCircle2,
+  ChevronRight,
 } from 'lucide-react';
 
-const sections = [
-  { id: 'introduction', label: 'Introduction', icon: FileText },
-  { id: 'acceptance', label: 'Acceptance of Terms', icon: CheckCircle2 },
-  { id: 'services', label: 'Services Description', icon: Globe },
-  { id: 'user-accounts', label: 'User Accounts', icon: UserCheck },
-  { id: 'acceptable-use', label: 'Acceptable Use Policy', icon: Shield },
-  { id: 'intellectual-property', label: 'Intellectual Property', icon: Scale },
-  { id: 'api-usage', label: 'API Usage Terms', icon: Lock },
-  { id: 'disclaimers', label: 'Disclaimers', icon: AlertTriangle },
-  { id: 'limitation-liability', label: 'Limitation of Liability', icon: Ban },
-  { id: 'termination', label: 'Termination', icon: Ban },
-  { id: 'changes', label: 'Changes to Terms', icon: Bell },
-  { id: 'contact', label: 'Contact Us', icon: Mail },
+type LegalSection = {
+  id: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  body: React.ReactNode;
+};
+
+const termsSections: LegalSection[] = [
+  {
+    id: 'introduction',
+    label: 'Introduction',
+    icon: FileText,
+    body: (
+      <>
+        <p>
+          These Terms of Service govern access to and use of the EIPs Insight platform, including site features, analytics, account functionality, and API access.
+        </p>
+        <p>
+          By accessing or using the service, you agree to these terms. If you do not agree, do not use the platform.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'acceptance',
+    label: 'Acceptance of Terms',
+    icon: CheckCircle2,
+    body: (
+      <>
+        <p>
+          By creating an account, using the API, or otherwise engaging with the platform, you acknowledge that you have read and accepted these Terms and the Privacy Policy.
+        </p>
+        <p>
+          If you act on behalf of an organization, you represent that you have authority to bind that organization.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'services',
+    label: 'Services Description',
+    icon: Globe,
+    body: (
+      <>
+        <p>EIPs Insight provides tooling and data surfaces for Ethereum standards and governance, including:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Search and filtering for EIPs, ERCs, and RIPs</li>
+          <li>Governance analytics and dashboards</li>
+          <li>API access for programmatic usage</li>
+          <li>Community features and account-linked experiences</li>
+          <li>Membership tiers and premium capabilities where applicable</li>
+        </ul>
+        <p>We may modify, suspend, or discontinue parts of the service over time.</p>
+      </>
+    ),
+  },
+  {
+    id: 'user-accounts',
+    label: 'User Accounts',
+    icon: UserCheck,
+    body: (
+      <>
+        <p>If you create an account, you agree to provide accurate information and keep your credentials secure.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Maintain current and complete account details</li>
+          <li>Protect your credentials and API tokens</li>
+          <li>Accept responsibility for activity under your account</li>
+          <li>Notify us if you believe access has been compromised</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'acceptable-use',
+    label: 'Acceptable Use',
+    icon: Shield,
+    body: (
+      <>
+        <p>You agree not to use the service in ways that harm the platform, violate law, or abuse access.</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Do not attempt unauthorized access to systems or accounts</li>
+          <li>Do not disrupt or degrade platform performance</li>
+          <li>Do not scrape or automate against the service outside permitted API usage</li>
+          <li>Do not use the service to transmit illegal, harmful, or abusive content</li>
+          <li>Do not use the platform commercially beyond allowed scope without consent</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'intellectual-property',
+    label: 'Intellectual Property',
+    icon: Scale,
+    body: (
+      <>
+        <p>
+          The service, product surfaces, and platform-specific content are owned by EIPs Insight and protected under applicable intellectual property law.
+        </p>
+        <p>
+          Public Ethereum standards data remains subject to its original source licenses. Our product adds structure, analytics, and interface layers on top of that public material.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'api-usage',
+    label: 'API Usage Terms',
+    icon: Lock,
+    body: (
+      <>
+        <p>Additional terms apply when using the API:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>You must use a valid token issued to your account</li>
+          <li>You must respect rate limits and plan restrictions</li>
+          <li>You may not share tokens with third parties</li>
+          <li>You should handle errors and response codes correctly</li>
+          <li>We may revoke API access for abuse or policy violations</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: 'disclaimers',
+    label: 'Disclaimers',
+    icon: AlertTriangle,
+    body: (
+      <>
+        <p className="font-semibold uppercase text-foreground">
+          The service is provided “as is” and “as available” without warranties of any kind.
+        </p>
+        <p>
+          We aim for accuracy and operational usefulness, but governance and proposal data can change quickly and may require confirmation against official sources.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'limitation-liability',
+    label: 'Limitation of Liability',
+    icon: Ban,
+    body: (
+      <>
+        <p className="font-semibold uppercase text-foreground">
+          To the fullest extent permitted by law, EIPs Insight is not liable for indirect, incidental, special, consequential, or punitive damages.
+        </p>
+        <p>
+          Our total liability for claims arising from these Terms or your use of the service is limited to the amount you paid in the prior twelve months, or $100, whichever is greater.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: 'termination',
+    label: 'Termination',
+    icon: Ban,
+    body: (
+      <>
+        <p>We may suspend or terminate access for reasons including:</p>
+        <ul className="list-disc space-y-1 pl-5">
+          <li>Violation of these Terms</li>
+          <li>Fraudulent, abusive, or illegal activity</li>
+          <li>Security risks or platform misuse</li>
+          <li>Requests required by law or regulation</li>
+        </ul>
+        <p>You may also stop using the service and request account closure.</p>
+      </>
+    ),
+  },
+  {
+    id: 'changes',
+    label: 'Changes to Terms',
+    icon: Bell,
+    body: (
+      <>
+        <p>
+          We may update these Terms to reflect changes in the service, operations, or legal requirements. Material changes will be posted here with an updated effective date.
+        </p>
+        <p>Continued use of the service after those changes constitutes acceptance of the revised Terms.</p>
+      </>
+    ),
+  },
+  {
+    id: 'contact',
+    label: 'Contact',
+    icon: Mail,
+    body: (
+      <>
+        <p>If you have legal or service questions related to these Terms, contact us at:</p>
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <p className="text-sm font-medium text-foreground">
+            Email:{' '}
+            <a href="mailto:legal@eipsinsight.com" className="text-primary hover:text-primary/80">
+              legal@eipsinsight.com
+            </a>
+          </p>
+        </div>
+      </>
+    ),
+  },
 ];
 
 export default function TermsOfServicePage() {
   const [activeSection, setActiveSection] = useState('introduction');
+  const sections = useMemo(() => termsSections, []);
 
   useEffect(() => {
-    const observerOptions = {
-      rootMargin: '-100px 0px -66% 0px',
-      threshold: 0.1,
+    const elements = sections
+      .map((section) => document.getElementById(section.id))
+      .filter((element): element is HTMLElement => Boolean(element));
+
+    if (!elements.length) return;
+
+    let frameId: number | null = null;
+
+    const updateActiveSection = () => {
+      const threshold = 140;
+      const candidates = elements.map((element) => ({
+        id: element.id,
+        top: element.getBoundingClientRect().top,
+      }));
+
+      const passed = candidates.filter((candidate) => candidate.top <= threshold);
+      const currentId =
+        passed.length > 0
+          ? passed.sort((a, b) => b.top - a.top)[0].id
+          : candidates.sort((a, b) => Math.abs(a.top - threshold) - Math.abs(b.top - threshold))[0]?.id ?? elements[0].id;
+
+      setActiveSection((previous) => (previous === currentId ? previous : currentId));
+      frameId = null;
     };
 
-    const observerCallback = (entries: IntersectionObserverEntry[]) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          setActiveSection(entry.target.id);
-        }
-      });
+    const onScroll = () => {
+      if (frameId !== null) return;
+      frameId = window.requestAnimationFrame(updateActiveSection);
     };
 
-    const observer = new IntersectionObserver(observerCallback, observerOptions);
+    updateActiveSection();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll);
 
-    sections.forEach((section) => {
-      const element = document.getElementById(section.id);
-      if (element) {
-        observer.observe(element);
+    return () => {
+      if (frameId !== null) {
+        window.cancelAnimationFrame(frameId);
       }
-    });
-
-    return () => observer.disconnect();
-  }, []);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [sections]);
 
   const scrollToSection = (sectionId: string) => {
-    const element = document.getElementById(sectionId);
-    if (element) {
-      const offset = 120;
-      const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
-      window.scrollTo({ top: elementPosition - offset, behavior: 'smooth' });
-    }
+    setActiveSection(sectionId);
+    document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <div className="w-full py-8 pl-4 pr-4 sm:pl-6 sm:pr-6 lg:pl-8 lg:pr-8 xl:pl-12 xl:pr-12">
-      <div className="flex gap-8">
-        {/* Main Content */}
-        <div className="flex-1 max-w-4xl">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            {/* Header */}
-            <div className="mb-8">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-lg bg-cyan-500/10 px-3 py-1.5 ring-1 ring-cyan-400/30">
-                <Scale className="h-4 w-4 text-cyan-600 dark:text-cyan-400" />
-                <span className="text-xs font-semibold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">
-                  Terms of Service
-                </span>
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_260px] xl:grid-cols-[minmax(0,1fr)_280px]">
+          <main className="min-w-0">
+            <section className="mb-8">
+              <div className="mb-3 inline-flex h-7 items-center rounded-full border border-primary/30 bg-primary/10 px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-primary">
+                Legal
               </div>
-              <h1 className="mb-3 text-4xl font-bold text-slate-900 dark:text-slate-100">
+              <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
                 Terms of Service
               </h1>
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Last updated: February 27, 2026
+              <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Rules for using EIPsInsight, including accounts, API access, acceptable use, service limitations, and legal boundaries.
               </p>
-            </div>
-
-            {/* Introduction */}
-            <section id="introduction" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Introduction
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  Welcome to EIPs Insight ("we," "our," or "us"). These Terms of Service ("Terms") govern your access to and use of the EIPs Insight platform, website, and services (collectively, the "Services").
-                </p>
-                <p>
-                  By accessing or using our Services, you agree to be bound by these Terms. If you do not agree to these Terms, please do not use our Services.
-                </p>
-              </div>
-            </section>
-
-            {/* Acceptance of Terms */}
-            <section id="acceptance" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <CheckCircle2 className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Acceptance of Terms
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  By creating an account, accessing our platform, using our API, or otherwise engaging with our Services, you acknowledge that you have read, understood, and agree to be bound by these Terms, as well as our Privacy Policy.
-                </p>
-                <p>
-                  If you are using our Services on behalf of an organization, you represent and warrant that you have the authority to bind that organization to these Terms.
-                </p>
-              </div>
-            </section>
-
-            {/* Services Description */}
-            <section id="services" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Globe className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Services Description
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  EIPs Insight provides a comprehensive platform for tracking, analyzing, and understanding Ethereum Improvement Proposals (EIPs), Ethereum Request for Comments (ERCs), and Rollup Improvement Proposals (RIPs). Our Services include:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>Search and filtering capabilities for Ethereum standards and proposals</li>
-                  <li>Real-time analytics and governance tracking</li>
-                  <li>API access for programmatic data retrieval</li>
-                  <li>Community features and user accounts</li>
-                  <li>Premium membership tiers with enhanced features</li>
-                </ul>
-                <p>
-                  We reserve the right to modify, suspend, or discontinue any part of our Services at any time with or without notice.
-                </p>
-              </div>
-            </section>
-
-            {/* User Accounts */}
-            <section id="user-accounts" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <UserCheck className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  User Accounts
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  To access certain features of our Services, you may be required to create an account. When creating an account, you agree to:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>Provide accurate, current, and complete information</li>
-                  <li>Maintain and promptly update your account information</li>
-                  <li>Maintain the security of your account credentials</li>
-                  <li>Accept responsibility for all activities that occur under your account</li>
-                  <li>Notify us immediately of any unauthorized use of your account</li>
-                </ul>
-                <p>
-                  You may not use another person's account without permission, and you may not create an account using a false identity or impersonate another person or entity.
-                </p>
-              </div>
-            </section>
-
-            {/* Acceptable Use Policy */}
-            <section id="acceptable-use" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Shield className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Acceptable Use Policy
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  You agree not to use our Services to:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>Violate any applicable laws, regulations, or third-party rights</li>
-                  <li>Transmit any harmful, offensive, or illegal content</li>
-                  <li>Attempt to gain unauthorized access to our systems or other users' accounts</li>
-                  <li>Interfere with or disrupt the integrity or performance of our Services</li>
-                  <li>Scrape, crawl, or index our Services in violation of our robots.txt or API terms</li>
-                  <li>Use automated systems to access our Services in a manner that sends more requests than a human could reasonably produce</li>
-                  <li>Engage in any activity that could damage, disable, or impair our Services</li>
-                  <li>Use our Services for any commercial purposes without our prior written consent</li>
-                </ul>
-              </div>
-            </section>
-
-            {/* Intellectual Property */}
-            <section id="intellectual-property" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Scale className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Intellectual Property Rights
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  The Services, including all content, features, and functionality, are owned by EIPs Insight and are protected by international copyright, trademark, patent, trade secret, and other intellectual property laws.
-                </p>
-                <p>
-                  The underlying Ethereum proposal data (EIPs, ERCs, RIPs) is sourced from public GitHub repositories and remains subject to the respective licenses of those repositories. Our platform aggregates and presents this public data in value-added formats.
-                </p>
-                <p>
-                  You may not reproduce, distribute, modify, create derivative works of, publicly display, or otherwise exploit any of our proprietary content without our express written permission.
-                </p>
-              </div>
-            </section>
-
-            {/* API Usage Terms */}
-            <section id="api-usage" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Lock className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  API Usage Terms
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  If you access our Services via our API, the following additional terms apply:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>You must use a valid API token issued to your account</li>
-                  <li>You must comply with rate limits specified in your membership tier</li>
-                  <li>You may not share your API tokens with third parties</li>
-                  <li>You must implement proper error handling and respect HTTP status codes</li>
-                  <li>You must include proper attribution when displaying data from our API</li>
-                  <li>API tokens may be revoked at any time for violations of these Terms</li>
-                </ul>
-                <p>
-                  We reserve the right to modify API endpoints, rate limits, and access requirements with reasonable notice to users.
-                </p>
-              </div>
-            </section>
-
-            {/* Disclaimers */}
-            <section id="disclaimers" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Disclaimers
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p className="font-semibold uppercase">
-                  THE SERVICES ARE PROVIDED "AS IS" AND "AS AVAILABLE" WITHOUT WARRANTIES OF ANY KIND, EITHER EXPRESS OR IMPLIED.
-                </p>
-                <p>
-                  We do not warrant that:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>The Services will be uninterrupted, secure, or error-free</li>
-                  <li>The data provided through our Services is accurate, complete, or up-to-date</li>
-                  <li>Any defects or errors will be corrected</li>
-                  <li>The Services will meet your specific requirements</li>
-                </ul>
-                <p>
-                  While we strive to provide accurate and reliable information, the Ethereum proposal data is subject to change and should not be relied upon as the sole source of truth. Always verify critical information with official Ethereum repositories.
-                </p>
-              </div>
-            </section>
-
-            {/* Limitation of Liability */}
-            <section id="limitation-liability" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Ban className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Limitation of Liability
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p className="font-semibold uppercase">
-                  TO THE MAXIMUM EXTENT PERMITTED BY LAW, EIPS INSIGHT SHALL NOT BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF PROFITS OR REVENUES.
-                </p>
-                <p>
-                  Our total liability to you for any claims arising from or related to these Terms or your use of the Services shall not exceed the amount you paid us in the twelve (12) months preceding the claim, or $100, whichever is greater.
-                </p>
-                <p>
-                  Some jurisdictions do not allow the exclusion or limitation of certain damages, so some of the above limitations may not apply to you.
-                </p>
-              </div>
-            </section>
-
-            {/* Termination */}
-            <section id="termination" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Ban className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Termination
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  We reserve the right to suspend or terminate your access to our Services at any time, with or without cause, with or without notice, for any reason including:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>Violation of these Terms or our Acceptable Use Policy</li>
-                  <li>Fraudulent, abusive, or illegal activity</li>
-                  <li>Extended periods of inactivity</li>
-                  <li>Requests by law enforcement or government agencies</li>
-                </ul>
-                <p>
-                  You may terminate your account at any time by contacting us at the email address provided below. Upon termination, your right to access and use the Services will immediately cease.
-                </p>
-                <p>
-                  Provisions of these Terms that by their nature should survive termination shall survive, including intellectual property rights, disclaimers, and limitations of liability.
-                </p>
-              </div>
-            </section>
-
-            {/* Changes to Terms */}
-            <section id="changes" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Bell className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Changes to These Terms
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  We may update these Terms from time to time to reflect changes in our practices, Services, or legal requirements. We will notify you of any material changes by:
-                </p>
-                <ul className="ml-6 list-disc space-y-2">
-                  <li>Posting the updated Terms on this page with a new "Last updated" date</li>
-                  <li>Sending an email notification to registered users (for significant changes)</li>
-                  <li>Displaying a prominent notice on our platform</li>
-                </ul>
-                <p>
-                  Your continued use of the Services after any changes to these Terms constitutes your acceptance of the new Terms. If you do not agree to the modified Terms, you must stop using our Services.
-                </p>
-              </div>
-            </section>
-
-            {/* Contact */}
-            <section id="contact" className="mb-8 scroll-mt-28 rounded-xl border border-slate-200/80 bg-white/90 p-6 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-              <div className="mb-4 flex items-center gap-2">
-                <Mail className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
-                <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-                  Contact Us
-                </h2>
-              </div>
-              <div className="space-y-3 text-slate-700 dark:text-slate-300">
-                <p>
-                  If you have any questions, concerns, or requests regarding these Terms or our Services, please contact us at:
-                </p>
-                <div className="rounded-lg bg-slate-50 p-4 dark:bg-slate-800/50">
-                  <p className="mb-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-                    Email: <a href="mailto:legal@eipsinsight.com" className="text-cyan-700 hover:underline dark:text-cyan-300">legal@eipsinsight.com</a>
-                  </p>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    We will respond to your inquiry within 5 business days.
-                  </p>
-                </div>
-              </div>
-            </section>
-
-            {/* Footer Navigation */}
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-slate-200/80 pt-6 dark:border-slate-700/50">
-              <Link href="/" className="text-sm text-cyan-700 hover:underline dark:text-cyan-300">
-                ← Back to Home
-              </Link>
-              <div className="flex flex-wrap gap-4 text-sm">
+              <div className="mt-5 flex flex-wrap gap-2">
+                <span className="inline-flex h-8 items-center rounded-full border border-border bg-muted/40 px-3 text-xs text-muted-foreground">
+                  Last updated: February 27, 2026
+                </span>
                 <Link
                   href="/privacy"
-                  className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
+                  className="inline-flex h-8 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 >
                   Privacy Policy
+                  <ChevronRight className="h-3.5 w-3.5" />
                 </Link>
-                <Link
-                  href="/about"
-                  className="text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100"
-                >
-                  About Us
+              </div>
+            </section>
+
+            <div className="space-y-6">
+              {sections.map((section) => {
+                const Icon = section.icon;
+                return (
+                  <section
+                    key={section.id}
+                    id={section.id}
+                    className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6 backdrop-blur-sm"
+                  >
+                    <div className="mb-4 flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Section</p>
+                        <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                          {section.label}
+                        </h2>
+                      </div>
+                    </div>
+                    <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+                      {section.body}
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 border-t border-border pt-6">
+              <Link href="/" className="text-sm text-primary hover:text-primary/80">
+                Back to Home
+              </Link>
+              <div className="flex flex-wrap gap-4 text-sm">
+                <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+                  Privacy Policy
+                </Link>
+                <Link href="/about" className="text-muted-foreground hover:text-foreground">
+                  About
                 </Link>
               </div>
             </div>
-          </motion.div>
-        </div>
+          </main>
 
-        {/* Sidebar - Table of Contents (Desktop) */}
-        <div className="sticky top-24 hidden h-fit lg:block lg:w-72">
-          <div className="rounded-xl border border-slate-200/80 bg-white/90 p-4 shadow-sm dark:border-slate-700/50 dark:bg-slate-900/55">
-            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
-              On This Page
-            </h3>
-            <nav className="space-y-1">
-              <div className="relative border-l-2 border-slate-200 dark:border-slate-700">
+          <aside className="hidden lg:block">
+            <div className="sticky top-24 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
+              <nav className="mt-3 border-l-2 border-border/70">
                 {sections.map((section) => {
                   const Icon = section.icon;
                   const isActive = activeSection === section.id;
                   return (
-                    <div key={section.id} className="relative">
-                      {isActive && (
-                        <motion.div
-                          layoutId="active-indicator"
-                          className="absolute -left-[2px] top-0 h-full w-0.5 bg-cyan-500"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      <button
-                        onClick={() => scrollToSection(section.id)}
-                        className={`flex w-full items-center gap-2 py-2 pl-4 pr-2 text-left text-[13px] transition-colors ${
-                          isActive
-                            ? 'font-medium text-cyan-700 dark:text-cyan-300'
-                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-cyan-600 dark:text-cyan-400' : 'text-slate-400'}`} />
-                        <span className="truncate">{section.label}</span>
-                      </button>
-                    </div>
+                    <button
+                      key={section.id}
+                      onClick={() => scrollToSection(section.id)}
+                      className={`relative flex w-full items-center gap-2 py-2.5 pl-4 pr-2 text-left text-[13px] transition-colors ${
+                        isActive
+                          ? 'font-medium text-primary'
+                          : 'text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      {isActive && <span className="absolute -left-px top-0 h-full w-0.5 rounded-r bg-primary" />}
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : ''}`} />
+                      <span className="truncate">{section.label}</span>
+                    </button>
                   );
                 })}
-              </div>
-            </nav>
-          </div>
+              </nav>
+            </div>
+          </aside>
         </div>
       </div>
-
     </div>
   );
 }

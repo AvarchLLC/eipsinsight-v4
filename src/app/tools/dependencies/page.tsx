@@ -6,7 +6,7 @@ import ReactECharts from "echarts-for-react";
 import { Canvas } from "@react-three/fiber";
 import { Html, Line, OrbitControls } from "@react-three/drei";
 import { client } from "@/lib/orpc";
-import { ArrowLeft, GitBranch, Loader2, Search, X } from "lucide-react";
+import { ArrowLeft, GitBranch, Info, Loader2, Search, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Node = { id: number; title: string | null; status: string; repo: string };
@@ -37,6 +37,7 @@ export default function DependenciesPage() {
   const [neighborLimit, setNeighborLimit] = useState(25);
   const [viaNodeId, setViaNodeId] = useState<number | null>(null);
   const [graphMode, setGraphMode] = useState<"3d" | "2d">("3d");
+  const [showGuide, setShowGuide] = useState(true);
 
   useEffect(() => {
     const load = async () => {
@@ -287,8 +288,8 @@ export default function DependenciesPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-sm">
-        <div className="w-full px-4 py-3 sm:px-6 lg:px-8 xl:px-12">
+      <div className="w-full px-4 py-5 sm:px-6 lg:px-8 xl:px-12">
+        <header className="mb-5">
           <Link
             href="/tools"
             className="mb-2 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -296,59 +297,27 @@ export default function DependenciesPage() {
             <ArrowLeft className="h-4 w-4" />
             Back to Tools
           </Link>
-          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <h1 className="dec-title persona-title text-3xl font-semibold tracking-tight sm:text-4xl">
-                Dependency Graph
+              <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+                Proposal Dependencies
               </h1>
-              <p className="text-xs text-muted-foreground">
-                {connectedNodes.length} connected proposals · {edges.length} links
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Explore connected EIPs/ERCs/RIPs through shared PR linkage. Start from a hub, inspect 1-hop or 2-hop neighborhoods, and identify bridge proposals.
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-                <input
-                  type="text"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                  placeholder="Focus on EIP #..."
-                  className="w-44 rounded-lg border border-border bg-muted/60 py-1.5 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-                />
-              </div>
-              {searchEip && (
-                <button
-                  onClick={() => {
-                    setSearchEip(undefined);
-                    setSearch("");
-                  }}
-                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <X className="h-3 w-3" />
-                  Clear
-                </button>
-              )}
-              <select
-                value={repo ?? "all"}
-                onChange={(e) =>
-                  setRepo(e.target.value === "all" ? undefined : (e.target.value as "eips" | "ercs" | "rips"))
-                }
-                className="rounded-lg border border-border bg-muted/60 px-2 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
-              >
-                <option value="all">All Repos</option>
-                <option value="eips">EIPs</option>
-                <option value="ercs">ERCs</option>
-                <option value="rips">RIPs</option>
-              </select>
-            </div>
+            <button
+              onClick={() => setShowGuide((p) => !p)}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 text-sm text-muted-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              <Info className="h-4 w-4" />
+              {showGuide ? "Hide guide" : "What does this show?"}
+            </button>
           </div>
-        </div>
-      </div>
+        </header>
 
-      <div className="w-full px-4 py-6 sm:px-6 lg:px-8 xl:px-12">
         {loading ? (
-          <div className="flex min-h-[400px] items-center justify-center">
+          <div className="flex min-h-[420px] items-center justify-center rounded-xl border border-border bg-card/60">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : loadError ? (
@@ -357,33 +326,104 @@ export default function DependenciesPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {showGuide && (
+              <section className="rounded-xl border border-border bg-card/60 p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">How To Read</p>
+                <div className="mt-2 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">1-hop</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Direct neighbors connected to the selected proposal.</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">2-hop</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Explore second-order paths via a chosen neighbor.</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cross-links</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Show neighbor-to-neighbor links for dense-cluster analysis.</p>
+                  </div>
+                  <div className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hub Score</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Chain count indicates degree, the number of connected proposals.</p>
+                  </div>
+                </div>
+              </section>
+            )}
+
             <section className="rounded-xl border border-border bg-card/60 p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">About This Graph</p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                This component visualizes proposal relationships inferred from shared pull requests. Use it to identify hubs, local neighborhoods, and bridge proposals.
-              </p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">1-hop</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Direct neighbors connected to the selected EIP by shared PR linkage.</p>
+              <div className="grid gap-3 md:grid-cols-4">
+                <label className="md:col-span-2">
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Search proposal</span>
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                      placeholder="EIP number or title..."
+                      className="h-9 w-full rounded-md border border-border bg-muted/60 py-1 pl-8 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    />
+                  </div>
+                </label>
+                <label>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Repo</span>
+                  <select
+                    value={repo ?? "all"}
+                    onChange={(e) =>
+                      setRepo(e.target.value === "all" ? undefined : (e.target.value as "eips" | "ercs" | "rips"))
+                    }
+                    className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground focus:border-primary/50 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  >
+                    <option value="all">All Repos</option>
+                    <option value="eips">EIPs</option>
+                    <option value="ercs">ERCs</option>
+                    <option value="rips">RIPs</option>
+                  </select>
+                </label>
+                <div className="flex items-end gap-2">
+                  <button
+                    onClick={handleSearch}
+                    className="h-9 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm text-primary transition hover:bg-primary/15"
+                  >
+                    Apply
+                  </button>
+                  {(searchEip || search) && (
+                    <button
+                      onClick={() => {
+                        setSearchEip(undefined);
+                        setSearch("");
+                      }}
+                      className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                      Clear
+                    </button>
+                  )}
                 </div>
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">2-hop</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Second-order neighborhood explored through one chosen “via” neighbor.</p>
+              </div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Connected proposals</p>
+                  <p className="text-sm font-semibold text-foreground">{connectedNodes.length}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Cross-links</p>
-                  <p className="mt-1 text-xs text-muted-foreground">Neighbor-to-neighbor edges. Keep off for clarity; enable for dense cluster analysis.</p>
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Links</p>
+                  <p className="text-sm font-semibold text-foreground">{edges.length}</p>
                 </div>
-                <div className="rounded-lg border border-border bg-muted/30 p-3">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Hub Score</p>
-                  <p className="mt-1 text-xs text-muted-foreground">The chain icon count is degree: number of connected proposals.</p>
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Focus node</p>
+                  <p className="text-sm font-semibold text-foreground">{selectedNode ? `#${selectedNode.id}` : "None"}</p>
+                </div>
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-2">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Visible nodes</p>
+                  <p className="text-sm font-semibold text-foreground">{focusedNodes.length}</p>
                 </div>
               </div>
             </section>
 
             <div className="grid gap-4 xl:grid-cols-12">
-            <section className="xl:col-span-3 rounded-xl border border-border bg-card/60 p-3">
+            <section className="rounded-xl border border-border bg-card/60 p-3 xl:col-span-3">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Overview</p>
               <p className="mt-1 text-xs text-muted-foreground">Top hubs (highest degree)</p>
               <div className="mt-2 space-y-1.5">
@@ -429,7 +469,7 @@ export default function DependenciesPage() {
               </div>
             </section>
 
-            <section className="xl:col-span-9 space-y-4">
+            <section className="space-y-4 xl:col-span-9">
               <div className="rounded-xl border border-border bg-card/60 p-3">
                 <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -646,6 +686,21 @@ export default function DependenciesPage() {
               )}
             </section>
             </div>
+
+            <section className="rounded-xl border border-border bg-card/60 p-3">
+              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status Colors</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {Object.entries(STATUS_COLORS).map(([status, color]) => (
+                  <span
+                    key={status}
+                    className="inline-flex items-center gap-2 rounded-md border border-border bg-muted/30 px-2 py-1 text-xs text-muted-foreground"
+                  >
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+                    {status}
+                  </span>
+                ))}
+              </div>
+            </section>
           </div>
         )}
       </div>
