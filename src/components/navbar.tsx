@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   Search,
   Menu,
@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { ThemedLogoGif } from "@/components/themed-logo-gif";
+import { toast } from "sonner";
 
 // Mobile navigation items (same as sidebar)
 const mobileNavItems = [
@@ -83,6 +84,7 @@ const PERSONA_HOVER_TONE: Record<string, string> = {
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [membershipTier, setMembershipTier] = useState<string>("free");
@@ -126,6 +128,18 @@ export default function Navbar() {
   const PersonaIcon = currentPersona?.icon;
   const hasPersona = persona !== null;
   const currentPersonaTone = currentPersona ? PERSONA_TONE[currentPersona.color] : "";
+
+  const handleSignOut = async () => {
+    try {
+      await authClient.signOut();
+      toast.success("Signed out");
+      router.push("/");
+      router.refresh();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      toast.error("Failed to sign out");
+    }
+  };
 
   return (
     <nav
@@ -283,10 +297,7 @@ export default function Navbar() {
                     <DropdownMenuSeparator className="mx-2 my-1 border-border" />
                     <DropdownMenuItem
                       className="flex items-center gap-2 px-4 py-2 text-foreground"
-                      onClick={async () => {
-                        await authClient.signOut();
-                        window.location.href = "/";
-                      }}
+                      onClick={handleSignOut}
                     >
                       <LogOut className="h-4 w-4 text-rose-500 dark:text-rose-300" />
                       <span className="text-sm">Sign out</span>
@@ -451,10 +462,7 @@ export default function Navbar() {
                     variant="ghost"
                     size="sm"
                     className="text-rose-400 hover:text-rose-300 h-8 px-2 text-xs"
-                    onClick={async () => {
-                      await authClient.signOut();
-                      window.location.href = "/";
-                    }}
+                    onClick={handleSignOut}
                   >
                     Sign out
                   </Button>

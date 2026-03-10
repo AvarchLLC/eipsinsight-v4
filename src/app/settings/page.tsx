@@ -13,6 +13,7 @@ import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
 import { PERSONAS, PERSONA_LIST, getPersonaMeta, type Persona } from "@/lib/persona";
 import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function SettingsPage() {
   const { data: session } = useSession();
@@ -35,9 +36,11 @@ export default function SettingsPage() {
       await client.account.update({ name: name || undefined });
       setMessage("Saved!");
       setStatus("success");
+      toast.success("Profile updated");
     } catch {
       setMessage("Failed to save");
       setStatus("error");
+      toast.error("Failed to update profile");
     } finally {
       setSaving(false);
     }
@@ -46,11 +49,12 @@ export default function SettingsPage() {
   function handleAvatarUploaded() {
     setMessage("Avatar updated!");
     setStatus("success");
+    toast.success("Avatar updated");
   }
 
   if (!session?.user) {
     return (
-      <div className="mx-auto max-w-4xl px-4 py-10">
+      <div className="page-shell-narrow py-10">
         <h1 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Settings</h1>
         <p className="text-muted-foreground">You must be signed in to edit settings.</p>
       </div>
@@ -58,7 +62,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="page-shell-narrow py-10">
       <div className="mb-8 flex flex-col gap-2">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
           Account
@@ -152,9 +156,13 @@ function PersonaPreferencesSection() {
     if (isAuthenticated) {
       try {
         await syncPersonaToServer(newPersona);
+        toast.success(`Persona set to ${PERSONAS[newPersona].shortLabel}`);
       } catch (error) {
         console.error("Failed to sync persona:", error);
+        toast.error("Persona updated locally, but sync failed");
       }
+    } else {
+      toast.success(`Persona set to ${PERSONAS[newPersona].shortLabel}`);
     }
     
     setSavingPersona(false);

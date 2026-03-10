@@ -22,6 +22,7 @@ import {
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
+import { toast } from "sonner";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#22D3EE",
@@ -87,6 +88,9 @@ function downloadCSV(headers: string[], rows: string[][], filename: string) {
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   a.click();
+  toast.success("CSV downloaded", {
+    description: filename,
+  });
 }
 
 function downloadObjectCSV(rows: Array<Record<string, unknown>>, filename: string) {

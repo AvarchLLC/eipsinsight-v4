@@ -13,6 +13,7 @@ import ProtocolBento from '@/app/dashboard/_components/protocol-bento';
 import GovernanceOverTime from '@/app/dashboard/_components/governance-over-time';
 import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
 import { DashboardPageHeader } from '@/app/dashboard/_components/dashboard-page-header';
+import { toast } from 'sonner';
 
 // ────────────────────────────────────────────────────────────────
 // TYPES
@@ -52,6 +53,9 @@ function downloadCSV(headers: string[], rows: string[][], filename: string) {
   const a = document.createElement('a');
   a.href = url; a.download = filename; a.click();
   URL.revokeObjectURL(url);
+  toast.success('CSV downloaded', {
+    description: filename,
+  });
 }
 
 // ────────────────────────────────────────────────────────────────

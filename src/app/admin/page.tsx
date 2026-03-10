@@ -163,8 +163,9 @@ export default function AdminPage() {
     try {
       await client.blog.delete({ id });
       setPosts((p) => p.filter((x) => x.id !== id));
+      toast.success("Blog post deleted");
     } catch {
-      alert("Failed to delete");
+      toast.error("Failed to delete blog post");
     } finally {
       setDeletingPostId(null);
     }
@@ -280,8 +281,9 @@ export default function AdminPage() {
     try {
       await client.video.delete({ id });
       setVideos((v) => v.filter((x) => x.id !== id));
+      toast.success("Video deleted");
     } catch {
-      alert("Failed to delete");
+      toast.error("Failed to delete video");
     } finally {
       setDeletingVideoId(null);
     }
@@ -308,8 +310,9 @@ export default function AdminPage() {
       await client.video.reorder({
         videoIds: newVideos.map((v) => v.id),
       });
+      toast.success("Video order updated");
     } catch {
-      alert("Failed to reorder");
+      toast.error("Failed to reorder videos");
       fetchVideos();
     } finally {
       setReordering(false);
@@ -319,7 +322,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-background">
       <section className="border-b border-border bg-card/60">
-        <div className="mx-auto w-full px-4 py-8 sm:px-6 lg:px-8">
+        <div className="page-shell py-8">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
             <Shield className="h-3.5 w-3.5" />
             Admin
@@ -369,7 +372,7 @@ export default function AdminPage() {
         </div>
       </section>
 
-      <div className="mx-auto w-full px-4 py-10 sm:px-6 lg:px-8">
+      <div className="page-shell py-10">
         {activeTab === "blogs" && (
         <section className="rounded-xl border border-border bg-card/40 p-6">
           <div className="mb-6 pb-6 border-b border-slate-200 dark:border-slate-700/50">

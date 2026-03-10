@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ArrowLeft, Mail, Loader2, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { toast } from "sonner";
 
 function VerifyRequestContent() {
   const router = useRouter();
@@ -36,6 +37,7 @@ function VerifyRequestContent() {
       }
 
       setSuccess(true);
+      toast.success("Signed in successfully");
       setTimeout(() => {
         router.push("/");
       }, 1500);
@@ -57,9 +59,13 @@ function VerifyRequestContent() {
         type: "sign-in",
       });
       setError("");
+      toast.success("Verification code resent", {
+        description: email,
+      });
     } catch (err: Error | unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to resend code";
       setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setResending(false);
     }

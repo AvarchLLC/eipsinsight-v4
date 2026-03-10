@@ -302,6 +302,14 @@ html, body, #__next {
 }
 
 @layer utilities {
+  .page-shell {
+    @apply mx-auto w-full max-w-7xl px-4 sm:px-6;
+  }
+
+  .page-shell-narrow {
+    @apply mx-auto w-full max-w-4xl px-4 sm:px-6;
+  }
+
   .persona-gradient {
     background-image: linear-gradient(
       to right,

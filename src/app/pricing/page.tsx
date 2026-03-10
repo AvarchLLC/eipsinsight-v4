@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, Loader2 } from "lucide-react";
 import { useSession } from "@/hooks/useSession";
+import { toast } from "sonner";
 
 interface PricingTier {
   name: string;
@@ -107,9 +108,7 @@ export default function PricingPage() {
         : tier.stripePriceIdYearly;
 
     if (!priceId || priceId === "price_xxxxxxxxxxxxx") {
-      alert(
-        "Stripe Price ID not configured. Please add your Stripe Price IDs in the pricing configuration."
-      );
+      toast.error("Stripe Price ID not configured");
       return;
     }
 
@@ -138,7 +137,7 @@ export default function PricingPage() {
       window.location.href = url;
     } catch (error) {
       console.error("Error creating checkout session:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to start checkout. Please try again."

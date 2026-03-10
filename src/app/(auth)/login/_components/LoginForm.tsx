@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Github, Mail, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -25,6 +26,9 @@ export default function LoginForm() {
         email,
         type: "sign-in",
       });
+      toast.success("Verification code sent", {
+        description: email,
+      });
       router.push(`/verify-request?email=${encodeURIComponent(email)}`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to send verification code";
@@ -36,27 +40,33 @@ export default function LoginForm() {
 
   const handleGitHub = async () => {
     try {
+      toast.loading("Redirecting to GitHub…", { id: "auth-github" });
       await authClient.signIn.social({
         provider: "github",
         callbackURL: "/profile",
         errorCallbackURL: "/login",
       });
     } catch (err) {
+      toast.dismiss("auth-github");
       const message = err instanceof Error ? err.message : "Failed to sign in with GitHub";
       setError(message);
+      toast.error(message);
     }
   };
 
   const handleGoogle = async () => {
     try {
+      toast.loading("Redirecting to Google…", { id: "auth-google" });
       await authClient.signIn.social({
         provider: "google",
         callbackURL: "/profile",
         errorCallbackURL: "/login",
       });
     } catch (err) {
+      toast.dismiss("auth-google");
       const message = err instanceof Error ? err.message : "Failed to sign in with Google";
       setError(message);
+      toast.error(message);
     }
   };
 

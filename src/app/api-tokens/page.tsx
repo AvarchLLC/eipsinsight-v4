@@ -11,9 +11,30 @@ import { RevokeTokenDialog } from './_components/revoke-token-dialog'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+type ApiToken = {
+  id: string
+  name: string
+  scopes: string[]
+  lastUsed: Date | null
+  expiresAt: Date | null
+  createdAt: Date
+}
+
+type ApiTokenStats = {
+  total: number
+  active: number
+  lastUsed: Date | null
+}
+
+type CreateTokenInput = {
+  name: string
+  scopes: string[]
+  expiryDays?: number
+}
+
 export default function ApiTokensPage() {
-  const [tokens, setTokens] = useState<any[]>([])
-  const [stats, setStats] = useState<any>(null)
+  const [tokens, setTokens] = useState<ApiToken[]>([])
+  const [stats, setStats] = useState<ApiTokenStats | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [membershipTier, setMembershipTier] = useState<string>('free')
   const [isCreating, setIsCreating] = useState(false)
@@ -50,7 +71,7 @@ export default function ApiTokensPage() {
     fetchTokens()
   }, [fetchTokens])
 
-  const handleCreateToken = async (input: any) => {
+  const handleCreateToken = async (input: CreateTokenInput) => {
     try {
       setIsCreating(true)
       setError(null)
@@ -100,7 +121,7 @@ export default function ApiTokensPage() {
   const isPaidMember = membershipTier !== 'free'
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
+    <div className="page-shell-narrow py-10">
       {/* Header */}
       <div className="mb-8 flex flex-col gap-2">
         <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs uppercase tracking-wide text-cyan-200">
@@ -174,7 +195,7 @@ export default function ApiTokensPage() {
           <div className="text-sm">
             <p className="font-semibold text-amber-300">Security Notice</p>
             <ul className="mt-2 space-y-1 text-amber-200">
-              <li>• Save your token securely - we won't show it again</li>
+              <li>• Save your token securely - we won&apos;t show it again</li>
               <li>• Use scopes to limit token permissions</li>
               <li>• Revoke tokens immediately if compromised</li>
               <li>• Tokens expire automatically after the set duration</li>
