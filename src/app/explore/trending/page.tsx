@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
@@ -48,7 +48,7 @@ function escapeCsv(value: string | number | null | undefined) {
   return raw;
 }
 
-export default function TrendingPage() {
+function TrendingPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -328,5 +328,19 @@ export default function TrendingPage() {
         </div>
       </section>
     </div>
+  );
+}
+
+export default function TrendingPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-background text-sm text-muted-foreground">
+          Loading trending view...
+        </div>
+      }
+    >
+      <TrendingPageContent />
+    </Suspense>
   );
 }
