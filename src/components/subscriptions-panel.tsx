@@ -9,6 +9,15 @@ import { client } from "@/lib/orpc";
 import { Button } from "@/components/ui/button";
 
 type SubscriptionState = Awaited<ReturnType<typeof client.subscriptions.listMySubscriptions>>;
+type ProposalRepo = "eip" | "erc" | "rip" | "eips" | "ercs" | "rips";
+
+function isProposalRepo(value: string): value is ProposalRepo {
+  return value === "eip" || value === "erc" || value === "rip" || value === "eips" || value === "ercs" || value === "rips";
+}
+
+function normalizeProposalRepo(repo: ProposalRepo): "eip" | "erc" | "rip" {
+  return repo.toLowerCase().replace(/s$/, "") as "eip" | "erc" | "rip";
+}
 
 export function SubscriptionsPanel() {
   const [data, setData] = useState<SubscriptionState | null>(null);
@@ -96,6 +105,7 @@ export function SubscriptionsPanel() {
             <Section title="Proposal alerts" icon={<Bell className="h-4 w-4 text-primary" />}>
               {data.proposals.map((item) => {
                 const key = `proposal:${item.id}`;
+                const proposalRepo = isProposalRepo(item.repo) ? normalizeProposalRepo(item.repo) : null;
                 return (
                   <SubscriptionRow
                     key={key}
@@ -104,7 +114,7 @@ export function SubscriptionsPanel() {
                     meta={`${item.filter} • ${item.status || "Unknown status"}`}
                     href={item.path}
                     busy={removing === key}
-                    onRemove={() => void removeProposal(item.repo, item.number, key)}
+                    onRemove={proposalRepo ? () => void removeProposal(proposalRepo, item.number, key) : undefined}
                   />
                 );
               })}
@@ -115,6 +125,7 @@ export function SubscriptionsPanel() {
             <Section title="Repo-wide alerts" icon={<Rows3 className="h-4 w-4 text-primary" />}>
               {data.repositories.map((item) => {
                 const key = `repository:${item.id}`;
+                const repositoryRepo = isProposalRepo(item.repo) ? normalizeProposalRepo(item.repo) : null;
                 return (
                   <SubscriptionRow
                     key={key}
@@ -123,7 +134,7 @@ export function SubscriptionsPanel() {
                     meta={item.filter}
                     href={item.path}
                     busy={removing === key}
-                    onRemove={() => void removeRepository(item.repo, key)}
+                    onRemove={repositoryRepo ? () => void removeRepository(repositoryRepo, key) : undefined}
                   />
                 );
               })}
@@ -179,7 +190,7 @@ function SubscriptionRow({
   meta: string;
   href: string;
   busy: boolean;
-  onRemove: () => void;
+  onRemove?: () => void;
 }) {
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-background/50 p-4 md:flex-row md:items-center md:justify-between">
@@ -194,7 +205,7 @@ function SubscriptionRow({
         </div>
         <p className="mt-1 text-sm text-muted-foreground">{description}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" onClick={onRemove} disabled={busy} className="rounded-full">
+      <Button type="button" variant="outline" size="sm" onClick={onRemove} disabled={busy || !onRemove} className="rounded-full">
         {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
         Remove
       </Button>
