@@ -16,7 +16,7 @@ export default function ExplorePage() {
           <div className="absolute left-1/2 top-0 -z-10 h-[560px] w-[560px] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
         </div>
 
-        <div className="relative w-full px-4 py-14 text-center sm:px-6 sm:py-18 lg:px-8 xl:px-12">
+        <div className="relative mx-auto w-full px-3 py-14 text-center sm:px-4 sm:py-18 lg:px-5 xl:px-6">
           <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Explore</p>
           <h1 className="dec-title mt-3 text-balance text-4xl font-semibold tracking-tight leading-[1.08] sm:text-5xl md:text-6xl">
             <span className="bg-gradient-to-br from-foreground via-foreground/90 to-muted-foreground bg-clip-text text-transparent">

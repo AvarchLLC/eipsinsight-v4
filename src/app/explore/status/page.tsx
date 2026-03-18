@@ -224,7 +224,7 @@ function StatusPageContent() {
       </div>
 
       <section className="relative w-full pt-6 pb-2">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <Link
             href="/explore"
             className={cn(
@@ -270,7 +270,7 @@ function StatusPageContent() {
       </section>
 
       <section className="relative w-full py-4">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <StatusFlowGraph
             data={statusFlow}
             loading={flowLoading}
@@ -281,7 +281,7 @@ function StatusPageContent() {
       </section>
 
       <section className="relative w-full py-4 pb-8">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <div className="flex flex-col lg:flex-row gap-6">
             <aside className="lg:w-56 shrink-0">
               <div className="lg:sticky lg:top-20">

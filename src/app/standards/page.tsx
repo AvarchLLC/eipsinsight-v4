@@ -28,7 +28,6 @@ import {
   RotateCcw,
   ChevronDown,
   Filter,
-  BarChart3,
   GitMerge,
   Users,
   Trophy,
@@ -57,7 +56,6 @@ import {
 } from "recharts";
 import { cn } from "@/lib/utils";
 import { StandardsPageHeader } from "@/app/standards/_components/standards-page-header";
-import { CopyLinkButton } from "@/components/header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 
@@ -146,6 +144,7 @@ interface EditorReview {
 
 interface LeaderboardEntry {
   actor: string;
+  totalActions?: number;
   totalReviews?: number;
   prsTouched?: number;
   total?: number;
@@ -219,7 +218,7 @@ function StandardsPageContent() {
   const [sortBy, setSortBy] = useState<string>("number");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [page, setPage] = useState(1);
-  const pageSize = 30;
+  const pageSize = 10;
 
   // ── Data state ──
   const [loading, setLoading] = useState(true);
@@ -487,7 +486,7 @@ function StandardsPageContent() {
   };
 
   const SortIcon = ({ col }: { col: string }) => {
-    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 ml-1 text-slate-600 dark:text-slate-400" />;
+    if (sortBy !== col) return <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground" />;
     return sortDir === "asc" ? (
       <ArrowUp className="h-3 w-3 ml-1 text-primary" />
     ) : (
@@ -573,43 +572,6 @@ function StandardsPageContent() {
     }
     return ordered;
   }, [statusDist]);
- 
-
-  const barsNodes = useMemo(() => {
-    if (repo === "all") {
-      return stackedRepoOrder.map((repoKey) => (
-        <Bar
-          key={repoKey}
-          dataKey={repoKey}
-          stackId="a"
-          fill={REPO_COLORS[repoKey] ?? REPO_COLORS.unknown}
-          name={repoKey.toUpperCase()}
-          radius={[
-            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
-            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
-            0,
-            0,
-          ]}
-          onClick={(data: { payload?: { status?: string } }) => {
-            const status = data?.payload?.status;
-            if (status) handleSegmentDownload(repoKey, status);
-          }}
-        />
-      ));
-    }
-    return (
-      <Bar
-        dataKey="total"
-        fill={REPO_COLORS[repo] ?? "#34d399"}
-        radius={[4, 4, 0, 0]}
-        name="Count"
-        onClick={(payload) => {
-          if (payload && payload.status) handleSegmentDownload(repo, payload.status);
-        }}
-      />
-    );
-  }, [repo, stackedRepoOrder, handleSegmentDownload]);
-
   // Normalize category names (use type when category empty) and normalize casing
   const normalizedCategoryData = useMemo(() => {
     if (!categoryData || categoryData.length === 0) return [];
@@ -700,18 +662,6 @@ function StandardsPageContent() {
     return Array.from(keys);
   }, [chartMode, timelineCatStatus]);
 
-  // Top Status (Core Protocol Insights)
-  const topStatusCounts = useMemo(() => {
-    const byStatus: Record<string, number> = {};
-    for (const d of statusDist) {
-      byStatus[d.status] = (byStatus[d.status] ?? 0) + d.count;
-    }
-    return Object.entries(byStatus)
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 6)
-      .map(([status, count]) => ({ status, count }));
-  }, [statusDist]);
-
   const donutData = useMemo(() => {
     const byStatus: Record<string, number> = {};
     for (const d of statusDist) {
@@ -722,6 +672,41 @@ function StandardsPageContent() {
       value,
     }));
   }, [statusDist]);
+
+  const barsNodes = useMemo(() => {
+    if (repo === "all") {
+      return stackedRepoOrder.map((repoKey) => (
+        <Bar
+          key={repoKey}
+          dataKey={repoKey}
+          stackId="a"
+          fill={REPO_COLORS[repoKey] ?? REPO_COLORS.unknown}
+          name={repoKey.toUpperCase()}
+          radius={[
+            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
+            repoKey === stackedRepoOrder[stackedRepoOrder.length - 1] ? 4 : 0,
+            0,
+            0,
+          ]}
+          onClick={(data: { payload?: { status?: string } }) => {
+            const status = data?.payload?.status;
+            if (status) handleSegmentDownload(repoKey, status);
+          }}
+        />
+      ));
+    }
+    return (
+      <Bar
+        dataKey="total"
+        fill={REPO_COLORS[repo] ?? "#34d399"}
+        radius={[4, 4, 0, 0]}
+        name="Count"
+        onClick={(payload) => {
+          if (payload && payload.status) handleSegmentDownload(repo, payload.status);
+        }}
+      />
+    );
+  }, [repo, stackedRepoOrder, handleSegmentDownload]);
 
   // ── CSV Handlers for detailed data (must come after data transforms) ──
   const handleStatusDistCSV = useCallback(async (status?: string) => {
@@ -802,7 +787,7 @@ function StandardsPageContent() {
 
   const TypeBadge = ({ value }: { value: string | null }) =>
     value ? (
-      <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50">
+      <span className="inline-flex items-center rounded-md px-1.5 py-0.5 text-xs font-medium bg-muted/60 text-muted-foreground border border-border">
         {value}
       </span>
     ) : null;
@@ -817,7 +802,7 @@ function StandardsPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.03),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_top,rgba(52,211,153,0.05),transparent_70%)]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-full px-4 py-8 sm:px-6 lg:px-8 xl:px-12 space-y-4">
+      <div className="relative z-10 mx-auto w-full px-3 py-8 sm:px-4 lg:px-5 xl:px-6 space-y-4">
       {/* ── Page Header ── */}
       <StandardsPageHeader />
 
@@ -839,7 +824,7 @@ function StandardsPageContent() {
                 "inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold rounded-lg border transition-all duration-300",
                 repo === tab.value
                   ? "bg-primary/10 text-primary border-primary/40 shadow-[0_0_12px_rgba(34,211,238,0.15)] dark:shadow-[0_0_12px_rgba(34,211,238,0.15)]"
-                  : "bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-200 dark:hover:bg-slate-700/60 hover:text-slate-900 dark:hover:text-slate-100"
+                  : "bg-muted/60 text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground"
               )}
             >
               {tab.label}
@@ -847,17 +832,17 @@ function StandardsPageContent() {
           ))}
         </div>
 
-        <hr className="border-slate-200 dark:border-slate-800/50" />
+        <hr className="border-border/70" />
 
         {/* ── Filters Bar ── */}
         {!isRIP && (
-          <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 shadow-sm dark:shadow-slate-950/30">
+          <div className="rounded-xl border border-border bg-card/60 shadow-sm">
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
               className="w-full flex items-center justify-between px-4 py-3"
             >
               <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+                <Filter className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium text-foreground">
                   Filters
                 </span>
@@ -869,17 +854,17 @@ function StandardsPageContent() {
               </div>
               <ChevronDown
                 className={cn(
-                  "h-4 w-4 text-slate-600 dark:text-slate-400 transition-transform",
+                  "h-4 w-4 text-muted-foreground transition-transform",
                   filtersOpen && "rotate-180"
                 )}
               />
             </button>
 
             {filtersOpen && (
-              <div className="border-t border-slate-200 dark:border-slate-700/50 px-4 py-4 space-y-4">
+              <div className="border-t border-border/70 px-4 py-4 space-y-4">
                 {/* Search */}
                 <div className="relative max-w-md">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 dark:text-slate-400" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search by number, title, or author..."
@@ -888,12 +873,12 @@ function StandardsPageContent() {
                       setSearchQuery(e.target.value);
                       setPage(1);
                     }}
-                    className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
+                    className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -936,7 +921,7 @@ function StandardsPageContent() {
 
                   {/* Year Range */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                    <label className="text-xs font-medium text-muted-foreground">
                       Year Range
                     </label>
                     <div className="flex items-center gap-2">
@@ -952,9 +937,9 @@ function StandardsPageContent() {
                           );
                           setPage(1);
                         }}
-                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring"
+                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring"
                       />
-                      <span className="text-slate-600 dark:text-slate-400 text-xs">to</span>
+                      <span className="text-muted-foreground text-xs">to</span>
                       <input
                         type="number"
                         placeholder="To"
@@ -967,7 +952,7 @@ function StandardsPageContent() {
                           );
                           setPage(1);
                         }}
-                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring"
+                        className="w-full h-9 py-1.5 px-2 text-sm rounded-md bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring"
                       />
                     </div>
                   </div>
@@ -977,7 +962,7 @@ function StandardsPageContent() {
                   <div className="flex justify-end">
                     <button
                       onClick={resetFilters}
-                      className="inline-flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                     >
                       <RotateCcw className="h-3 w-3" />
                       Reset filters
@@ -992,7 +977,7 @@ function StandardsPageContent() {
         {/* ── RIP Search (simple) ── */}
         {isRIP && (
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <input
               type="text"
               placeholder="Search RIPs by number, title, or author..."
@@ -1001,7 +986,7 @@ function StandardsPageContent() {
                 setSearchQuery(e.target.value);
                 setPage(1);
               }}
-              className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
+              className="w-full h-9 pl-10 pr-10 py-2 text-sm rounded-md bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
             />
           </div>
         )}
@@ -1015,9 +1000,6 @@ function StandardsPageContent() {
             {/* ────── KPI Cards ────── */}
             {isRIP && ripKpis ? (
               <div id="standards-kpis" className="scroll-mt-24">
-                <div className="flex items-center justify-end mb-3">
-                  <CopyLinkButton sectionId="standards-kpis" />
-                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
                   label="Total RIPs"
@@ -1058,9 +1040,6 @@ function StandardsPageContent() {
               </div>
             ) : !isRIP && kpis ? (
               <div id="standards-kpis" className="scroll-mt-24">
-                <div className="flex items-center justify-end mb-3">
-                  <CopyLinkButton sectionId="standards-kpis" />
-                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KPICard
                   label="Total Standards"
@@ -1090,48 +1069,19 @@ function StandardsPageContent() {
               </div>
             ) : null}
 
-            {/* ────── Core Protocol Insights (Top Status) ────── */}
-            {!isRIP && topStatusCounts.length > 0 && (
-              <div id="core-protocol-insights" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    Core Protocol Insights
-                  </h3>
-                  <CopyLinkButton sectionId="core-protocol-insights" />
-                </div>
-                <div className="flex flex-wrap gap-4">
-                  {topStatusCounts.map(({ status, count }) => (
-                    <div
-                      key={status}
-                      className="flex items-center gap-2 px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20"
-                    >
-                      <span
-                        className="w-2 h-2 rounded-full shrink-0"
-                        style={{ backgroundColor: STATUS_COLORS[status] ?? "#94a3b8" }}
-                      />
-                      <span className="text-sm font-medium text-foreground">{status}</span>
-                      <span className="text-sm font-bold text-primary">{count.toLocaleString()}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* ────── Repo Intro (EIPs / ERCs / RIPs) ────── */}
             {!isRIP && repo !== "all" && (
-              <div id="repo-intro" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
+              <div id="repo-intro" className="rounded-xl border border-border bg-card/60 p-4 shadow-sm scroll-mt-24">
                 <div className="flex items-center justify-between mb-2">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {repo === "eips"
                       ? "Ethereum Improvement Proposals (EIPs)"
                       : repo === "ercs"
                         ? "Ethereum Request for Comment (ERCs)"
                         : "Rollup Improvement Proposals (RIPs)"}
                   </h3>
-                  <CopyLinkButton sectionId="repo-intro" />
                 </div>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                <p className="text-sm text-muted-foreground mb-4">
                   {repo === "eips"
                     ? "EIPs are standards for the Ethereum platform, including core protocol specifications, client APIs, and contract standards."
                     : repo === "ercs"
@@ -1152,7 +1102,7 @@ function StandardsPageContent() {
                     href={`https://github.com/ethereum/${repo === "eips" ? "EIPs" : repo === "ercs" ? "ERCs" : "RIPs"}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                    className="inline-flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground border border-border rounded-lg transition-colors"
                   >
                     <ExternalLink className="h-4 w-4" />
                     View Repository
@@ -1164,15 +1114,14 @@ function StandardsPageContent() {
             {/* ────── Charts ────── */}
             {isRIP ? (
               /* RIP Activity Over Time */
-              <div id="standards-charts" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 scroll-mt-24">
+              <div id="standards-charts" className="rounded-xl border border-border bg-card/60 p-4 shadow-sm scroll-mt-24">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     RIP Activity Over Time
                   </h3>
-                  <CopyLinkButton sectionId="standards-charts" />
                 </div>
                 {ripActivity.length > 0 ? (
-                  <ChartContainer
+                  <WatermarkedChartContainer
                     config={
                       {
                         commits: {
@@ -1184,10 +1133,7 @@ function StandardsPageContent() {
                     className="h-[300px] w-full"
                   >
                     <LineChart data={ripActivity}>
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="#94a3b8"
-                      />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
                       <XAxis
                         dataKey="month"
                         tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
@@ -1198,34 +1144,26 @@ function StandardsPageContent() {
                       />
                       <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                       <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="count"
-                        name="Commits"
-                        stroke={REPO_COLORS.rips}
-                        strokeWidth={2}
-                        dot={false}
-                      />
+                      <Line type="monotone" dataKey="count" name="Commits" stroke={REPO_COLORS.rips} strokeWidth={2} dot={false} />
                     </LineChart>
-                  </ChartContainer>
+                  </WatermarkedChartContainer>
                 ) : (
-                  <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
+                  <p className="text-muted-foreground text-sm">No data available</p>
                 )}
               </div>
             ) : (
               <div id="standards-charts" className="grid grid-cols-1 lg:grid-cols-2 gap-4 scroll-mt-24">
                 {/* Status Distribution */}
-                <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
+                <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Status Distribution
                     </h3>
                     <div className="flex items-center gap-2">
-                      <CopyLinkButton sectionId="standards-charts" />
                       {stackedStatusData.length > 0 && (
                       <button
                         onClick={() => handleStatusDistCSV()}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/60 hover:bg-muted/80 border border-border rounded-lg transition-colors"
                         title="Download detailed EIP data with all metadata"
                       >
                         <Download className="h-3.5 w-3.5" />
@@ -1236,7 +1174,7 @@ function StandardsPageContent() {
                   </div>
                   {stackedStatusData.length > 0 ? (
                     <>
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           {
                             eips: {
@@ -1256,46 +1194,35 @@ function StandardsPageContent() {
                         className="h-[300px] w-full"
                       >
                         <BarChart data={stackedStatusData}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#94a3b8"
-                          />
-                          <XAxis
-                            dataKey="status"
-                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+                          <XAxis dataKey="status" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                           <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                           <ChartTooltip content={<ChartTooltipContent />} />
-                          <Legend
-                            wrapperStyle={{ fontSize: 12 }}
-                          />
-                        {barsNodes}
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
+                          {barsNodes}
                         </BarChart>
-                      </ChartContainer>
-
-                  
+                      </WatermarkedChartContainer>
                     </>
                   ) : (
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
+                    <p className="text-muted-foreground text-sm">No data available</p>
                   )}
                 </div>
 
                 {/* Status Donut (for single-repo views) */}
                 {repo !== "all" ? (
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-4">
+                  <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-4">
                       Status Breakdown
                     </h3>
                     {donutData.length > 0 ? (
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           Object.fromEntries(
                             donutData.map((d) => [
                               d.name,
                               {
                                 label: d.name,
-                                color:
-                                  STATUS_COLORS[d.name] ?? "#94a3b8",
+                                color: STATUS_COLORS[d.name] ?? "#94a3b8",
                               },
                             ])
                           ) as ChartConfig
@@ -1303,46 +1230,30 @@ function StandardsPageContent() {
                         className="h-[300px] w-full"
                       >
                         <PieChart>
-                          <Pie
-                            data={donutData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={60}
-                            outerRadius={100}
-                            paddingAngle={2}
-                            dataKey="value"
-                            nameKey="name"
-                          >
+                          <Pie data={donutData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value" nameKey="name">
                             {donutData.map((d, i) => (
-                              <Cell
-                                key={`cell-${i}`}
-                                fill={
-                                  STATUS_COLORS[d.name] ?? "#94a3b8"
-                                }
-                              />
+                              <Cell key={`cell-${i}`} fill={STATUS_COLORS[d.name] ?? "#94a3b8"} />
                             ))}
                           </Pie>
                           <ChartTooltip content={<ChartTooltipContent />} />
-                          <Legend
-                            wrapperStyle={{ fontSize: 12 }}
-                          />
+                          <Legend wrapperStyle={{ fontSize: 12 }} />
                         </PieChart>
-                      </ChartContainer>
+                      </WatermarkedChartContainer>
                     ) : (
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      <p className="text-muted-foreground text-sm">
                         No data available
                       </p>
                     )}
                   </div>
                 ) : (
                   /* Progress Over Time (switchable: Repository / Category / Status) */
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30">
+                  <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
                     <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Progress Over Time
                       </h3>
                       <div className="flex items-center gap-3">
-                        <div className="flex rounded-lg border border-slate-200 dark:border-slate-700/50 overflow-hidden">
+                        <div className="flex rounded-lg border border-border overflow-hidden">
                           {[
                             { value: "repository" as const, label: "By Repository" },
                             { value: "category" as const, label: "By Category" },
@@ -1355,7 +1266,7 @@ function StandardsPageContent() {
                                 "px-3 py-1.5 text-xs font-medium transition-colors",
                                 chartMode === opt.value
                                   ? "bg-primary/20 text-primary border-primary/40"
-                                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                                  : "text-muted-foreground hover:text-foreground"
                               )}
                             >
                               {opt.label}
@@ -1365,7 +1276,7 @@ function StandardsPageContent() {
                         {progressTimelineData.length > 0 && (
                           <button
                             onClick={handleTrendsCSV}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/60 hover:bg-muted/80 border border-border rounded-lg transition-colors"
                           >
                             <Download className="h-3.5 w-3.5" />
                             CSV
@@ -1374,7 +1285,7 @@ function StandardsPageContent() {
                       </div>
                     </div>
                     {chartMode === "repository" && trendLineData.length > 0 ? (
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           {
                             eips: { label: "EIPs", color: REPO_COLORS.eips },
@@ -1394,9 +1305,9 @@ function StandardsPageContent() {
                           <Line type="monotone" dataKey="ercs" stroke={REPO_COLORS.ercs} strokeWidth={2} name="ERCs" dot={false} />
                           <Line type="monotone" dataKey="rips" stroke={REPO_COLORS.rips} strokeWidth={2} name="RIPs" dot={false} />
                         </LineChart>
-                      </ChartContainer>
+                      </WatermarkedChartContainer>
                     ) : (chartMode === "category" || chartMode === "status") && progressTimelineData.length > 0 ? (
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           Object.fromEntries(
                             progressTimelineKeys.map((k, i) => [
@@ -1427,9 +1338,9 @@ function StandardsPageContent() {
                             />
                           ))}
                         </BarChart>
-                      </ChartContainer>
+                      </WatermarkedChartContainer>
                     ) : (
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      <p className="text-muted-foreground text-sm">
                         {chartMode !== "repository" ? "Loading..." : "No data available"}
                       </p>
                     )}
@@ -1437,22 +1348,21 @@ function StandardsPageContent() {
                 )}
 
                 {/* Category Breakdown (always shown for non-RIP) */}
-                <div id="category-breakdown" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 lg:col-span-2 scroll-mt-24">
+                <div id="category-breakdown" className="rounded-xl border border-border bg-card/60 p-4 shadow-sm lg:col-span-2 scroll-mt-24">
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Category Breakdown
                       </h3>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                      <p className="text-xs text-muted-foreground mt-1">
                         Core, Interface, Networking are part of Standards Track
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CopyLinkButton sectionId="category-breakdown" />
                       {normalizedCategoryData.length > 0 && (
                         <button
                           onClick={() => handleCategoryCSV()}
-                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-foreground bg-slate-800/40 border border-slate-700/40 rounded-lg hover:bg-slate-700/50 hover:text-white transition-colors"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/60 border border-border rounded-lg hover:bg-muted/80 hover:text-foreground transition-colors"
                           title="Download detailed EIP data with all metadata (applies current legend filters)"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1464,16 +1374,14 @@ function StandardsPageContent() {
 
                   {normalizedCategoryData.length > 0 ? (
                     <>
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           Object.fromEntries(
                             categoryDataToRender.map((d, i) => [
                               d.category,
                               {
                                 label: d.category,
-                                color:
-                                  CATEGORY_COLOR_MAP[d.category] ??
-                                  CATEGORY_COLORS[i % CATEGORY_COLORS.length],
+                                color: CATEGORY_COLOR_MAP[d.category] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length],
                               },
                             ])
                           ) as ChartConfig
@@ -1481,37 +1389,20 @@ function StandardsPageContent() {
                         className="h-[300px] w-full"
                       >
                         <BarChart data={categoryDataToRender} layout="vertical">
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#94a3b8"
-                          />
-                          <XAxis
-                            type="number"
-                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                          />
-                          <YAxis
-                            dataKey="category"
-                            type="category"
-                            width={120}
-                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+                          <XAxis type="number" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <YAxis dataKey="category" type="category" width={120} tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
                           <ChartTooltip content={<ChartTooltipContent />} />
                           <Bar dataKey="count" radius={[0, 4, 4, 0]} name="Count">
                             {categoryDataToRender.map((d, i) => (
-                              <Cell
-                                key={`cat-${i}`}
-                                fill={
-                                  CATEGORY_COLOR_MAP[d.category] ??
-                                  CATEGORY_COLORS[i % CATEGORY_COLORS.length]
-                                }
-                              />
+                              <Cell key={`cat-${i}`} fill={CATEGORY_COLOR_MAP[d.category] ?? CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                             ))}
                           </Bar>
                         </BarChart>
-                      </ChartContainer>
+                      </WatermarkedChartContainer>
 
                       {/* Category summary with percentages */}
-                      <div className="mt-3 text-xs text-slate-600 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1">
+                      <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
                         {normalizedCategoryData.map((d) => {
                           const pct = categoryTotalCount > 0 ? ((d.count / categoryTotalCount) * 100).toFixed(1) : "0";
                           return (
@@ -1538,8 +1429,8 @@ function StandardsPageContent() {
                                 className={cn(
                                   "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all",
                                   disabled
-                                    ? "bg-slate-100 dark:bg-slate-800/30 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50"
-                                    : "bg-slate-100 dark:bg-slate-800/40 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700/50 shadow-sm"
+                                    ? "bg-muted/50 text-muted-foreground border border-border"
+                                    : "bg-muted/70 text-foreground border border-border shadow-sm"
                                 )}
                                 title={disabled ? `Show ${d.category}` : `Hide ${d.category}`}
                               >
@@ -1551,26 +1442,26 @@ function StandardsPageContent() {
                         </div>
 
                     <div className="flex items-center gap-3">
-                      <span className="text-xs text-slate-600 dark:text-slate-400">Total: {categoryTotalCount}</span>
+                      <span className="text-xs text-muted-foreground">Total: {categoryTotalCount}</span>
                     </div>
                       </div>
                     </>
                   ) : (
-                    <p className="text-slate-600 dark:text-slate-400 text-sm">No data available</p>
+                    <p className="text-muted-foreground text-sm">No data available</p>
                   )}
                 </div>
 
                 {/* Trends Over Time (for single-repo view) */}
                 {repo !== "all" && (
-                  <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 lg:col-span-2">
+                  <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm lg:col-span-2">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                      <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                         Standards Created Over Time
                       </h3>
                       {trendLineData.length > 0 && (
                         <button
                           onClick={handleTrendsCSV}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 bg-slate-100 dark:bg-slate-800/40 hover:bg-slate-200 dark:hover:bg-slate-700/60 border border-slate-200 dark:border-slate-700/50 rounded-lg transition-colors"
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground bg-muted/60 hover:bg-muted/80 border border-border rounded-lg transition-colors"
                           title="Download detailed EIP data with all metadata"
                         >
                           <Download className="h-3.5 w-3.5" />
@@ -1579,45 +1470,27 @@ function StandardsPageContent() {
                       )}
                     </div>
                     {trendLineData.length > 0 ? (
-                      <ChartContainer
+                      <WatermarkedChartContainer
                         config={
                           {
                             [repo]: {
                               label: repo.toUpperCase(),
-                              color:
-                                REPO_COLORS[repo] ?? "#34d399",
+                              color: REPO_COLORS[repo] ?? "#34d399",
                             },
                           } satisfies ChartConfig
                         }
                         className="h-[250px] w-full"
                       >
                         <LineChart data={trendLineData}>
-                          <CartesianGrid
-                            strokeDasharray="3 3"
-                            stroke="#94a3b8"
-                          />
-                          <XAxis
-                            dataKey="year"
-                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                          />
-                          <YAxis
-                            tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
-                          />
-                          <ChartTooltip
-                            content={<ChartTooltipContent />}
-                          />
-                          <Line
-                            type="monotone"
-                            dataKey={repo}
-                            stroke={REPO_COLORS[repo] ?? "#34d399"}
-                            strokeWidth={2}
-                            name={repo.toUpperCase()}
-                            dot={false}
-                          />
+                          <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" />
+                          <XAxis dataKey="year" tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <YAxis tick={{ fill: "var(--muted-foreground)", fontSize: 11 }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line type="monotone" dataKey={repo} stroke={REPO_COLORS[repo] ?? "#34d399"} strokeWidth={2} name={repo.toUpperCase()} dot={false} />
                         </LineChart>
-                      </ChartContainer>
+                      </WatermarkedChartContainer>
                     ) : (
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">
+                      <p className="text-muted-foreground text-sm">
                         No data available
                       </p>
                     )}
@@ -1630,17 +1503,16 @@ function StandardsPageContent() {
             {!isRIP && (
               <div id="standards-activity" className="grid grid-cols-1 lg:grid-cols-3 gap-4 scroll-mt-24">
                 {/* Recently Closed/Merged PRs */}
-                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                <div className="flex flex-col h-[380px] rounded-xl border border-border bg-card/60 p-4 shadow-sm overflow-hidden">
                   <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <GitMerge className="h-4 w-4 text-primary" />
                       Recently Closed/Merged PRs
                     </h3>
-                    <CopyLinkButton sectionId="standards-activity" />
                   </div>
                   <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
                     {recentClosedMergedPRs.length === 0 ? (
-                      <p className="text-sm text-slate-600 dark:text-slate-400">No recent activity</p>
+                      <p className="text-sm text-muted-foreground">No recent activity</p>
                     ) : (
                       recentClosedMergedPRs.map((pr) => (
                         <a
@@ -1648,23 +1520,23 @@ function StandardsPageContent() {
                           href={`https://github.com/ethereum/${pr.repoShort === "eips" ? "EIPs" : pr.repoShort === "ercs" ? "ERCs" : "RIPs"}/pull/${pr.number}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="block px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                          className="block px-3 py-2 rounded-lg border border-border hover:bg-muted/40 transition-colors"
                         >
                           <div className="flex items-center justify-between gap-2">
                             <span className="text-sm font-medium text-primary">#{pr.number}</span>
                             <span
                               className={cn(
                                 "text-[11px] font-medium px-1.5 py-0.5 rounded",
-                                pr.status === "Merged" ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-slate-500/20 text-slate-600 dark:text-slate-400"
+                                pr.status === "Merged" ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "bg-muted text-muted-foreground"
                               )}
                             >
                               {pr.status}
                             </span>
                           </div>
-                          <p className="text-xs text-slate-600 dark:text-slate-400 truncate mt-0.5" title={pr.title}>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5" title={pr.title}>
                             {pr.title || "Untitled"}
                           </p>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400 mt-1">
+                          <p className="text-[10px] text-muted-foreground mt-1">
                             {new Date(pr.closedAt).toLocaleDateString()}
                           </p>
                         </a>
@@ -1674,24 +1546,23 @@ function StandardsPageContent() {
                 </div>
 
                 {/* Review Activity */}
-                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                <div className="flex flex-col h-[380px] rounded-xl border border-border bg-card/60 p-4 shadow-sm overflow-hidden">
                   <div className="flex items-center justify-between mb-4 shrink-0">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Users className="h-4 w-4 text-primary" />
                       Review Activity
                     </h3>
-                    <CopyLinkButton sectionId="standards-activity" />
                   </div>
-                  <div className="mb-4 p-3 rounded-lg bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 shrink-0">
+                  <div className="mb-4 p-3 rounded-lg bg-muted/40 border border-border shrink-0">
                     <p className="text-2xl font-bold text-primary">{reviewActivityTotal}</p>
-                    <p className="text-xs text-slate-600 dark:text-slate-400">Reviews (Last 24 Hours)</p>
+                    <p className="text-xs text-muted-foreground">Reviews (Last 24 Hours)</p>
                   </div>
-                  <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-2 shrink-0">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 shrink-0">
                     Editor Reviews (Last 24 Hours)
                   </p>
                   <div className="flex-1 min-h-0 space-y-2 overflow-y-auto">
                     {editorReviewsLast24h.length === 0 ? (
-                      <p className="text-sm text-slate-600 dark:text-slate-400">No reviews in last 24h</p>
+                      <p className="text-sm text-muted-foreground">No reviews in last 24h</p>
                     ) : (
                       editorReviewsLast24h.slice(0, 15).map((r, i) => (
                         <a
@@ -1699,14 +1570,14 @@ function StandardsPageContent() {
                           href={`https://github.com/ethereum/${r.repoShort === "eips" ? "EIPs" : r.repoShort === "ercs" ? "ERCs" : "RIPs"}/pull/${r.prNumber}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="block px-3 py-1.5 rounded border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                          className="block px-3 py-1.5 rounded border border-border hover:bg-muted/40 transition-colors"
                         >
                           <span className="text-sm font-medium text-primary">#{r.prNumber}</span>
-                          <span className="text-xs text-slate-600 dark:text-slate-400 ml-2">Reviewer: {r.reviewer}</span>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400 truncate mt-0.5" title={r.title}>
+                          <span className="text-xs text-muted-foreground ml-2">Reviewer: {r.reviewer}</span>
+                          <p className="text-[10px] text-muted-foreground truncate mt-0.5" title={r.title}>
                             {r.title || "Untitled"}
                           </p>
-                          <p className="text-[10px] text-slate-600 dark:text-slate-400">
+                          <p className="text-[10px] text-muted-foreground">
                             {new Date(r.submittedAt).toLocaleString()}
                           </p>
                         </a>
@@ -1716,15 +1587,14 @@ function StandardsPageContent() {
                 </div>
 
                 {/* Leaderboards */}
-                <div className="flex flex-col h-[380px] rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 overflow-hidden">
+                <div className="flex flex-col h-[380px] rounded-xl border border-border bg-card/60 p-4 shadow-sm overflow-hidden">
                   <div className="flex items-center justify-between mb-3 shrink-0">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                       <Trophy className="h-4 w-4 text-primary" />
                       Leaderboards
                     </h3>
-                    <CopyLinkButton sectionId="standards-activity" />
                   </div>
-                  <div className="flex gap-1 p-1 rounded-lg bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700/50 mb-3 shrink-0">
+                  <div className="flex gap-1 p-1 rounded-lg bg-muted/40 border border-border mb-3 shrink-0">
                     {[
                       { id: "editors" as const, label: "Editors", icon: Shield },
                       { id: "reviewers" as const, label: "Reviewers", icon: Eye },
@@ -1738,8 +1608,8 @@ function StandardsPageContent() {
                           className={cn(
                             "flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md text-xs font-medium transition-colors",
                             leaderboardTab === tab.id
-                              ? "bg-white dark:bg-slate-900/60 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-600 shadow-sm"
-                              : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100"
+                              ? "bg-card text-foreground border border-border shadow-sm"
+                              : "text-muted-foreground hover:text-foreground"
                           )}
                         >
                           <Icon className="h-3.5 w-3.5" />
@@ -1753,8 +1623,8 @@ function StandardsPageContent() {
                       <ul className="space-y-2">
                         {editorsLeaderboard.slice(0, 10).map((e, i) => (
                           <li key={e.actor} className="flex items-center gap-3">
-                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
-                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                            <span className="text-muted-foreground text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-border">
                               <AvatarImage
                                 src={`https://github.com/${e.actor.replace(/\[bot\]$/, "")}.png`}
                                 alt={e.actor}
@@ -1764,11 +1634,11 @@ function StandardsPageContent() {
                               </AvatarFallback>
                             </Avatar>
                             <span className="text-sm font-medium text-foreground truncate flex-1">{e.actor}</span>
-                            <span className="text-primary font-semibold text-sm shrink-0">{e.totalReviews ?? 0}</span>
+                            <span className="text-primary font-semibold text-sm shrink-0">{e.totalActions ?? e.totalReviews ?? 0}</span>
                           </li>
                         ))}
                         {editorsLeaderboard.length === 0 && (
-                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                          <li className="text-sm text-muted-foreground py-4">No data</li>
                         )}
                       </ul>
                     )}
@@ -1776,8 +1646,8 @@ function StandardsPageContent() {
                       <ul className="space-y-2">
                         {reviewersLeaderboard.slice(0, 10).map((r, i) => (
                           <li key={r.actor} className="flex items-center gap-3">
-                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
-                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                            <span className="text-muted-foreground text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-border">
                               <AvatarImage
                                 src={`https://github.com/${r.actor.replace(/\[bot\]$/, "")}.png`}
                                 alt={r.actor}
@@ -1791,7 +1661,7 @@ function StandardsPageContent() {
                           </li>
                         ))}
                         {reviewersLeaderboard.length === 0 && (
-                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                          <li className="text-sm text-muted-foreground py-4">No data</li>
                         )}
                       </ul>
                     )}
@@ -1799,8 +1669,8 @@ function StandardsPageContent() {
                       <ul className="space-y-2">
                         {contributorsLeaderboard.slice(0, 10).map((c, i) => (
                           <li key={c.actor} className="flex items-center gap-3">
-                            <span className="text-slate-600 dark:text-slate-400 text-xs font-medium w-5">{i + 1}</span>
-                            <Avatar className="h-8 w-8 shrink-0 border border-slate-200 dark:border-slate-700/50">
+                            <span className="text-muted-foreground text-xs font-medium w-5">{i + 1}</span>
+                            <Avatar className="h-8 w-8 shrink-0 border border-border">
                               <AvatarImage
                                 src={`https://github.com/${c.actor.replace(/\[bot\]$/, "")}.png`}
                                 alt={c.actor}
@@ -1814,7 +1684,7 @@ function StandardsPageContent() {
                           </li>
                         ))}
                         {contributorsLeaderboard.length === 0 && (
-                          <li className="text-sm text-slate-600 dark:text-slate-400 py-4">No data</li>
+                          <li className="text-sm text-muted-foreground py-4">No data</li>
                         )}
                       </ul>
                     )}
@@ -1823,30 +1693,29 @@ function StandardsPageContent() {
               </div>
             )}
 
-            <hr className="border-slate-200 dark:border-slate-800/50" />
+            <hr className="border-border/70" />
 
             {/* ────── Table ────── */}
-            <div id="standards-table" className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 overflow-hidden shadow-sm scroll-mt-24">
-              <div className="px-6 py-5 border-b border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/20 flex items-start justify-between gap-4">
+            <div id="standards-table" className="rounded-xl border border-border bg-card/60 overflow-hidden shadow-sm scroll-mt-24">
+              <div className="px-6 py-5 border-b border-border/70 bg-muted/40 flex items-start justify-between gap-4">
                 <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     {isRIP ? "RIPs" : "Standards"}
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                  <p className="text-sm text-muted-foreground mt-1">
                     Showing {(isRIP ? filteredRipTableData : filteredTableData).length.toLocaleString()} of {totalRows.toLocaleString()} results
                   </p>
-                  <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                  <p className="text-xs text-muted-foreground mt-0.5">
                     Use the filter inputs below each column header to search within specific columns
                   </p>
                 </div>
-                <CopyLinkButton sectionId="standards-table" />
               </div>
 
               <div className="overflow-x-auto">
                 {isRIP ? (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30">
+                      <tr className="border-b border-border/70 bg-muted/30">
                         <TH
                           label="RIP #"
                           col="number"
@@ -1897,7 +1766,7 @@ function StandardsPageContent() {
                           onSort={handleSort}
                         />
                       </tr>
-                      <tr className="bg-slate-50 dark:bg-slate-800/20 border-b border-slate-200 dark:border-slate-700/50">
+                      <tr className="bg-muted/20 border-b border-border/70">
                         {['number', 'title', 'status', 'author', 'created_at', 'last_commit', 'commits'].map(col => (
                           <td key={col} className="px-4 py-2">
                             <input
@@ -1905,7 +1774,7 @@ function StandardsPageContent() {
                               placeholder={`Filter...`}
                               value={columnSearch[col] || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
-                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
+                              className="w-full px-2 py-1 text-xs rounded bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         ))}
@@ -1916,7 +1785,7 @@ function StandardsPageContent() {
                         <tr>
                           <td
                             colSpan={7}
-                            className="py-12 text-center text-slate-600 dark:text-slate-400"
+                            className="py-12 text-center text-muted-foreground"
                           >
                             No RIPs found
                           </td>
@@ -1925,7 +1794,7 @@ function StandardsPageContent() {
                         filteredRipTableData.map((row) => (
                           <tr
                             key={row.number}
-                            className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                            className="border-b border-border/70 hover:bg-muted/40 transition-colors"
                           >
                             <td className="px-4 py-3 font-medium text-primary">
                               RIP-{row.number}
@@ -1937,16 +1806,16 @@ function StandardsPageContent() {
                               {row.status ? (
                                 <StatusBadge status={row.status} />
                               ) : (
-                                <span className="text-slate-600 dark:text-slate-400">—</span>
+                                <span className="text-muted-foreground">—</span>
                               )}
                             </td>
                             <td className="px-4 py-3 text-foreground text-xs">
                               {row.author ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
                               {row.createdAt ?? "—"}
                             </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
+                            <td className="px-4 py-3 text-muted-foreground text-xs">
                               {row.lastCommit ?? "—"}
                             </td>
                             <td className="px-4 py-3 text-foreground">
@@ -1960,7 +1829,7 @@ function StandardsPageContent() {
                 ) : (
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="border-b border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/30">
+                      <tr className="border-b border-border/70 bg-muted/30">
                         {repo === "all" && (
                           <TH
                             label="Repo"
@@ -2034,9 +1903,9 @@ function StandardsPageContent() {
                           sortDir={sortDir}
                           onSort={handleSort}
                         />
-                        <th className="px-4 py-3 text-xs font-medium text-slate-600 dark:text-slate-400"></th>
+                        <th className="px-4 py-3 text-xs font-medium text-muted-foreground"></th>
                       </tr>
-                      <tr className="bg-slate-50 dark:bg-slate-800/20 border-b border-slate-200 dark:border-slate-700/50">
+                      <tr className="bg-muted/20 border-b border-border/70">
                         {repo === "all" && (
                           <td className="px-4 py-2">
                             <input
@@ -2044,7 +1913,7 @@ function StandardsPageContent() {
                               placeholder="Filter..."
                               value={columnSearch.repo || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, repo: e.target.value})}
-                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
+                              className="w-full px-2 py-1 text-xs rounded bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         )}
@@ -2055,7 +1924,7 @@ function StandardsPageContent() {
                               placeholder="Filter..."
                               value={columnSearch[col] || ''}
                               onChange={(e) => setColumnSearch({...columnSearch, [col]: e.target.value})}
-                              className="w-full px-2 py-1 text-xs rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400 focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
+                              className="w-full px-2 py-1 text-xs rounded bg-muted/60 border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-ring focus:ring-1 focus:ring-ring/30"
                             />
                           </td>
                         ))}
@@ -2067,7 +1936,7 @@ function StandardsPageContent() {
                         <tr>
                           <td
                             colSpan={repo === "all" ? 11 : 10}
-                            className="py-12 text-center text-slate-600 dark:text-slate-400"
+                            className="py-12 text-center text-muted-foreground"
                           >
                             No standards found
                           </td>
@@ -2082,7 +1951,7 @@ function StandardsPageContent() {
                           return (
                             <tr
                               key={`${row.repo}-${row.number}`}
-                              className="border-b border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/40 transition-colors"
+                              className="border-b border-border/70 hover:bg-muted/40 transition-colors"
                             >
                               {repo === "all" && (
                                 <td className="px-4 py-3">
@@ -2098,7 +1967,7 @@ function StandardsPageContent() {
                                 </td>
                               )}
                               <td className="px-4 py-3 font-medium text-primary">
-                                {row.number}
+                                {kind === "rips" ? `RIP-${row.number}` : kind === "ercs" ? `ERC-${row.number}` : `EIP-${row.number}`}
                               </td>
                               <td
                                 className="px-4 py-3 text-foreground max-w-[250px] truncate"
@@ -2115,10 +1984,10 @@ function StandardsPageContent() {
                               <td className="px-4 py-3">
                                 <TypeBadge value={row.category} />
                               </td>
-                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
+                              <td className="px-4 py-3 text-muted-foreground text-xs">
                                 {row.createdAt ?? "—"}
                               </td>
-                              <td className="px-4 py-3 text-slate-600 dark:text-slate-400 text-xs">
+                              <td className="px-4 py-3 text-muted-foreground text-xs">
                                 {row.updatedAt}
                               </td>
                               <td className="px-4 py-3 text-foreground">
@@ -2129,10 +1998,16 @@ function StandardsPageContent() {
                               </td>
                               <td className="px-4 py-3">
                                 <a
-                                  href={`https://github.com/${row.repo}/blob/master/EIPS/eip-${row.number}.md`}
+                                  href={
+                                    kind === "rips"
+                                      ? `https://github.com/ethereum/RIPs/blob/master/RIPS/rip-${row.number}.md`
+                                      : kind === "ercs"
+                                        ? `https://github.com/ethereum/ERCs/blob/master/ERCS/erc-${row.number}.md`
+                                        : `https://github.com/ethereum/EIPs/blob/master/EIPS/eip-${row.number}.md`
+                                  }
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="text-slate-600 dark:text-slate-400 hover:text-primary transition-colors"
+                                  className="text-muted-foreground hover:text-primary transition-colors"
                                   title="View on GitHub"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
@@ -2149,8 +2024,8 @@ function StandardsPageContent() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="px-6 py-4 border-t border-slate-200 dark:border-slate-700/50 flex items-center justify-between">
-                  <p className="text-xs text-slate-600 dark:text-slate-400">
+                <div className="px-6 py-4 border-t border-border/70 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
                     Page {page} of {totalPages} ({totalRows.toLocaleString()}{" "}
                     total)
                   </p>
@@ -2158,7 +2033,7 @@ function StandardsPageContent() {
                     <button
                       disabled={page <= 1}
                       onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 rounded-md border border-border bg-muted/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -2182,7 +2057,7 @@ function StandardsPageContent() {
                             "px-3 py-1.5 text-xs font-medium rounded-md border transition-colors",
                             page === pageNum
                               ? "bg-cyan-500/20 text-primary border-cyan-500/40"
-                              : "border-slate-700/50 bg-slate-800/30 text-slate-600 dark:text-slate-400 hover:text-white"
+                              : "border-border bg-muted/40 text-muted-foreground hover:text-foreground"
                           )}
                         >
                           {pageNum}
@@ -2194,7 +2069,7 @@ function StandardsPageContent() {
                       onClick={() =>
                         setPage((p) => Math.min(totalPages, p + 1))
                       }
-                      className="p-1.5 rounded-md border border-slate-200 dark:border-slate-700/50 bg-slate-100 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      className="p-1.5 rounded-md border border-border bg-muted/60 text-muted-foreground hover:text-foreground disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -2233,20 +2108,43 @@ function KPICard({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-slate-700/60 bg-white dark:bg-slate-900/40 p-4 shadow-sm dark:shadow-slate-950/30 hover:border-cyan-400/50 dark:hover:border-cyan-400/50 transition-colors">
+    <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm hover:border-primary/40 transition-colors">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400 mb-1">{label}</p>
-          <p className="text-3xl font-bold text-slate-900 dark:text-white">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+          <p className="text-3xl font-bold text-foreground">
             {typeof value === "number" ? value.toLocaleString() : value}
           </p>
           {subtitle && (
-            <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{subtitle}</p>
+            <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
         <div className={cn("rounded-full p-3", colorMap[color] ?? colorMap.cyan)}>
           {icon}
         </div>
+      </div>
+    </div>
+  );
+}
+
+function WatermarkedChartContainer({
+  config,
+  className,
+  children,
+}: {
+  config: ChartConfig;
+  className: string;
+  children: React.ReactElement;
+}) {
+  return (
+    <div className={cn("relative", className)}>
+      <ChartContainer config={config} className="h-full w-full">
+        {children}
+      </ChartContainer>
+      <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span className="select-none text-[11px] font-medium tracking-wide text-foreground/20 dark:text-white/15 sm:text-xs">
+          EIPsInsight.com
+        </span>
       </div>
     </div>
   );
@@ -2267,10 +2165,10 @@ function MultiSelect({
 
   return (
     <div className="space-y-1.5 relative">
-      <label className="text-xs font-semibold uppercase tracking-wider text-slate-600 dark:text-slate-400">{label}</label>
+      <label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</label>
       <button
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between py-1.5 px-2 text-sm h-9 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 text-slate-900 dark:text-slate-100 hover:border-ring transition-colors"
+        className="w-full flex items-center justify-between py-1.5 px-2 text-sm h-9 rounded-md bg-muted/60 border border-border text-foreground hover:border-ring transition-colors"
       >
         <span className="truncate">
           {selected.length === 0
@@ -2279,17 +2177,17 @@ function MultiSelect({
         </span>
         <ChevronDown
           className={cn(
-            "h-3.5 w-3.5 text-slate-600 dark:text-slate-400 transition-transform shrink-0 ml-2",
+            "h-3.5 w-3.5 text-muted-foreground transition-transform shrink-0 ml-2",
             open && "rotate-180"
           )}
         />
       </button>
       {open && (
-        <div className="absolute z-50 top-full mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl max-h-48 overflow-y-auto scrollbar-thin">
+        <div className="absolute z-50 top-full mt-1 w-full bg-card border border-border rounded-lg shadow-xl max-h-48 overflow-y-auto scrollbar-thin">
           {options.map((opt) => (
             <label
               key={opt}
-              className="flex items-center gap-2 px-3 py-1.5 hover:bg-slate-100 dark:hover:bg-slate-800/40 cursor-pointer"
+              className="flex items-center gap-2 px-3 py-1.5 hover:bg-muted/60 cursor-pointer"
             >
               <input
                 type="checkbox"
@@ -2301,13 +2199,13 @@ function MultiSelect({
                     onChange(selected.filter((s) => s !== opt));
                   }
                 }}
-                className="rounded border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50 text-primary focus:ring-ring/30"
+                className="rounded border-border bg-muted/60 text-primary focus:ring-ring/30"
               />
               <span className="text-sm text-foreground">{opt}</span>
             </label>
           ))}
           {options.length === 0 && (
-            <p className="px-3 py-2 text-xs text-slate-600 dark:text-slate-400">No options</p>
+            <p className="px-3 py-2 text-xs text-muted-foreground">No options</p>
           )}
         </div>
       )}
@@ -2333,7 +2231,7 @@ function TH({
   return (
     <th
       className={cn(
-        "px-4 py-3 text-xs font-medium text-slate-600 dark:text-slate-400 text-left whitespace-nowrap",
+        "px-4 py-3 text-xs font-medium text-muted-foreground text-left whitespace-nowrap",
         !noSort && "cursor-pointer hover:text-foreground transition-colors select-none"
       )}
       onClick={noSort ? undefined : () => onSort(col)}
@@ -2348,7 +2246,7 @@ function TH({
               <ArrowDown className="h-3 w-3 ml-1 text-primary" />
             )
           ) : (
-            <ArrowUpDown className="h-3 w-3 ml-1 text-slate-600 dark:text-slate-400" />
+            <ArrowUpDown className="h-3 w-3 ml-1 text-muted-foreground" />
           ))}
       </span>
     </th>

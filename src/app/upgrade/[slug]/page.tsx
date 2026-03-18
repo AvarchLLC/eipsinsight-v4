@@ -303,7 +303,7 @@ export default function UpgradePage() {
       <div className="relative z-10">
         {/* 1. Upgrade Header */}
         <div className="relative w-full bg-background border-b border-border/60">
-          <div className="mx-auto w-full px-4 pt-8 pb-4 sm:px-6 sm:pt-10 sm:pb-6 lg:px-8 xl:px-12">
+          <div className="mx-auto w-full px-3 pt-8 pb-4 sm:px-4 sm:pt-10 sm:pb-6 lg:px-5 xl:px-6">
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1 space-y-2">
                 {/* Upgrade name */}
@@ -408,9 +408,9 @@ export default function UpgradePage() {
           </div>
         </div>
 
-        <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 xl:px-12 pb-8">
+        <div className="mx-auto w-full space-y-6 px-3 pb-8 pt-3 sm:px-4 sm:pt-4 lg:px-5 xl:px-6">
           {!['pectra', 'fusaka'].includes(slug) && (
-            <div className="mt-4 mb-6">
+            <div>
               <UpgradeSubscriptionCard slug={upgrade.slug} name={upgrade.name} />
             </div>
           )}
@@ -421,7 +421,7 @@ export default function UpgradePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.05 }}
-            className="rounded-xl border border-border bg-card/60 p-4 sm:p-5 mb-6"
+            className="rounded-xl border border-border bg-card/60 p-4 sm:p-5"
           >
             <div className="flex items-center gap-2 mb-3">
               <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">About {upgrade.name}</h2>
@@ -583,7 +583,7 @@ export default function UpgradePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.35, delay: 0.08 }}
-              className="mb-6 overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-cyan-500/8 to-emerald-500/8 p-4 sm:p-5"
+              className="overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 via-cyan-500/8 to-emerald-500/8 p-4 sm:p-5"
             >
               <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
                 <div className="space-y-2">
@@ -687,7 +687,7 @@ export default function UpgradePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1 }}
-              className="mb-6"
+              className=""
             >
               <UpgradeTimelineChart data={timelineData} upgradeName={upgrade.name} />
             </motion.div>
@@ -699,7 +699,7 @@ export default function UpgradePage() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.15 }}
-            className="rounded-xl border border-border bg-card/60 p-4 sm:p-5 mb-6"
+            className="rounded-xl border border-border bg-card/60 p-4 sm:p-5"
           >
             <UpgradeEIPsShowcase
               upgradeName={upgrade.name}
@@ -716,7 +716,7 @@ export default function UpgradePage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.2 }}
-              className="mb-6"
+              className=""
             >
               <UpgradeBlogCarousel posts={blogPosts} upgradeName={upgrade.name} />
             </motion.div>

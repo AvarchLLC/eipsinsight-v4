@@ -5,6 +5,7 @@ import { unstable_cache } from 'next/cache'
 
 const CACHE_REVALIDATE = 300
 const HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL = '(2512, 3297, 1047)'
+const EXCLUDE_PLACEHOLDER_RIPS_SQL = 'rip_number <> 0'
 
 const getRIPKPIsCached = unstable_cache(
   async () => {
@@ -15,15 +16,17 @@ const getRIPKPIsCached = unstable_cache(
       WITH rip_stats AS (
         SELECT r.rip_number, r.title, COUNT(rc.id)::bigint AS commit_count
         FROM rips r LEFT JOIN rip_commits rc ON rc.rip_id = r.id
+        WHERE r.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
         GROUP BY r.rip_number, r.title
       ),
       recent AS (
         SELECT COUNT(*)::bigint AS cnt FROM rip_commits
-        WHERE commit_date >= NOW() - INTERVAL '30 days'
+        WHERE rip_id IN (SELECT id FROM rips WHERE ${EXCLUDE_PLACEHOLDER_RIPS_SQL})
+          AND commit_date >= NOW() - INTERVAL '30 days'
       )
       SELECT
-        (SELECT COUNT(*)::bigint FROM rips) AS total,
-        (SELECT COUNT(*)::bigint FROM rips WHERE status NOT IN ('Withdrawn', 'Stagnant') OR status IS NULL) AS active,
+        (SELECT COUNT(*)::bigint FROM rips WHERE ${EXCLUDE_PLACEHOLDER_RIPS_SQL}) AS total,
+        (SELECT COUNT(*)::bigint FROM rips WHERE ${EXCLUDE_PLACEHOLDER_RIPS_SQL} AND (status NOT IN ('Withdrawn', 'Stagnant') OR status IS NULL)) AS active,
         (SELECT cnt FROM recent) AS recent_commits,
         (SELECT rip_number FROM rip_stats ORDER BY commit_count DESC LIMIT 1) AS most_active_rip,
         (SELECT title FROM rip_stats ORDER BY commit_count DESC LIMIT 1) AS most_active_title,
@@ -47,10 +50,28 @@ function getStatusDistributionCached(repo: string | null) {
   return unstable_cache(
     async () => {
       const results = await prisma.$queryRawUnsafe<Array<{ status: string; repo_short: string; count: bigint }>>(
-        `SELECT s.status, LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short, COUNT(*)::bigint AS count
-         FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
-         WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-         GROUP BY s.status, LOWER(SPLIT_PART(r.name, '/', 2)) ORDER BY count DESC`,
+        `WITH base AS (
+           SELECT
+             COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+             LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short
+           FROM eip_snapshots s
+           JOIN eips e ON s.eip_id = e.id
+           LEFT JOIN repositories r ON s.repository_id = r.id
+           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+             AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+           UNION ALL
+           SELECT
+             COALESCE(NULLIF(rp.status, ''), 'Unknown') AS status,
+             'rips' AS repo_short
+           FROM rips rp
+           WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+             AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+         )
+         SELECT status, repo_short, COUNT(*)::bigint AS count
+         FROM base
+         GROUP BY status, repo_short
+         ORDER BY count DESC`,
         repo
       );
       return results.map(r => ({ status: r.status, repo: r.repo_short || 'unknown', count: Number(r.count) }));
@@ -64,13 +85,34 @@ function getCategoryBreakdownCached(repo: string | null) {
   return unstable_cache(
     async () => {
       const results = await prisma.$queryRawUnsafe<Array<{ category: string; count: bigint }>>(
-        `SELECT
-           CASE WHEN s.category IS NOT NULL AND TRIM(s.category) <> '' THEN s.category
-                WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type ELSE 'Other' END AS category,
-           COUNT(*)::bigint AS count
-         FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
-         WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-         GROUP BY 1 ORDER BY count DESC`,
+        `WITH base AS (
+           SELECT
+             CASE
+               WHEN s.category IS NOT NULL AND TRIM(s.category) <> '' THEN s.category
+               WHEN TRIM(COALESCE(s.type, '')) <> '' THEN s.type
+               ELSE 'Other'
+             END AS category
+           FROM eip_snapshots s
+           JOIN eips e ON s.eip_id = e.id
+           LEFT JOIN repositories r ON s.repository_id = r.id
+           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+             AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+           UNION ALL
+           SELECT
+             CASE
+               WHEN COALESCE(rp.title, '') ~* '\\mRRC[-\\s]?[0-9]+' OR COALESCE(rp.title, '') ~* '^RRC\\M'
+                 THEN 'RRC'
+               ELSE 'RIP'
+             END AS category
+           FROM rips rp
+           WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+             AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+         )
+         SELECT category, COUNT(*)::bigint AS count
+         FROM base
+         GROUP BY 1
+         ORDER BY count DESC`,
         repo
       );
       return results.map(r => ({ category: r.category, count: Number(r.count) }));
@@ -86,7 +128,10 @@ const getStatusMatrixCached = unstable_cache(
       `SELECT s.status,
          CASE WHEN s.category = 'ERC' OR LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' THEN 'ERCs' ELSE 'EIPs' END AS group_name,
          COUNT(*)::bigint AS count
-       FROM eip_snapshots s LEFT JOIN repositories r ON s.repository_id = r.id
+       FROM eip_snapshots s
+       JOIN eips e ON s.eip_id = e.id
+       LEFT JOIN repositories r ON s.repository_id = r.id
+       WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
        GROUP BY 1, 2 ORDER BY count DESC`
     );
     return results.map(r => ({ status: r.status, group: r.group_name, count: Number(r.count) }));
@@ -142,7 +187,7 @@ const unifiedTableInputSchema = z.object({
 
 export const standardsProcedures = {
   // ——— KPIs ———
-  getKPIs: optionalAuthProcedure
+getKPIs: optionalAuthProcedure
     .input(repoFilterSchema)
     .handler(async ({ input }) => {
 const results = await prisma.$queryRawUnsafe<Array<{
@@ -152,15 +197,30 @@ const results = await prisma.$queryRawUnsafe<Array<{
         new_this_year: bigint;
       }>>(
         `
+        WITH base AS (
+          SELECT
+            COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+            e.created_at::date AS created_at
+          FROM eip_snapshots s
+          JOIN eips e ON s.eip_id = e.id
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+            AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+              OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+          UNION ALL
+          SELECT
+            COALESCE(NULLIF(rp.status, ''), 'Unknown') AS status,
+            rp.created_at::date AS created_at
+          FROM rips rp
+          WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+            AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+        )
         SELECT
           COUNT(*)::bigint AS total,
-          COUNT(*) FILTER (WHERE s.status IN ('Draft', 'Review', 'Last Call'))::bigint AS in_review,
-          COUNT(*) FILTER (WHERE s.status = 'Final')::bigint AS finalized,
-          COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM e.created_at) = EXTRACT(YEAR FROM CURRENT_DATE))::bigint AS new_this_year
-        FROM eip_snapshots s
-        JOIN eips e ON s.eip_id = e.id
-        LEFT JOIN repositories r ON s.repository_id = r.id
-        WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          COUNT(*) FILTER (WHERE status IN ('Draft', 'Review', 'Last Call'))::bigint AS in_review,
+          COUNT(*) FILTER (WHERE status = 'Final')::bigint AS finalized,
+          COUNT(*) FILTER (WHERE EXTRACT(YEAR FROM created_at) = EXTRACT(YEAR FROM CURRENT_DATE))::bigint AS new_this_year
+        FROM base
       `,
         input.repo ?? null
       );
@@ -199,16 +259,29 @@ const results = await prisma.$queryRawUnsafe<Array<{
         count: bigint;
       }>>(
         `
-        SELECT
-          EXTRACT(YEAR FROM e.created_at)::int AS year,
-          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
-          COUNT(*)::bigint AS count
-        FROM eips e
-        JOIN eip_snapshots s ON s.eip_id = e.id
-        LEFT JOIN repositories r ON s.repository_id = r.id
-        WHERE e.created_at IS NOT NULL
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY EXTRACT(YEAR FROM e.created_at), LOWER(SPLIT_PART(r.name, '/', 2))
+        WITH base AS (
+          SELECT
+            EXTRACT(YEAR FROM e.created_at)::int AS year,
+            LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short
+          FROM eips e
+          JOIN eip_snapshots s ON s.eip_id = e.id
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE e.created_at IS NOT NULL
+            AND e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+            AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+              OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+          UNION ALL
+          SELECT
+            EXTRACT(YEAR FROM rp.created_at)::int AS year,
+            'rips' AS repo_short
+          FROM rips rp
+          WHERE rp.created_at IS NOT NULL
+            AND rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+            AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+        )
+        SELECT year, repo_short, COUNT(*)::bigint AS count
+        FROM base
+        GROUP BY year, repo_short
         ORDER BY year ASC
       `,
         input.repo ?? null
@@ -235,27 +308,62 @@ getCategoryBreakdown: publicProcedure
     .handler(async ({ input }) => {
 const [statuses, types, categories] = await Promise.all([
         prisma.$queryRawUnsafe<Array<{ value: string }>>(
-          `SELECT DISTINCT s.status AS value FROM eip_snapshots s
-           LEFT JOIN repositories r ON s.repository_id = r.id
-           WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-             AND s.status IS NOT NULL
-           ORDER BY value`,
+          `WITH vals AS (
+             SELECT DISTINCT COALESCE(NULLIF(s.status, ''), 'Unknown') AS value
+             FROM eip_snapshots s
+             JOIN eips e ON s.eip_id = e.id
+             LEFT JOIN repositories r ON s.repository_id = r.id
+             WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+               AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+             UNION
+             SELECT DISTINCT COALESCE(NULLIF(rp.status, ''), 'Unknown') AS value
+             FROM rips rp
+             WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+               AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+           )
+           SELECT value FROM vals ORDER BY value`,
           input.repo ?? null
         ),
         prisma.$queryRawUnsafe<Array<{ value: string }>>(
-          `SELECT DISTINCT s.type AS value FROM eip_snapshots s
-           LEFT JOIN repositories r ON s.repository_id = r.id
-           WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-             AND s.type IS NOT NULL
-           ORDER BY value`,
+          `WITH vals AS (
+             SELECT DISTINCT s.type AS value
+             FROM eip_snapshots s
+             JOIN eips e ON s.eip_id = e.id
+             LEFT JOIN repositories r ON s.repository_id = r.id
+             WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+               AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+               AND s.type IS NOT NULL
+             UNION
+             SELECT 'RIP' AS value
+             WHERE ($1::text IS NULL OR LOWER($1::text) = 'rips')
+           )
+           SELECT value FROM vals ORDER BY value`,
           input.repo ?? null
         ),
         prisma.$queryRawUnsafe<Array<{ value: string }>>(
-          `SELECT DISTINCT s.category AS value FROM eip_snapshots s
-           LEFT JOIN repositories r ON s.repository_id = r.id
-           WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-             AND s.category IS NOT NULL
-           ORDER BY value`,
+          `WITH vals AS (
+             SELECT DISTINCT s.category AS value
+             FROM eip_snapshots s
+             JOIN eips e ON s.eip_id = e.id
+             LEFT JOIN repositories r ON s.repository_id = r.id
+             WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+               AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+               AND s.category IS NOT NULL
+             UNION
+             SELECT DISTINCT
+               CASE
+                 WHEN COALESCE(rp.title, '') ~* '\\mRRC[-\\s]?[0-9]+' OR COALESCE(rp.title, '') ~* '^RRC\\M'
+                   THEN 'RRC'
+                 ELSE 'RIP'
+               END AS value
+             FROM rips rp
+             WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+               AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+           )
+           SELECT value FROM vals ORDER BY value`,
           input.repo ?? null
         ),
       ]);
@@ -271,93 +379,128 @@ const [statuses, types, categories] = await Promise.all([
   getTable: optionalAuthProcedure
     .input(tableInputSchema)
     .handler(async ({ input }) => {
-const {
-        repo, status, type, category, yearFrom, yearTo,
-        search, sortBy, sortDir, page, pageSize,
-      } = input;
+      const { repo, status, type, category, yearFrom, yearTo, search, sortBy, sortDir, page, pageSize } = input;
       const offset = ((page ?? 1) - 1) * (pageSize ?? 50);
 
-      // Build WHERE conditions
       const conditions: string[] = ['1=1'];
       const params: unknown[] = [];
       let paramIdx = 1;
 
       if (repo) {
-        conditions.push(`LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($${paramIdx})`);
+        conditions.push(`u.repo_short = LOWER($${paramIdx}::text)`);
         params.push(repo);
         paramIdx++;
       }
-
       if (status && status.length > 0) {
-        conditions.push(`s.status = ANY($${paramIdx}::text[])`);
+        conditions.push(`u.status = ANY($${paramIdx}::text[])`);
         params.push(status);
         paramIdx++;
       }
-
       if (type && type.length > 0) {
-        conditions.push(`s.type = ANY($${paramIdx}::text[])`);
+        conditions.push(`u.type = ANY($${paramIdx}::text[])`);
         params.push(type);
         paramIdx++;
       }
-
       if (category && category.length > 0) {
-        conditions.push(`s.category = ANY($${paramIdx}::text[])`);
+        conditions.push(`u.category = ANY($${paramIdx}::text[])`);
         params.push(category);
         paramIdx++;
       }
-
       if (yearFrom) {
-        conditions.push(`EXTRACT(YEAR FROM e.created_at) >= $${paramIdx}`);
+        conditions.push(`EXTRACT(YEAR FROM u.created_at) >= $${paramIdx}`);
         params.push(yearFrom);
         paramIdx++;
       }
-
       if (yearTo) {
-        conditions.push(`EXTRACT(YEAR FROM e.created_at) <= $${paramIdx}`);
+        conditions.push(`EXTRACT(YEAR FROM u.created_at) <= $${paramIdx}`);
         params.push(yearTo);
         paramIdx++;
       }
-
       if (search && search.trim()) {
         conditions.push(`(
-          e.eip_number::text ILIKE '%' || $${paramIdx} || '%'
-          OR e.title ILIKE '%' || $${paramIdx} || '%'
-          OR e.author ILIKE '%' || $${paramIdx} || '%'
+          u.eip_number::text ILIKE '%' || $${paramIdx} || '%'
+          OR COALESCE(u.title, '') ILIKE '%' || $${paramIdx} || '%'
+          OR COALESCE(u.author, '') ILIKE '%' || $${paramIdx} || '%'
         )`);
         params.push(search.trim());
         paramIdx++;
       }
 
       const whereClause = conditions.join(' AND ');
-
-      // Sort mapping
       const sortMap: Record<string, string> = {
-        number: 'e.eip_number',
-        title: 'e.title',
-        status: 's.status',
-        type: 's.type',
-        category: 's.category',
-        created_at: 'e.created_at',
-        updated_at: 's.updated_at',
-        days_in_status: 'days_in_status',
-        linked_prs: 'linked_pr_count',
+        number: 'u.eip_number',
+        title: 'u.title',
+        status: 'u.status',
+        type: 'u.type',
+        category: 'u.category',
+        created_at: 'u.created_at',
+        updated_at: 'u.updated_at',
+        days_in_status: 'u.days_in_status',
+        linked_prs: 'u.linked_pr_count',
       };
-      const orderCol = sortMap[sortBy ?? 'number'] ?? 'e.eip_number';
+      const orderCol = sortMap[sortBy ?? 'number'] ?? 'u.eip_number';
       const orderDir = sortDir === 'asc' ? 'ASC' : 'DESC';
 
-      // Count query
+      const unifiedCte = `
+        WITH rip_repo AS (
+          SELECT id FROM repositories WHERE LOWER(SPLIT_PART(name, '/', 2)) = 'rips' LIMIT 1
+        ),
+        eip_rows AS (
+          SELECT
+            COALESCE(r.name, 'unknown') AS repo_name,
+            LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short,
+            e.eip_number,
+            e.title,
+            e.author,
+            COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+            COALESCE(NULLIF(s.type, ''), 'Unknown') AS type,
+            COALESCE(NULLIF(s.category, ''), NULLIF(s.type, ''), 'Other') AS category,
+            e.created_at::timestamp AS created_at,
+            s.updated_at AS updated_at,
+            COALESCE(EXTRACT(DAY FROM (NOW() - s.updated_at))::int, 0) AS days_in_status,
+            (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = s.repository_id) AS linked_pr_count
+          FROM eip_snapshots s
+          JOIN eips e ON s.eip_id = e.id
+          LEFT JOIN repositories r ON s.repository_id = r.id
+          WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+        ),
+        rip_rows AS (
+          SELECT
+            'ethereum/RIPs'::text AS repo_name,
+            'rips'::text AS repo_short,
+            rp.rip_number AS eip_number,
+            rp.title,
+            rp.author,
+            COALESCE(NULLIF(rp.status, ''), 'Unknown') AS status,
+            'RIP'::text AS type,
+            CASE
+              WHEN COALESCE(rp.title, '') ~* '\\mRRC[-\\s]?[0-9]+' OR COALESCE(rp.title, '') ~* '^RRC\\M' THEN 'RRC'
+              ELSE 'RIP'
+            END AS category,
+            rp.created_at::timestamp AS created_at,
+            COALESCE(MAX(rc.commit_date), rp.created_at::timestamp, NOW()) AS updated_at,
+            COALESCE(EXTRACT(DAY FROM (NOW() - COALESCE(MAX(rc.commit_date), rp.created_at::timestamp, NOW())))::int, 0) AS days_in_status,
+            0::bigint AS linked_pr_count
+          FROM rips rp
+          LEFT JOIN rip_commits rc ON rc.rip_id = rp.id
+          WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+          GROUP BY rp.rip_number, rp.title, rp.author, rp.status, rp.created_at
+        ),
+        u AS (
+          SELECT * FROM eip_rows
+          UNION ALL
+          SELECT * FROM rip_rows
+        )`;
+
       const countResult = await prisma.$queryRawUnsafe<Array<{ total: bigint }>>(
-        `SELECT COUNT(*)::bigint AS total
-         FROM eip_snapshots s
-         JOIN eips e ON s.eip_id = e.id
-         LEFT JOIN repositories r ON s.repository_id = r.id
+        `${unifiedCte}
+         SELECT COUNT(*)::bigint AS total
+         FROM u
          WHERE ${whereClause}`,
         ...params
       );
 
       const total = Number(countResult[0]?.total ?? 0);
-
-      // Data query
       const limitParam = paramIdx;
       params.push(pageSize ?? 50);
       paramIdx++;
@@ -377,27 +520,23 @@ const {
         days_in_status: number;
         linked_pr_count: bigint;
       }>>(
-        `SELECT
-          COALESCE(r.name, 'unknown') AS repo_name,
-          e.eip_number,
-          e.title,
-          e.author,
-          s.status,
-          s.type,
-          s.category,
-          TO_CHAR(e.created_at, 'YYYY-MM-DD') AS created_at,
-          TO_CHAR(s.updated_at, 'YYYY-MM-DD') AS updated_at,
-          COALESCE(
-            EXTRACT(DAY FROM (NOW() - s.updated_at))::int,
-            0
-          ) AS days_in_status,
-          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = COALESCE(s.repository_id, r.id)) AS linked_pr_count
-        FROM eip_snapshots s
-        JOIN eips e ON s.eip_id = e.id
-        LEFT JOIN repositories r ON s.repository_id = r.id
-        WHERE ${whereClause}
-        ORDER BY ${orderCol} ${orderDir} NULLS LAST
-        LIMIT $${limitParam} OFFSET $${offsetParam}`,
+        `${unifiedCte}
+         SELECT
+           u.repo_name,
+           u.eip_number,
+           u.title,
+           u.author,
+           u.status,
+           u.type,
+           u.category,
+           TO_CHAR(u.created_at, 'YYYY-MM-DD') AS created_at,
+           TO_CHAR(u.updated_at, 'YYYY-MM-DD') AS updated_at,
+           u.days_in_status,
+           u.linked_pr_count
+         FROM u
+         WHERE ${whereClause}
+         ORDER BY ${orderCol} ${orderDir} NULLS LAST
+         LIMIT $${limitParam} OFFSET $${offsetParam}`,
         ...params
       );
 
@@ -406,7 +545,7 @@ const {
         page: page ?? 1,
         pageSize: pageSize ?? 50,
         totalPages: Math.ceil(total / (pageSize ?? 50)),
-        rows: rows.map(r => ({
+        rows: rows.map((r) => ({
           repo: r.repo_name,
           number: r.eip_number,
           title: r.title,
@@ -435,7 +574,7 @@ const {
 const { search, sortBy, sortDir, page, pageSize } = input;
       const offset = ((page ?? 1) - 1) * (pageSize ?? 50);
 
-      const conditions: string[] = ['1=1'];
+      const conditions: string[] = ['r.rip_number <> 0'];
       const params: unknown[] = [];
       let paramIdx = 1;
 
@@ -530,6 +669,7 @@ const { search, sortBy, sortDir, page, pageSize } = input;
           COUNT(*)::bigint AS count
         FROM rips
         WHERE created_at IS NOT NULL
+          AND ${EXCLUDE_PLACEHOLDER_RIPS_SQL}
         GROUP BY EXTRACT(YEAR FROM created_at)
         ORDER BY year ASC`
       );
@@ -676,8 +816,10 @@ const results = await prisma.$queryRawUnsafe<Array<{
            WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'eips')::bigint AS active_prs,
           COUNT(DISTINCT s.eip_id) FILTER (WHERE s.status = 'Final')::bigint AS finals
         FROM eip_snapshots s
+        JOIN eips e ON e.id = s.eip_id
         LEFT JOIN repositories r ON s.repository_id = r.id
         WHERE LOWER(SPLIT_PART(r.name, '/', 2)) = 'eips'
+          AND e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
           AND r.active = true`
       );
 
@@ -694,8 +836,11 @@ const results = await prisma.$queryRawUnsafe<Array<{
            WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'ercs')::bigint AS active_prs,
           COUNT(DISTINCT s.eip_id) FILTER (WHERE s.status = 'Final')::bigint AS finals
         FROM eip_snapshots s
+        JOIN eips e ON e.id = s.eip_id
         LEFT JOIN repositories r ON s.repository_id = r.id
-        WHERE s.category = 'ERC' AND r.id IS NOT NULL`
+        WHERE s.category = 'ERC'
+          AND e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+          AND r.id IS NOT NULL`
       );
 
       // RIPs: from rips table + open PRs from pull_requests (if ethereum/RIPs exists in repositories)
@@ -705,8 +850,8 @@ const results = await prisma.$queryRawUnsafe<Array<{
         active_prs: bigint;
       }>>(
         `SELECT
-          (SELECT COUNT(*)::bigint FROM rips)::bigint AS proposals,
-          (SELECT COUNT(*) FILTER (WHERE status = 'Final')::bigint FROM rips)::bigint AS finals,
+          (SELECT COUNT(*)::bigint FROM rips WHERE ${EXCLUDE_PLACEHOLDER_RIPS_SQL})::bigint AS proposals,
+          (SELECT COUNT(*) FILTER (WHERE status = 'Final')::bigint FROM rips WHERE ${EXCLUDE_PLACEHOLDER_RIPS_SQL})::bigint AS finals,
           (SELECT COUNT(*)::bigint FROM pull_requests pr
            JOIN repositories r2 ON pr.repository_id = r2.id
            WHERE pr.state = 'open' AND LOWER(SPLIT_PART(r2.name, '/', 2)) = 'rips')::bigint AS active_prs`
@@ -1423,7 +1568,7 @@ if (input.repo === 'rips') {
           s.category,
           TO_CHAR(e.created_at, 'YYYY-MM-DD') AS created_at,
           TO_CHAR(s.updated_at, 'YYYY-MM-DD') AS updated_at,
-          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = COALESCE(s.repository_id, r.id)) AS linked_prs
+          (SELECT COUNT(*)::bigint FROM pull_request_eips pre WHERE pre.eip_number = e.eip_number AND pre.repository_id = s.repository_id) AS linked_prs
         FROM eip_snapshots s
         JOIN eips e ON s.eip_id = e.id
         LEFT JOIN repositories r ON s.repository_id = r.id

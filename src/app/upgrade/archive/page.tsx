@@ -230,10 +230,10 @@ export default function PreviousUpgradesPage() {
         title="Previous Upgrades (2015–2024)"
         description="Historical upgrade overview with timeline spacing, size comparison, and upgrade-level context."
         sectionId="previous-upgrades-overview"
-        className="bg-background"
+        className="bg-background [&>div:last-child]:px-5 sm:[&>div:last-child]:px-6 lg:[&>div:last-child]:px-7 xl:[&>div:last-child]:px-8"
       />
 
-      <div className="w-full px-4 pb-10 sm:px-6 lg:px-8 xl:px-12">
+      <div className="w-full px-3 pb-10 sm:px-4 lg:px-5 xl:px-6">
         <div className="h-px w-full bg-border/60" />
 
         <section className="pt-6 pb-4">

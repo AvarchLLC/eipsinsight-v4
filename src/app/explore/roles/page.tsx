@@ -304,7 +304,7 @@ function RolesPageContent() {
   return (
     <div className="relative min-h-screen w-full bg-background">
       <section className="w-full pb-2 pt-4">
-        <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <Link
             href="/explore"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -338,7 +338,7 @@ function RolesPageContent() {
       </section>
 
       <section className="w-full pb-6">
-        <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <div className="rounded-xl border border-border bg-card/60 p-3">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-1">

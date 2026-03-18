@@ -181,7 +181,7 @@ function TrendingPageContent() {
   return (
     <div className="relative min-h-screen w-full bg-background">
       <section className="w-full pb-2 pt-4">
-        <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             Back to Explore
@@ -294,7 +294,7 @@ function TrendingPageContent() {
       </section>
 
       <section className="w-full py-4">
-        <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <div className="mb-2 flex items-center justify-between">
             <p className="text-sm text-muted-foreground">Matrix view first for quick pattern scanning.</p>
             <button
@@ -317,7 +317,7 @@ function TrendingPageContent() {
       </section>
 
       <section className="w-full pb-8">
-        <div className="mx-auto w-full max-w-[90rem] px-4 sm:px-6 lg:px-6 xl:px-8">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <TrendingList
             proposals={proposals}
             loading={proposalsLoading}

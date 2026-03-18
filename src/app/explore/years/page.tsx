@@ -230,7 +230,7 @@ function YearsPageContent() {
       </div>
 
       <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <Link
             href="/explore"
             className={cn(
@@ -258,7 +258,7 @@ function YearsPageContent() {
       </section>
 
       <section className="relative w-full py-4">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           {!loading && years.length > 0 && (
             <YearTimeline
               years={years}
@@ -272,7 +272,7 @@ function YearsPageContent() {
       <SectionSeparator />
 
       <section className="relative w-full py-8">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <div className="mb-4 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
@@ -341,7 +341,7 @@ function YearsPageContent() {
       <SectionSeparator />
 
       <section className="relative w-full py-8">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <YearActivityChart
             data={chartData}
             year={selectedYear}
@@ -353,7 +353,7 @@ function YearsPageContent() {
       <SectionSeparator />
 
       <section className="relative w-full py-8">
-        <div className="mx-auto w-full max-w-7xl px-4 sm:px-6">
+        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
           <div className="mb-3 inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
             <TrendingUp className="h-3.5 w-3.5 text-primary" />
             Move from macro trends to proposal-level evidence.

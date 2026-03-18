@@ -19,13 +19,13 @@ const getYearsOverviewCached = unstable_cache(
         COALESCE(s.cnt, 0) AS status_changes,
         COALESCE(p.cnt, 0) AS active_prs
       FROM (
-        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int AS y FROM eips WHERE created_at IS NOT NULL
+        SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int AS y FROM eips WHERE created_at IS NOT NULL AND eip_number NOT IN (2512, 3297, 1047)
         UNION
         SELECT DISTINCT EXTRACT(YEAR FROM changed_at)::int FROM eip_status_events
         UNION
         SELECT DISTINCT EXTRACT(YEAR FROM created_at)::int FROM pull_requests WHERE created_at IS NOT NULL
       ) years
-      LEFT JOIN (SELECT EXTRACT(YEAR FROM created_at)::int AS y, COUNT(*) AS cnt FROM eips WHERE created_at IS NOT NULL GROUP BY 1) e ON e.y = years.y
+      LEFT JOIN (SELECT EXTRACT(YEAR FROM created_at)::int AS y, COUNT(*) AS cnt FROM eips WHERE created_at IS NOT NULL AND eip_number NOT IN (2512, 3297, 1047) GROUP BY 1) e ON e.y = years.y
       LEFT JOIN (SELECT EXTRACT(YEAR FROM changed_at)::int AS y, COUNT(*) AS cnt FROM eip_status_events GROUP BY 1) s ON s.y = years.y
       LEFT JOIN (SELECT EXTRACT(YEAR FROM created_at)::int AS y, COUNT(*) AS cnt FROM pull_requests WHERE created_at IS NOT NULL GROUP BY 1) p ON p.y = years.y
       ORDER BY years.y DESC
@@ -52,12 +52,12 @@ const getYearStatsCached = unstable_cache(
       total_prs: bigint;
     }>>`
       SELECT
-        (SELECT COUNT(*) FROM eips WHERE created_at >= ${startDate} AND created_at <= ${endDate}) AS total_new_eips,
+        (SELECT COUNT(*) FROM eips WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND eip_number NOT IN (2512, 3297, 1047)) AS total_new_eips,
         (
           SELECT s.status
           FROM eips e
           JOIN eip_snapshots s ON s.eip_id = e.id
-          WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate} AND s.status IS NOT NULL
+          WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate} AND e.eip_number NOT IN (2512, 3297, 1047) AND s.status IS NOT NULL
           GROUP BY s.status
           ORDER BY COUNT(*) DESC
           LIMIT 1
@@ -66,7 +66,7 @@ const getYearStatsCached = unstable_cache(
           SELECT s.category
           FROM eips e
           JOIN eip_snapshots s ON s.eip_id = e.id
-          WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate} AND s.category IS NOT NULL
+          WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate} AND e.eip_number NOT IN (2512, 3297, 1047) AND s.category IS NOT NULL
           GROUP BY s.category
           ORDER BY COUNT(*) DESC
           LIMIT 1
@@ -109,7 +109,7 @@ const getYearActivityChartCached = unstable_cache(
       ) et ON et.m = months.m
       LEFT JOIN (
         SELECT EXTRACT(MONTH FROM created_at)::int AS m, COUNT(*) AS cnt
-        FROM eips WHERE created_at >= ${startDate} AND created_at <= ${endDate}
+        FROM eips WHERE created_at >= ${startDate} AND created_at <= ${endDate} AND eip_number NOT IN (2512, 3297, 1047)
         GROUP BY 1
       ) ne ON ne.m = months.m
       LEFT JOIN (
@@ -270,7 +270,7 @@ const getStatusCountsCached = unstable_cache(
         FROM eip_snapshots s
         JOIN eips e ON e.id = s.eip_id
         WHERE s.status IS NOT NULL
-          AND e.eip_number <> 0
+          AND e.eip_number NOT IN (2512, 3297, 1047)
         UNION ALL
         SELECT COALESCE(r.status, 'Unknown') AS status,
                COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = r.id), r.created_at) AS updated_at
@@ -302,7 +302,7 @@ const getCategoryCountsCached = unstable_cache(
         FROM eip_snapshots s
         JOIN eips e ON e.id = s.eip_id
         WHERE s.category IS NOT NULL
-          AND e.eip_number <> 0
+          AND e.eip_number NOT IN (2512, 3297, 1047)
         UNION ALL
         SELECT 'RIP'::text AS category
         FROM rips
@@ -441,11 +441,13 @@ export const exploreProcedures = {
           FROM eips e
           LEFT JOIN eip_snapshots s ON e.id = s.eip_id
           WHERE e.created_at >= ${startDate} AND e.created_at <= ${endDate}
+            AND e.eip_number NOT IN (2512, 3297, 1047)
           ORDER BY e.created_at DESC
           LIMIT ${input.limit} OFFSET ${input.offset}
         `,
         prisma.$queryRaw<Array<{ count: bigint }>>`
           SELECT COUNT(*) AS count FROM eips WHERE created_at >= ${startDate} AND created_at <= ${endDate}
+            AND eip_number NOT IN (2512, 3297, 1047)
         `,
       ]);
 
@@ -584,7 +586,7 @@ export const exploreProcedures = {
             FROM eip_snapshots s
             JOIN eips e ON e.id = s.eip_id
             LEFT JOIN repositories r ON r.id = s.repository_id
-            WHERE e.eip_number <> 0 ${filterClause}
+            WHERE e.eip_number NOT IN (2512, 3297, 1047) ${filterClause}
             ${ripEnabled ? `UNION ALL
             SELECT
               rip.id AS eip_id,
@@ -610,7 +612,7 @@ export const exploreProcedures = {
             SELECT s.eip_id
             FROM eip_snapshots s
             JOIN eips e ON e.id = s.eip_id
-            WHERE e.eip_number <> 0 ${filterClause}
+            WHERE e.eip_number NOT IN (2512, 3297, 1047) ${filterClause}
             ${ripEnabled ? `UNION ALL
             SELECT rip.id
             FROM rips rip
@@ -1445,7 +1447,7 @@ export const exploreProcedures = {
         LEFT JOIN previous_pr_events ppe ON ppe.eip_id = e.id
         LEFT JOIN current_status_changes csc ON csc.eip_id = e.id
         LEFT JOIN previous_status_changes psc ON psc.eip_id = e.id
-        WHERE e.eip_number <> 0
+        WHERE e.eip_number NOT IN (2512, 3297, 1047)
           AND (
             COALESCE(cpe.pr_events_count, 0) > 0
             OR COALESCE(csc.status_changes_count, 0) > 0
@@ -1662,7 +1664,7 @@ export const exploreProcedures = {
           LEFT JOIN eip_status_events ese ON ese.eip_id = e.id AND ese.changed_at >= ${fromDate}
           LEFT JOIN eip_snapshots es ON es.eip_id = e.id
           LEFT JOIN repositories r ON r.id = es.repository_id
-          WHERE e.eip_number <> 0
+          WHERE e.eip_number NOT IN (2512, 3297, 1047)
             AND (${repoFilter}::text IS NULL OR LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = ${repoFilter})
           GROUP BY e.id
         )
