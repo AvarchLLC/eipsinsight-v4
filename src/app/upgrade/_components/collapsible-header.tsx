@@ -28,7 +28,7 @@ export function CollapsibleHeader() {
 
   return (
     <section className="relative w-full bg-background">
-      <div className="w-full px-4 pt-10 pb-4 sm:px-6 sm:pt-12 sm:pb-6 lg:px-8 xl:px-12">
+      <div className="w-full px-3 pt-10 pb-4 sm:px-4 sm:pt-12 sm:pb-6 lg:px-5 xl:px-6">
         <div className="space-y-4">
           {/* Main Header */}
           <div className="flex items-start justify-between gap-4">

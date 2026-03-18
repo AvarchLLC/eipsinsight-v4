@@ -1,29 +1,109 @@
 import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
-import { buildClientTeamExclusionKeys } from '@/data/client-team-exclusions'
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades'
 
-const CLIENT_TEAM_AUTHOR_EXCLUSIONS = buildClientTeamExclusionKeys();
-const CLIENT_TEAM_AUTHOR_EXCLUSION_SET = new Set(CLIENT_TEAM_AUTHOR_EXCLUSIONS);
+const AUTHOR_CANONICAL_OVERRIDES: Record<string, string> = {
+  vitalikbuterin: 'vbuterin',
+  vitalikethereumorg: 'vbuterin',
+  vitalik: 'vbuterin',
+  vbuterin: 'vbuterin',
+  timbeiko: 'timbeiko',
+  tkstanczak: 'tkstanczak',
+};
 
-function normalizeAuthorKeys(author: string): string[] {
-  return author
-    .toLowerCase()
-    // Split parenthetical aliases like "sam wilson (@samwilsn)" into separate tokens
-    .replace(/\(([^)]+)\)/g, ', $1')
-    .replace(/\s+and\s+/g, ',')
-    .replace(/\s*&\s*/g, ',')
-    .replace(/;/g, ',')
-    .replace(/\//g, ',')
-    .split(',')
-    .map((part) =>
-      part
-        .trim()
-        .replace(/^@+/, '')
-        .replace(/\s+/g, ' ')
-    )
-    .filter((part) => part.length > 0 && !part.includes('bot') && !CLIENT_TEAM_AUTHOR_EXCLUSION_SET.has(part));
+function compactAuthorKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function toCanonicalAuthorKey(value: string): string {
+  const compact = compactAuthorKey(value);
+  return AUTHOR_CANONICAL_OVERRIDES[compact] ?? compact;
+}
+
+function extractAuthorParts(author: string): {
+  handles: string[];
+  fallbackKeys: string[];
+  namesByHandle: Record<string, string>;
+  displayCandidates: string[];
+} {
+  const pieces = author
+    .split(/[,;/]|(?:\s+and\s+)|(?:\s*&\s*)/i)
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  const handles = new Set<string>();
+  const fallbackKeys = new Set<string>();
+  const namesByHandle: Record<string, string> = {};
+  const displayCandidates = new Set<string>();
+
+  const addHandle = (rawHandle: string, displayName?: string) => {
+    const canonical = toCanonicalAuthorKey(rawHandle.replace(/^@+/, ''));
+    if (!canonical) return;
+    handles.add(canonical);
+    if (displayName) {
+      const clean = displayName.trim().replace(/\s+/g, ' ');
+      if (clean) {
+        namesByHandle[canonical] = clean;
+        displayCandidates.add(clean);
+      }
+    }
+  };
+
+  const addFallback = (raw: string) => {
+    const clean = raw.trim().replace(/\s+/g, ' ');
+    if (!clean) return;
+    const lower = clean.toLowerCase();
+    if (lower === 'et al.' || lower === 'et al') return;
+    displayCandidates.add(clean);
+    const canonical = toCanonicalAuthorKey(clean);
+    if (canonical) fallbackKeys.add(canonical);
+  };
+
+  pieces.forEach((piece) => {
+    const parenHandle = piece.match(/^(.+?)\s*\(@([a-z0-9-]+)\)$/i);
+    if (parenHandle) {
+      addHandle(parenHandle[2], parenHandle[1]);
+      addFallback(parenHandle[1]);
+      return;
+    }
+
+    const angle = piece.match(/^(.+?)\s*<([^>]+)>$/);
+    if (angle) {
+      const name = angle[1]?.trim();
+      const email = angle[2]?.trim();
+      if (name) addFallback(name);
+      if (email) {
+        const local = email.split('@')[0]?.trim();
+        if (local) {
+          addHandle(local, name || local);
+          fallbackKeys.add(toCanonicalAuthorKey(local));
+        }
+      }
+      return;
+    }
+
+    const soloHandle = piece.match(/^@([a-z0-9-]+)$/i);
+    if (soloHandle) {
+      addHandle(soloHandle[1]);
+      return;
+    }
+
+    const ghUrl = piece.match(/github\.com\/([a-z0-9-]+)/i);
+    if (ghUrl) {
+      addHandle(ghUrl[1]);
+      return;
+    }
+
+    addFallback(piece);
+  });
+
+  return {
+    handles: Array.from(handles),
+    fallbackKeys: Array.from(fallbackKeys),
+    namesByHandle,
+    displayCandidates: Array.from(displayCandidates),
+  };
 }
 
 function getCanonicalUpgradeName(upgrade: string, date: string): string {
@@ -68,26 +148,66 @@ async function computeIndependentIncludedAuthorRows() {
   const authorMap = new Map<string, {
     eipNumbers: Set<number>;
     upgrades: Set<string>;
+    displayNames: Map<string, number>;
+    handles: Map<string, number>;
   }>();
   const eipTitleMap = new Map<number, string>();
+  const emptyParsedParts: ReturnType<typeof extractAuthorParts> = {
+    handles: [],
+    fallbackKeys: [],
+    namesByHandle: {},
+    displayCandidates: [],
+  };
 
-  eips.forEach((eip) => {
+  const parsedByEip = eips.map((eip) => ({
+    eip,
+    parsed: eip.author ? extractAuthorParts(eip.author) : emptyParsedParts,
+  }));
+
+  const aliasToHandle = new Map<string, string>();
+  parsedByEip.forEach(({ parsed }) => {
+    if (parsed.handles.length !== 1) return;
+    const handle = parsed.handles[0];
+    parsed.fallbackKeys.forEach((key) => {
+      if (!aliasToHandle.has(key)) {
+        aliasToHandle.set(key, handle);
+      }
+    });
+  });
+
+  parsedByEip.forEach(({ eip, parsed }) => {
     if (!eip.author) return;
-    const authorKeys = normalizeAuthorKeys(eip.author);
-    if (authorKeys.length === 0) return;
+    const authorKeys = parsed.handles.length > 0
+      ? parsed.handles
+      : parsed.fallbackKeys.map((key) => aliasToHandle.get(key) ?? key);
+    const uniqueAuthorKeys = Array.from(new Set(authorKeys.filter(Boolean)));
+    if (uniqueAuthorKeys.length === 0) return;
 
     const upgrades = eipToUpgrades.get(eip.eip_number) ?? new Set<string>();
     eipTitleMap.set(eip.eip_number, eip.title ?? '');
 
-    authorKeys.forEach((authorKey) => {
+    uniqueAuthorKeys.forEach((authorKey) => {
       if (!authorMap.has(authorKey)) {
-        authorMap.set(authorKey, { eipNumbers: new Set<number>(), upgrades: new Set<string>() });
+        authorMap.set(authorKey, {
+          eipNumbers: new Set<number>(),
+          upgrades: new Set<string>(),
+          displayNames: new Map<string, number>(),
+          handles: new Map<string, number>(),
+        });
       }
       const record = authorMap.get(authorKey);
       if (!record) return;
 
       record.eipNumbers.add(eip.eip_number);
       upgrades.forEach((upgrade) => record.upgrades.add(upgrade));
+
+      if (parsed.handles.includes(authorKey)) {
+        record.handles.set(authorKey, (record.handles.get(authorKey) ?? 0) + 1);
+      }
+      const displayForHandle = parsed.namesByHandle[authorKey];
+      if (displayForHandle) {
+        record.displayNames.set(displayForHandle, (record.displayNames.get(displayForHandle) ?? 0) + 1);
+      }
     });
   });
 
@@ -98,6 +218,12 @@ async function computeIndependentIncludedAuthorRows() {
 
       return {
         authorKey,
+        displayName:
+          Array.from(value.displayNames.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+          authorKey.replace(/[-_]/g, ' '),
+        githubHandle:
+          Array.from(value.handles.entries()).sort((a, b) => b[1] - a[1])[0]?.[0] ??
+          null,
         totalEips: sortedEips.length,
         eipNumbers: sortedEips,
         sampleEip,

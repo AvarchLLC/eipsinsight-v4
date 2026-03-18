@@ -131,12 +131,12 @@ export function UpgradeStatsCards({
               <Users className="h-3.5 w-3.5 text-primary" />
             </div>
             <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Independent Included Authors
+              Included EIP Authors
             </h3>
           </div>
           <p className="text-3xl font-bold text-foreground mb-1">{independentIncludedAuthors}</p>
           <p className="text-xs text-muted-foreground">
-            Unique EIP authors included in upgrades outside client dev teams
+            Unique EIP authors included across network upgrades
           </p>
         </motion.button>
 
