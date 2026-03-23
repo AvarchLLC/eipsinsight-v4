@@ -32,20 +32,43 @@ const nextConfig: NextConfig = {
         destination: '/upgrade',
         permanent: true,
       },
-      // Keep /eips, /ercs, /rips working (if they exist elsewhere)
+      // Canonical proposal detail routes are plural repo paths: /eips/:number, /ercs/:number, /rips/:number
+      // Keep legacy singular detail links working across the app and shared links.
       {
-        source: '/eips/:path*',
-        destination: '/eip/:path*',
+        source: '/eip/:path*',
+        destination: '/eips/:path*',
         permanent: true,
       },
       {
-        source: '/ercs/:path*',
-        destination: '/erc/:path*',
+        source: '/erc/:path*',
+        destination: '/ercs/:path*',
         permanent: true,
       },
       {
-        source: '/rips/:path*',
-        destination: '/rip/:path*',
+        source: '/rip/:path*',
+        destination: '/rips/:path*',
+        permanent: true,
+      },
+      // Legacy singular repo roots
+      {
+        source: '/eip',
+        destination: '/standards?repo=eips',
+        permanent: true,
+      },
+      {
+        source: '/erc',
+        destination: '/standards?repo=ercs',
+        permanent: true,
+      },
+      {
+        source: '/rip',
+        destination: '/standards?repo=rips',
+        permanent: true,
+      },
+      // Legacy onboarding/resource links
+      {
+        source: '/resources/getting-started',
+        destination: '/resources/docs',
         permanent: true,
       },
     ];

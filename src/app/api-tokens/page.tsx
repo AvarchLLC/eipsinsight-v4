@@ -1,270 +1,160 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { Plus, AlertCircle, Crown } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { client } from '@/lib/orpc'
-import { TokenStats } from './_components/token-stats'
-import { TokenList } from './_components/token-list'
-import { CreateTokenDialog } from './_components/create-token-dialog'
-import { RevokeTokenDialog } from './_components/revoke-token-dialog'
-import { toast } from 'sonner'
+import { FormEvent, useState } from 'react'
 import Link from 'next/link'
-import { API_SCOPES, type ApiScope } from '@/lib/apiScopes'
+import { KeyRound, Loader2, Sparkles } from 'lucide-react'
+import { toast } from 'sonner'
 
-type ApiToken = {
-  id: string
-  name: string
-  scopes: ApiScope[]
-  lastUsed: Date | null
-  expiresAt: Date | null
-  createdAt: Date
-}
+export default function ApiTokensWaitlistPage() {
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [useCase, setUseCase] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [joined, setJoined] = useState(false)
 
-type ApiTokenStats = {
-  total: number
-  active: number
-  lastUsed: Date | null
-}
-
-type CreateTokenInput = {
-  name: string
-  scopes: ApiScope[]
-  expiryDays?: number
-}
-
-const VALID_SCOPES = new Set<ApiScope>(Object.values(API_SCOPES))
-
-function normalizeScopes(scopes: string[]): ApiScope[] {
-  return scopes.filter((scope): scope is ApiScope => VALID_SCOPES.has(scope as ApiScope))
-}
-
-export default function ApiTokensPage() {
-  const [tokens, setTokens] = useState<ApiToken[]>([])
-  const [stats, setStats] = useState<ApiTokenStats | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
-  const [membershipTier, setMembershipTier] = useState<string>('free')
-  const [isCreating, setIsCreating] = useState(false)
-  const [isRevoking, setIsRevoking] = useState(false)
-  const [showCreateDialog, setShowCreateDialog] = useState(false)
-  const [showRevokeDialog, setShowRevokeDialog] = useState(false)
-  const [revokeTokenId, setRevokeTokenId] = useState<string | null>(null)
-  const [revokeTokenName, setRevokeTokenName] = useState('')
-  const [error, setError] = useState<string | null>(null)
-
-  const fetchTokens = useCallback(async () => {
-    try {
-      setIsLoading(true)
-      setError(null)
-      const [tokensList, statsData, subscription] = await Promise.all([
-        client.account.listTokens({}),
-        client.account.getTokenStats({}),
-        fetch('/api/stripe/subscription').then((res) => res.json()).catch(() => ({ tier: 'free' })),
-      ])
-      setTokens(
-        (tokensList || []).map((token) => ({
-          id: token.id,
-          name: token.name,
-          scopes: normalizeScopes(token.scopes),
-          lastUsed: token.lastUsed,
-          expiresAt: token.expiresAt,
-          createdAt: token.createdAt,
-        }))
-      )
-      setStats(statsData)
-      setMembershipTier(subscription?.tier || 'free')
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load tokens'
-      setError(message)
-      toast.error('Failed to load API tokens')
-      console.error('Error fetching tokens:', err)
-    } finally {
-      setIsLoading(false)
+  async function onSubmit(event: FormEvent) {
+    event.preventDefault()
+    if (!email.trim()) {
+      toast.error('Please enter your email')
+      return
     }
-  }, [])
 
-  useEffect(() => {
-    fetchTokens()
-  }, [fetchTokens])
-
-  const handleCreateToken = async (input: CreateTokenInput) => {
+    setLoading(true)
     try {
-      setIsCreating(true)
-      setError(null)
-      const newToken = await client.account.createToken(input)
-      if (newToken) {
-        toast.success('Token created successfully')
-        await fetchTokens()
-        return {
-          ...newToken,
-          scopes: normalizeScopes(newToken.scopes),
-        }
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          useCase,
+          source: 'api_tokens',
+        }),
+      })
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: 'Failed to join waitlist' }))
+        throw new Error(body?.error || 'Failed to join waitlist')
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to create token'
-      setError(message)
+
+      setJoined(true)
+      toast.success('You are on the API waitlist')
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to join waitlist'
       toast.error(message)
-      console.error('Error creating token:', err)
     } finally {
-      setIsCreating(false)
+      setLoading(false)
     }
   }
-
-  const handleRevokeClick = (tokenId: string, tokenName: string) => {
-    setRevokeTokenId(tokenId)
-    setRevokeTokenName(tokenName)
-    setShowRevokeDialog(true)
-  }
-
-  const handleConfirmRevoke = async () => {
-    if (!revokeTokenId) return
-    try {
-      setIsRevoking(true)
-      setError(null)
-      await client.account.revokeToken({ tokenId: revokeTokenId })
-      toast.success('Token revoked successfully')
-      setShowRevokeDialog(false)
-      setRevokeTokenId(null)
-      setRevokeTokenName('')
-      await fetchTokens()
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to revoke token'
-      setError(message)
-      toast.error(message)
-      console.error('Error revoking token:', err)
-    } finally {
-      setIsRevoking(false)
-    }
-  }
-
-  const isPaidMember = membershipTier !== 'free'
 
   return (
     <div className="page-shell-narrow py-10">
-      {/* Header */}
-      <div className="mb-8 flex flex-col gap-2">
-        <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-400/40 bg-cyan-500/10 px-3 py-1 text-xs uppercase tracking-wide text-cyan-200">
-          API
-        </div>
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-semibold text-slate-50">API Tokens</h1>
-            <p className="mt-2 text-slate-400">Create and manage API tokens for programmatic access to your account.</p>
-          </div>
-          {isPaidMember ? (
-            <Button
-              onClick={() => setShowCreateDialog(true)}
-              className="shrink-0 rounded-lg bg-cyan-500 text-black hover:bg-cyan-400"
-            >
-              <Plus className="h-4 w-4" />
-              New Token
-            </Button>
-          ) : (
-            <Button
-              asChild
-              className="shrink-0 rounded-lg bg-amber-500 text-black hover:bg-amber-400"
-            >
-              <Link href="/pricing">
-                <Crown className="h-4 w-4" />
-                Upgrade to Pro
-              </Link>
-            </Button>
-          )}
-        </div>
+      <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs uppercase tracking-wide text-primary">
+        API Access
       </div>
 
-      {/* Free Tier Notice */}
-      {!isPaidMember && (
-        <div className="mb-6 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-6">
-          <div className="flex gap-3">
-            <Crown className="h-6 w-6 shrink-0 text-amber-300" />
-            <div>
-              <h3 className="font-semibold text-amber-300">Upgrade to Pro or Enterprise</h3>
-              <p className="mt-2 text-sm text-amber-200">
-                API tokens are only available for Pro and Enterprise members. Upgrade your plan to create and manage API tokens for programmatic access.
-              </p>
-              <Button asChild className="mt-4 bg-amber-500 text-black hover:bg-amber-400">
-                <Link href="/pricing">View Plans</Link>
-              </Button>
+      <div className="rounded-xl border border-border bg-card/60 p-6">
+        <div className="mb-5 flex items-start gap-3">
+          <div className="rounded-lg border border-primary/25 bg-primary/10 p-2.5">
+            <KeyRound className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="dec-title text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              API Tokens are rolling out soon
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground sm:text-base">
+              We&apos;re validating demand before rolling out token access. Join the waitlist and
+              tell us how you&apos;d use EIPsInsight data.
+            </p>
+          </div>
+        </div>
+
+        <div className="mb-5 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300">
+          <span className="font-semibold">Early access:</span> premium analytics benefits are currently available for everyone.
+        </div>
+
+        {joined ? (
+          <div className="space-y-4">
+            <div className="rounded-lg border border-primary/25 bg-primary/10 px-4 py-3 text-sm text-foreground">
+              You&apos;re in. We&apos;ll notify you when API token access opens.
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/analytics"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+              >
+                <Sparkles className="h-4 w-4" />
+                Explore analytics
+              </Link>
+              <Link
+                href="/whats-new"
+                className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-primary/40 hover:bg-primary/5"
+              >
+                See what&apos;s new
+              </Link>
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Name (optional)
+                </span>
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                  placeholder="Your name"
+                />
+              </label>
+              <label className="space-y-1.5">
+                <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                  Email
+                </span>
+                <input
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                  placeholder="you@company.com"
+                />
+              </label>
+            </div>
 
-      {/* Error Alert */}
-      {error && (
-        <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-400/20 bg-red-500/10 p-4">
-          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
-          <div>
-            <p className="font-semibold text-red-300">Error</p>
-            <p className="text-sm text-red-200">{error}</p>
-          </div>
-        </div>
-      )}
+            <label className="space-y-1.5">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Intended use (optional)
+              </span>
+              <textarea
+                value={useCase}
+                onChange={(e) => setUseCase(e.target.value)}
+                rows={4}
+                className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                placeholder="What would you build with EIPsInsight API data?"
+              />
+            </label>
 
-      {/* Stats */}
-      {!isLoading && stats && <div className="mb-8"><TokenStats total={stats.total} active={stats.active} lastUsed={stats.lastUsed} /></div>}
-
-      {/* Security Info */}
-      <div className="mb-8 rounded-2xl border border-amber-400/20 bg-amber-500/10 p-4">
-        <div className="flex gap-3">
-          <div className="shrink-0">
-            <AlertCircle className="h-5 w-5 text-amber-300" />
-          </div>
-          <div className="text-sm">
-            <p className="font-semibold text-amber-300">Security Notice</p>
-            <ul className="mt-2 space-y-1 text-amber-200">
-              <li>• Save your token securely - we won&apos;t show it again</li>
-              <li>• Use scopes to limit token permissions</li>
-              <li>• Revoke tokens immediately if compromised</li>
-              <li>• Tokens expire automatically after the set duration</li>
-            </ul>
-          </div>
-        </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                Join waitlist
+              </button>
+              <Link
+                href="/analytics"
+                className="inline-flex items-center rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground hover:border-primary/40 hover:bg-primary/5"
+              >
+                Continue to analytics
+              </Link>
+            </div>
+          </form>
+        )}
       </div>
-
-      {/* Token List */}
-      {isLoading ? (
-        <div className="space-y-4">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-48 rounded-2xl border border-cyan-400/20 bg-slate-950/60 animate-pulse"
-            />
-          ))}
-        </div>
-      ) : (
-        <TokenList
-          tokens={tokens}
-          onRevoke={(tokenId) => {
-            const token = tokens.find((t) => t.id === tokenId)
-            if (token) {
-              handleRevokeClick(tokenId, token.name)
-            }
-          }}
-          isLoading={isRevoking}
-        />
-      )}
-
-      {/* Dialogs */}
-      <CreateTokenDialog
-        isOpen={showCreateDialog}
-        onClose={() => setShowCreateDialog(false)}
-        onCreateToken={handleCreateToken}
-        isLoading={isCreating}
-      />
-
-      <RevokeTokenDialog
-        isOpen={showRevokeDialog}
-        tokenName={revokeTokenName}
-        onConfirm={handleConfirmRevoke}
-        onCancel={() => {
-          setShowRevokeDialog(false)
-          setRevokeTokenId(null)
-          setRevokeTokenName('')
-        }}
-        isLoading={isRevoking}
-      />
     </div>
   )
 }

@@ -171,7 +171,7 @@ export default function EditorsAnalyticsPage() {
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
   const [exporting, setExporting] = useState(false);
-  const isPaidMember = membershipTier !== 'free';
+  const isPaidMember = true;
   const leaderboardWindow = useMemo(
     () => (
       leaderboardMode === "monthly"
@@ -1167,16 +1167,11 @@ export default function EditorsAnalyticsPage() {
             )}
             <button
               onClick={downloadLeaderboardCSV}
-              disabled={exporting || leaderboard.length === 0 || !isPaidMember}
-              title={!isPaidMember ? 'Upgrade to Pro to download exports' : ''}
-              className={`flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors ${
-                !isPaidMember
-                  ? 'border-amber-600/30 bg-amber-500/10 text-amber-600/70 cursor-not-allowed opacity-60'
-                  : 'border-border/60 bg-muted/40 text-foreground/85 hover:bg-muted/60 hover:text-foreground disabled:opacity-50 disabled:cursor-not-allowed'
-              }`}
+              disabled={exporting || leaderboard.length === 0}
+              className="flex h-8 items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 text-xs text-foreground/85 transition-colors hover:bg-muted/60 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50"
             >
               {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              {!isPaidMember ? 'Export (Pro+)' : 'Download Reports'}
+              Download Reports
             </button>
           </div>
         </div>
@@ -1255,7 +1250,7 @@ export default function EditorsAnalyticsPage() {
                   <td className="px-4 py-3 text-right">
                     <button
                       onClick={() => downloadEditorReport(editor.actor)}
-                      disabled={!isPaidMember || downloadingEditor === editor.actor}
+                      disabled={downloadingEditor === editor.actor}
                       className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground/85 hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {downloadingEditor === editor.actor ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}

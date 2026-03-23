@@ -852,6 +852,7 @@ function AppSidebarContent() {
 
   return (
     <Sidebar
+      data-tour="sidebar"
       collapsible="icon"
       className="border-r border-border bg-background/95 backdrop-blur-xl"
     >
@@ -926,22 +927,22 @@ function AppSidebarContent() {
       <SidebarFooter className="border-t border-border bg-card/50 p-3">
         {membershipTier === "free" && (
           state === "expanded" ? (
-            <Link href="/premium">
+            <Link href="/pricing">
               <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 p-3 transition hover:bg-primary/15">
                 <Sparkles className="h-4 w-4 text-primary dark:drop-shadow-[0_0_6px_rgb(var(--persona-accent-rgb)/0.6)]" />
                 <div className="flex-1">
-                  <p className="text-xs font-semibold text-foreground">Pro Version</p>
+                  <p className="text-xs font-semibold text-foreground">Premium Coming Soon</p>
                   <p className="text-[10px] text-muted-foreground">
-                    Unlock all features
+                    Early access for everyone
                   </p>
                 </div>
               </div>
             </Link>
           ) : (
             <Link
-              href="/premium"
+              href="/pricing"
               className="flex items-center justify-center rounded-lg p-2 transition-colors hover:bg-muted"
-              title="Pro Version"
+              title="Premium rolling out soon"
             >
               <Crown className="h-5 w-5 text-primary" />
             </Link>

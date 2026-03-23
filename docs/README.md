@@ -14,6 +14,7 @@
 | [Architecture](./architecture.md) | Routing, URLs, implementation status |
 | [Branding](./branding.md) | Tone, design cues, naming |
 | [UI Reference](./ui-reference.md) | Colors, fonts, spacing, component patterns |
+| [Scheduler + ORPC Context](./scheduler-orpc-context.md) | Source-of-truth mapping from scheduler ingestion/derivations to ORPC data surfaces |
 | [News + Ghost](./news-ghost-integration.md) | How to power News from Ghost CMS |
 | [Tasks](./TASKS.md) | Remaining work, estimates |
 
