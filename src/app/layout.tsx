@@ -9,6 +9,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import Navbar from "@/components/navbar";
 import Footer from "@/components/footer";
 import { GlobalPageFeedback } from "@/components/global-page-feedback";
+import { SiteAssistant } from "@/components/site-assistant";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/providers/Providers";
 import { buildMetadata } from "@/lib/seo";
@@ -84,6 +85,7 @@ export default function RootLayout({
               </div>
             </SidebarInset>
           </SidebarProvider>
+          <SiteAssistant />
           <Toaster />
           <Analytics />
         </Providers>

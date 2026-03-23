@@ -64,6 +64,10 @@ const teamContext: Record<string, { focus: string; summary: string }> = {
     focus: 'Product systems',
     summary: 'Designs product flows and interaction models that make complex standards and governance data easier to read and act on.',
   },
+  'Subhrajeet Bhattacharjee': {
+    focus: 'Full stack implementation',
+    summary: 'Contributes across frontend and backend work to support feature delivery and improve the platform experience.',
+  },
 };
 
 const productSurfaces = [

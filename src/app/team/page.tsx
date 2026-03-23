@@ -28,6 +28,7 @@ const ROLE_CONTRIBUTIONS: Record<string, string> = {
   Founder: 'Shapes product direction and ecosystem strategy across protocol and governance intelligence.',
   'Operations Lead': 'Coordinates delivery, contributor workflows, and reliable updates across the platform.',
   'Full Stack Engineer': 'Builds core product systems spanning proposal indexing, UI experiences, and APIs.',
+  'Full Stack Intern': 'Supports full stack delivery across frontend interfaces, backend services, and product improvements.',
   'Product Engineer': 'Designs user-facing features that make proposal history easier to navigate and understand.',
 };
 

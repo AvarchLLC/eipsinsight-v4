@@ -71,6 +71,10 @@ html.persona-theme-transition *::after {
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
   --radius-4xl: calc(var(--radius) + 16px);
+  --container-4xl: 62rem;
+  --container-5xl: 74rem;
+  --container-6xl: 86rem;
+  --container-7xl: 98rem;
 }
 
 /* Light mode - ethereum.org inspired: clean, soft grays, cyan/emerald accents */
@@ -269,6 +273,12 @@ html.persona-theme-transition *::after {
 
 html, body, #__next {
   font-family: var(--font-space-grotesk);
+}
+
+@layer utilities {
+  .container {
+    max-width: min(98rem, calc(100% - 2rem));
+  }
 }
 
 .dec-title {
