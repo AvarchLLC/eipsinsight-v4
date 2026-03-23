@@ -11,6 +11,7 @@ import Footer from "@/components/footer";
 import { GlobalPageFeedback } from "@/components/global-page-feedback";
 import { SiteAssistant } from "@/components/site-assistant";
 import { Toaster } from "@/components/ui/sonner";
+import { WhatsNewV4Dialog } from "@/components/whats-new-v4-dialog";
 import { Providers } from "@/providers/Providers";
 import { buildMetadata } from "@/lib/seo";
 
@@ -86,6 +87,7 @@ export default function RootLayout({
             </SidebarInset>
           </SidebarProvider>
           <SiteAssistant />
+          <WhatsNewV4Dialog />
           <Toaster />
           <Analytics />
         </Providers>

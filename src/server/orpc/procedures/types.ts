@@ -110,21 +110,11 @@ async function getUserTier(userId?: string): Promise<string> {
 
 /** Require minimum tier for feature access */
 export async function requireTier(ctx: Ctx, minimumTier: 'pro' | 'enterprise') {
-  const userId = ctx.user?.id
-  if (!userId) {
-    throw new ORPCError('FORBIDDEN', {
-      message: 'This feature is only available for Pro and Enterprise members. Please upgrade your plan.',
-    })
-  }
-
-  const tier = await getUserTier(userId)
-  const tierHierarchy = { free: 0, pro: 1, enterprise: 2 }
-
-  if ((tierHierarchy[tier as keyof typeof tierHierarchy] ?? 0) < (tierHierarchy[minimumTier])) {
-    throw new ORPCError('FORBIDDEN', {
-      message: `This feature requires ${minimumTier === 'enterprise' ? 'Enterprise' : 'Pro'} membership. Please upgrade your plan.`,
-    })
-  }
+  // Premium gating is temporarily disabled while subscriptions are in testing.
+  // Keep this function for future re-enable points without changing call sites.
+  void ctx
+  void minimumTier
+  return
 }
 
 export const publicProcedure = os.$context<Ctx>()

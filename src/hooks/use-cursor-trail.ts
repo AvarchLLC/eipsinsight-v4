@@ -26,7 +26,7 @@ export const useCursorTrail = (enabled: boolean = true) => {
     canvas.style.top = '0';
     canvas.style.left = '0';
     canvas.style.pointerEvents = 'none';
-    canvas.style.zIndex = '999';
+    canvas.style.zIndex = '60';
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     document.body.appendChild(canvas);
@@ -34,6 +34,13 @@ export const useCursorTrail = (enabled: boolean = true) => {
     canvasRef.current = canvas;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+    let accentRgb = '16 185 129';
+
+    const readAccent = () => {
+      const rgb = getComputedStyle(document.documentElement).getPropertyValue('--persona-accent-rgb').trim();
+      if (rgb) accentRgb = rgb;
+    };
+    readAccent();
 
     const handleMouseMove = (e: MouseEvent) => {
       const now = Date.now();
@@ -68,18 +75,18 @@ export const useCursorTrail = (enabled: boolean = true) => {
 
       trailPointsRef.current.forEach((point) => {
         const opacity = 1 - point.age / 30;
-        const size = 8 * opacity;
+        const size = 7 * opacity;
 
-        ctx.fillStyle = `rgba(34, 197, 233, ${opacity * 0.6})`;
+        ctx.fillStyle = `rgb(${accentRgb} / ${opacity * 0.55})`;
         ctx.beginPath();
         ctx.arc(point.x, point.y, size / 2, 0, Math.PI * 2);
         ctx.fill();
 
         // Add glow
-        ctx.strokeStyle = `rgba(34, 197, 233, ${opacity * 0.3})`;
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = `rgb(${accentRgb} / ${opacity * 0.28})`;
+        ctx.lineWidth = 1.75;
         ctx.beginPath();
-        ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+        ctx.arc(point.x, point.y, size * 0.9, 0, Math.PI * 2);
         ctx.stroke();
       });
 
@@ -90,6 +97,7 @@ export const useCursorTrail = (enabled: boolean = true) => {
       if (canvas) {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        readAccent();
       }
     };
 

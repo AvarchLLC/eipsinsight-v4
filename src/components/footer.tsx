@@ -16,6 +16,7 @@ const supportLinks = [
   { name: "Found a bug?", href: "https://github.com/AvarchLLC/eipsinsight-v4/issues/new" },
   { name: "Donate", href: "/donate" },
   { name: "Feedback", href: "/feedback" },
+  { name: "Want to use our data?", href: "/api-tokens" },
 ];
 
 const socialLinks = [

@@ -231,6 +231,7 @@ export default function Navbar() {
 
   return (
     <nav
+      data-tour="navbar"
       className={cn(
         "relative z-50 w-full transition-all duration-300",
         "border-b border-border bg-background/95 backdrop-blur-xl",
@@ -281,6 +282,7 @@ export default function Navbar() {
                       </div>
                     )}
                     <button
+                      data-tour="persona-switch"
                       className={cn(
                         "relative flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all duration-200",
                         "hover:scale-[1.02]",
@@ -547,11 +549,11 @@ export default function Navbar() {
             {/* Mobile Upgrade Button */}
             {session?.user && membershipTier === "free" && (
               <Link
-                href="/premium"
+                href="/pricing"
                 className="w-full flex items-center justify-center gap-2 rounded-lg persona-gradient text-white text-sm font-semibold py-2.5 px-3 transition hover:opacity-90 hover:shadow-lg"
               >
                 <Crown className="h-4 w-4" />
-                Upgrade to Pro
+                Premium Early Access
               </Link>
             )}
 

@@ -89,7 +89,7 @@ export const PERSONA_DEFAULTS: Record<Persona, string> = {
   developer: "/upgrade",           // Network Upgrades - What's shipping, when, and how it affects clients
   editor: "/standards",                  // Search + Analytics - PR flow, reviews, backlog, coordination
   researcher: "/analytics/prs",    // Analytics - Trends, data, correlations, governance signals
-  builder: "/erc",                  // Tools/Standards - Writing, validating, and shipping standards
+  builder: "/standards?repo=ercs",  // Tools/Standards - Writing, validating, and shipping standards
   enterprise: "/upgrade",          // Insights → Upgrades - What's changing and why it matters
   newcomer: "/",                    // Home → Resources - Orientation, learning paths, context
 };

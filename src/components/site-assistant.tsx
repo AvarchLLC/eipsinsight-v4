@@ -2,8 +2,9 @@
 
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Bot, Loader2, MessageCircle, RotateCcw, SendHorizontal } from "lucide-react";
+import { Bot, Database, ExternalLink, MessageCircle, RotateCcw, SendHorizontal } from "lucide-react";
 import { client } from "@/lib/orpc";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import {
   Sheet,
   SheetContent,
@@ -23,6 +24,16 @@ type AssistantAnswerResult = {
   answer: string;
   confidence: "high" | "medium" | "low";
   recommendations: AssistantRecommendation[];
+  dataQuery?: AssistantDataQuery | null;
+};
+
+type AssistantDataQuery = {
+  title: string;
+  description: string;
+  sql: string;
+  columns: string[];
+  rows: Array<Record<string, string | number | boolean | null>>;
+  rowCount: number;
 };
 
 type AssistantTurn = {
@@ -30,6 +41,7 @@ type AssistantTurn = {
   content: string;
   recommendations?: AssistantRecommendation[];
   confidence?: AssistantAnswerResult["confidence"];
+  dataQuery?: AssistantDataQuery | null;
 };
 
 const STARTER_PROMPTS = [
@@ -83,6 +95,21 @@ export function SiteAssistant() {
         history,
       })) as AssistantAnswerResult;
 
+      if (result.dataQuery) {
+        try {
+          window.localStorage.setItem(
+            "assistant:last-data-query",
+            JSON.stringify({
+              ...result.dataQuery,
+              savedAt: new Date().toISOString(),
+              question: text,
+            })
+          );
+        } catch {
+          // Ignore storage errors; assistant response still renders.
+        }
+      }
+
       setTurns((previous) => [
         ...previous,
         {
@@ -90,6 +117,7 @@ export function SiteAssistant() {
           content: result.answer,
           recommendations: result.recommendations,
           confidence: result.confidence,
+          dataQuery: result.dataQuery,
         },
       ]);
     } catch {
@@ -115,30 +143,30 @@ export function SiteAssistant() {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="fixed right-4 bottom-4 z-40 inline-flex h-12 items-center gap-2 rounded-full border border-primary/30 bg-primary/15 px-4 text-sm font-semibold text-primary shadow-lg backdrop-blur-sm transition-colors hover:bg-primary/20"
+          className="fixed bottom-4 right-4 z-40 inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-card/80 px-3.5 text-sm font-semibold text-foreground shadow-[0_8px_20px_rgb(var(--persona-accent-rgb)/0.18)] backdrop-blur-xl transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           aria-label="Open assistant"
         >
-          <MessageCircle className="h-4 w-4" />
+          <MessageCircle className="h-4 w-4 text-primary" />
           Assistant
         </button>
       </SheetTrigger>
 
-      <SheetContent side="right" className="w-[92vw] p-0 sm:max-w-md">
+      <SheetContent side="right" className="w-[92vw] border-l border-border bg-background p-0 sm:max-w-md">
         <SheetHeader className="border-b border-border px-4 py-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <SheetTitle className="flex items-center gap-2">
-            <Bot className="h-4 w-4 text-primary" />
-            Site Assistant
+              <SheetTitle className="flex items-center gap-2 dec-title text-xl font-semibold tracking-tight text-foreground">
+                <Bot className="h-4 w-4 text-primary" />
+                Site Assistant
               </SheetTitle>
-              <SheetDescription>
+              <SheetDescription className="mt-0.5 text-sm text-muted-foreground">
                 Short precise answers, then links if needed.
               </SheetDescription>
             </div>
             <button
               type="button"
               onClick={resetChat}
-              className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-2 text-xs text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/40 px-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
               <RotateCcw className="h-3.5 w-3.5" />
               Reset
@@ -155,7 +183,7 @@ export function SiteAssistant() {
                   type="button"
                   onClick={() => void submitPrompt(item)}
                   disabled={loading}
-                  className="rounded-full border border-border bg-muted/30 px-2.5 py-1 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground disabled:opacity-50"
+                  className="rounded-full border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-50"
                 >
                   {item}
                 </button>
@@ -169,8 +197,8 @@ export function SiteAssistant() {
                 key={`${turn.role}-${index}`}
                 className={
                   turn.role === "user"
-                    ? "ml-8 rounded-xl border border-primary/25 bg-primary/10 p-3"
-                    : "mr-8 rounded-xl border border-border bg-muted/30 p-3"
+                    ? "ml-8 rounded-xl border border-primary/30 bg-primary/10 p-3"
+                    : "mr-8 rounded-xl border border-border bg-card/60 p-3"
                 }
               >
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -187,8 +215,8 @@ export function SiteAssistant() {
                 {turn.role === "assistant" && turn.recommendations && turn.recommendations.length > 0 && (
                   <ul className="mt-2 space-y-2">
                     {turn.recommendations.map((item) => (
-                      <li key={`${item.url}-${item.title}`} className="rounded-md border border-border bg-background/60 p-2">
-                        <Link href={item.url} className="text-sm font-medium text-primary hover:underline" onClick={() => setOpen(false)}>
+                      <li key={`${item.url}-${item.title}`} className="rounded-md border border-border bg-muted/30 p-2">
+                        <Link href={item.url} className="text-sm font-medium text-primary transition-colors hover:text-primary/80 hover:underline" onClick={() => setOpen(false)}>
                           {item.title}
                         </Link>
                         <p className="mt-1 text-xs text-muted-foreground">{item.reason}</p>
@@ -196,8 +224,52 @@ export function SiteAssistant() {
                     ))}
                   </ul>
                 )}
+
+                {turn.role === "assistant" && turn.dataQuery && (() => {
+                  const dataQuery = turn.dataQuery;
+                  return (
+                  <div className="mt-3 rounded-lg border border-primary/25 bg-primary/8 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-[0.14em] text-primary/85">
+                          Data Analysis
+                        </p>
+                        <p className="mt-0.5 text-sm font-medium text-foreground">{dataQuery.title}</p>
+                        <p className="mt-1 text-xs text-muted-foreground">{dataQuery.description}</p>
+                      </div>
+                      <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[11px] text-muted-foreground">
+                        {dataQuery.rowCount} rows
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Open full result view for detailed rows, filters, and easier scanning.
+                    </p>
+                    <div className="mt-3 flex justify-start">
+                      <Link
+                        href="/assistant/results"
+                        onClick={() => setOpen(false)}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-primary/35 bg-primary/12 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/18"
+                      >
+                        Open detailed result
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </Link>
+                    </div>
+                  </div>
+                  );
+                })()}
               </div>
             ))}
+
+            {loading && (
+              <div className="mr-8 rounded-xl border border-border bg-card/60 p-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Assistant</p>
+                <div className="mt-2 flex items-center gap-2">
+                  <Database className="h-3.5 w-3.5 text-primary" />
+                  <InlineBrandLoader size="sm" label="Analyzing your question..." className="items-start gap-1" />
+                </div>
+              </div>
+            )}
 
             {error && (
               <div className="rounded-md border border-border bg-muted/30 p-3 text-sm text-muted-foreground">
@@ -212,15 +284,15 @@ export function SiteAssistant() {
                 value={prompt}
                 onChange={(event) => setPrompt(event.target.value)}
                 placeholder="Ask about EIPsInsight..."
-                className="h-10 flex-1 rounded-md border border-border bg-background px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-primary/40"
+                className="h-10 flex-1 rounded-md border border-border bg-muted/40 px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
               />
               <button
                 type="submit"
                 disabled={loading || !prompt.trim()}
-                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-primary/30 bg-primary/10 text-primary transition-all hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:cursor-not-allowed disabled:opacity-50"
                 aria-label="Send message"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
+                <SendHorizontal className="h-4 w-4" />
               </button>
             </div>
           </form>

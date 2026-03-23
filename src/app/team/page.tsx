@@ -2,9 +2,9 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, useScroll, useTransform } from 'motion/react';
 import {
-  ArrowRight,
   Github,
   GitPullRequest,
   Heart,
@@ -78,7 +78,7 @@ function TeamNetworkOverlay() {
           y1={nodes[start].y}
           x2={nodes[end].x}
           y2={nodes[end].y}
-          stroke="rgba(56,189,248,0.2)"
+          stroke="rgb(var(--persona-accent-rgb) / 0.22)"
           strokeWidth="0.24"
         />
       ))}
@@ -89,7 +89,7 @@ function TeamNetworkOverlay() {
           cx={nodes[start].x}
           cy={nodes[start].y}
           r="0.55"
-          fill="rgba(103,232,249,0.85)"
+          fill="rgb(var(--persona-accent-rgb) / 0.9)"
           animate={{
             cx: [nodes[start].x, nodes[end].x, nodes[start].x],
             cy: [nodes[start].y, nodes[end].y, nodes[start].y],
@@ -104,7 +104,7 @@ function TeamNetworkOverlay() {
       ))}
 
       {nodes.map((node, index) => (
-        <circle key={`node-${index}`} cx={node.x} cy={node.y} r="0.9" fill="rgba(34,211,238,0.45)" />
+        <circle key={`node-${index}`} cx={node.x} cy={node.y} r="0.9" fill="rgb(var(--persona-accent-rgb) / 0.5)" />
       ))}
     </svg>
   );
@@ -112,7 +112,7 @@ function TeamNetworkOverlay() {
 
 function SectionDivider() {
   return (
-    <div className="mx-auto my-4 h-px w-full max-w-6xl bg-linear-to-r from-transparent via-cyan-400/35 to-transparent" />
+    <div className="mx-auto my-2 h-px w-full max-w-6xl bg-linear-to-r from-transparent via-primary/35 to-transparent" />
   );
 }
 
@@ -121,7 +121,7 @@ export default function TeamPage() {
 
   const { scrollYProgress } = useScroll();
   const heroY = useTransform(scrollYProgress, [0, 0.3], [0, 70]);
-  const heroOpacity = useTransform(scrollYProgress, [0, 0.25], [1, 0.42]);
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.35], [1, 0.9]);
 
   const teamSectionRef = useRef<HTMLElement>(null);
   const spotlightRafRef = useRef<number | null>(null);
@@ -212,6 +212,8 @@ export default function TeamPage() {
     },
   ];
 
+  const joinCollage = team.slice(0, 5);
+
   useEffect(() => {
     let frameId: number | null = null;
 
@@ -278,11 +280,11 @@ export default function TeamPage() {
   };
 
   return (
-    <div className="relative w-full overflow-hidden bg-black text-slate-100">
-      <div className="fixed inset-0 -z-30 bg-linear-to-br from-slate-950 via-slate-950 to-slate-900" />
+    <div className="relative w-full overflow-hidden bg-background text-foreground">
+      <div className="fixed inset-0 -z-30 bg-background" />
 
-      <div className="pointer-events-none fixed inset-0 -z-20 opacity-35">
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(34,211,238,0.07)_1px,transparent_1px),linear-gradient(90deg,rgba(34,211,238,0.07)_1px,transparent_1px)] bg-size-[56px_56px]" />
+      <div className="pointer-events-none fixed inset-0 -z-20 opacity-40">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] bg-size-[56px_56px]" />
       </div>
 
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
@@ -295,7 +297,7 @@ export default function TeamPage() {
         ].map((node, index) => (
           <motion.div
             key={index}
-            className="absolute rounded-full bg-cyan-300/70 shadow-[0_0_18px_rgba(34,211,238,0.75)]"
+            className="absolute rounded-full bg-primary/70 shadow-[0_0_18px_rgb(var(--persona-accent-rgb)/0.55)]"
             style={{
               left: node.left,
               top: node.top,
@@ -310,25 +312,25 @@ export default function TeamPage() {
         ))}
 
         <motion.div
-          className="absolute -left-28 top-10 h-80 w-80 rounded-full bg-cyan-500/18 blur-3xl"
+          className="absolute -left-28 top-10 h-80 w-80 rounded-full bg-primary/14 blur-3xl"
           animate={{ x: [0, 80, 0], y: [0, 28, 0] }}
           transition={{ duration: 22, repeat: Infinity, ease: 'linear' }}
         />
         <motion.div
-          className="absolute -right-28 bottom-0 h-80 w-80 rounded-full bg-violet-500/18 blur-3xl"
+          className="absolute -right-28 bottom-0 h-80 w-80 rounded-full bg-primary/14 blur-3xl"
           animate={{ x: [0, -90, 0], y: [0, -36, 0] }}
           transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}
         />
       </div>
 
       <motion.div
-        className="fixed left-0 top-0 z-50 h-1 origin-left bg-linear-to-r from-cyan-400 via-blue-500 to-violet-500"
+        className="fixed left-0 top-0 z-50 h-1 origin-left bg-linear-to-r from-primary/70 via-primary to-primary/70"
         style={{ scaleX: scrollYProgress }}
       />
 
       <motion.div
         style={{ y: heroY, opacity: heroOpacity }}
-        className="relative flex min-h-[86vh] items-center justify-center overflow-hidden px-4 pt-20"
+        className="relative flex min-h-[72vh] items-center justify-center overflow-hidden px-4 pt-16"
       >
         <div className="relative z-20 mx-auto max-w-4xl text-center">
           <motion.div
@@ -337,32 +339,23 @@ export default function TeamPage() {
             transition={{ duration: 0.75, delay: 0.08 }}
           >
             <motion.div
-              className="mb-7 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-cyan-500/10 px-4 py-2 backdrop-blur-xl"
+              className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-muted/50 px-4 py-2 backdrop-blur-xl"
               animate={{ y: [0, -2, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             >
-              <Sparkles className="h-4 w-4 text-cyan-300" />
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-200">Team</span>
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Team</span>
             </motion.div>
 
             <motion.h1
-              className="mx-auto mb-7 max-w-4xl text-5xl font-black leading-[1.08] text-transparent sm:text-6xl md:text-7xl"
-              style={{
-                backgroundImage:
-                  'linear-gradient(118deg, rgb(103 232 249), rgb(96 165 250), rgb(196 181 253), rgb(103 232 249))',
-                backgroundSize: '220% 220%',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                textShadow: '0 0 32px rgba(34, 211, 238, 0.18)',
-              }}
-              animate={{ backgroundPosition: ['0% 50%', '100% 50%', '0% 50%'] }}
-              transition={{ duration: 12, repeat: Infinity, ease: 'linear' }}
+              className="dec-title persona-title mx-auto mb-5 max-w-4xl text-balance text-4xl font-semibold leading-[1.08] tracking-tight sm:text-5xl md:text-6xl"
+              style={{ textShadow: '0 0 24px rgb(var(--persona-accent-rgb)/0.16)' }}
             >
               The Builders Behind EIPs Insight
             </motion.h1>
 
             <motion.p
-              className="mx-auto mb-9 max-w-3xl text-lg leading-relaxed text-slate-300 sm:text-xl"
+              className="mx-auto mb-7 max-w-3xl text-sm leading-relaxed text-foreground/78 sm:text-base"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.16 }}
@@ -372,26 +365,26 @@ export default function TeamPage() {
             </motion.p>
 
             <motion.div
-              className="mt-8 flex flex-wrap items-center justify-center gap-4"
+              className="mt-6 flex flex-wrap items-center justify-center gap-3"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.75, delay: 0.22 }}
             >
               <motion.a
                 href="#team"
-                whileHover={{ scale: 1.04, boxShadow: '0 0 28px rgba(34,211,238,0.35)' }}
+                whileHover={{ scale: 1.03, boxShadow: '0 0 22px rgb(var(--persona-accent-rgb)/0.3)' }}
                 whileTap={{ scale: 0.95 }}
-                className="flex items-center gap-2 rounded-lg bg-linear-to-r from-cyan-500 to-blue-500 px-8 py-3 font-semibold text-white transition-all duration-300"
+                className="flex h-10 items-center gap-2 rounded-lg persona-gradient px-6 text-sm font-semibold text-black transition-all duration-300"
               >
-                <Users className="h-4 w-4 text-cyan-400" />
+                <Users className="h-4 w-4" />
                 Meet the Team
               </motion.a>
 
               <motion.a
                 href="/about"
-                whileHover={{ scale: 1.04, borderColor: 'rgba(103,232,249,0.7)' }}
+                whileHover={{ scale: 1.03, borderColor: 'rgb(var(--persona-accent-rgb)/0.5)' }}
                 whileTap={{ scale: 0.95 }}
-                className="rounded-lg border border-cyan-300/40 px-8 py-3 font-semibold text-cyan-200 transition-all duration-300 hover:bg-cyan-500/8"
+                className="flex h-10 items-center rounded-lg border border-border bg-muted/40 px-6 text-sm font-semibold text-foreground transition-all duration-300 hover:border-primary/40 hover:bg-primary/10"
               >
                 About Us
               </motion.a>
@@ -400,12 +393,12 @@ export default function TeamPage() {
         </div>
 
         <motion.div
-          className="absolute bottom-9 left-1/2 -translate-x-1/2"
+          className="absolute bottom-6 left-1/2 -translate-x-1/2"
           animate={{ y: [0, 10, 0] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
+          transition={{ duration: 1.8, repeat: Infinity }}
         >
-          <div className="flex h-10 w-6 items-start justify-center rounded-full border-2 border-cyan-300/35 p-2">
-            <motion.div className="h-2 w-1 rounded-full bg-cyan-300" />
+          <div className="flex h-10 w-6 items-start justify-center rounded-full border-2 border-border p-2">
+            <motion.div className="h-2 w-1 rounded-full bg-primary/80" />
           </div>
         </motion.div>
       </motion.div>
@@ -416,14 +409,14 @@ export default function TeamPage() {
         onMouseMove={handleTeamMouseMove}
         onMouseEnter={() => setIsTeamSpotlightActive(true)}
         onMouseLeave={() => setIsTeamSpotlightActive(false)}
-        className="relative z-10 px-4 py-20 sm:px-6 lg:py-28"
+        className="relative z-10 px-4 py-12 sm:px-6 lg:py-16"
       >
         <div
           className="pointer-events-none absolute inset-0 z-0 transition-opacity duration-300"
           style={{
             opacity: isTeamSpotlightActive ? 1 : 0,
             background:
-              'radial-gradient(360px circle at var(--team-spot-x,50%) var(--team-spot-y,50%), rgba(34,211,238,0.12), transparent 60%)',
+              'radial-gradient(320px circle at var(--team-spot-x,50%) var(--team-spot-y,50%), rgb(var(--persona-accent-rgb)/0.12), transparent 60%)',
           }}
         />
 
@@ -433,12 +426,12 @@ export default function TeamPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.45 }}
-            className="mb-14 text-center"
+            className="mb-9 text-center"
           >
-            <h2 className="mb-5 text-4xl font-black text-transparent sm:text-5xl bg-linear-to-r from-cyan-200 via-blue-300 to-violet-300 bg-clip-text">
+            <h2 className="dec-title text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
               Meet the Core Team
             </h2>
-            <p className="mx-auto max-w-3xl text-lg leading-relaxed text-slate-300/90">
+            <p className="mx-auto mt-1 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
               A small but passionate group of developers and researchers building tools that make Ethereum governance
               and protocol development easier to navigate.
             </p>
@@ -446,7 +439,7 @@ export default function TeamPage() {
 
           <div className="relative isolate mb-6">
             <TeamNetworkOverlay />
-            <div className="relative z-10 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <div className="relative z-10 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
               {team.map((member, index) => (
                 <TeamCard
                   key={member.name}
@@ -466,7 +459,7 @@ export default function TeamPage() {
 
       <SectionDivider />
 
-      <section className="relative z-10 px-4 py-18 sm:px-6 lg:py-24">
+      <section className="relative z-10 px-4 py-12 sm:px-6 lg:py-14">
         <div className="mx-auto max-w-6xl">
           <motion.div
             className="mb-10"
@@ -475,10 +468,10 @@ export default function TeamPage() {
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.42 }}
           >
-            <h2 className="mb-3 text-3xl font-black text-transparent sm:text-4xl bg-linear-to-r from-cyan-200 via-blue-300 to-violet-300 bg-clip-text">
+            <h2 className="dec-title text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Platform at a Glance
             </h2>
-            <p className="max-w-3xl text-slate-300/85">
+            <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
               Live signals from the platform&apos;s indexing and governance data pipeline.
             </p>
           </motion.div>
@@ -488,7 +481,7 @@ export default function TeamPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-80px' }}
             transition={{ duration: 0.4, staggerChildren: 0.09 }}
-            className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4"
+            className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
           >
             {platformMetrics.map((metric, index) => {
               const Icon = metric.icon;
@@ -499,18 +492,18 @@ export default function TeamPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-80px' }}
                   transition={{ duration: 0.4, delay: index * 0.08 }}
-                  className="group relative rounded-2xl border border-cyan-300/20 bg-linear-to-br from-slate-900/85 to-slate-950/90 p-6 backdrop-blur-xl"
+                  className="group relative rounded-xl border border-border bg-card/60 p-4 backdrop-blur-xl"
                 >
-                  <div className="absolute inset-0 rounded-2xl bg-linear-to-br from-cyan-500/6 to-violet-500/6 opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
+                  <div className="absolute inset-0 rounded-xl persona-gradient-soft opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
                   <div className="relative z-10">
-                    <div className="mb-4 inline-flex rounded-lg border border-cyan-300/30 bg-cyan-500/12 p-2.5 text-cyan-300">
+                    <div className="mb-3 inline-flex rounded-lg border border-primary/30 bg-primary/10 p-2 text-primary">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <p className="mb-2 text-sm text-slate-300/80">{metric.label}</p>
-                    <div className="mb-2 text-3xl font-bold text-transparent bg-linear-to-r from-cyan-200 to-blue-300 bg-clip-text">
+                    <p className="mb-1 text-xs uppercase tracking-wider text-muted-foreground">{metric.label}</p>
+                    <div className="mb-1 text-2xl font-semibold text-foreground">
                       {metric.value.toLocaleString()}
                     </div>
-                    <p className="text-xs leading-relaxed text-slate-400">{metric.hint}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">{metric.hint}</p>
                   </div>
                 </motion.div>
               );
@@ -521,7 +514,7 @@ export default function TeamPage() {
 
       <SectionDivider />
 
-      <section className="relative z-10 px-4 py-18 sm:px-6 lg:py-24">
+      <section className="relative z-10 px-4 py-12 sm:px-6 lg:py-14">
         <div className="mx-auto max-w-6xl">
           <motion.div
             className="mb-10"
@@ -530,15 +523,15 @@ export default function TeamPage() {
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.42 }}
           >
-            <h2 className="mb-3 text-3xl font-black text-transparent sm:text-4xl bg-linear-to-r from-cyan-200 via-blue-300 to-violet-300 bg-clip-text">
+            <h2 className="dec-title text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               What We&apos;re Building
             </h2>
-            <p className="max-w-3xl text-slate-300/85">
+            <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
               EIPs Insight is a developer-focused intelligence layer for Ethereum standards and governance.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {whatWeBuild.map((feature, index) => {
               const Icon = feature.icon;
               return (
@@ -548,16 +541,16 @@ export default function TeamPage() {
                   whileInView={{ opacity: 1, y: 0 }}
                   viewport={{ once: true, margin: '-80px' }}
                   transition={{ duration: 0.4, delay: index * 0.08 }}
-                  whileHover={{ y: -4 }}
-                  className="group relative rounded-xl border border-cyan-300/20 bg-linear-to-br from-slate-900/80 to-slate-950/90 p-6"
+                  whileHover={{ y: -2 }}
+                  className="group relative rounded-xl border border-border bg-card/60 p-4"
                 >
-                  <div className="absolute inset-0 rounded-xl bg-linear-to-br from-cyan-500/7 to-violet-500/7 opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
+                  <div className="absolute inset-0 rounded-xl persona-gradient-soft opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
                   <div className="relative z-10">
-                    <div className="mb-4 inline-flex rounded-lg border border-cyan-300/35 bg-cyan-500/12 p-2.5 text-cyan-300">
+                    <div className="mb-3 inline-flex rounded-lg border border-primary/35 bg-primary/10 p-2 text-primary">
                       <Icon className="h-4 w-4" />
                     </div>
-                    <h3 className="mb-2 text-lg font-semibold text-slate-100">{feature.title}</h3>
-                    <p className="text-sm leading-relaxed text-slate-300/82">{feature.description}</p>
+                    <h3 className="mb-1 text-base font-semibold text-foreground">{feature.title}</h3>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
                   </div>
                 </motion.div>
               );
@@ -568,7 +561,7 @@ export default function TeamPage() {
 
       <SectionDivider />
 
-      <section className="relative z-10 px-4 py-18 sm:px-6 lg:py-24">
+      <section className="relative z-10 px-4 py-12 sm:px-6 lg:py-14">
         <div className="mx-auto max-w-6xl">
           <motion.div
             className="mb-10"
@@ -577,15 +570,15 @@ export default function TeamPage() {
             viewport={{ once: true, margin: '-100px' }}
             transition={{ duration: 0.42 }}
           >
-            <h2 className="mb-3 text-3xl font-black text-transparent sm:text-4xl bg-linear-to-r from-cyan-200 via-blue-300 to-violet-300 bg-clip-text">
+            <h2 className="dec-title text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
               Values in Practice
             </h2>
-            <p className="max-w-3xl text-slate-300/85">
+            <p className="max-w-3xl text-sm text-muted-foreground sm:text-base">
               The principles guiding how we build, ship, and collaborate with the Ethereum ecosystem.
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
             {values.map((value, index) => (
               <motion.div
                 key={value.title}
@@ -593,12 +586,12 @@ export default function TeamPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: '-80px' }}
                 transition={{ duration: 0.38, delay: index * 0.08 }}
-                className="group relative rounded-xl border border-cyan-300/20 bg-linear-to-br from-slate-900/80 to-slate-950/90 p-6"
+                className="group relative rounded-xl border border-border bg-card/60 p-4"
               >
-                <div className="absolute inset-0 rounded-xl bg-linear-to-br from-cyan-500/7 to-violet-500/7 opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
+                <div className="absolute inset-0 rounded-xl persona-gradient-soft opacity-0 transition-opacity duration-250 group-hover:opacity-100" />
                 <div className="relative z-10">
-                  <h3 className="mb-2 text-base font-semibold text-cyan-200">{value.title}</h3>
-                  <p className="text-sm leading-relaxed text-slate-300/82">{value.description}</p>
+                  <h3 className="mb-1 text-base font-semibold text-foreground">{value.title}</h3>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{value.description}</p>
                 </div>
               </motion.div>
             ))}
@@ -608,82 +601,127 @@ export default function TeamPage() {
 
       <SectionDivider />
 
-      <section className="relative z-10 px-4 py-18 sm:px-6 lg:py-24">
-        <div className="mx-auto max-w-4xl">
+      <section className="relative z-10 px-4 py-12 sm:px-6 lg:py-14">
+        <div className="mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: '-100px' }}
-            className="group relative overflow-hidden rounded-2xl border border-cyan-300/30 bg-linear-to-br from-slate-900/85 via-slate-900/75 to-slate-950/90 p-10 text-center backdrop-blur-xl"
+            className="group relative overflow-hidden rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl sm:p-8"
           >
-            <div className="absolute inset-0 bg-linear-to-br from-cyan-500/11 to-violet-500/11 opacity-0 transition-opacity duration-350 group-hover:opacity-100" />
+            <div className="absolute inset-0 persona-gradient-soft opacity-0 transition-opacity duration-350 group-hover:opacity-100" />
 
-            <div className="relative z-10">
-              <h3 className="mb-4 text-3xl font-black text-transparent bg-linear-to-r from-cyan-200 via-blue-300 to-violet-300 bg-clip-text">
-                Join the Builders
-              </h3>
+            <div className="relative z-10 grid gap-7 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+              <div>
+                <p className="text-sm font-semibold text-primary">Join our team</p>
+                <h3 className="dec-title mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+                  Build the next chapter of protocol intelligence
+                </h3>
+                <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                  We&apos;re looking for curious builders who care about Ethereum governance, product craft, and
+                  shipping work that helps the ecosystem move faster with better context.
+                </p>
 
-              <p className="mx-auto mb-8 max-w-2xl text-slate-300/86">
-                We welcome contributors, developers, and researchers who want to make Ethereum protocol development
-                more visible and accessible.
-              </p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href="/about"
+                    className="inline-flex h-10 items-center rounded-lg border border-border bg-muted/40 px-5 text-sm font-semibold text-foreground transition-all hover:border-primary/40 hover:bg-primary/10"
+                  >
+                    Read our principles
+                  </Link>
+                  <a
+                    href="mailto:dev@avarch.com?subject=EIPsInsight%20Team%20Opportunity"
+                    className="inline-flex h-10 items-center rounded-lg persona-gradient px-5 text-sm font-semibold text-black transition-all hover:opacity-95"
+                  >
+                    We&apos;re hiring!
+                  </a>
+                </div>
 
-              <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-                {socialLinks.map((link) => {
-                  const Icon = link.icon;
-                  return (
-                    <motion.a
-                      key={link.label}
-                      href={link.href}
-                      target={link.href.startsWith('http') ? '_blank' : undefined}
-                      rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
-                      whileHover={{ scale: 1.04, boxShadow: '0 0 20px rgba(34,211,238,0.3)' }}
-                      whileTap={{ scale: 0.95 }}
-                      className="flex items-center gap-2 rounded-lg border border-cyan-300/40 bg-cyan-500/10 px-5 py-2.5 text-sm text-cyan-100 transition-all duration-200 hover:bg-cyan-500/20"
-                    >
-                      <Icon className="h-4 w-4" />
-                      {link.label}
-                    </motion.a>
-                  );
-                })}
+                <div className="mt-5 flex flex-wrap gap-2.5">
+                  {socialLinks.map((link) => {
+                    const Icon = link.icon;
+                    return (
+                      <a
+                        key={link.label}
+                        href={link.href}
+                        target={link.href.startsWith('http') ? '_blank' : undefined}
+                        rel={link.href.startsWith('http') ? 'noreferrer' : undefined}
+                        className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        {link.label}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-6 sm:gap-4">
+                {joinCollage.map((member, index) => (
+                  <motion.div
+                    key={`join-collage-${member.name}`}
+                    initial={{ opacity: 0, y: 12 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: '-80px' }}
+                    transition={{ duration: 0.35, delay: index * 0.08 }}
+                    whileHover={{ y: -2 }}
+                    className={`group relative overflow-hidden rounded-xl border border-border bg-card/70 shadow-[0_12px_28px_rgb(0_0_0/0.22)] ${
+                      index === 0 ? 'col-span-2 row-span-2 h-52 sm:col-span-3 sm:h-56' : ''
+                    } ${index === 1 ? 'col-span-2 h-40 sm:col-span-3 sm:h-44' : ''}
+                    ${index === 2 ? 'col-span-1 h-32 sm:col-span-2 sm:h-36' : ''}
+                    ${index === 3 ? 'col-span-1 h-32 sm:col-span-2 sm:h-36' : ''}
+                    ${index === 4 ? 'col-span-2 h-32 sm:col-span-2 sm:h-36' : ''}`}
+                  >
+                    <Image
+                      src={member.avatar || '/team/pooja_ranjan.jpg'}
+                      alt={member.name}
+                      width={520}
+                      height={640}
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    />
+                    <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-background/95 via-background/65 to-transparent px-2.5 py-2">
+                      <p className="text-xs font-medium text-foreground">{member.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{member.role}</p>
+                    </div>
+                  </motion.div>
+                ))}
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      <footer className="relative z-10 border-t border-cyan-300/10 px-4 py-10 sm:px-6">
+      <footer className="relative z-10 border-t border-border px-4 py-8 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
             viewport={{ once: true }}
-            className="flex flex-col items-center justify-between gap-6 text-sm text-slate-400 sm:flex-row"
+            className="flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row"
           >
-            <Link href="/" className="flex items-center gap-1 transition-colors hover:text-cyan-300">
+            <Link href="/" className="flex items-center gap-1 transition-colors hover:text-primary">
               ← Back to Home
             </Link>
 
             <div className="flex flex-wrap justify-center gap-6">
-              <Link href="/about" className="transition-colors hover:text-cyan-300">
+              <Link href="/about" className="transition-colors hover:text-primary">
                 About
               </Link>
-              <Link href="/pricing" className="transition-colors hover:text-cyan-300">
+              <Link href="/pricing" className="transition-colors hover:text-primary">
                 Pricing
               </Link>
-              <Link href="/api-tokens" className="transition-colors hover:text-cyan-300">
+              <Link href="/api-tokens" className="transition-colors hover:text-primary">
                 API
               </Link>
-              <Link href="/privacy" className="transition-colors hover:text-cyan-300">
+              <Link href="/privacy" className="transition-colors hover:text-primary">
                 Privacy
               </Link>
             </div>
 
-            <p className="text-slate-500">© 2026 EIPs Insight. All rights reserved.</p>
+            <p className="text-muted-foreground/80">© 2026 EIPs Insight. All rights reserved.</p>
           </motion.div>
         </div>
       </footer>
     </div>
   );
 }
-
