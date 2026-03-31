@@ -4,6 +4,7 @@ export const CANONICAL_EIP_EDITORS = [
   "xinbenlv",
   "g11tech",
   "jochem-brouwer",
+  "abcoathup"
 ] as const;
 
 export const CANONICAL_EIP_REVIEWERS = [
@@ -15,7 +16,7 @@ export const CANONICAL_EIP_REVIEWERS = [
   "daniellehrner",
 ] as const;
 
-export const ASSOCIATE_EIP_EDITORS = [] as const;
+export const ASSOCIATE_EIP_EDITORS = ["abcoathup"] as const;
 
 export const CANONICAL_EIP_EDITOR_LOWER = CANONICAL_EIP_EDITORS.map((editor) => editor.toLowerCase());
 export const CANONICAL_EIP_REVIEWER_LOWER = CANONICAL_EIP_REVIEWERS.map((reviewer) => reviewer.toLowerCase());
