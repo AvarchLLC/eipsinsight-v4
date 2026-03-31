@@ -38,6 +38,8 @@ import { EIPsPageHeader } from './_components/eips-page-header';
 import HomeFAQs from './_components/home-faqs';
 import SocialCommunityUpdates from './_components/social-community-updates';
 import { useSession } from '@/hooks/useSession';
+import { useTheme } from 'next-themes';
+import { cn } from '@/lib/utils';
 
 type Dimension = 'status' | 'category' | 'repo';
 type SortBy = 'github' | 'eip' | 'title' | 'author' | 'type' | 'category' | 'status' | 'updated_at';
@@ -147,12 +149,26 @@ const DEFAULT_BUCKET_THEME: BucketTheme = {
 };
 
 const BUCKET_THEME_BY_STATUS: Record<string, BucketTheme> = {
-  Draft: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
-  Review: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
-  'Last Call': { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
-  Final: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
-  Stagnant: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
-  Withdrawn: { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' },
+  Draft: { border: 'border-slate-400/30', surface: 'bg-slate-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-slate-500/15', icon: 'text-slate-600 dark:text-slate-300' },
+  Review: { border: 'border-amber-500/30', surface: 'bg-amber-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-amber-500/15', icon: 'text-amber-700 dark:text-amber-300' },
+  'Last Call': { border: 'border-orange-500/30', surface: 'bg-orange-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-orange-500/15', icon: 'text-orange-700 dark:text-orange-300' },
+  Final: { border: 'border-emerald-500/30', surface: 'bg-emerald-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-emerald-500/15', icon: 'text-emerald-700 dark:text-emerald-300' },
+  Stagnant: { border: 'border-zinc-400/30', surface: 'bg-zinc-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-zinc-500/15', icon: 'text-zinc-600 dark:text-zinc-400' },
+  Withdrawn: { border: 'border-red-500/30', surface: 'bg-red-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-red-500/15', icon: 'text-red-700 dark:text-red-300' },
+  Living: { border: 'border-cyan-500/30', surface: 'bg-cyan-500/[0.07]', title: 'text-foreground', iconWrap: 'bg-cyan-500/15', icon: 'text-cyan-700 dark:text-cyan-300' },
+  Unknown: { border: 'border-slate-400/25', surface: 'bg-slate-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-slate-500/12', icon: 'text-slate-600 dark:text-slate-400' },
+};
+
+const BUCKET_THEME_BY_CATEGORY: Record<string, BucketTheme> = {
+  Core: { border: 'border-orange-500/28', surface: 'bg-orange-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-orange-500/14', icon: 'text-orange-700 dark:text-orange-300' },
+  Networking: { border: 'border-sky-500/28', surface: 'bg-sky-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-sky-500/14', icon: 'text-sky-700 dark:text-sky-300' },
+  Interface: { border: 'border-violet-500/28', surface: 'bg-violet-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-violet-500/14', icon: 'text-violet-700 dark:text-violet-300' },
+  ERC: { border: 'border-emerald-500/28', surface: 'bg-emerald-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-emerald-500/14', icon: 'text-emerald-700 dark:text-emerald-300' },
+  RIP: { border: 'border-indigo-500/28', surface: 'bg-indigo-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-indigo-500/14', icon: 'text-indigo-700 dark:text-indigo-300' },
+  RRC: { border: 'border-indigo-500/28', surface: 'bg-indigo-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-indigo-500/14', icon: 'text-indigo-700 dark:text-indigo-300' },
+  Meta: { border: 'border-fuchsia-500/28', surface: 'bg-fuchsia-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-fuchsia-500/14', icon: 'text-fuchsia-700 dark:text-fuchsia-300' },
+  Informational: { border: 'border-teal-500/28', surface: 'bg-teal-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-teal-500/14', icon: 'text-teal-700 dark:text-teal-300' },
+  Other: { border: 'border-slate-400/25', surface: 'bg-slate-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-slate-500/12', icon: 'text-slate-600 dark:text-slate-400' },
 };
 
 const ENTRY_PATHS = [
@@ -280,17 +296,20 @@ function formatEditorAction(eventType: string) {
 }
 
 function getBucketTheme(dimension: Dimension, bucket: string): BucketTheme {
-  if (dimension === 'status') return BUCKET_THEME_BY_STATUS[bucket] || DEFAULT_BUCKET_THEME;
+  if (dimension === 'status') return BUCKET_THEME_BY_STATUS[bucket] || BUCKET_THEME_BY_STATUS.Unknown || DEFAULT_BUCKET_THEME;
+  if (dimension === 'category') return BUCKET_THEME_BY_CATEGORY[bucket] || DEFAULT_BUCKET_THEME;
   if (dimension === 'repo') {
-    if (bucket === 'RIPs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
-    if (bucket === 'ERCs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
-    if (bucket === 'EIPs') return { border: 'border-primary/25', surface: 'bg-primary/5', title: 'text-foreground', iconWrap: 'bg-primary/10', icon: 'text-primary' };
+    if (bucket === 'RIPs') return { border: 'border-violet-500/28', surface: 'bg-violet-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-violet-500/14', icon: 'text-violet-700 dark:text-violet-300' };
+    if (bucket === 'ERCs') return { border: 'border-emerald-500/28', surface: 'bg-emerald-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-emerald-500/14', icon: 'text-emerald-700 dark:text-emerald-300' };
+    if (bucket === 'EIPs') return { border: 'border-cyan-500/28', surface: 'bg-cyan-500/[0.06]', title: 'text-foreground', iconWrap: 'bg-cyan-500/14', icon: 'text-cyan-700 dark:text-cyan-300' };
   }
   return DEFAULT_BUCKET_THEME;
 }
 
 export default function EIPsHomePage() {
   const { data: session, loading: sessionLoading } = useSession();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
   const [dimension, setDimension] = useState<Dimension>('status');
   const [sortBy, setSortBy] = useState<SortBy>('updated_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
@@ -350,7 +369,9 @@ export default function EIPsHomePage() {
     eventUrl?: string | null;
   }>>([]);
   const [openActivities, setOpenActivities] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
+  const [distributionLoading, setDistributionLoading] = useState(true);
+  const [tableLoading, setTableLoading] = useState(true);
+  const [widgetsLoading, setWidgetsLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
   const [downloadingLeaderboard, setDownloadingLeaderboard] = useState(false);
   const [monthlyDeltaUpdatedAt, setMonthlyDeltaUpdatedAt] = useState<string | null>(null);
@@ -400,50 +421,89 @@ export default function EIPsHomePage() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      setLoading(true);
+      setDistributionLoading(true);
       try {
-        const [distRes, tableRes, deltaRes, editorRes, recentRes, editorActivityRes] = await Promise.all([
-          client.standards.getUnifiedDistribution({ dimension }),
-          client.standards.getUnifiedProposals({
-            page,
-            pageSize: 10,
-            sortBy,
-            sortDir,
-            dimension,
-            bucket: activeBucket ?? undefined,
-            columnSearch: {
-              github: columnSearch.github || undefined,
-              eip: columnSearch.eip || undefined,
-              title: columnSearch.title || undefined,
-              author: columnSearch.author || undefined,
-              type: columnSearch.type || undefined,
-              status: columnSearch.status || undefined,
-              category: columnSearch.category || undefined,
-              updatedAt: columnSearch.updatedAt || undefined,
-            },
-          }),
+        const distRes = await client.standards.getUnifiedDistribution({ dimension });
+        if (!cancelled) setDistribution(distRes);
+      } catch (err) {
+        console.error('Failed to load homepage distribution:', err);
+      } finally {
+        if (!cancelled) setDistributionLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dimension]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setTableLoading(true);
+      try {
+        const tableRes = await client.standards.getUnifiedProposals({
+          page,
+          pageSize: 10,
+          sortBy,
+          sortDir,
+          dimension,
+          bucket: activeBucket ?? undefined,
+          columnSearch: {
+            github: columnSearch.github || undefined,
+            eip: columnSearch.eip || undefined,
+            title: columnSearch.title || undefined,
+            author: columnSearch.author || undefined,
+            type: columnSearch.type || undefined,
+            status: columnSearch.status || undefined,
+            category: columnSearch.category || undefined,
+            updatedAt: columnSearch.updatedAt || undefined,
+          },
+        });
+        if (!cancelled) {
+          setTableData({ total: tableRes.total, totalPages: tableRes.totalPages, rows: tableRes.rows });
+        }
+      } catch (err) {
+        console.error('Failed to load homepage proposals table:', err);
+      } finally {
+        if (!cancelled) setTableLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dimension, page, sortBy, sortDir, activeBucket, columnSearch]);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setWidgetsLoading(true);
+      try {
+        const [deltaRes, editorRes, recentRes, editorActivityRes] = await Promise.all([
           client.standards.getMonthlyDelta({ monthYear: currentMonthYear }),
           client.analytics.getMonthlyEditorLeaderboard({ monthYear: currentMonthYear, limit: 10 }),
           client.analytics.getRecentChanges({ limit: 8 }),
           client.analytics.getRecentEditorActivity({ limit: 5, onlyOpenPRs: true }),
         ]);
-
-        setDistribution(distRes);
-        setTableData({ total: tableRes.total, totalPages: tableRes.totalPages, rows: tableRes.rows });
-        setFebDelta(deltaRes.items);
-        setMonthlyDeltaUpdatedAt(deltaRes.updatedAt);
-        setFebEditors(editorRes.items);
-        setMonthlyLeaderboardUpdatedAt(editorRes.updatedAt);
-        setRecentChanges(recentRes as typeof recentChanges);
-        setRecentEditorActivities(editorActivityRes);
+        if (!cancelled) {
+          setFebDelta(deltaRes.items);
+          setMonthlyDeltaUpdatedAt(deltaRes.updatedAt);
+          setFebEditors(editorRes.items);
+          setMonthlyLeaderboardUpdatedAt(editorRes.updatedAt);
+          setRecentChanges(recentRes as typeof recentChanges);
+          setRecentEditorActivities(editorActivityRes);
+        }
       } catch (err) {
-        console.error('Failed to load homepage data:', err);
+        console.error('Failed to load homepage widgets:', err);
       } finally {
-        setLoading(false);
+        if (!cancelled) setWidgetsLoading(false);
       }
     })();
-  }, [dimension, page, sortBy, sortDir, activeBucket, columnSearch, currentMonthYear]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentMonthYear]);
 
   const totalCount = useMemo(
     () => distribution.reduce((acc, row) => acc + row.count, 0),
@@ -468,9 +528,9 @@ export default function EIPsHomePage() {
       trigger: 'item',
       formatter: (params: { name: string; value: number; percent: number }) =>
         `${params.name}<br/>${params.value} (${params.percent}%)`,
-      backgroundColor: 'rgba(15,23,42,0.9)',
-      borderColor: 'rgba(148,163,184,0.2)',
-      textStyle: { color: '#e2e8f0', fontSize: 12 },
+      backgroundColor: isDark ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.98)',
+      borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
+      textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
     },
     legend: { show: false },
     series: [
@@ -483,18 +543,19 @@ export default function EIPsHomePage() {
         itemStyle: {
           borderRadius: 4,
           borderWidth: 1,
-          borderColor: 'rgba(15,23,42,0.12)',
+          borderColor: isDark ? 'rgba(15,23,42,0.12)' : 'rgba(148,163,184,0.22)',
         },
         label: {
           show: true,
-          color: '#cbd5e1',
+          color: isDark ? '#cbd5e1' : '#475569',
           fontSize: 12,
+          fontWeight: 600,
           formatter: '{b}: {c}',
         },
         labelLine: {
           show: true,
           lineStyle: {
-            color: 'rgba(148,163,184,0.55)',
+            color: isDark ? 'rgba(148,163,184,0.55)' : 'rgba(100,116,139,0.35)',
           },
           length: 8,
           length2: 8,
@@ -506,16 +567,16 @@ export default function EIPsHomePage() {
         })),
       },
     ],
-  }), [febInsightPieData]);
+  }), [febInsightPieData, isDark]);
 
   const maxEditor = useMemo(
     () => Math.max(1, ...febEditors.map((e) => e.totalActions)),
     [febEditors]
   );
-  const showDistributionSkeleton = loading && distribution.length === 0;
-  const showTableSkeleton = loading && !tableData;
-  const showInsightSkeleton = loading && febDelta.length === 0;
-  const showEditorSkeleton = loading && febEditors.length === 0;
+  const showDistributionSkeleton = distributionLoading && distribution.length === 0;
+  const showTableSkeleton = tableLoading && !tableData;
+  const showInsightSkeleton = widgetsLoading && febDelta.length === 0;
+  const showEditorSkeleton = widgetsLoading && febEditors.length === 0;
 
   const toggleSort = (field: SortBy) => {
     if (sortBy === field) {
@@ -611,6 +672,28 @@ export default function EIPsHomePage() {
     }
   };
 
+  const downloadMonthlyInsightCSV = async () => {
+    try {
+      setDownloading(true);
+      const res = await client.standards.exportMonthlyDeltaDetailedCSV({
+        monthYear: currentMonthYear,
+      });
+      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export monthly delta CSV:', err);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const downloadLeaderboardDetailedCSV = async () => {
     try {
       setDownloadingLeaderboard(true);
@@ -701,50 +784,40 @@ export default function EIPsHomePage() {
             </h2>
           </div>
           <div className="w-full overflow-x-auto pb-1 sm:w-auto">
-            <motion.div
-              layout
-              className="inline-flex min-w-max items-center rounded-xl border border-border bg-muted/60 p-1 shadow-sm"
+            <div
+              role="tablist"
+              aria-label="Browse dimension"
+              className="inline-flex min-w-max items-center gap-0.5 rounded-xl border border-border bg-muted/70 p-1 shadow-sm"
             >
-              <button
-                onClick={() => setDimension('status')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'status' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <Activity className="h-4 w-4" /> Status
-                {dimension === 'status' && (
-                  <motion.span
-                    layoutId="dimension-pill"
-                    className="absolute inset-0 -z-10 rounded-lg bg-primary/15 ring-1 ring-primary/40"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </button>
-              <button
-                onClick={() => setDimension('category')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'category' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <Layers className="h-4 w-4" /> Category
-                {dimension === 'category' && (
-                  <motion.span
-                    layoutId="dimension-pill"
-                    className="absolute inset-0 -z-10 rounded-lg bg-primary/15 ring-1 ring-primary/40"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </button>
-              <button
-                onClick={() => setDimension('repo')}
-                className={`relative inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium whitespace-nowrap transition ${dimension === 'repo' ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
-              >
-                <GitBranch className="h-4 w-4" /> Repo
-                {dimension === 'repo' && (
-                  <motion.span
-                    layoutId="dimension-pill"
-                    className="absolute inset-0 -z-10 rounded-lg bg-primary/15 ring-1 ring-primary/40"
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  />
-                )}
-              </button>
-            </motion.div>
+              {(
+                [
+                  ['status', 'Status', Activity] as const,
+                  ['category', 'Category', Layers] as const,
+                  ['repo', 'Repo', GitBranch] as const,
+                ] as const
+              ).map(([key, label, Icon]) => {
+                const active = dimension === key;
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setDimension(key)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm whitespace-nowrap transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                      active
+                        ? 'bg-background font-semibold text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-primary/35 dark:shadow-[0_1px_3px_rgb(0_0_0/0.35)] dark:ring-primary/45'
+                        : 'font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground',
+                    )}
+                  >
+                    <Icon className={cn('h-4 w-4 shrink-0', active && 'text-primary')} />
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -764,17 +837,28 @@ export default function EIPsHomePage() {
           ))
         ) : (
           <>
-        <motion.button
-          whileHover={{ y: -1 }}
+        <button
+          type="button"
           onClick={() => setActiveBucket(null)}
-          className={`rounded-xl border px-3 py-2 text-left transition ${activeBucket === null ? 'border-primary/60 bg-primary/10 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'border-border bg-card/60 hover:border-primary/40'}`}
+          className={cn(
+            'rounded-xl border px-3 py-2 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none',
+            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
+            activeBucket === null
+              ? 'border-primary/40 bg-primary/10 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.18)]'
+              : 'border-border bg-card/60 hover:border-primary/40',
+          )}
         >
-          <div className="mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <div
+            className={cn(
+              'mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg',
+              activeBucket === null ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary',
+            )}
+          >
             <Layers className="h-3 w-3" />
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
           <p className="mt-0.5 text-lg font-semibold leading-none text-foreground sm:text-xl">{totalCount.toLocaleString()}</p>
-        </motion.button>
+        </button>
 
         {distribution.map((row) => {
           const pct = totalCount > 0 ? Math.round((row.count / totalCount) * 100) : 0;
@@ -787,24 +871,42 @@ export default function EIPsHomePage() {
           const Icon = dimension === 'status' ? StatusIcon : dimension === 'category' ? CategoryIcon : RepoIcon;
 
           return (
-            <motion.button
+            <button
+              type="button"
               key={row.bucket}
-              whileHover={{ y: -1 }}
               onClick={() => setActiveBucket((prev) => (prev === row.bucket ? null : row.bucket))}
-              className={`rounded-xl border px-3 py-2 text-left transition ${selected ? 'border-primary/60 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]' : 'hover:border-primary/40'} ${theme.border} ${theme.surface}`}
+              className={cn(
+                'rounded-xl border px-3 py-2 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none',
+                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
+                selected
+                  ? 'border-primary/40 bg-primary/10 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.18)]'
+                  : cn(theme.border, theme.surface, 'hover:border-primary/45'),
+              )}
             >
-              <div className={`mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg ${theme.iconWrap}`}>
-                <Icon className={`h-3.5 w-3.5 ${theme.icon}`} />
+              <div
+                className={cn(
+                  'mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg',
+                  selected ? 'bg-primary/20' : theme.iconWrap,
+                )}
+              >
+                <Icon className={cn('h-3.5 w-3.5', selected ? 'text-primary' : theme.icon)} />
               </div>
               <div className="mb-0.5 flex items-center justify-between gap-2">
-                <p className={`truncate text-[13px] font-medium leading-tight ${theme.title}`}>{row.bucket}</p>
+                <p
+                  className={cn(
+                    'truncate text-[13px] font-medium leading-tight',
+                    selected ? 'text-foreground' : theme.title,
+                  )}
+                >
+                  {row.bucket}
+                </p>
                 <span className="text-[10px] text-muted-foreground">{pct}%</span>
               </div>
               <p className="text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">{row.count.toLocaleString()}</p>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/80">
                 <div className={`h-full ${barColor}`} style={{ width: `${Math.max(8, (row.count / maxCardCount) * 100)}%` }} />
               </div>
-            </motion.button>
+            </button>
           );
         })}
           </>
@@ -1000,13 +1102,20 @@ export default function EIPsHomePage() {
               <p className="mt-0.5 text-xs text-muted-foreground">
                 Monthly status transition distribution and totals.
               </p>
+              <Link
+                href={`/insights/year-month-analysis?month=${currentMonthYear}`}
+                className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Open full month analysis
+                <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
             <button
-              onClick={downloadDetailedCSV}
+              onClick={downloadMonthlyInsightCSV}
               disabled={downloading}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
             >
-              <Download className="h-3.5 w-3.5" /> {downloading ? 'Exporting...' : 'Detailed CSV'}
+              <Download className="h-3.5 w-3.5" /> {downloading ? 'Exporting...' : 'Status changes CSV'}
             </button>
           </div>
 
@@ -1215,7 +1324,7 @@ export default function EIPsHomePage() {
               </span>
             </div>
             <div className="space-y-2">
-              {loading && recentEditorActivities.length === 0 ? (
+              {widgetsLoading && recentEditorActivities.length === 0 ? (
                 Array.from({ length: 6 }).map((_, i) => (
                   <div key={`review-skeleton-${i}`} className="rounded-lg border border-border p-2">
                     <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />

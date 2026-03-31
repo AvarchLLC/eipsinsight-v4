@@ -1,17 +1,10 @@
 export const CANONICAL_EIP_EDITORS = [
-  "g11tech",
-  "axic",
-  "Pandapip1",
-  "gcolvin",
   "lightclient",
   "SamWilsn",
   "xinbenlv",
-  "nconsigny",
-  "yoavw",
-  "CarlBeek",
-  "adietrichs",
+  "g11tech",
   "jochem-brouwer",
-  "abcoathup",
+  "abcoathup"
 ] as const;
 
 export const CANONICAL_EIP_REVIEWERS = [

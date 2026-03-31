@@ -1482,6 +1482,92 @@ const results = await prisma.$queryRawUnsafe<Array<{
       };
     }),
 
+  // ——— Monthly Status Delta Detailed CSV (per-transition rows matching donut) ———
+  exportMonthlyDeltaDetailedCSV: optionalAuthProcedure
+    .input(
+      z.object({
+        monthYear: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      })
+    )
+    .handler(async ({ input }) => {
+      const now = new Date();
+      const monthYear =
+        input.monthYear ??
+        `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const monthStart = `${monthYear}-01`;
+      const monthStartDate = new Date(`${monthStart}T00:00:00.000Z`);
+      const nextMonthDate = new Date(
+        Date.UTC(monthStartDate.getUTCFullYear(), monthStartDate.getUTCMonth() + 1, 1)
+      );
+      const nextMonth = `${nextMonthDate.getUTCFullYear()}-${String(
+        nextMonthDate.getUTCMonth() + 1
+      ).padStart(2, '0')}-01`;
+
+      const rows = await prisma.$queryRawUnsafe<
+        Array<{
+          eip_number: number;
+          title: string | null;
+          author: string | null;
+          repo: string | null;
+          from_status: string | null;
+          to_status: string;
+          changed_at: Date;
+        }>
+      >(
+        `
+        SELECT
+          e.eip_number AS eip_number,
+          e.title AS title,
+          e.author AS author,
+          COALESCE(r.name, 'ethereum/EIPs') AS repo,
+          se.from_status,
+          se.to_status,
+          se.changed_at
+        FROM eip_status_events se
+        JOIN eips e ON e.id = se.eip_id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r ON r.id = s.repository_id
+        WHERE se.changed_at >= $1::date
+          AND se.changed_at < $2::date
+        ORDER BY se.to_status ASC, se.changed_at DESC, e.eip_number ASC
+        `,
+        monthStart,
+        nextMonth
+      );
+
+      const escapeCsv = (value: string | number | null | undefined) =>
+        `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+      const header = [
+        'month',
+        'eip_number',
+        'title',
+        'author',
+        'repo',
+        'from_status',
+        'to_status',
+        'changed_at_utc',
+      ].join(',');
+
+      const body = rows.map((row) =>
+        [
+          escapeCsv(monthYear),
+          row.eip_number,
+          escapeCsv(row.title),
+          escapeCsv(row.author),
+          escapeCsv(row.repo),
+          escapeCsv(row.from_status),
+          escapeCsv(row.to_status),
+          escapeCsv(row.changed_at.toISOString()),
+        ].join(',')
+      );
+
+      return {
+        csv: [header, ...body].join('\n'),
+        filename: `monthly-status-delta-${monthYear}.csv`,
+      };
+    }),
+
   // ——— CSV Export (EIPs/ERCs) ———
   exportCSV: optionalAuthProcedure
     .input(z.object({
