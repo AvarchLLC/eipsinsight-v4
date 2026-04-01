@@ -103,15 +103,21 @@ export function SearchBar() {
 
     // Always show dropdown while searching so users get immediate feedback.
     setShowDropdown(true);
+    setLoading(true);
+
+    let cancelled = false;
 
     const timeoutId = setTimeout(async () => {
-      setLoading(true);
       try {
+        const searchQuery = query.trim();
         const [proposalsRes, authorsRes, prsRes] = await Promise.allSettled([
-          client.search.searchProposals({ query: query.trim(), limit: 50 }),
-          client.search.searchAuthors({ query: query.trim(), limit: 20 }),
-          client.search.searchPRs({ query: query.trim(), limit: 20 }),
+          client.search.searchProposals({ query: searchQuery, limit: 50 }),
+          client.search.searchAuthors({ query: searchQuery, limit: 20 }),
+          client.search.searchPRs({ query: searchQuery, limit: 20 }),
         ]);
+
+        // Only update if this is still the latest request
+        if (cancelled) return;
 
         const proposals = proposalsRes.status === 'fulfilled' ? proposalsRes.value : [];
         const authors = authorsRes.status === 'fulfilled' ? (authorsRes.value as AuthorSearchRaw[]) : [];
@@ -143,16 +149,20 @@ export function SearchBar() {
         });
         setSelectedIndex(-1);
       } catch (err) {
+        if (cancelled) return;
         console.error('Search error:', err);
         setResults({ proposals: [], authors: [], prs: [] });
         // Keep dropdown open to show "No results found" fallback instead of appearing broken.
         setShowDropdown(true);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    }, 150);
+    }, 300);
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [query]);
 
   // Handler for clicking a result (must be defined before keyboard effect)
