@@ -716,7 +716,7 @@ export default function EIPsHomePage() {
           client.standards.getMonthlyDelta({ monthYear: currentMonthYear }),
           client.analytics.getMonthlyEditorLeaderboard({ monthYear: currentMonthYear, limit: 50 }),
           client.analytics.getRecentChanges({ limit: 8 }),
-          client.analytics.getRecentEditorActivity({ limit: 5, onlyOpenPRs: true }),
+          client.analytics.getRecentEditorActivity({ limit: 5, onlyOpenPRs: false }),
         ]);
         if (!cancelled) {
           setFebDelta(deltaRes.items);
@@ -1994,7 +1994,7 @@ export default function EIPsHomePage() {
 
           <aside className="self-start rounded-xl border border-border bg-card/60 p-3 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Latest Editor Activity (Open PRs)</h3>
+              <h3 className="text-sm font-semibold text-foreground">Latest Editor Activity</h3>
               <span className="rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {recentEditorActivities.length}
               </span>
@@ -2010,7 +2010,7 @@ export default function EIPsHomePage() {
                 ))
               ) : recentEditorActivities.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
-                  No editor activity found for open PRs right now. Monthly leaderboard includes open and closed PR actions.
+                  No recent editor activity found right now.
                 </p>
               ) : (
                 recentEditorActivities.slice(0, 5).map((item, idx) => (
