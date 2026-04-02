@@ -43,9 +43,9 @@ export default function PersonaRedirectPage() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-        <div className="text-center">
-          <div className="mb-6">
+      <div className="min-h-screen bg-background">
+        <div className="page-shell flex min-h-screen flex-col items-center justify-center py-10 text-center">
+          <div className="mb-5 rounded-full border border-border bg-card/60 p-3">
             <ThemedLogoGif
               alt="EIPsInsight"
               width={64}
@@ -53,11 +53,11 @@ export default function PersonaRedirectPage() {
               unoptimized
             />
           </div>
-          <h1 className="text-xl font-semibold text-white mb-2">
+          <h1 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             Unknown Persona
           </h1>
-          <p className="text-slate-400 mb-4">{error}</p>
-          <p className="text-sm text-slate-500">
+          <p className="mt-1 text-sm text-muted-foreground">{error}</p>
+          <p className="mt-3 text-sm text-muted-foreground">
             Redirecting to persona selection...
           </p>
         </div>
@@ -66,19 +66,17 @@ export default function PersonaRedirectPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
-      <div className="text-center">
-        <div className="relative mb-6">
-          <div className="absolute inset-0 animate-pulse rounded-full bg-cyan-400/20 blur-xl" />
+    <div className="min-h-screen bg-background">
+      <div className="page-shell flex min-h-screen flex-col items-center justify-center py-10 text-center">
+        <div className="mb-5 rounded-full border border-border bg-card/60 p-3 animate-pulse">
           <ThemedLogoGif
             alt="Loading"
             width={64}
             height={64}
             unoptimized
-            className="relative z-10 animate-pulse"
           />
         </div>
-        <p className="text-slate-400">
+        <p className="text-sm text-muted-foreground">
           Setting up your personalized experience...
         </p>
       </div>

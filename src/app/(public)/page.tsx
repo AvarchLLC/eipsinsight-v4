@@ -20,6 +20,7 @@ import {
   Cpu,
   Download,
   Eye,
+  ExternalLink,
   FileText,
   Filter,
   GitBranch,
@@ -30,6 +31,7 @@ import {
   Pause,
   Trophy,
   XCircle,
+  Wrench,
   Zap,
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
@@ -43,7 +45,8 @@ import SocialCommunityUpdates from './_components/social-community-updates';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
-import { ASSOCIATE_EIP_EDITORS } from '@/data/eip-contributor-roles';
+import { ASSOCIATE_EIP_EDITORS, CANONICAL_EIP_EDITORS } from '@/data/eip-contributor-roles';
+import { useEffectivePersona, useIsHydrated } from '@/stores/personaStore';
 
 type Dimension = 'status' | 'category' | 'repo' | 'stages';
 type SortBy = 'github' | 'eip' | 'title' | 'author' | 'type' | 'category' | 'status' | 'updated_at';
@@ -58,7 +61,40 @@ type ColumnSearch = {
   status: string;
   category: string;
   updatedAt: string;
+  upgrade: string;
 };
+
+type HomepageEditorRow = {
+  actor: string;
+  totalActions: number;
+  prsTouched: number;
+};
+
+type BoardPreviewRow = {
+  prNumber: number;
+  title: string | null;
+  author: string | null;
+  createdAt: string;
+  repo: string;
+  repoShort: string;
+  govState: string;
+  waitDays: number;
+  processType: string;
+};
+
+type ProcessBreakdownRow = {
+  category: string;
+  count: number;
+};
+
+type ParticipantBreakdownRow = {
+  label: string;
+  count: number;
+};
+
+type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
+
+type HomePersona = 'developer' | 'editor' | 'builder' | 'newcomer';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-slate-500',
@@ -83,6 +119,18 @@ const STATUS_PIE_COLORS: Record<string, string> = {
   Stagnant: '#ef4444',
   Withdrawn: '#dc2626',
   Unknown: '#94a3b8',
+};
+
+const PROCESS_STACK_COLORS: Record<string, string> = {
+  'Status Change': '#34d399',
+  'New EIP': '#60a5fa',
+  'PR DRAFT': '#f59e0b',
+  Typo: '#f97316',
+  Website: '#a78bfa',
+  'EIP-1': '#22d3ee',
+  Tooling: '#fb7185',
+  'Content Edit': '#94a3b8',
+  Misc: '#64748b',
 };
 
 const BADGE_COLORS: Record<string, string> = {
@@ -248,6 +296,76 @@ const ENTRY_PATHS = [
   },
 ];
 
+const PERSONA_HOME_PLANS: Record<HomePersona, {
+  title: string;
+  description: string;
+  goal: string;
+  tools: Array<{
+    key: string;
+    title: string;
+    href: string;
+    cta: string;
+    icon: React.ComponentType<{ className?: string }>;
+    blurb: string;
+  }>;
+}> = {
+  developer: {
+    title: 'Developer Home',
+    description: 'See what is changing, what is active, and where to dive deeper next.',
+    goal: 'Quickly understand ongoing protocol changes and identify actionable items.',
+    tools: [
+      { key: 'upgrade', title: 'Upgrade Watch', href: '/upgrade', cta: 'Open', icon: Zap, blurb: 'Protocol changes and rollout context.' },
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Most active standards this week.' },
+      { key: 'browse', title: 'Browse by Filters', href: '/explore', cta: 'Open', icon: Filter, blurb: 'Filter by status, category, and repo.' },
+      { key: 'board', title: 'Board Shortcut', href: '/tools/board', cta: 'Open', icon: GitPullRequest, blurb: 'Jump into active proposal queue.' },
+      { key: 'timeline', title: 'Timeline', href: '/tools/timeline', cta: 'Open', icon: GitBranch, blurb: 'Recent lifecycle and PR movement.' },
+      { key: 'dependencies', title: 'Dependencies', href: '/tools/dependencies', cta: 'Open', icon: Network, blurb: 'Track proposal dependencies.' },
+    ],
+  },
+  editor: {
+    title: 'Editor Home',
+    description: 'Stay on top of review queue, editorial workload, and proposal progression.',
+    goal: 'Efficiently manage review workload and track proposal progression.',
+    tools: [
+      { key: 'editing-board', title: 'Editing Board', href: '/tools/board', cta: 'Open', icon: GitPullRequest, blurb: 'Review queue and status lanes.' },
+      { key: 'open-editor-prs', title: 'EIP Open PRs', href: '/tools/board?status=Waiting+on+Editor&page=1', cta: 'Open', icon: GitPullRequest, blurb: 'Direct view: waiting on editor.' },
+      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Open', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.' },
+      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'Open', icon: Trophy, blurb: 'Monthly editorial activity snapshot.' },
+      { key: 'composition-timeline', title: 'EIP Composition Timeline', href: '/tools/timeline', cta: 'Open', icon: GitBranch, blurb: 'Track EIP status changes for Glamsterdam.' },
+      { key: 'browse', title: 'Browse by Filters', href: '/explore', cta: 'Open', icon: Filter, blurb: 'Status, category, and repo exploration.' },
+    ],
+  },
+  builder: {
+    title: 'Builder Home',
+    description: 'Discover active standards quickly and jump into contribution workflows.',
+    goal: 'Discover active standards and contribute quickly.',
+    tools: [
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Find active standards quickly.' },
+      { key: 'erc-focus', title: 'Browse by Filters (ERC)', href: '/explore?repo=ercs', cta: 'Open', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
+      { key: 'eip-builder', title: 'EIP Builder', href: '/tools/eip-builder', cta: 'Open', icon: Code, blurb: 'Primary drafting and validation workflow.' },
+      { key: 'resources', title: 'Practical Resources', href: '/resources/docs', cta: 'Open', icon: BookOpen, blurb: 'Guides, references, and examples.' },
+    ],
+  },
+  newcomer: {
+    title: 'Newcomer Home',
+    description: 'Start with clear context, then explore proposals and tools at your pace.',
+    goal: 'Make Ethereum standards approachable and easy to get started with.',
+    tools: [
+      { key: 'learn', title: 'Learning Resources', href: '/resources', cta: 'Open', icon: BookOpen, blurb: 'Primary entry point for beginners.' },
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Simple view of current activity.' },
+      { key: 'upgrade', title: 'Upgrade Watch', href: '/upgrade', cta: 'Open', icon: Zap, blurb: 'Simplified network-upgrade summary.' },
+      { key: 'tools', title: 'Beginner Tool Shortcuts', href: '/tools', cta: 'Open', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
+    ],
+  },
+};
+
+const PERSONA_LABELS: Record<HomePersona, string> = {
+  developer: 'Developer',
+  editor: 'Editor',
+  builder: 'Builder',
+  newcomer: 'Newcomer',
+};
+
 function monthLabel(monthYear: string) {
   const [y, m] = monthYear.split('-').map(Number);
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString('en-US', {
@@ -362,6 +480,9 @@ function getBucketTheme(dimension: Dimension, bucket: string): BucketTheme {
 export default function EIPsHomePage() {
   const { data: session, loading: sessionLoading } = useSession();
   const { resolvedTheme } = useTheme();
+  const personaFromStore = useEffectivePersona();
+  const personaHydrated = useIsHydrated();
+  const activePersona: HomePersona = (personaHydrated ? personaFromStore : 'newcomer') as HomePersona;
   const isDark = resolvedTheme === 'dark';
   const [dimension, setDimension] = useState<Dimension>('status');
   const [sortBy, setSortBy] = useState<SortBy>('updated_at');
@@ -378,6 +499,7 @@ export default function EIPsHomePage() {
     status: '',
     category: '',
     updatedAt: '',
+    upgrade: '',
   });
   const [debouncedColumnSearch, setDebouncedColumnSearch] = useState<ColumnSearch>(columnSearch);
   const [autoGithubFilter, setAutoGithubFilter] = useState(false);
@@ -385,6 +507,11 @@ export default function EIPsHomePage() {
   const [activeStatusFilter, setActiveStatusFilter] = useState<string | null>(null);
   const [statusSubDist, setStatusSubDist] = useState<Array<{ status: string; count: number }>>([]);
   const [statusSubDistLoading, setStatusSubDistLoading] = useState(false);
+  const [activeCategoryFilter, setActiveCategoryFilter] = useState<string | null>(null);
+  const [categorySubDist, setCategorySubDist] = useState<Array<{ category: string; count: number }>>([]);
+  const [categorySubDistLoading, setCategorySubDistLoading] = useState(false);
+  const [stageStatusSubDist, setStageStatusSubDist] = useState<Array<{ status: string; count: number }>>([]);
+  const [stageStatusSubDistLoading, setStageStatusSubDistLoading] = useState(false);
   const [stagesDistribution, setStagesDistribution] = useState<Array<{ bucket: string; count: number }>>([]);
   const [stagesDistributionLoading, setStagesDistributionLoading] = useState(false);
   const [showSubFilter, setShowSubFilter] = useState(true);
@@ -408,7 +535,7 @@ export default function EIPsHomePage() {
     }>;
   } | null>(null);
   const [febDelta, setFebDelta] = useState<Array<{ status: string; count: number }>>([]);
-  const [febEditors, setFebEditors] = useState<Array<{ actor: string; totalActions: number; prsTouched: number }>>([]);
+  const [febEditors, setFebEditors] = useState<HomepageEditorRow[]>([]);
   const [recentChanges, setRecentChanges] = useState<Array<{
     eip: string;
     eip_type: string;
@@ -437,14 +564,110 @@ export default function EIPsHomePage() {
   const [downloadingLeaderboard, setDownloadingLeaderboard] = useState(false);
   const [monthlyDeltaUpdatedAt, setMonthlyDeltaUpdatedAt] = useState<string | null>(null);
   const [monthlyLeaderboardUpdatedAt, setMonthlyLeaderboardUpdatedAt] = useState<string | null>(null);
-  const currentMonthYear = useMemo(() => {
+  const [showProposalTable, setShowProposalTable] = useState(true);
+  const [showPersonaWorkspace, setShowPersonaWorkspace] = useState(true);
+  const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
+  const [editorQueuePage, setEditorQueuePage] = useState(1);
+  const [editorCategoryPage, setEditorCategoryPage] = useState(1);
+  const [boardPreviewRows, setBoardPreviewRows] = useState<BoardPreviewRow[]>([]);
+  const [boardPreviewTotal, setBoardPreviewTotal] = useState(0);
+  const [boardPreviewTotalPages, setBoardPreviewTotalPages] = useState(1);
+  const [processBreakdownRows, setProcessBreakdownRows] = useState<ProcessBreakdownRow[]>([]);
+  const [participantBreakdownRows, setParticipantBreakdownRows] = useState<ParticipantBreakdownRow[]>([]);
+  const [boardPreviewLoading, setBoardPreviewLoading] = useState(false);
+  const defaultMonthYear = useMemo(() => {
     const now = new Date();
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+  }, []);
+  const [currentMonthYear, setCurrentMonthYear] = useState(defaultMonthYear);
+  const monthYearOptions = useMemo(() => {
+    const options: Array<{ value: string; label: string }> = [];
+    const cursor = new Date();
+    cursor.setUTCDate(1);
+    cursor.setUTCHours(0, 0, 0, 0);
+    for (let i = 0; i < 18; i += 1) {
+      const y = cursor.getUTCFullYear();
+      const m = cursor.getUTCMonth() + 1;
+      const value = `${y}-${String(m).padStart(2, '0')}`;
+      options.push({ value, label: monthLabel(value) });
+      cursor.setUTCMonth(cursor.getUTCMonth() - 1);
+    }
+    return options;
   }, []);
 
   useEffect(() => {
     setPage(1);
   }, [dimension, activeBucket, sortBy, sortDir, columnSearch]);
+
+  useEffect(() => {
+    setShowProposalTable(activePersona !== 'editor');
+  }, [activePersona]);
+
+  useEffect(() => {
+    setEditorQueuePage(1);
+    setEditorCategoryPage(1);
+  }, [editorRepoFilter]);
+
+  useEffect(() => {
+    setShowPersonaWorkspace(true);
+  }, [activePersona]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activePersona !== 'editor') {
+      setBoardPreviewRows([]);
+      setBoardPreviewTotal(0);
+      setBoardPreviewTotalPages(1);
+      setProcessBreakdownRows([]);
+      setParticipantBreakdownRows([]);
+      return;
+    }
+    (async () => {
+      setBoardPreviewLoading(true);
+      try {
+        const [data, processData, participantData] = await Promise.all([
+          client.tools.getOpenPRBoard({
+            repo: editorRepoFilter || undefined,
+            govState: ['Waiting on Editor'],
+            page: editorQueuePage,
+            pageSize: 5,
+          }),
+          client.analytics.getPROpenClassification({
+            repo: editorRepoFilter || undefined,
+            month: currentMonthYear,
+          }),
+          client.analytics.getPRGovernanceWaitingState({
+            repo: editorRepoFilter || undefined,
+            month: currentMonthYear,
+          }),
+        ]);
+        if (!cancelled) {
+          setBoardPreviewRows(data.rows ?? []);
+          setBoardPreviewTotal(Number(data.total ?? 0));
+          setBoardPreviewTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
+          setProcessBreakdownRows(
+            (processData ?? []).map((row) => ({
+              category: row.category,
+              count: Number(row.count ?? 0),
+            })),
+          );
+          setParticipantBreakdownRows(
+            (participantData ?? []).map((row) => ({
+              label: row.label,
+              count: Number(row.count ?? 0),
+            })),
+          );
+        }
+      } catch (err) {
+        console.error('Failed to load board preview:', err);
+      } finally {
+        if (!cancelled) setBoardPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activePersona, currentMonthYear, editorRepoFilter, editorQueuePage]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -484,21 +707,33 @@ export default function EIPsHomePage() {
     })();
   }, []);
 
-  // Clear sub-filter when dimension or bucket changes
+  // Clear sub-filters when dimension or bucket changes
   useEffect(() => {
     setActiveStatusFilter(null);
     setStatusSubDist([]);
+    setActiveCategoryFilter(null);
+    setCategorySubDist([]);
+    setStageStatusSubDist([]);
     setShowSubFilter(true);
   }, [dimension, activeBucket]);
 
-  // Apply activeStatusFilter to columnSearch.status
+  // Apply activeStatusFilter to columnSearch.status (for category/repo/stages tabs)
   useEffect(() => {
     if (activeStatusFilter) {
       setColumnSearch((prev) => ({ ...prev, status: activeStatusFilter }));
-    } else {
+    } else if (dimension === 'category' || dimension === 'repo' || dimension === 'stages') {
       setColumnSearch((prev) => ({ ...prev, status: '' }));
     }
-  }, [activeStatusFilter]);
+  }, [activeStatusFilter, dimension]);
+
+  // Apply activeCategoryFilter to columnSearch.category (for status tab)
+  useEffect(() => {
+    if (activeCategoryFilter) {
+      setColumnSearch((prev) => ({ ...prev, category: activeCategoryFilter }));
+    } else if (dimension === 'status') {
+      setColumnSearch((prev) => ({ ...prev, category: '' }));
+    }
+  }, [activeCategoryFilter, dimension]);
 
   useEffect(() => {
     let cancelled = false;
@@ -558,6 +793,52 @@ export default function EIPsHomePage() {
     return () => { cancelled = true; };
   }, [dimension, activeBucket]);
 
+  // Fetch category sub-distribution when status bucket is selected
+  useEffect(() => {
+    if (dimension !== 'status' || !activeBucket) {
+      setCategorySubDist([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setCategorySubDistLoading(true);
+      try {
+        const res = await client.standards.getCategorySubDistribution({
+          status: activeBucket,
+        });
+        if (!cancelled) setCategorySubDist(res);
+      } catch (err) {
+        console.error('Failed to load category sub-distribution:', err);
+      } finally {
+        if (!cancelled) setCategorySubDistLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dimension, activeBucket]);
+
+  // Fetch status sub-distribution when stages bucket is selected
+  useEffect(() => {
+    if (dimension !== 'stages' || !activeBucket) {
+      setStageStatusSubDist([]);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setStageStatusSubDistLoading(true);
+      try {
+        const res = await client.standards.getStageStatusSubDistribution({
+          stage: activeBucket,
+        });
+        if (!cancelled) setStageStatusSubDist(res);
+      } catch (err) {
+        console.error('Failed to load stage status sub-distribution:', err);
+      } finally {
+        if (!cancelled) setStageStatusSubDistLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [dimension, activeBucket]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -580,6 +861,7 @@ export default function EIPsHomePage() {
               status: debouncedColumnSearch.status || undefined,
               category: debouncedColumnSearch.category || undefined,
               updatedAt: debouncedColumnSearch.updatedAt || undefined,
+              upgrade: debouncedColumnSearch.upgrade || undefined,
             },
           });
           if (!cancelled) {
@@ -627,19 +909,39 @@ export default function EIPsHomePage() {
       try {
         const [deltaRes, editorRes, recentRes, editorActivityRes] = await Promise.all([
           client.standards.getMonthlyDelta({ monthYear: currentMonthYear }),
-          client.analytics.getMonthlyEditorLeaderboard({ monthYear: currentMonthYear, limit: 10 }),
+          client.analytics.getMonthlyEditorLeaderboard({ monthYear: currentMonthYear, limit: 50 }),
           client.analytics.getRecentChanges({ limit: 8 }),
-          client.analytics.getRecentEditorActivity({ limit: 5, onlyOpenPRs: true }),
+          client.analytics.getRecentEditorActivity({ limit: 5, onlyOpenPRs: false }),
         ]);
         if (!cancelled) {
           setFebDelta(deltaRes.items);
           setMonthlyDeltaUpdatedAt(deltaRes.updatedAt);
-          setFebEditors(editorRes.items.filter(
-            (e: { actor: string }) => !ASSOCIATE_EIP_EDITORS.includes(e.actor.toLowerCase() as typeof ASSOCIATE_EIP_EDITORS[number])
-          ));
+          const canonicalEditors = CANONICAL_EIP_EDITORS.filter(
+            (editor) => !ASSOCIATE_EIP_EDITORS.includes(editor.toLowerCase() as typeof ASSOCIATE_EIP_EDITORS[number])
+          );
+          const byActor = new Map<string, HomepageEditorRow>();
+          editorRes.items.forEach((item) => {
+            const key = item.actor.toLowerCase();
+            if (ASSOCIATE_EIP_EDITORS.includes(key as typeof ASSOCIATE_EIP_EDITORS[number])) return;
+            byActor.set(key, {
+              actor: item.actor,
+              totalActions: item.totalActions,
+              prsTouched: item.prsTouched,
+            });
+          });
+          const merged = canonicalEditors.map((editor) => byActor.get(editor.toLowerCase()) ?? {
+            actor: editor,
+            totalActions: 0,
+            prsTouched: 0,
+          });
+          merged.sort((a, b) => b.totalActions - a.totalActions || b.prsTouched - a.prsTouched || a.actor.localeCompare(b.actor));
+          setFebEditors(merged);
           setMonthlyLeaderboardUpdatedAt(editorRes.updatedAt);
           setRecentChanges(recentRes as typeof recentChanges);
-          setRecentEditorActivities(editorActivityRes);
+          const canonicalEditorSet = new Set(CANONICAL_EIP_EDITORS.map((editor) => editor.toLowerCase()));
+          setRecentEditorActivities(
+            editorActivityRes.filter((item) => canonicalEditorSet.has(item.editor.toLowerCase()))
+          );
         }
       } catch (err) {
         console.error('Failed to load homepage widgets:', err);
@@ -670,6 +972,14 @@ export default function EIPsHomePage() {
     })),
     [febDelta]
   );
+  const monthlyEditorRows = useMemo(
+    () => febEditors.slice(0, 10),
+    [febEditors]
+  );
+  const monthlyInsightTotal = useMemo(
+    () => febInsightPieData.reduce((sum, item) => sum + item.value, 0),
+    [febInsightPieData]
+  );
   const febInsightDonutOption = useMemo(() => ({
     tooltip: {
       trigger: 'item',
@@ -679,34 +989,63 @@ export default function EIPsHomePage() {
       borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
       textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
     },
-    legend: { show: false },
+    legend: {
+      show: true,
+      orient: 'vertical',
+      right: 8,
+      top: 'middle',
+      itemWidth: 10,
+      itemHeight: 10,
+      icon: 'circle',
+      textStyle: {
+        color: isDark ? '#cbd5e1' : '#475569',
+        fontSize: 11,
+      },
+      formatter: (name: string) => {
+        const item = febInsightPieData.find((d) => d.name === name);
+        return `${name} (${item?.value ?? 0})`;
+      },
+    },
+    graphic: [
+      {
+        type: 'text',
+        left: '36%',
+        top: '45%',
+        style: {
+          text: monthlyInsightTotal.toLocaleString(),
+          fill: isDark ? '#f8fafc' : '#0f172a',
+          fontSize: 22,
+          fontWeight: 700,
+          textAlign: 'center',
+        },
+      },
+      {
+        type: 'text',
+        left: '36%',
+        top: '53%',
+        style: {
+          text: 'Total',
+          fill: isDark ? '#94a3b8' : '#64748b',
+          fontSize: 11,
+          fontWeight: 600,
+          textAlign: 'center',
+        },
+      },
+    ],
     series: [
       {
         type: 'pie',
-        radius: ['48%', '74%'],
-        center: ['50%', '50%'],
-        avoidLabelOverlap: true,
+        radius: ['52%', '80%'],
+        center: ['36%', '50%'],
+        avoidLabelOverlap: false,
         minAngle: 3,
         itemStyle: {
           borderRadius: 4,
           borderWidth: 1,
           borderColor: isDark ? 'rgba(15,23,42,0.12)' : 'rgba(148,163,184,0.22)',
         },
-        label: {
-          show: true,
-          color: isDark ? '#cbd5e1' : '#475569',
-          fontSize: 12,
-          fontWeight: 600,
-          formatter: '{b}: {c}',
-        },
-        labelLine: {
-          show: true,
-          lineStyle: {
-            color: isDark ? 'rgba(148,163,184,0.55)' : 'rgba(100,116,139,0.35)',
-          },
-          length: 8,
-          length2: 8,
-        },
+        label: { show: false },
+        labelLine: { show: false },
         data: febInsightPieData.map((d) => ({
           name: d.name,
           value: d.value,
@@ -714,11 +1053,11 @@ export default function EIPsHomePage() {
         })),
       },
     ],
-  }), [febInsightPieData, isDark]);
+  }), [febInsightPieData, isDark, monthlyInsightTotal]);
 
   const maxEditor = useMemo(
-    () => Math.max(1, ...febEditors.map((e) => e.totalActions)),
-    [febEditors]
+    () => Math.max(1, ...monthlyEditorRows.map((e) => e.totalActions)),
+    [monthlyEditorRows]
   );
   const showDistributionSkeleton = distributionLoading && distribution.length === 0;
   const showTableSkeleton = tableLoading && !tableData;
@@ -789,9 +1128,11 @@ export default function EIPsHomePage() {
       status: '',
       category: '',
       updatedAt: '',
+      upgrade: '',
     });
     setAutoGithubFilter(false);
     setActiveStatusFilter(null);
+    setActiveCategoryFilter(null);
   };
 
   const downloadDetailedCSV = async () => {
@@ -881,14 +1222,112 @@ export default function EIPsHomePage() {
     'mt-1 text-sm leading-relaxed text-muted-foreground';
   const panelTitleClass =
     'text-base font-semibold tracking-tight text-foreground sm:text-lg';
+  const personaPlan = PERSONA_HOME_PLANS[activePersona];
+  const showLearningSection = activePersona === 'newcomer' || activePersona === 'builder' || activePersona === 'editor';
+  const sectionOrder = useMemo(() => {
+    if (activePersona === 'editor') {
+      return { reviewQueue: 2, categoryBreakdown: 3, browse: 4, monthly: 5, governance: 6, social: 7, learning: 8 };
+    }
+    if (activePersona === 'developer') {
+      return { reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 1, governance: 3, social: 4, learning: 5 };
+    }
+    if (activePersona === 'builder') {
+      return { reviewQueue: 0, categoryBreakdown: 0, browse: 1, monthly: 2, governance: 4, social: 5, learning: 3 };
+    }
+    return { reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 3, governance: 4, social: 5, learning: 1 };
+  }, [activePersona]);
+  const normalizedProcessRows = useMemo(
+    () => processBreakdownRows.filter((row) => row.count > 0),
+    [processBreakdownRows],
+  );
+  const normalizedParticipantRows = useMemo(
+    () => participantBreakdownRows.filter((row) => row.count > 0),
+    [participantBreakdownRows],
+  );
+  const editorCategoryPageSize = 6;
+  const editorCategoryTotalPages = useMemo(
+    () => Math.max(1, Math.ceil(normalizedParticipantRows.length / editorCategoryPageSize)),
+    [normalizedParticipantRows.length],
+  );
+  const paginatedParticipantRows = useMemo(() => {
+    const start = (editorCategoryPage - 1) * editorCategoryPageSize;
+    return normalizedParticipantRows.slice(start, start + editorCategoryPageSize);
+  }, [normalizedParticipantRows, editorCategoryPage]);
+  const stackedCrossTabRows = useMemo(() => {
+    if (!normalizedProcessRows.length || !paginatedParticipantRows.length) return [];
+    const procTotal = normalizedProcessRows.reduce((sum, row) => sum + row.count, 0);
+    if (procTotal === 0) return [];
+    return paginatedParticipantRows.map((participant) => {
+      const row: Record<string, number | string> = { participant: participant.label };
+      normalizedProcessRows.forEach((processRow) => {
+        const share = processRow.count / procTotal;
+        row[processRow.category] = Math.round(participant.count * share);
+      });
+      return row;
+    });
+  }, [normalizedProcessRows, paginatedParticipantRows]);
+  const categoryBreakdownChartOption = useMemo(() => {
+    if (!stackedCrossTabRows.length) return null;
+    const participants = stackedCrossTabRows.map((row) => String(row.participant));
+    return {
+      animationDuration: 450,
+      backgroundColor: 'transparent',
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: isDark ? '#020617' : '#ffffff',
+        borderColor: isDark ? '#1f2937' : '#e2e8f0',
+        textStyle: { color: isDark ? '#e5e7eb' : '#0f172a' },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 11 },
+      },
+      grid: { top: 34, left: 56, right: 16, bottom: 24 },
+      xAxis: {
+        type: 'category',
+        data: participants,
+        axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 11 },
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: isDark ? '#94a3b8' : '#64748b' },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.2)', type: 'dashed' } },
+      },
+      series: normalizedProcessRows.map((processRow) => ({
+        name: processRow.category,
+        type: 'bar',
+        stack: 'total',
+        data: stackedCrossTabRows.map((row) => Number(row[processRow.category] || 0)),
+        itemStyle: {
+          color: PROCESS_STACK_COLORS[processRow.category] || '#94a3b8',
+          borderRadius: [2, 2, 0, 0],
+        },
+      })),
+    };
+  }, [stackedCrossTabRows, normalizedProcessRows, isDark]);
   const hasColumnFilters = useMemo(
     () => Object.values(columnSearch).some((value) => value.trim().length > 0),
     [columnSearch]
   );
+  useEffect(() => {
+    if (editorQueuePage > boardPreviewTotalPages) {
+      setEditorQueuePage(boardPreviewTotalPages);
+    }
+  }, [editorQueuePage, boardPreviewTotalPages]);
+  useEffect(() => {
+    if (editorCategoryPage > editorCategoryTotalPages) {
+      setEditorCategoryPage(editorCategoryTotalPages);
+    }
+  }, [editorCategoryPage, editorCategoryTotalPages]);
   const isTableFiltered = hasColumnFilters || activeBucket !== null;
   const dismissNewUserGuide = () => {
     window.localStorage.setItem('eipsinsight_home_start_here_dismissed', '1');
     setShowNewUserGuide(false);
+  };
+  const togglePersonaWorkspace = () => {
+    setShowPersonaWorkspace((prev) => !prev);
   };
 
   return (
@@ -899,7 +1338,7 @@ export default function EIPsHomePage() {
 
       <hr className="mb-6 border-border" />
 
-      {showNewUserGuide && (
+      {showNewUserGuide && activePersona === 'newcomer' && (
         <section className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-2.5 sm:p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
@@ -934,6 +1373,309 @@ export default function EIPsHomePage() {
         </section>
       )}
 
+      {(activePersona !== 'editor' || showPersonaWorkspace) && (
+        <section className="mb-5" id="persona-home-workspace">
+          <div className="rounded-xl border border-border bg-card/60 p-2.5 sm:p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                  {PERSONA_LABELS[activePersona]} Shortcuts
+                </p>
+                {activePersona !== 'editor' && (
+                  <p className="text-xs text-muted-foreground">{personaPlan.goal}</p>
+                )}
+              </div>
+              <div className="inline-flex items-center gap-1.5">
+                {activePersona === 'editor' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowPersonaWorkspace(false)}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  >
+                    Close
+                    <XCircle className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={togglePersonaWorkspace}
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  >
+                    {showPersonaWorkspace ? 'Close' : 'Show'}
+                    <ChevronDown className={cn('h-3 w-3 transition-transform', showPersonaWorkspace && 'rotate-180')} />
+                  </button>
+                )}
+                <Link
+                  href="/p"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                >
+                  Persona
+                  <ArrowRight className="h-3 w-3" />
+                </Link>
+              </div>
+            </div>
+            {showPersonaWorkspace && (
+              activePersona === 'editor' ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {[
+                    { title: 'PR Analytics', href: '/analytics/prs' },
+                    { title: 'Editing Board', href: '/tools/board?status=Waiting+on+Editor&page=1' },
+                    { title: 'Editor Leaderboard', href: '/analytics/editors' },
+                  ].map((item, idx) => (
+                    <Link
+                      key={item.title}
+                      href={item.href}
+                      className={cn(
+                        'inline-flex h-9 items-center rounded-lg border px-3 text-xs font-semibold transition',
+                        idx === 0
+                          ? 'border-primary/40 bg-primary/10 text-primary hover:border-primary/60'
+                          : 'border-border bg-background text-foreground hover:border-primary/35 hover:text-primary',
+                      )}
+                    >
+                      {item.title}
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                  {personaPlan.tools.map((tool) => {
+                    const Icon = tool.icon;
+                    return (
+                      <Link
+                        key={tool.key}
+                        href={tool.href}
+                        className="group rounded-lg border border-border bg-background/70 px-2.5 py-2.5 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                      >
+                        <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                          <Icon className="h-3.5 w-3.5" />
+                        </div>
+                        <p className="text-sm font-semibold text-foreground">{tool.title}</p>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">{tool.blurb}</p>
+                        <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                          {tool.cta}
+                          <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )
+            )}
+          </div>
+        </section>
+      )}
+
+      <div className="flex flex-col">
+      {activePersona === 'editor' && (
+        <section className="mb-6" style={{ order: sectionOrder.reviewQueue }}>
+          <hr className="mb-4 border-border/70" />
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h2 className={sectionTitleClass}>Editor Review Queue</h2>
+              <p className={sectionSubtitleClass}>Open PRs currently waiting on editor action.</p>
+            </div>
+            <Link href="/tools/board?status=Waiting+on+Editor&page=1" className="text-xs font-medium text-primary hover:underline">
+              Show more
+            </Link>
+          </div>
+          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
+            {(
+              [
+                { key: '', label: 'All' },
+                { key: 'eips', label: 'EIPs' },
+                { key: 'ercs', label: 'ERCs' },
+                { key: 'rips', label: 'RIPs' },
+              ] as const
+            ).map((item) => (
+              <button
+                key={`editor-queue-repo-${item.label}`}
+                onClick={() => setEditorRepoFilter(item.key)}
+                className={cn(
+                  'rounded px-2.5 py-1',
+                  editorRepoFilter === item.key ? 'bg-card text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border/70 bg-card/40">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-xs">
+                <thead>
+                  <tr className="border-b border-border/70 bg-muted/40">
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">PR</th>
+                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</th>
+                    <th className="w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Author</th>
+                    <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Wait</th>
+                    <th className="w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Process</th>
+                    <th className="w-36 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Repo</th>
+                    <th className="w-16 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Open</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {boardPreviewLoading ? (
+                    Array.from({ length: 5 }).map((_, i) => (
+                      <tr key={`board-row-skeleton-${i}`} className="border-b border-border/60">
+                        <td colSpan={8} className="px-3 py-2.5">
+                          <div className="h-5 animate-pulse rounded bg-muted" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : boardPreviewRows.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                        No PRs currently waiting on editor.
+                      </td>
+                    </tr>
+                  ) : (
+                    boardPreviewRows.map((row) => (
+                      <tr key={`board-row-${row.repo}-${row.prNumber}`} className="border-b border-border/60 align-top transition-colors hover:bg-muted/30">
+                        <td className="px-3 py-2.5 font-mono font-semibold text-primary">
+                          <Link href={`/pr/${githubRepoFromShort(row.repoShort)}/${row.prNumber}`} className="font-semibold text-primary hover:underline">
+                            #{row.prNumber}
+                          </Link>
+                        </td>
+                        <td className="max-w-[420px] px-3 py-2.5">
+                          <p className="truncate leading-snug text-foreground">{row.title || 'Untitled PR'}</p>
+                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{new Date(`${row.createdAt}T00:00:00`).toLocaleDateString()}</p>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{row.author || '—'}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{row.waitDays}d</td>
+                        <td className="px-3 py-2.5">
+                          <span className="whitespace-nowrap rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            {row.processType}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <span className="whitespace-nowrap rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            {row.govState}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{row.repoShort.toUpperCase()}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <a
+                            href={`https://github.com/${row.repo}/pull/${row.prNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] text-primary transition-colors hover:bg-primary/15"
+                          >
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+            <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+              <span>
+                Showing {(boardPreviewTotal === 0 ? 0 : (editorQueuePage - 1) * 5 + 1)}–
+                {Math.min(editorQueuePage * 5, boardPreviewTotal)} of {boardPreviewTotal}
+              </span>
+              <div className="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditorQueuePage((p) => Math.max(1, p - 1))}
+                  disabled={editorQueuePage <= 1}
+                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <span className="tabular-nums">Page {editorQueuePage} / {boardPreviewTotalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditorQueuePage((p) => Math.min(boardPreviewTotalPages, p + 1))}
+                  disabled={editorQueuePage >= boardPreviewTotalPages}
+                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activePersona === 'editor' && (
+        <section className="mb-6" style={{ order: sectionOrder.categoryBreakdown }}>
+          <hr className="mb-4 border-border/70" />
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <h2 className={sectionTitleClass}>Category Breakdown</h2>
+              <p className={sectionSubtitleClass}>Participants × process stacked distribution for open PRs.</p>
+              <p className="mt-1 text-[11px] text-muted-foreground">Month context: {monthLabel(currentMonthYear)}</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link href="/analytics/prs" className="text-xs font-medium text-primary hover:underline">
+                Show more
+              </Link>
+            </div>
+          </div>
+          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
+            {(
+              [
+                { key: '', label: 'All' },
+                { key: 'eips', label: 'EIPs' },
+                { key: 'ercs', label: 'ERCs' },
+                { key: 'rips', label: 'RIPs' },
+              ] as const
+            ).map((item) => (
+              <button
+                key={`editor-category-repo-${item.label}`}
+                onClick={() => setEditorRepoFilter(item.key)}
+                className={cn(
+                  'rounded px-2.5 py-1',
+                  editorRepoFilter === item.key ? 'bg-card text-foreground' : 'text-muted-foreground',
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+          <div className="overflow-hidden rounded-lg border border-border/70 bg-card/40 p-3">
+            {boardPreviewLoading ? (
+              <div className="h-[260px] animate-pulse rounded bg-muted" />
+            ) : !categoryBreakdownChartOption ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">No category data available.</p>
+            ) : (
+              <ReactECharts
+                option={categoryBreakdownChartOption}
+                style={{ height: '300px', width: '100%' }}
+                opts={{ renderer: 'svg' }}
+              />
+            )}
+            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
+              <span>
+                Showing {paginatedParticipantRows.length} participant buckets
+              </span>
+              <div className="inline-flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditorCategoryPage((p) => Math.max(1, p - 1))}
+                  disabled={editorCategoryPage <= 1}
+                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+                >
+                  Prev
+                </button>
+                <span className="tabular-nums">Page {editorCategoryPage} / {editorCategoryTotalPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setEditorCategoryPage((p) => Math.min(editorCategoryTotalPages, p + 1))}
+                  disabled={editorCategoryPage >= editorCategoryTotalPages}
+                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      <div style={{ order: sectionOrder.browse }}>
       <div className="mb-3 space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start">
@@ -1104,6 +1846,10 @@ export default function EIPsHomePage() {
             <Link href="/upgrade/glamsterdam" className="font-semibold text-primary hover:underline">
               Glamsterdam
             </Link>
+            {' & '}
+            <Link href="/upgrade/hegota" className="font-semibold text-primary hover:underline">
+              Hegota
+            </Link>
             .{' '}
             <Link href="/upgrade" className="text-primary hover:underline">
               View all upgrades →
@@ -1179,6 +1925,157 @@ export default function EIPsHomePage() {
         )}
       </AnimatePresence>
 
+      {/* Sub-filter: category chips when status bucket is selected */}
+      <AnimatePresence>
+        {dimension === 'status' && activeBucket && categorySubDist.length > 0 && showSubFilter && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mb-3 overflow-hidden"
+          >
+            <div className="rounded-xl border border-border bg-card/60 px-3.5 py-2.5">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span>Filter <span className="font-semibold text-foreground">{activeBucket}</span> by Category</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubFilter(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  aria-label="Hide sub-filter"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveCategoryFilter(null)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    activeCategoryFilter === null
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                  )}
+                >
+                  All ({categorySubDist.reduce((s, r) => s + r.count, 0).toLocaleString()})
+                </button>
+                {categorySubDist.map((row) => {
+                  const active = activeCategoryFilter === row.category;
+                  const theme = BUCKET_THEME_BY_CATEGORY[row.category];
+                  return (
+                    <button
+                      key={row.category}
+                      type="button"
+                      onClick={() => setActiveCategoryFilter(active ? null : row.category)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        active
+                          ? cn(theme?.border || 'border-primary/40', theme?.surface || 'bg-primary/10', 'text-foreground')
+                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                      )}
+                    >
+                      <span className={cn(
+                        'h-1.5 w-1.5 rounded-full',
+                        active ? (theme?.icon?.replace('text-', 'bg-').split(' ')[0] || 'bg-primary') : 'bg-muted-foreground/60',
+                      )} />
+                      {row.category} ({row.count.toLocaleString()})
+                    </button>
+                  );
+                })}
+              </div>
+              {categorySubDistLoading && (
+                <div className="mt-1.5 text-[10px] text-muted-foreground">Loading…</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Sub-filter: status chips when stages bucket is selected */}
+      <AnimatePresence>
+        {dimension === 'stages' && activeBucket && stageStatusSubDist.length > 0 && showSubFilter && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="mb-3 overflow-hidden"
+          >
+            <div className="rounded-xl border border-border bg-card/60 px-3.5 py-2.5">
+              <div className="mb-2 flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                  <Filter className="h-3.5 w-3.5" />
+                  <span>Filter <span className="font-semibold text-foreground">{STAGE_FULL_LABELS[activeBucket] || activeBucket}</span> by Status</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSubFilter(false)}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  aria-label="Hide sub-filter"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveStatusFilter(null)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    activeStatusFilter === null
+                      ? 'border-primary/40 bg-primary/10 text-primary'
+                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                  )}
+                >
+                  All ({stageStatusSubDist.reduce((s, r) => s + r.count, 0).toLocaleString()})
+                </button>
+                {stageStatusSubDist.map((row) => {
+                  const active = activeStatusFilter === row.status;
+                  const dotColor = STATUS_COLORS[row.status] || 'bg-muted-foreground';
+                  return (
+                    <button
+                      key={row.status}
+                      type="button"
+                      onClick={() => setActiveStatusFilter(active ? null : row.status)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                        active
+                          ? (BADGE_COLORS[row.status] || 'border-primary/40 bg-primary/10 text-primary')
+                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
+                      )}
+                    >
+                      <span className={cn('h-1.5 w-1.5 rounded-full', dotColor)} />
+                      {row.status} ({row.count.toLocaleString()})
+                    </button>
+                  );
+                })}
+              </div>
+              {stageStatusSubDistLoading && (
+                <div className="mt-1.5 text-[10px] text-muted-foreground">Loading…</div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <p className="text-xs font-medium text-muted-foreground">
+          Proposal table view{activePersona === 'editor' ? ' (hidden by default for editor workflow)' : ''}
+        </p>
+        <button
+          type="button"
+          onClick={() => setShowProposalTable((prev) => !prev)}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/30 hover:text-primary"
+        >
+          {showProposalTable ? 'Hide table' : 'Show table'}
+          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showProposalTable && 'rotate-180')} />
+        </button>
+      </div>
+
       <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card/60">
         <div className="flex flex-col items-start justify-between gap-2 border-b border-border/70 bg-muted/40 px-4 py-3 text-xs sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-2">
@@ -1218,6 +2115,8 @@ export default function EIPsHomePage() {
             {downloading ? 'Exporting...' : (isTableFiltered ? 'Download Filtered CSV' : 'Download CSV')}
           </button>
         </div>
+        {showProposalTable ? (
+          <>
         <div className="relative hidden overflow-x-auto md:block" aria-busy={tableLoading}>
           <table className="min-w-[980px] text-sm">
             <thead>
@@ -1230,6 +2129,7 @@ export default function EIPsHomePage() {
                   ['type', 'Type'],
                   ['category', 'Category'],
                   ['status', 'Status'],
+                  ...(dimension === 'stages' ? [['updated_at', 'Upgrade']] : []),
                 ].map(([key, label]) => (
                   <th key={key} className="px-4 py-3">
                     <button onClick={() => toggleSort(key as SortBy)} className="inline-flex items-center gap-1 hover:text-foreground">
@@ -1241,19 +2141,20 @@ export default function EIPsHomePage() {
               </tr>
               <tr className="border-b border-border/60 bg-muted/40">
                 <th className="px-4 py-3"><input value={columnSearch.github} onChange={(e) => handleColumnSearch('github', e.target.value)} placeholder="/EIPs" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={eipDisplayValue} onChange={(e) => handleColumnSearch('eip', e.target.value)} placeholder="EIP-1559 / RIP-7212 / 1559" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                <th className="px-4 py-3"><input value={eipDisplayValue} onChange={(e) => handleColumnSearch('eip', e.target.value)} placeholder="/EIP-1559" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
                 <th className="px-4 py-3"><input value={columnSearch.title} onChange={(e) => handleColumnSearch('title', e.target.value)} placeholder="Title" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
                 <th className="px-4 py-3"><input value={columnSearch.author} onChange={(e) => handleColumnSearch('author', e.target.value)} placeholder="Author" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
                 <th className="px-4 py-3"><input value={columnSearch.type} onChange={(e) => handleColumnSearch('type', e.target.value)} placeholder="Type" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
                 <th className="px-4 py-3"><input value={columnSearch.category} onChange={(e) => handleColumnSearch('category', e.target.value)} placeholder="Category" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
                 <th className="px-4 py-3"><input value={columnSearch.status} onChange={(e) => handleColumnSearch('status', e.target.value)} placeholder="Status" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
+                {dimension === 'stages' && <th className="px-4 py-3"><input value={columnSearch.upgrade} onChange={(e) => handleColumnSearch('upgrade', e.target.value)} placeholder="Upgrade" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>}
               </tr>
             </thead>
             <tbody>
               {showTableSkeleton ? (
                 Array.from({ length: 10 }).map((_, i) => (
                   <tr key={i} className="border-b border-border/60">
-                    <td colSpan={7} className="px-2 py-3">
+                    <td colSpan={dimension === 'stages' ? 8 : 7} className="px-2 py-3">
                       <div className="h-5 animate-pulse rounded bg-muted" />
                     </td>
                   </tr>
@@ -1301,6 +2202,21 @@ export default function EIPsHomePage() {
                     <td className="px-4 py-3 text-muted-foreground">{row.type || '-'}</td>
                     <td className="px-4 py-3">{row.category}</td>
                     <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${BADGE_COLORS[row.status] || BADGE_COLORS.Unknown}`}>{row.status}</span></td>
+                    {dimension === 'stages' && (
+                      <td className="px-4 py-3">
+                        {(row as typeof row & { upgradeName?: string | null }).upgradeName ? (
+                          <Link
+                            href={`/upgrade/${(row as typeof row & { upgradeName?: string | null }).upgradeName!.toLowerCase()}`}
+                            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-primary hover:underline"
+                          >
+                            <Package className="h-3 w-3" />
+                            {(row as typeof row & { upgradeName?: string | null }).upgradeName}
+                          </Link>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">–</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))
               )}
@@ -1385,16 +2301,46 @@ export default function EIPsHomePage() {
             </button>
           </div>
         </div>
+          </>
+        ) : (
+          <div className="px-4 py-6 text-center">
+            <p className="text-sm text-muted-foreground">
+              Proposal table is hidden for faster scanning. Click <span className="font-medium text-foreground">Show table</span> when you need detailed rows.
+            </p>
+          </div>
+        )}
+      </div>
       </div>
 
-      <section className="mb-6">
-        <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
-      </section>
+      {showLearningSection && (
+        <section className="mb-6" style={{ order: sectionOrder.learning }}>
+          <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
+        </section>
+      )}
 
+      <div style={{ order: sectionOrder.monthly }}>
       <hr className="my-6 border-border" />
 
+      <div className="mb-3 flex items-center justify-end gap-2">
+        <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
+          Month
+        </label>
+        <select
+          id="homepage-month-select"
+          value={currentMonthYear}
+          onChange={(e) => setCurrentMonthYear(e.target.value)}
+          className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        >
+          {monthYearOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div className="self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm">
+        <div className="self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm h-[560px] sm:h-[620px] flex flex-col">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
@@ -1402,36 +2348,40 @@ export default function EIPsHomePage() {
                 <h3 className={panelTitleClass}>{monthLabel(currentMonthYear)} Insight (Status Changes)</h3>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Monthly status transition distribution and totals.
+                Monthly status distribution.
               </p>
+            </div>
+            <div className="inline-flex items-center gap-2">
               <Link
                 href={`/insights/year-month-analysis?month=${currentMonthYear}`}
-                className="mt-1 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
               >
-                Open full month analysis
+                Open month analysis
                 <ArrowRight className="h-3 w-3" />
               </Link>
+              <button
+                onClick={downloadMonthlyInsightCSV}
+                disabled={downloading}
+                aria-label="Download status changes CSV"
+                title="Download status changes CSV"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
             </div>
-            <button
-              onClick={downloadMonthlyInsightCSV}
-              disabled={downloading}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-medium text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
-            >
-              <Download className="h-3.5 w-3.5" /> {downloading ? 'Exporting...' : 'Status changes CSV'}
-            </button>
           </div>
 
-          <div className="relative h-[250px] sm:h-[420px]">
+          <div className="relative mt-2 min-h-0 flex-1">
             <div className="h-full w-full">
               {showInsightSkeleton ? (
                 <div className="h-full w-full animate-pulse rounded-xl bg-muted" />
               ) : febDelta.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
-                  <Activity className="h-10 w-10 text-muted-foreground/40" />
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                  <Activity className="h-8 w-8 text-muted-foreground/35" />
                   <div>
                     <p className="text-sm font-medium text-muted-foreground">No status changes yet</p>
                     <p className="mt-1 text-xs text-muted-foreground/70">
-                      Status transitions for {monthLabel(currentMonthYear)} will appear here as they occur.
+                      We&apos;ll populate this chart when transitions start in {monthLabel(currentMonthYear)}.
                     </p>
                   </div>
                 </div>
@@ -1469,7 +2419,7 @@ export default function EIPsHomePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
+        <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm h-[560px] sm:h-[620px] flex flex-col">
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
@@ -1477,22 +2427,33 @@ export default function EIPsHomePage() {
                 <h3 className={panelTitleClass}>Editor Leaderboard ({monthLabel(currentMonthYear)})</h3>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                Ranked by PRs touched and editorial actions in the month.
+                Ranked by editor actions this month (open + closed PRs).
               </p>
             </div>
-            <button
-              onClick={downloadLeaderboardDetailedCSV}
-              disabled={downloadingLeaderboard}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
-            >
-              <Download className="h-3.5 w-3.5" /> {downloadingLeaderboard ? 'Exporting...' : 'Detailed CSV'}
-            </button>
+            <div className="inline-flex items-center gap-2">
+              <Link
+                href="/analytics/editors"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
+              >
+                Open full leaderboard
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+              <button
+                onClick={downloadLeaderboardDetailedCSV}
+                disabled={downloadingLeaderboard}
+                aria-label="Download editor leaderboard CSV"
+                title="Download editor leaderboard CSV"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-2">
+          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-1 pr-2">
             {showEditorSkeleton
               ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={`editor-skeleton-${i}`} className="rounded-lg p-2.5 ring-1 ring-border">
+                  <div key={`editor-skeleton-${i}`} className="rounded-lg border border-border p-2.5">
                     <div className="mb-2 flex items-center gap-2">
                       <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
                       <div className="flex-1">
@@ -1503,7 +2464,7 @@ export default function EIPsHomePage() {
                     <div className="h-1.5 animate-pulse rounded-full bg-muted" />
                   </div>
                 ))
-              : febEditors.length === 0 ? (
+              : monthlyEditorRows.length === 0 ? (
                 <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
                   <Trophy className="h-10 w-10 text-muted-foreground/40" />
                   <div>
@@ -1514,22 +2475,38 @@ export default function EIPsHomePage() {
                   </div>
                 </div>
               )
-              : febEditors.map((row, idx) => (
-                  <div key={row.actor} className={`rounded-lg p-2.5 ring-1 ${idx === 0 ? 'bg-primary/10 ring-primary/30' : 'bg-muted/40 ring-border'}`}>
+              : monthlyEditorRows.map((row, idx) => (
+                  <div
+                    key={`editor-${row.actor}`}
+                    className={`rounded-lg px-2.5 py-2.5 border ${idx === 0 ? 'bg-primary/10 border-primary/30' : 'bg-muted/40 border-border'}`}
+                  >
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-2">
-                        <div className="h-8 w-8 overflow-hidden rounded-full ring-1 ring-border">
-                          <Image src={editorAvatar(row.actor)} alt={row.actor} width={32} height={32} className="h-full w-full object-cover" />
+                        <div className="h-8 w-8 shrink-0 rounded-full bg-background/80 p-[1.5px] ring-1 ring-border">
+                          <div className="h-full w-full overflow-hidden rounded-full">
+                            <Image
+                              src={editorAvatar(row.actor)}
+                              alt={row.actor}
+                              width={32}
+                              height={32}
+                              className="h-full w-full object-cover object-center"
+                            />
+                          </div>
                         </div>
                         <div className="min-w-0">
                           <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
                           <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
                         </div>
                       </div>
-                      <span className="text-sm font-semibold text-primary">{row.totalActions}</span>
+                      <span className="ml-2 min-w-[2.5ch] shrink-0 text-right text-sm leading-tight font-semibold tabular-nums text-primary">
+                        {row.totalActions}
+                      </span>
                     </div>
                     <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
-                      <div className="h-full bg-primary" style={{ width: `${Math.max(8, (row.totalActions / maxEditor) * 100)}%` }} />
+                      <div
+                        className="h-full bg-primary transition-all duration-300"
+                        style={{ width: `${row.totalActions > 0 ? Math.max(8, (row.totalActions / maxEditor) * 100) : 0}%` }}
+                      />
                     </div>
                   </div>
                 ))}
@@ -1555,6 +2532,8 @@ export default function EIPsHomePage() {
         </div>
       </div>
 
+      </div>
+      <div style={{ order: sectionOrder.governance }}>
       <hr className="my-6 border-border" />
 
       <section className="mb-6 w-full" id="recent-governance-activity">
@@ -1639,9 +2618,9 @@ export default function EIPsHomePage() {
             )}
           </div>
 
-          <aside className="rounded-xl border border-border bg-card/60 p-3 shadow-sm">
+          <aside className="self-start rounded-xl border border-border bg-card/60 p-3 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Latest Editor Activity (Open PRs)</h3>
+              <h3 className="text-sm font-semibold text-foreground">Latest Editor Activity</h3>
               <span className="rounded-full bg-muted/70 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                 {recentEditorActivities.length}
               </span>
@@ -1656,7 +2635,9 @@ export default function EIPsHomePage() {
                   </div>
                 ))
               ) : recentEditorActivities.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No editor activity found for open PRs.</p>
+                <p className="text-sm text-muted-foreground">
+                  No recent editor activity found right now.
+                </p>
               ) : (
                 recentEditorActivities.slice(0, 5).map((item, idx) => (
                   <a
@@ -1693,10 +2674,12 @@ export default function EIPsHomePage() {
       </section>
 
       <hr className="my-6 border-border" />
+      </div>
 
-      <section>
+      <section style={{ order: sectionOrder.social }}>
         <SocialCommunityUpdates />
       </section>
+      </div>
     </div>
   );
 }

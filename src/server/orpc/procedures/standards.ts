@@ -1755,7 +1755,82 @@ const results = await prisma.$queryRawUnsafe<Array<{
       }));
     }),
 
+  // ——— Category Sub-Distribution (for sub-filter chips when status is selected) ———
+  getCategorySubDistribution: optionalAuthProcedure
+    .input(z.object({
+      status: z.string(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{ category: string; count: bigint }>>(
+        `
+        WITH unified AS (
+          SELECT
+            COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+            COALESCE(NULLIF(s.category, ''), NULLIF(s.type, ''), 'Other') AS category
+          FROM eip_snapshots s
+          JOIN eips e ON e.id = s.eip_id
+          LEFT JOIN repositories r ON r.id = s.repository_id
+          WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+          UNION ALL
+          SELECT
+            COALESCE(NULLIF(rp.status, ''), 'Unknown') AS status,
+            CASE
+              WHEN COALESCE(rp.title, '') ~* '\\\\mRRC[-\\\\s]?[0-9]+' OR COALESCE(rp.title, '') ~* '^RRC\\\\M'
+                THEN 'RRC'
+              ELSE 'RIP'
+            END AS category
+          FROM rips rp
+          WHERE rp.rip_number <> 0
+        )
+        SELECT category, COUNT(*)::bigint AS count
+        FROM unified
+        WHERE status = $1::text
+        GROUP BY category
+        ORDER BY count DESC
+        `,
+        input.status
+      );
+
+      return results.map(r => ({
+        category: r.category,
+        count: Number(r.count),
+      }));
+    }),
+
   // ——— Stages Distribution (EIP inclusion stages from upgrade_composition_current) ———
+
+  // ——— Stage Status Sub-Distribution (for sub-filter chips when a stage is selected) ———
+  getStageStatusSubDistribution: optionalAuthProcedure
+    .input(z.object({
+      stage: z.string(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{ status: string; count: bigint }>>(
+        `
+        WITH stage_eips AS (
+          SELECT DISTINCT ucc.eip_number
+          FROM upgrade_composition_current ucc
+          WHERE LOWER(ucc.bucket) = $1::text
+            AND ucc.bucket IS NOT NULL AND TRIM(ucc.bucket) <> ''
+        )
+        SELECT
+          COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+          COUNT(*)::bigint AS count
+        FROM stage_eips se
+        JOIN eips e ON e.eip_number = se.eip_number
+        JOIN eip_snapshots s ON s.eip_id = e.id
+        WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+        GROUP BY status
+        ORDER BY count DESC
+        `,
+        input.stage.toLowerCase()
+      );
+
+      return results.map(r => ({
+        status: r.status,
+        count: Number(r.count),
+      }));
+    }),
   getStagesDistribution: optionalAuthProcedure
     .input(z.object({}))
     .handler(async () => {
@@ -1802,6 +1877,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
         status: z.string().optional(),
         category: z.string().optional(),
         updatedAt: z.string().optional(),
+        upgrade: z.string().optional(),
       }).optional(),
     }))
     .handler(async ({ input }) => {
@@ -1816,6 +1892,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
       const statusSearch = columnSearch.status?.trim() ?? '';
       const categorySearch = columnSearch.category?.trim() ?? '';
       const updatedAtSearch = columnSearch.updatedAt?.trim() ?? '';
+      const upgradeSearch = columnSearch.upgrade?.trim() ?? '';
       const hasEipSearch = eipSearch.length > 0;
       const hasGithubSearch = githubSearch.length > 0;
       const hasTitleSearch = titleSearch.length > 0;
@@ -1824,17 +1901,18 @@ const results = await prisma.$queryRawUnsafe<Array<{
       const hasStatusSearch = statusSearch.length > 0;
       const hasCategorySearch = categorySearch.length > 0;
       const hasUpdatedAtSearch = updatedAtSearch.length > 0;
+      const hasUpgradeSearch = upgradeSearch.length > 0;
 
       const sortMap: Record<string, string> = {
-        eip: 'number',
-        title: 'title',
-        author: 'author',
-        type: 'type',
-        status: 'status',
-        category: 'category',
-        updated_at: 'updated_at',
+        eip: 'proposals.number',
+        title: 'proposals.title',
+        author: 'proposals.author',
+        type: 'proposals.type',
+        status: 'proposals.status',
+        category: 'proposals.category',
+        updated_at: 'proposals.updated_at',
       };
-      const orderCol = sortMap[input.sortBy ?? 'updated_at'] ?? 'updated_at';
+      const orderCol = sortMap[input.sortBy ?? 'updated_at'] ?? 'proposals.updated_at';
       const orderDir = input.sortDir === 'asc' ? 'ASC' : 'DESC';
 
       // Count query
@@ -1868,15 +1946,18 @@ const results = await prisma.$queryRawUnsafe<Array<{
         )
         SELECT COUNT(*)::bigint AS total
         FROM proposals
-        WHERE (($1::boolean = false) OR stage = $2::text)
-          AND (($3::boolean = false) OR number::text ILIKE '%' || $4 || '%')
-          AND (($5::boolean = false) OR repo ILIKE '%' || $6 || '%')
-          AND (($7::boolean = false) OR COALESCE(title, '') ILIKE '%' || $8 || '%')
-          AND (($9::boolean = false) OR COALESCE(author, '') ILIKE '%' || $10 || '%')
-          AND (($11::boolean = false) OR COALESCE(type, '') ILIKE '%' || $12 || '%')
-          AND (($13::boolean = false) OR status ILIKE '%' || $14 || '%')
-          AND (($15::boolean = false) OR category ILIKE '%' || $16 || '%')
-          AND (($17::boolean = false) OR TO_CHAR(updated_at, 'YYYY-MM-DD') ILIKE '%' || $18 || '%')
+        LEFT JOIN upgrade_composition_current ucc_c ON ucc_c.eip_number = proposals.number AND LOWER(ucc_c.bucket) = proposals.stage
+        LEFT JOIN upgrades u_c ON u_c.id = ucc_c.upgrade_id
+        WHERE (($1::boolean = false) OR proposals.stage = $2::text)
+          AND (($3::boolean = false) OR proposals.number::text ILIKE '%' || $4 || '%')
+          AND (($5::boolean = false) OR proposals.repo ILIKE '%' || $6 || '%')
+          AND (($7::boolean = false) OR COALESCE(proposals.title, '') ILIKE '%' || $8 || '%')
+          AND (($9::boolean = false) OR COALESCE(proposals.author, '') ILIKE '%' || $10 || '%')
+          AND (($11::boolean = false) OR COALESCE(proposals.type, '') ILIKE '%' || $12 || '%')
+          AND (($13::boolean = false) OR proposals.status ILIKE '%' || $14 || '%')
+          AND (($15::boolean = false) OR proposals.category ILIKE '%' || $16 || '%')
+          AND (($17::boolean = false) OR TO_CHAR(proposals.updated_at, 'YYYY-MM-DD') ILIKE '%' || $18 || '%')
+          AND (($19::boolean = false) OR COALESCE(u_c.name, '') ILIKE '%' || $20 || '%')
         `,
         hasStage,
         input.stage?.toLowerCase() ?? null,
@@ -1887,7 +1968,8 @@ const results = await prisma.$queryRawUnsafe<Array<{
         hasTypeSearch, typeSearch,
         hasStatusSearch, statusSearch,
         hasCategorySearch, categorySearch,
-        hasUpdatedAtSearch, updatedAtSearch
+        hasUpdatedAtSearch, updatedAtSearch,
+        hasUpgradeSearch, upgradeSearch
       );
 
       const total = Number(countResults[0]?.total ?? 0);
@@ -1903,6 +1985,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
         repo: string;
         kind: string;
         stage: string;
+        upgrade_name: string | null;
         updated_at: Date;
       }>>(
         `
@@ -1932,19 +2015,22 @@ const results = await prisma.$queryRawUnsafe<Array<{
           LEFT JOIN repositories r ON r.id = s.repository_id
           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
         )
-        SELECT number, title, author, type, status, category, repo, kind, stage, updated_at
+        SELECT proposals.number, proposals.title, proposals.author, proposals.type, proposals.status, proposals.category, proposals.repo, proposals.kind, proposals.stage, COALESCE(u.name, '') AS upgrade_name, proposals.updated_at
         FROM proposals
-        WHERE (($1::boolean = false) OR stage = $2::text)
-          AND (($3::boolean = false) OR number::text ILIKE '%' || $4 || '%')
-          AND (($5::boolean = false) OR repo ILIKE '%' || $6 || '%')
-          AND (($7::boolean = false) OR COALESCE(title, '') ILIKE '%' || $8 || '%')
-          AND (($9::boolean = false) OR COALESCE(author, '') ILIKE '%' || $10 || '%')
-          AND (($11::boolean = false) OR COALESCE(type, '') ILIKE '%' || $12 || '%')
-          AND (($13::boolean = false) OR status ILIKE '%' || $14 || '%')
-          AND (($15::boolean = false) OR category ILIKE '%' || $16 || '%')
-          AND (($17::boolean = false) OR TO_CHAR(updated_at, 'YYYY-MM-DD') ILIKE '%' || $18 || '%')
-        ORDER BY ${orderCol} ${orderDir} NULLS LAST, number DESC
-        LIMIT $19 OFFSET $20
+        LEFT JOIN upgrade_composition_current ucc3 ON ucc3.eip_number = proposals.number AND LOWER(ucc3.bucket) = proposals.stage
+        LEFT JOIN upgrades u ON u.id = ucc3.upgrade_id
+        WHERE (($1::boolean = false) OR proposals.stage = $2::text)
+          AND (($3::boolean = false) OR proposals.number::text ILIKE '%' || $4 || '%')
+          AND (($5::boolean = false) OR proposals.repo ILIKE '%' || $6 || '%')
+          AND (($7::boolean = false) OR COALESCE(proposals.title, '') ILIKE '%' || $8 || '%')
+          AND (($9::boolean = false) OR COALESCE(proposals.author, '') ILIKE '%' || $10 || '%')
+          AND (($11::boolean = false) OR COALESCE(proposals.type, '') ILIKE '%' || $12 || '%')
+          AND (($13::boolean = false) OR proposals.status ILIKE '%' || $14 || '%')
+          AND (($15::boolean = false) OR proposals.category ILIKE '%' || $16 || '%')
+          AND (($17::boolean = false) OR TO_CHAR(proposals.updated_at, 'YYYY-MM-DD') ILIKE '%' || $18 || '%')
+          AND (($19::boolean = false) OR COALESCE(u.name, '') ILIKE '%' || $20 || '%')
+        ORDER BY ${orderCol} ${orderDir} NULLS LAST, proposals.number DESC
+        LIMIT $21 OFFSET $22
         `,
         hasStage,
         input.stage?.toLowerCase() ?? null,
@@ -1956,6 +2042,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
         hasStatusSearch, statusSearch,
         hasCategorySearch, categorySearch,
         hasUpdatedAtSearch, updatedAtSearch,
+        hasUpgradeSearch, upgradeSearch,
         input.pageSize ?? 25,
         offset
       );
@@ -1975,6 +2062,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
           repo: r.repo,
           kind: r.kind,
           stage: r.stage,
+          upgradeName: r.upgrade_name || null,
           updatedAt: r.updated_at.toISOString(),
         })),
       };
