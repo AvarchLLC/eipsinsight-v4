@@ -42,6 +42,15 @@ import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { EIPsPageHeader } from './_components/eips-page-header';
 import HomeFAQs from './_components/home-faqs';
 import SocialCommunityUpdates from './_components/social-community-updates';
+import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
+import GovernanceOverTime from '@/app/dashboard/_components/governance-over-time';
+import EditorHomeDashboard from './_components/persona-home/EditorHomeDashboard';
+import DeveloperHomeDashboard from './_components/persona-home/DeveloperHomeDashboard';
+import BuilderHomeDashboard from './_components/persona-home/BuilderHomeDashboard';
+import NewcomerHomeDashboard from './_components/persona-home/NewcomerHomeDashboard';
+import DeveloperUpgradeWatchSection from './_components/persona-home/DeveloperUpgradeWatchSection';
+import EditorReviewQueueSection from './_components/persona-home/EditorReviewQueueSection';
+import EditorCategoryBreakdownSection from './_components/persona-home/EditorCategoryBreakdownSection';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -88,6 +97,11 @@ type ProcessBreakdownRow = {
   count: number;
 };
 
+type BoardProcessStat = {
+  type: string;
+  count: number;
+};
+
 type ParticipantBreakdownRow = {
   label: string;
   count: number;
@@ -103,6 +117,7 @@ type UpgradeTimelineRow = {
 };
 
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
+type DeveloperRepoFilter = '' | 'eips' | 'ercs' | 'rips';
 
 type HomePersona = 'developer' | 'editor' | 'builder' | 'newcomer';
 
@@ -118,6 +133,20 @@ const STATUS_COLORS: Record<string, string> = {
   EIPs: 'bg-cyan-500',
   ERCs: 'bg-emerald-500',
   RIPs: 'bg-violet-500',
+};
+
+const BOARD_PROCESS_ORDER = ['Status Change', 'New EIP', 'PR DRAFT', 'Typo', 'Website', 'EIP-1', 'Tooling', 'Content Edit', 'Misc'];
+
+const BOARD_PROCESS_BADGES: Record<string, string> = {
+  Typo: 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/20',
+  'New EIP': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+  Website: 'bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/20',
+  'EIP-1': 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/20',
+  Tooling: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/20',
+  'Status Change': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
+  'PR DRAFT': 'bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/20',
+  'Content Edit': 'bg-muted text-muted-foreground border-border',
+  Misc: 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-500/20',
 };
 
 const STATUS_PIE_COLORS: Record<string, string> = {
@@ -381,9 +410,12 @@ const PERSONA_SECTION_VISIBILITY: Record<
   {
     quickAccess: boolean;
     upgradeWatch: boolean;
+    trending: boolean;
     reviewQueue: boolean;
     categoryBreakdown: boolean;
     browse: boolean;
+    governanceOverTime: boolean;
+    board: boolean;
     monthly: boolean;
     governance: boolean;
     social: boolean;
@@ -393,9 +425,12 @@ const PERSONA_SECTION_VISIBILITY: Record<
   developer: {
     quickAccess: true,
     upgradeWatch: true,
+    trending: true,
     reviewQueue: false,
     categoryBreakdown: false,
     browse: true,
+    governanceOverTime: true,
+    board: true,
     monthly: false,
     governance: true,
     social: false,
@@ -404,20 +439,26 @@ const PERSONA_SECTION_VISIBILITY: Record<
   editor: {
     quickAccess: true,
     upgradeWatch: false,
+    trending: false,
     reviewQueue: true,
     categoryBreakdown: true,
     browse: true,
+    governanceOverTime: false,
+    board: false,
     monthly: true,
     governance: true,
     social: true,
-    reference: true,
+    reference: false,
   },
   builder: {
     quickAccess: true,
     upgradeWatch: false,
+    trending: false,
     reviewQueue: false,
     categoryBreakdown: false,
     browse: false,
+    governanceOverTime: false,
+    board: false,
     monthly: false,
     governance: false,
     social: false,
@@ -426,9 +467,12 @@ const PERSONA_SECTION_VISIBILITY: Record<
   newcomer: {
     quickAccess: true,
     upgradeWatch: false,
+    trending: false,
     reviewQueue: false,
     categoryBreakdown: false,
     browse: false,
+    governanceOverTime: false,
+    board: false,
     monthly: false,
     governance: false,
     social: false,
@@ -637,14 +681,22 @@ export default function EIPsHomePage() {
   const [showProposalTable, setShowProposalTable] = useState(true);
   const [showPersonaWorkspace, setShowPersonaWorkspace] = useState(true);
   const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
+  const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('');
+  const [selectedBoardProcesses, setSelectedBoardProcesses] = useState<string[]>([]);
   const [editorQueuePage, setEditorQueuePage] = useState(1);
+  const [developerBoardPage, setDeveloperBoardPage] = useState(1);
   const [editorCategoryPage, setEditorCategoryPage] = useState(1);
   const [boardPreviewRows, setBoardPreviewRows] = useState<BoardPreviewRow[]>([]);
+  const [boardProcessStats, setBoardProcessStats] = useState<BoardProcessStat[]>([]);
   const [boardPreviewTotal, setBoardPreviewTotal] = useState(0);
   const [boardPreviewTotalPages, setBoardPreviewTotalPages] = useState(1);
+  const [developerBoardRows, setDeveloperBoardRows] = useState<BoardPreviewRow[]>([]);
+  const [developerBoardTotal, setDeveloperBoardTotal] = useState(0);
+  const [developerBoardTotalPages, setDeveloperBoardTotalPages] = useState(1);
   const [processBreakdownRows, setProcessBreakdownRows] = useState<ProcessBreakdownRow[]>([]);
   const [participantBreakdownRows, setParticipantBreakdownRows] = useState<ParticipantBreakdownRow[]>([]);
   const [boardPreviewLoading, setBoardPreviewLoading] = useState(false);
+  const [developerBoardLoading, setDeveloperBoardLoading] = useState(false);
   const [upgradeWatchSlug, setUpgradeWatchSlug] = useState('glamsterdam');
   const [upgradeTimelineRows, setUpgradeTimelineRows] = useState<UpgradeTimelineRow[]>([]);
   const [upgradeTimelineLoading, setUpgradeTimelineLoading] = useState(false);
@@ -679,7 +731,16 @@ export default function EIPsHomePage() {
   useEffect(() => {
     setEditorQueuePage(1);
     setEditorCategoryPage(1);
+    setSelectedBoardProcesses([]);
   }, [editorRepoFilter]);
+
+  useEffect(() => {
+    setDeveloperBoardPage(1);
+  }, [developerRepoFilter]);
+
+  useEffect(() => {
+    setEditorQueuePage(1);
+  }, [selectedBoardProcesses]);
 
   useEffect(() => {
     setShowPersonaWorkspace(true);
@@ -689,6 +750,7 @@ export default function EIPsHomePage() {
     let cancelled = false;
     if (activePersona !== 'editor') {
       setBoardPreviewRows([]);
+      setBoardProcessStats([]);
       setBoardPreviewTotal(0);
       setBoardPreviewTotalPages(1);
       setProcessBreakdownRows([]);
@@ -698,12 +760,17 @@ export default function EIPsHomePage() {
     (async () => {
       setBoardPreviewLoading(true);
       try {
-        const [data, processData, participantData] = await Promise.all([
+        const [data, statsData, classificationData, waitingData] = await Promise.all([
           client.tools.getOpenPRBoard({
             repo: editorRepoFilter || undefined,
             govState: ['Waiting on Editor'],
+            processType: selectedBoardProcesses.length ? selectedBoardProcesses : undefined,
             page: editorQueuePage,
-            pageSize: 5,
+            pageSize: 6,
+          }),
+          client.tools.getOpenPRBoardStats({
+            repo: editorRepoFilter || undefined,
+            govState: ['Waiting on Editor'],
           }),
           client.analytics.getPROpenClassification({
             repo: editorRepoFilter || undefined,
@@ -716,16 +783,20 @@ export default function EIPsHomePage() {
         ]);
         if (!cancelled) {
           setBoardPreviewRows(data.rows ?? []);
+          setBoardProcessStats((statsData?.processTypes ?? []).map((row) => ({
+            type: row.type,
+            count: Number(row.count ?? 0),
+          })));
           setBoardPreviewTotal(Number(data.total ?? 0));
           setBoardPreviewTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
           setProcessBreakdownRows(
-            (processData ?? []).map((row) => ({
+            (classificationData ?? []).map((row) => ({
               category: row.category,
               count: Number(row.count ?? 0),
             })),
           );
           setParticipantBreakdownRows(
-            (participantData ?? []).map((row) => ({
+            (waitingData ?? []).map((row) => ({
               label: row.label,
               count: Number(row.count ?? 0),
             })),
@@ -740,7 +811,41 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [activePersona, currentMonthYear, editorRepoFilter, editorQueuePage]);
+  }, [activePersona, currentMonthYear, editorRepoFilter, editorQueuePage, selectedBoardProcesses]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (activePersona !== 'developer') {
+      setDeveloperBoardRows([]);
+      setDeveloperBoardTotal(0);
+      setDeveloperBoardTotalPages(1);
+      return;
+    }
+
+    (async () => {
+      setDeveloperBoardLoading(true);
+      try {
+        const data = await client.tools.getOpenPRBoard({
+          repo: developerRepoFilter || undefined,
+          page: developerBoardPage,
+          pageSize: 6,
+        });
+        if (!cancelled) {
+          setDeveloperBoardRows(data.rows ?? []);
+          setDeveloperBoardTotal(Number(data.total ?? 0));
+          setDeveloperBoardTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
+        }
+      } catch (err) {
+        console.error('Failed to load developer board preview:', err);
+      } finally {
+        if (!cancelled) setDeveloperBoardLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePersona, developerRepoFilter, developerBoardPage]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -1299,15 +1404,15 @@ export default function EIPsHomePage() {
   const visibleSections = PERSONA_SECTION_VISIBILITY[activePersona];
   const sectionOrder = useMemo(() => {
     if (activePersona === 'editor') {
-      return { upgradeWatch: 0, reviewQueue: 2, categoryBreakdown: 3, browse: 4, monthly: 5, governance: 6, social: 7, learning: 8 };
+      return { upgradeWatch: 0, trending: 0, reviewQueue: 2, categoryBreakdown: 3, browse: 4, governanceOverTime: 0, board: 0, monthly: 5, governance: 6, social: 7, learning: 8 };
     }
     if (activePersona === 'developer') {
-      return { upgradeWatch: 1, reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 1, governance: 3, social: 4, learning: 5 };
+      return { upgradeWatch: 1, trending: 2, reviewQueue: 0, categoryBreakdown: 0, browse: 3, governanceOverTime: 4, board: 5, monthly: 0, governance: 6, social: 0, learning: 0 };
     }
     if (activePersona === 'builder') {
-      return { upgradeWatch: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 1, monthly: 2, governance: 4, social: 5, learning: 3 };
+      return { upgradeWatch: 0, trending: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 1, governanceOverTime: 0, board: 0, monthly: 2, governance: 4, social: 5, learning: 3 };
     }
-    return { upgradeWatch: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 3, governance: 4, social: 5, learning: 1 };
+    return { upgradeWatch: 0, trending: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 2, governanceOverTime: 0, board: 0, monthly: 3, governance: 4, social: 5, learning: 1 };
   }, [activePersona]);
   const normalizedProcessRows = useMemo(
     () => processBreakdownRows.filter((row) => row.count > 0),
@@ -1317,6 +1422,12 @@ export default function EIPsHomePage() {
     () => participantBreakdownRows.filter((row) => row.count > 0),
     [participantBreakdownRows],
   );
+  const orderedBoardProcessTypes = useMemo(() => {
+    const all = (boardProcessStats ?? []).map((item) => item.type);
+    const sorted = BOARD_PROCESS_ORDER.filter((type) => all.includes(type));
+    const rest = all.filter((type) => !BOARD_PROCESS_ORDER.includes(type));
+    return [...sorted, ...rest];
+  }, [boardProcessStats]);
   const editorCategoryPageSize = 6;
   const editorCategoryTotalPages = useMemo(
     () => Math.max(1, Math.ceil(normalizedParticipantRows.length / editorCategoryPageSize)),
@@ -1433,11 +1544,11 @@ export default function EIPsHomePage() {
       },
       series: seriesConfig.map((series) => ({
         name: series.label,
-        type: 'line',
-        smooth: 0.25,
-        symbol: 'none',
-        lineStyle: { width: 2, color: series.color },
-        areaStyle: { color: `${series.color}22` },
+        type: 'bar',
+        stack: 'total',
+        barMaxWidth: 16,
+        emphasis: { focus: 'series' },
+        itemStyle: { color: series.color, borderRadius: [2, 2, 0, 0] },
         data: upgradeTimelineRows.map((row) => {
           const values = row[series.key] as string[];
           return values.length;
@@ -1498,6 +1609,14 @@ export default function EIPsHomePage() {
   const togglePersonaWorkspace = () => {
     setShowPersonaWorkspace((prev) => !prev);
   };
+  const PersonaDashboardComponent =
+    activePersona === 'editor'
+      ? EditorHomeDashboard
+      : activePersona === 'developer'
+        ? DeveloperHomeDashboard
+        : activePersona === 'builder'
+          ? BuilderHomeDashboard
+          : NewcomerHomeDashboard;
 
   return (
     <div className="w-full overflow-x-clip px-2.5 py-5 sm:px-4 sm:py-6 lg:px-5 xl:px-6">
@@ -1597,311 +1716,255 @@ export default function EIPsHomePage() {
           </div>
         </section>
       )}
-      <div className="flex flex-col">
+      <PersonaDashboardComponent>
       {activePersona === 'developer' && visibleSections.upgradeWatch && (
-        <section className="mb-6" style={{ order: sectionOrder.upgradeWatch }}>
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <h2 className={sectionTitleClass}>Upgrade Watch</h2>
-              <p className={sectionSubtitleClass}>Compact EIP Composition Timeline by upgrade.</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={upgradeWatchSlug}
-                onChange={(e) => setUpgradeWatchSlug(e.target.value)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                {upgradeOptions.map((opt) => (
-                  <option key={opt.slug} value={opt.slug}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <Link
-                href="/upgrade"
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
-              >
-                Explore Upgrade
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-
-          <div className="rounded-xl border border-border bg-card/60 p-3">
-            {upgradeTimelineLoading ? (
-              <div className="h-[220px] animate-pulse rounded-lg bg-muted" />
-            ) : !upgradeWatchChartOption ? (
-              <div className="flex h-[220px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
-                No timeline data available for this upgrade.
-              </div>
-            ) : (
-              <ReactECharts option={upgradeWatchChartOption} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
-            )}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
-              {[
-                { key: 'included', label: 'Included', tone: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
-                { key: 'scheduled', label: 'SFI', tone: 'border-cyan-500/35 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
-                { key: 'considered', label: 'CFI', tone: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300' },
-                { key: 'proposed', label: 'PFI', tone: 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300' },
-                { key: 'declined', label: 'DFI', tone: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300' },
-              ].map((chip) => (
-                <span key={`upgrade-chip-${chip.key}`} className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold', chip.tone)}>
-                  {chip.label}: {latestUpgradeSnapshot ? (latestUpgradeSnapshot[chip.key as keyof UpgradeTimelineRow] as string[]).length : 0}
-                </span>
-              ))}
-            </div>
-          </div>
-        </section>
+        <DeveloperUpgradeWatchSection
+          sectionTitleClass={sectionTitleClass}
+          sectionSubtitleClass={sectionSubtitleClass}
+          upgradeWatchSlug={upgradeWatchSlug}
+          setUpgradeWatchSlug={setUpgradeWatchSlug}
+          upgradeOptions={upgradeOptions}
+          upgradeTimelineLoading={upgradeTimelineLoading}
+          upgradeWatchChartOption={upgradeWatchChartOption}
+          latestCounts={{
+            included: latestUpgradeSnapshot?.included.length ?? 0,
+            scheduled: latestUpgradeSnapshot?.scheduled.length ?? 0,
+            considered: latestUpgradeSnapshot?.considered.length ?? 0,
+            proposed: latestUpgradeSnapshot?.proposed.length ?? 0,
+            declined: latestUpgradeSnapshot?.declined.length ?? 0,
+          }}
+        />
       )}
-      {activePersona === 'editor' && visibleSections.reviewQueue && (
+      {activePersona === 'developer' && visibleSections.trending && (
         <section
-          className="mb-6"
-          style={activePersona === 'editor' ? undefined : { order: sectionOrder.reviewQueue }}
+          style={{ order: sectionOrder.trending }}
+          className="mb-6 border-t border-border/70 pt-6"
+          id="developer-trending-proposals"
         >
-          <div className="mb-3 flex items-start justify-between gap-2">
-            <div>
-              <h2 className={sectionTitleClass}>Editor Review Queue</h2>
-              <p className={sectionSubtitleClass}>Open PRs currently waiting on editor action.</p>
-            </div>
+          <div className="mb-2 flex items-start justify-end">
+            <CopyLinkButton sectionId="developer-trending-proposals" className="h-8 w-8 rounded-md" />
+          </div>
+          <TrendingProposals />
+          <div className="mt-2 flex justify-center">
             <Link
-              href="/tools/board?status=Waiting+on+Editor&page=1"
+              href="/explore/trending"
               className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
             >
-              Explore Board
+              Explore Trending
               <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
-          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
-            {(
-              [
-                { key: '', label: 'All' },
-                { key: 'eips', label: 'EIPs' },
-                { key: 'ercs', label: 'ERCs' },
-                { key: 'rips', label: 'RIPs' },
-              ] as const
-            ).map((item) => (
-              <button
-                key={`editor-queue-repo-${item.label}`}
-                onClick={() => setEditorRepoFilter(item.key)}
-                className={cn(
-                  'rounded px-2.5 py-1',
-                  editorRepoFilter === item.key ? 'bg-card text-foreground' : 'text-muted-foreground',
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
+        </section>
+      )}
+      {activePersona === 'developer' && visibleSections.governanceOverTime && (
+        <section
+          style={{ order: sectionOrder.governanceOverTime }}
+          className="mb-6 border-t border-border/70 pt-6"
+          id="developer-governance-over-time"
+        >
+          <div className="mb-2 flex items-start justify-end">
+            <CopyLinkButton sectionId="developer-governance-over-time" className="h-8 w-8 rounded-md" />
           </div>
-          <div className="overflow-hidden rounded-lg border border-border/70 bg-card/40">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-xs">
+          <GovernanceOverTime />
+          <div className="mt-2 flex justify-center">
+            <Link
+              href="/dashboard"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+            >
+              Explore Governance
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+        </section>
+      )}
+      {activePersona === 'developer' && visibleSections.board && (
+        <section
+          style={{ order: sectionOrder.board }}
+          className="mb-6 border-t border-border/70 pt-6"
+          id="developer-board-snapshot"
+        >
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className={sectionTitleClass}>Board</h2>
+              <p className={sectionSubtitleClass}>Compact open PR snapshot from the Editing Board.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                aria-label="Board repository filter"
+                value={developerRepoFilter}
+                onChange={(e) => setDeveloperRepoFilter(e.target.value as DeveloperRepoFilter)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <option value="">All Repos</option>
+                <option value="eips">EIPs</option>
+                <option value="ercs">ERCs</option>
+                <option value="rips">RIPs</option>
+              </select>
+              <CopyLinkButton sectionId="developer-board-snapshot" className="h-8 w-8 rounded-md" />
+            </div>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+            <div className="hidden md:block">
+              <table className="min-w-full text-sm">
                 <thead>
-                  <tr className="border-b border-border/70 bg-muted/40">
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">PR</th>
-                    <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</th>
-                    <th className="w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Author</th>
-                    <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Wait</th>
-                    <th className="w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Process</th>
-                    <th className="w-36 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
-                    <th className="w-48 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Labels</th>
-                    <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Repo</th>
-                    <th className="w-16 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Open</th>
+                  <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-3 py-2.5">PR</th>
+                    <th className="px-3 py-2.5">Title</th>
+                    <th className="px-3 py-2.5">Repo</th>
+                    <th className="px-3 py-2.5">State</th>
+                    <th className="px-3 py-2.5">Process</th>
+                    <th className="px-3 py-2.5">Wait</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {boardPreviewLoading ? (
-                    Array.from({ length: 5 }).map((_, i) => (
-                      <tr key={`board-row-skeleton-${i}`} className="border-b border-border/60">
-                        <td colSpan={9} className="px-3 py-2.5">
-                          <div className="h-5 animate-pulse rounded bg-muted" />
+                  {developerBoardLoading ? (
+                    Array.from({ length: 6 }).map((_, i) => (
+                      <tr key={`dev-board-skeleton-${i}`} className="border-b border-border/60">
+                        <td colSpan={6} className="px-3 py-2.5">
+                          <div className="h-4 animate-pulse rounded bg-muted" />
                         </td>
                       </tr>
                     ))
-                  ) : boardPreviewRows.length === 0 ? (
+                  ) : developerBoardRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
-                        No PRs currently waiting on editor.
+                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                        No open PR rows found for this filter.
                       </td>
                     </tr>
                   ) : (
-                    boardPreviewRows.map((row) => (
-                      <tr key={`board-row-${row.repo}-${row.prNumber}`} className="border-b border-border/60 align-top transition-colors hover:bg-muted/30">
-                        <td className="px-3 py-2.5 font-mono font-semibold text-primary">
-                          <Link href={`/pr/${githubRepoFromShort(row.repoShort)}/${row.prNumber}`} className="font-semibold text-primary hover:underline">
-                            #{row.prNumber}
-                          </Link>
-                        </td>
-                        <td className="max-w-[420px] px-3 py-2.5">
-                          <p className="truncate leading-snug text-foreground">{row.title || 'Untitled PR'}</p>
-                          <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{new Date(`${row.createdAt}T00:00:00`).toLocaleDateString()}</p>
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{row.author || '—'}</td>
-                        <td className="px-3 py-2.5 text-muted-foreground tabular-nums">{row.waitDays}d</td>
+                    developerBoardRows.map((row) => (
+                      <tr key={`dev-board-${row.repoShort}-${row.prNumber}`} className="border-b border-border/60 hover:bg-muted/35">
                         <td className="px-3 py-2.5">
-                          <span className="whitespace-nowrap rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            {row.processType}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <span className="whitespace-nowrap rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                            {row.govState}
-                          </span>
-                        </td>
-                        <td className="px-3 py-2.5">
-                          <div className="flex flex-wrap gap-1">
-                            {(row.labels || []).slice(0, 2).map((label) => (
-                              <span key={`${row.prNumber}-${label}`} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                {label}
-                              </span>
-                            ))}
-                            {(row.labels || []).length > 2 && (
-                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                                +{(row.labels || []).length - 2}
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2.5 text-muted-foreground">{row.repoShort.toUpperCase()}</td>
-                        <td className="px-3 py-2.5 text-center">
                           <a
-                            href={`https://github.com/${row.repo}/pull/${row.prNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] text-primary transition-colors hover:bg-primary/15"
+                            href={`/pr/${githubRepoFromShort(row.repoShort)}/${row.prNumber}`}
+                            className="font-medium text-primary hover:underline"
                           >
-                            <ExternalLink className="h-2.5 w-2.5" />
+                            #{row.prNumber}
                           </a>
                         </td>
+                        <td className="max-w-[460px] truncate px-3 py-2.5 text-foreground">
+                          {row.title || `PR #${row.prNumber}`}
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{row.repoShort.toUpperCase()}</td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{row.govState || '-'}</td>
+                        <td className="px-3 py-2.5">
+                          <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px]', BOARD_PROCESS_BADGES[row.processType] || BOARD_PROCESS_BADGES.Misc)}>
+                            {row.processType || 'Misc'}
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-muted-foreground">{Math.max(0, Number(row.waitDays || 0))}d</td>
                       </tr>
                     ))
                   )}
                 </tbody>
               </table>
             </div>
-            <div className="flex items-center justify-between gap-2 border-t border-border/70 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
-              <span>
-                Showing {(boardPreviewTotal === 0 ? 0 : (editorQueuePage - 1) * 5 + 1)}–
-                {Math.min(editorQueuePage * 5, boardPreviewTotal)} of {boardPreviewTotal}
-              </span>
-              <div className="inline-flex items-center gap-2">
+            <div className="space-y-2 p-2 md:hidden">
+              {developerBoardLoading ? (
+                Array.from({ length: 4 }).map((_, i) => (
+                  <div key={`dev-board-mobile-skeleton-${i}`} className="h-16 animate-pulse rounded-lg bg-muted" />
+                ))
+              ) : developerBoardRows.length === 0 ? (
+                <div className="rounded-lg border border-border bg-muted/30 px-3 py-6 text-center text-sm text-muted-foreground">
+                  No open PR rows found for this filter.
+                </div>
+              ) : (
+                developerBoardRows.map((row) => (
+                  <div key={`dev-board-mobile-${row.repoShort}-${row.prNumber}`} className="rounded-lg border border-border bg-card/70 p-2.5">
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <a
+                        href={`/pr/${githubRepoFromShort(row.repoShort)}/${row.prNumber}`}
+                        className="text-sm font-semibold text-primary hover:underline"
+                      >
+                        #{row.prNumber}
+                      </a>
+                      <span className="text-[11px] text-muted-foreground">{row.repoShort.toUpperCase()}</span>
+                    </div>
+                    <p className="line-clamp-2 text-sm text-foreground">{row.title || `PR #${row.prNumber}`}</p>
+                    <div className="mt-1.5 text-[11px] text-muted-foreground">
+                      {row.govState || '-'} • {Math.max(0, Number(row.waitDays || 0))}d wait
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex items-center justify-between border-t border-border/70 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+              <span>Total Open PRs: {developerBoardTotal.toLocaleString()}</span>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setEditorQueuePage((p) => Math.max(1, p - 1))}
-                  disabled={editorQueuePage <= 1}
+                  onClick={() => setDeveloperBoardPage((prev) => Math.max(1, prev - 1))}
+                  disabled={developerBoardPage <= 1}
                   className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
                 >
                   Prev
                 </button>
-                <span className="tabular-nums">Page {editorQueuePage} / {boardPreviewTotalPages}</span>
+                <span>Page {developerBoardPage} / {developerBoardTotalPages}</span>
                 <button
                   type="button"
-                  onClick={() => setEditorQueuePage((p) => Math.min(boardPreviewTotalPages, p + 1))}
-                  disabled={editorQueuePage >= boardPreviewTotalPages}
+                  onClick={() => setDeveloperBoardPage((prev) => Math.min(developerBoardTotalPages, prev + 1))}
+                  disabled={developerBoardPage >= developerBoardTotalPages}
                   className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
                 >
                   Next
                 </button>
               </div>
             </div>
+          </div>
+          <div className="mt-3 flex justify-center">
+            <Link
+              href="/tools/board"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+            >
+              Explore Board
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </section>
       )}
+      {activePersona === 'editor' && visibleSections.reviewQueue && (
+        <EditorReviewQueueSection
+          sectionTitleClass={sectionTitleClass}
+          sectionSubtitleClass={sectionSubtitleClass}
+          editorRepoFilter={editorRepoFilter}
+          setEditorRepoFilter={setEditorRepoFilter}
+          orderedBoardProcessTypes={orderedBoardProcessTypes}
+          boardProcessStats={boardProcessStats}
+          selectedBoardProcesses={selectedBoardProcesses}
+          setSelectedBoardProcesses={setSelectedBoardProcesses}
+          boardPreviewLoading={boardPreviewLoading}
+          boardPreviewRows={boardPreviewRows}
+          boardPreviewTotal={boardPreviewTotal}
+          editorQueuePage={editorQueuePage}
+          boardPreviewTotalPages={boardPreviewTotalPages}
+          setEditorQueuePage={setEditorQueuePage}
+          boardProcessBadgeMap={BOARD_PROCESS_BADGES}
+          githubRepoFromShort={githubRepoFromShort}
+        />
+      )}
       {activePersona === 'editor' && visibleSections.categoryBreakdown && (
-        <section
-          className="mb-6"
-          style={activePersona === 'editor' ? undefined : { order: sectionOrder.categoryBreakdown }}
-        >
-          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
-            <div>
-              <h2 className={sectionTitleClass}>Category Breakdown</h2>
-              <p className={sectionSubtitleClass}>Participants × process stacked distribution for open PRs.</p>
-              <p className="mt-1 text-[11px] text-muted-foreground">Month context: {monthLabel(currentMonthYear)}</p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                value={currentMonthYear}
-                onChange={(e) => setCurrentMonthYear(e.target.value)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                {monthYearOptions.map((opt) => (
-                  <option key={`cat-month-${opt.value}`} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-              <Link
-                href="/analytics/prs"
-                className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
-              >
-                Explore PR Analytics
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          </div>
-          <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
-            {(
-              [
-                { key: '', label: 'All' },
-                { key: 'eips', label: 'EIPs' },
-                { key: 'ercs', label: 'ERCs' },
-                { key: 'rips', label: 'RIPs' },
-              ] as const
-            ).map((item) => (
-              <button
-                key={`editor-category-repo-${item.label}`}
-                onClick={() => setEditorRepoFilter(item.key)}
-                className={cn(
-                  'rounded px-2.5 py-1',
-                  editorRepoFilter === item.key ? 'bg-card text-foreground' : 'text-muted-foreground',
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <div className="overflow-hidden rounded-lg border border-border/70 bg-card/40 p-3">
-            {boardPreviewLoading ? (
-              <div className="h-[260px] animate-pulse rounded bg-muted" />
-            ) : !categoryBreakdownChartOption ? (
-              <p className="py-8 text-center text-sm text-muted-foreground">No category data available.</p>
-            ) : (
-              <ReactECharts
-                option={categoryBreakdownChartOption}
-                style={{ height: '300px', width: '100%' }}
-                opts={{ renderer: 'svg' }}
-              />
-            )}
-            <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
-              <span>
-                Showing {paginatedParticipantRows.length} participant buckets
-              </span>
-              <div className="inline-flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditorCategoryPage((p) => Math.max(1, p - 1))}
-                  disabled={editorCategoryPage <= 1}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <span className="tabular-nums">Page {editorCategoryPage} / {editorCategoryTotalPages}</span>
-                <button
-                  type="button"
-                  onClick={() => setEditorCategoryPage((p) => Math.min(editorCategoryTotalPages, p + 1))}
-                  disabled={editorCategoryPage >= editorCategoryTotalPages}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <EditorCategoryBreakdownSection
+          sectionTitleClass={sectionTitleClass}
+          sectionSubtitleClass={sectionSubtitleClass}
+          monthLabelText={monthLabel(currentMonthYear)}
+          currentMonthYear={currentMonthYear}
+          setCurrentMonthYear={setCurrentMonthYear}
+          monthYearOptions={monthYearOptions}
+          editorRepoFilter={editorRepoFilter}
+          setEditorRepoFilter={setEditorRepoFilter}
+          boardPreviewLoading={boardPreviewLoading}
+          categoryBreakdownChartOption={categoryBreakdownChartOption}
+          participantCount={paginatedParticipantRows.length}
+          editorCategoryPage={editorCategoryPage}
+          editorCategoryTotalPages={editorCategoryTotalPages}
+          setEditorCategoryPage={setEditorCategoryPage}
+        />
       )}
       {visibleSections.browse && (
       <div
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.browse }}
-        className="mb-6"
+        className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
+        id="editor-browse-snapshot"
       >
       <div className="mb-3 space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -1913,55 +1976,42 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Explore a compact snapshot here, then jump to full explorer tools.</p>
             </div>
           </div>
-          <div className="w-full overflow-x-auto pb-1 sm:w-auto">
-            <div
-              role="tablist"
-              aria-label="Browse dimension"
-              className="inline-flex min-w-max items-center gap-0.5 rounded-xl border border-border bg-muted/70 p-1 shadow-sm"
-            >
-              {(
-                [
-                  ['status', 'Status', Activity] as const,
-                  ['category', 'Category', Layers] as const,
-                  ['repo', 'Repo', GitBranch] as const,
-                  ['stages', 'Stages', Package] as const,
-                ] as const
-              ).map(([key, label, Icon]) => {
-                const active = dimension === key;
-                return (
-                  <button
-                    key={key}
-                    type="button"
-                    role="tab"
-                    aria-selected={active}
-                    onClick={() => {
-                      // Avoid a brief "wrong bucket" fetch when switching dimensions.
+          <div className="flex items-center gap-2">
+            {(() => {
+              const BrowseIcon =
+                dimension === 'status'
+                  ? Activity
+                  : dimension === 'category'
+                    ? Layers
+                    : dimension === 'repo'
+                      ? GitBranch
+                      : Package;
+              return (
+                <span className="relative inline-flex">
+                  <BrowseIcon className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
+                  <select
+                    aria-label="Browse dimension"
+                    value={dimension}
+                    onChange={(e) => {
                       setActiveBucket(null);
                       setPage(1);
-                      setDimension(key);
+                      setDimension(e.target.value as Dimension);
                     }}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 rounded-[10px] px-3.5 py-2 text-sm whitespace-nowrap transition-colors',
-                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/45 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
-                      active
-                        ? 'bg-background font-semibold text-foreground shadow-[0_1px_2px_rgb(0_0_0/0.06)] ring-1 ring-primary/35 dark:shadow-[0_1px_3px_rgb(0_0_0/0.35)] dark:ring-primary/45'
-                        : 'font-medium text-muted-foreground hover:bg-muted/80 hover:text-foreground',
-                    )}
+                    className="h-8 rounded-md border border-border bg-card/70 pr-8 pl-7 text-xs font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', active && 'text-primary')} />
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
+                    <option value="status">Status</option>
+                    <option value="category">Category</option>
+                    <option value="repo">Repo</option>
+                    <option value="stages">Stages</option>
+                  </select>
+                </span>
+              );
+            })()}
+            {activePersona === 'editor' && (
+              <CopyLinkButton sectionId="editor-browse-snapshot" className="h-8 w-8 rounded-md" />
+            )}
           </div>
         </div>
-      </div>
-      <div className="mb-2 flex justify-end">
-        <Link href="/explore" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-          Explore Browse
-          <ArrowRight className="h-3 w-3" />
-        </Link>
       </div>
 
       <div className="mb-3 grid grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-4">
@@ -2546,20 +2596,82 @@ export default function EIPsHomePage() {
           </div>
         )}
       </div>
+      <div className="mt-3 flex justify-center">
+        <Link
+          href="/explore"
+          className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+        >
+          Explore Browse
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
       </div>
       )}
       {visibleSections.reference && (
         <section
-          className="mb-6"
-          style={activePersona === 'editor' ? undefined : { order: sectionOrder.learning }}
+          className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
+          style={activePersona === 'editor' ? { order: 99 } : { order: sectionOrder.learning }}
+          id="home-reference"
         >
+          {activePersona === 'editor' && (
+            <div className="mb-3 flex items-start justify-between gap-2">
+              <div>
+                <h2 className={sectionTitleClass}>Reference</h2>
+                <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
+              </div>
+              <CopyLinkButton sectionId="home-reference" className="h-8 w-8 rounded-md" />
+            </div>
+          )}
           <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
+          {activePersona === 'editor' && (
+            <div className="mt-3 flex justify-center">
+              <Link
+                href="/resources/faq"
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+              >
+                Explore FAQ
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          )}
         </section>
       )}
       {visibleSections.monthly && (
-      <div style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}>
+      <div
+        style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}
+        className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-4 pb-4')}
+        id="editor-monthly-insight"
+      >
       {activePersona !== 'editor' && <hr className="my-6 border-border" />}
 
+      {activePersona === 'editor' && (
+        <div className="mb-3 flex items-start justify-between gap-2">
+          <div>
+            <h2 className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</h2>
+            <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
+              Month
+            </label>
+            <select
+              id="homepage-month-select"
+              value={currentMonthYear}
+              onChange={(e) => setCurrentMonthYear(e.target.value)}
+              className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+            >
+              {monthYearOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <CopyLinkButton sectionId="editor-monthly-insight" className="h-8 w-8 rounded-md" />
+          </div>
+        </div>
+      )}
+
+      {activePersona !== 'editor' && (
       <div className="mb-3 flex items-center justify-end gap-2">
         <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
           Month
@@ -2577,9 +2689,15 @@ export default function EIPsHomePage() {
           ))}
         </select>
       </div>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div className="self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm h-[560px] sm:h-[620px] flex flex-col">
+        <div
+          className={cn(
+            'self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
+            activePersona === 'editor' ? 'h-[460px] sm:h-[500px]' : 'h-[560px] sm:h-[620px]',
+          )}
+        >
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
@@ -2658,7 +2776,12 @@ export default function EIPsHomePage() {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm h-[560px] sm:h-[620px] flex flex-col">
+        <div
+          className={cn(
+            'rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
+            activePersona === 'editor' ? 'h-[460px] sm:h-[500px]' : 'h-[560px] sm:h-[620px]',
+          )}
+        >
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
@@ -2771,27 +2894,47 @@ export default function EIPsHomePage() {
         </div>
       </div>
 
+      {activePersona === 'editor' && (
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <Link
+            href="/insights/year-month-analysis"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+          >
+            Explore Month Analysis
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+          <Link
+            href="/analytics/editors"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+          >
+            Explore Editor Leaderboard
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
       </div>
       )}
       {visibleSections.governance && (
-      <div style={activePersona === 'editor' ? undefined : { order: sectionOrder.governance }}>
+      <div
+        style={activePersona === 'editor' ? undefined : { order: sectionOrder.governance }}
+        className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-4')}
+      >
       {activePersona !== 'editor' && <hr className="my-6 border-border" />}
 
       <section className="mb-6 w-full" id="recent-governance-activity">
         <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className={sectionTitleClass}>
-              Recent Governance Activity
+              {activePersona === 'developer' ? 'Recent Activity' : 'Recent Governance Activity'}
             </h2>
             <p className={sectionSubtitleClass}>
-              Latest status transitions with actor context, proposal links, and lifecycle details.
+              {activePersona === 'developer'
+                ? 'Latest governance and PR movement with actor context and proposal links.'
+                : 'Latest status transitions with actor context, proposal links, and lifecycle details.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/analytics/prs" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
-              Explore PR Analytics
-              <ArrowRight className="h-3 w-3" />
-            </Link>
             <CopyLinkButton sectionId="recent-governance-activity" className="h-8 w-8 rounded-md" />
           </div>
         </div>
@@ -2918,16 +3061,28 @@ export default function EIPsHomePage() {
             </div>
           </aside>
         </div>
+        <div className="mt-3 flex justify-center">
+          <Link
+            href="/analytics/prs"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+          >
+            Explore PR Analytics
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </section>
 
       </div>
       )}
       {visibleSections.social && (
-      <section style={activePersona === 'editor' ? undefined : { order: sectionOrder.social }}>
-        <SocialCommunityUpdates />
+      <section
+        style={activePersona === 'editor' ? undefined : { order: sectionOrder.social }}
+        className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-6')}
+      >
+        <SocialCommunityUpdates showCommunityResources={activePersona !== 'editor'} />
       </section>
       )}
-      </div>
+      </PersonaDashboardComponent>
     </div>
   );
 }

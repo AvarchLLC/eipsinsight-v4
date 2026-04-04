@@ -178,7 +178,11 @@ const getColorClasses = (color: string) => {
   return colors[color] || colors.cyan;
 };
 
-export default function SocialCommunityUpdates() {
+type SocialCommunityUpdatesProps = {
+  showCommunityResources?: boolean;
+};
+
+export default function SocialCommunityUpdates({ showCommunityResources = true }: SocialCommunityUpdatesProps) {
   return (
     <section className="w-full" id="social-community">
       <div className="mb-4 flex items-start justify-between gap-3">
@@ -321,47 +325,51 @@ export default function SocialCommunityUpdates() {
             );
           })}
 
-          <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community Resources</h3>
-          <div className="rounded-lg border border-border bg-card/60 p-3">
-            <div className="space-y-2 text-sm">
-              <a
-                href="https://eips.ethereum.org/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
-              >
-                <span>Official EIPs Website</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-              </a>
-              <a
-                href="https://github.com/ethereum/EIPs"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
-              >
-                <span>EIPs GitHub Repository</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-              </a>
-              <a
-                href="https://github.com/ethereum/pm"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
-              >
-                <span>Ethereum PM Repository</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-              </a>
-              <a
-                href="https://ethresear.ch/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
-              >
-                <span>Ethereum Research</span>
-                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
-              </a>
-            </div>
-          </div>
+          {showCommunityResources && (
+            <>
+              <h3 className="pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Community Resources</h3>
+              <div className="rounded-lg border border-border bg-card/60 p-3">
+                <div className="space-y-2 text-sm">
+                  <a
+                    href="https://eips.ethereum.org/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
+                  >
+                    <span>Official EIPs Website</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                  </a>
+                  <a
+                    href="https://github.com/ethereum/EIPs"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
+                  >
+                    <span>EIPs GitHub Repository</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                  </a>
+                  <a
+                    href="https://github.com/ethereum/pm"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
+                  >
+                    <span>Ethereum PM Repository</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                  </a>
+                  <a
+                    href="https://ethresear.ch/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group flex items-center justify-between text-muted-foreground transition hover:text-primary"
+                  >
+                    <span>Ethereum Research</span>
+                    <ExternalLink className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition group-hover:opacity-100" />
+                  </a>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </section>
