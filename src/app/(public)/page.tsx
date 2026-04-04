@@ -75,6 +75,7 @@ type BoardPreviewRow = {
   title: string | null;
   author: string | null;
   createdAt: string;
+  labels: string[];
   repo: string;
   repoShort: string;
   govState: string;
@@ -90,6 +91,15 @@ type ProcessBreakdownRow = {
 type ParticipantBreakdownRow = {
   label: string;
   count: number;
+};
+
+type UpgradeTimelineRow = {
+  date: string;
+  included: string[];
+  scheduled: string[];
+  declined: string[];
+  considered: string[];
+  proposed: string[];
 };
 
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
@@ -317,9 +327,10 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
       { key: 'upgrade', title: 'Upgrade Watch', href: '/upgrade', cta: 'Open', icon: Zap, blurb: 'Protocol changes and rollout context.' },
       { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Most active standards this week.' },
       { key: 'browse', title: 'Browse by Filters', href: '/explore', cta: 'Open', icon: Filter, blurb: 'Filter by status, category, and repo.' },
-      { key: 'board', title: 'Board Shortcut', href: '/tools/board', cta: 'Open', icon: GitPullRequest, blurb: 'Jump into active proposal queue.' },
-      { key: 'timeline', title: 'Timeline', href: '/tools/timeline', cta: 'Open', icon: GitBranch, blurb: 'Recent lifecycle and PR movement.' },
-      { key: 'dependencies', title: 'Dependencies', href: '/tools/dependencies', cta: 'Open', icon: Network, blurb: 'Track proposal dependencies.' },
+      { key: 'board', title: 'Editing Board Snapshot', href: '/tools/board', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Jump into active proposal queue.' },
+      { key: 'timeline', title: 'Timeline Snapshot', href: '/tools/timeline', cta: 'Explore Timeline', icon: GitBranch, blurb: 'Recent lifecycle and PR movement.' },
+      { key: 'dependencies', title: 'Dependencies Snapshot', href: '/tools/dependencies', cta: 'Explore Dependencies', icon: Network, blurb: 'Track proposal dependencies.' },
+      { key: 'governance', title: 'Recent Governance Activity', href: '/analytics/prs', cta: 'Explore PR Analytics', icon: ArrowUpDown, blurb: 'Latest governance signals and PR activity.' },
     ],
   },
   editor: {
@@ -327,12 +338,9 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Stay on top of review queue, editorial workload, and proposal progression.',
     goal: 'Efficiently manage review workload and track proposal progression.',
     tools: [
-      { key: 'editing-board', title: 'Editing Board', href: '/tools/board', cta: 'Open', icon: GitPullRequest, blurb: 'Review queue and status lanes.' },
-      { key: 'open-editor-prs', title: 'EIP Open PRs', href: '/tools/board?status=Waiting+on+Editor&page=1', cta: 'Open', icon: GitPullRequest, blurb: 'Direct view: waiting on editor.' },
-      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Open', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.' },
-      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'Open', icon: Trophy, blurb: 'Monthly editorial activity snapshot.' },
-      { key: 'composition-timeline', title: 'EIP Composition Timeline', href: '/tools/timeline', cta: 'Open', icon: GitBranch, blurb: 'Track EIP status changes for Glamsterdam.' },
-      { key: 'browse', title: 'Browse by Filters', href: '/explore', cta: 'Open', icon: Filter, blurb: 'Status, category, and repo exploration.' },
+      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Explore PR Analytics', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.' },
+      { key: 'editing-board', title: 'Editing Board', href: '/tools/board?status=Waiting+on+Editor&page=1', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.' },
+      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'Explore Leaderboard', icon: Trophy, blurb: 'Monthly editorial activity snapshot.' },
     ],
   },
   builder: {
@@ -340,10 +348,11 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Discover active standards quickly and jump into contribution workflows.',
     goal: 'Discover active standards and contribute quickly.',
     tools: [
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Find active standards quickly.' },
-      { key: 'erc-focus', title: 'Browse by Filters (ERC)', href: '/explore?repo=ercs', cta: 'Open', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
-      { key: 'eip-builder', title: 'EIP Builder', href: '/tools/eip-builder', cta: 'Open', icon: Code, blurb: 'Primary drafting and validation workflow.' },
-      { key: 'resources', title: 'Practical Resources', href: '/resources/docs', cta: 'Open', icon: BookOpen, blurb: 'Guides, references, and examples.' },
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Find active standards quickly.' },
+      { key: 'erc-focus', title: 'ERC-focused Browse', href: '/explore?repo=ercs', cta: 'Explore ERCs', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
+      { key: 'eip-builder', title: 'EIP Builder', href: '/tools/eip-builder', cta: 'Open Builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
+      { key: 'resources', title: 'Practical Docs/Resources', href: '/resources/docs', cta: 'Explore Resources', icon: BookOpen, blurb: 'Guides, references, and examples.' },
+      { key: 'contributors', title: 'Recent Activity Snapshot', href: '/analytics/contributors', cta: 'Explore Contributors', icon: Activity, blurb: 'Latest contributor movement and momentum.' },
     ],
   },
   newcomer: {
@@ -351,10 +360,11 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Start with clear context, then explore proposals and tools at your pace.',
     goal: 'Make Ethereum standards approachable and easy to get started with.',
     tools: [
-      { key: 'learn', title: 'Learning Resources', href: '/resources', cta: 'Open', icon: BookOpen, blurb: 'Primary entry point for beginners.' },
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Open', icon: Activity, blurb: 'Simple view of current activity.' },
-      { key: 'upgrade', title: 'Upgrade Watch', href: '/upgrade', cta: 'Open', icon: Zap, blurb: 'Simplified network-upgrade summary.' },
-      { key: 'tools', title: 'Beginner Tool Shortcuts', href: '/tools', cta: 'Open', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
+      { key: 'learn', title: 'Learning Resources First', href: '/resources', cta: 'Explore Resources', icon: BookOpen, blurb: 'Primary entry point for beginners.' },
+      { key: 'trending', title: 'Simple Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Simple view of current activity.' },
+      { key: 'upgrade', title: 'Simplified Upgrade Watch', href: '/upgrade', cta: 'Explore Upgrades', icon: Zap, blurb: 'Simplified network-upgrade summary.' },
+      { key: 'tools', title: 'Beginner Tool Access', href: '/tools', cta: 'Explore Tools', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
+      { key: 'faq', title: 'FAQ / Reference', href: '/resources/faq', cta: 'Explore FAQ', icon: BookOpen, blurb: 'Core terms and quick answers.' },
     ],
   },
 };
@@ -364,6 +374,66 @@ const PERSONA_LABELS: Record<HomePersona, string> = {
   editor: 'Editor',
   builder: 'Builder',
   newcomer: 'Newcomer',
+};
+
+const PERSONA_SECTION_VISIBILITY: Record<
+  HomePersona,
+  {
+    quickAccess: boolean;
+    upgradeWatch: boolean;
+    reviewQueue: boolean;
+    categoryBreakdown: boolean;
+    browse: boolean;
+    monthly: boolean;
+    governance: boolean;
+    social: boolean;
+    reference: boolean;
+  }
+> = {
+  developer: {
+    quickAccess: true,
+    upgradeWatch: true,
+    reviewQueue: false,
+    categoryBreakdown: false,
+    browse: true,
+    monthly: false,
+    governance: true,
+    social: false,
+    reference: false,
+  },
+  editor: {
+    quickAccess: true,
+    upgradeWatch: false,
+    reviewQueue: true,
+    categoryBreakdown: true,
+    browse: true,
+    monthly: true,
+    governance: true,
+    social: true,
+    reference: true,
+  },
+  builder: {
+    quickAccess: true,
+    upgradeWatch: false,
+    reviewQueue: false,
+    categoryBreakdown: false,
+    browse: false,
+    monthly: false,
+    governance: false,
+    social: false,
+    reference: false,
+  },
+  newcomer: {
+    quickAccess: true,
+    upgradeWatch: false,
+    reviewQueue: false,
+    categoryBreakdown: false,
+    browse: false,
+    monthly: false,
+    governance: false,
+    social: false,
+    reference: true,
+  },
 };
 
 function monthLabel(monthYear: string) {
@@ -575,6 +645,9 @@ export default function EIPsHomePage() {
   const [processBreakdownRows, setProcessBreakdownRows] = useState<ProcessBreakdownRow[]>([]);
   const [participantBreakdownRows, setParticipantBreakdownRows] = useState<ParticipantBreakdownRow[]>([]);
   const [boardPreviewLoading, setBoardPreviewLoading] = useState(false);
+  const [upgradeWatchSlug, setUpgradeWatchSlug] = useState('glamsterdam');
+  const [upgradeTimelineRows, setUpgradeTimelineRows] = useState<UpgradeTimelineRow[]>([]);
+  const [upgradeTimelineLoading, setUpgradeTimelineLoading] = useState(false);
   const defaultMonthYear = useMemo(() => {
     const now = new Date();
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
@@ -1223,18 +1296,18 @@ export default function EIPsHomePage() {
   const panelTitleClass =
     'text-base font-semibold tracking-tight text-foreground sm:text-lg';
   const personaPlan = PERSONA_HOME_PLANS[activePersona];
-  const showLearningSection = activePersona === 'newcomer' || activePersona === 'builder' || activePersona === 'editor';
+  const visibleSections = PERSONA_SECTION_VISIBILITY[activePersona];
   const sectionOrder = useMemo(() => {
     if (activePersona === 'editor') {
-      return { reviewQueue: 2, categoryBreakdown: 3, browse: 4, monthly: 5, governance: 6, social: 7, learning: 8 };
+      return { upgradeWatch: 0, reviewQueue: 2, categoryBreakdown: 3, browse: 4, monthly: 5, governance: 6, social: 7, learning: 8 };
     }
     if (activePersona === 'developer') {
-      return { reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 1, governance: 3, social: 4, learning: 5 };
+      return { upgradeWatch: 1, reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 1, governance: 3, social: 4, learning: 5 };
     }
     if (activePersona === 'builder') {
-      return { reviewQueue: 0, categoryBreakdown: 0, browse: 1, monthly: 2, governance: 4, social: 5, learning: 3 };
+      return { upgradeWatch: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 1, monthly: 2, governance: 4, social: 5, learning: 3 };
     }
-    return { reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 3, governance: 4, social: 5, learning: 1 };
+    return { upgradeWatch: 0, reviewQueue: 0, categoryBreakdown: 0, browse: 2, monthly: 3, governance: 4, social: 5, learning: 1 };
   }, [activePersona]);
   const normalizedProcessRows = useMemo(
     () => processBreakdownRows.filter((row) => row.count > 0),
@@ -1307,6 +1380,71 @@ export default function EIPsHomePage() {
       })),
     };
   }, [stackedCrossTabRows, normalizedProcessRows, isDark]);
+  const upgradeOptions = useMemo(
+    () => [
+      { slug: 'glamsterdam', label: 'Glamsterdam' },
+      { slug: 'hegota', label: 'Hegota' },
+      { slug: 'fusaka', label: 'Fusaka' },
+      { slug: 'pectra', label: 'Pectra' },
+    ],
+    [],
+  );
+  const latestUpgradeSnapshot = useMemo(
+    () => (upgradeTimelineRows.length > 0 ? upgradeTimelineRows[upgradeTimelineRows.length - 1] : null),
+    [upgradeTimelineRows],
+  );
+  const upgradeWatchChartOption = useMemo(() => {
+    if (!upgradeTimelineRows.length) return null;
+
+    const compactDates = upgradeTimelineRows.map((row) => row.date.slice(5));
+    const seriesConfig = [
+      { key: 'included', label: 'Included', color: '#10b981' },
+      { key: 'scheduled', label: 'SFI', color: '#06b6d4' },
+      { key: 'considered', label: 'CFI', color: '#f59e0b' },
+      { key: 'proposed', label: 'PFI', color: '#3b82f6' },
+      { key: 'declined', label: 'DFI', color: '#ef4444' },
+    ] as const;
+
+    return {
+      grid: { left: 36, right: 10, top: 24, bottom: 26 },
+      tooltip: {
+        trigger: 'axis',
+        backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
+        borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
+      },
+      legend: {
+        top: 0,
+        right: 0,
+        itemWidth: 8,
+        itemHeight: 8,
+        textStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
+      },
+      xAxis: {
+        type: 'category',
+        data: compactDates,
+        boundaryGap: false,
+        axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10, hideOverlap: true },
+      },
+      yAxis: {
+        type: 'value',
+        minInterval: 1,
+        axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
+        splitLine: { lineStyle: { color: isDark ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.2)', type: 'dashed' } },
+      },
+      series: seriesConfig.map((series) => ({
+        name: series.label,
+        type: 'line',
+        smooth: 0.25,
+        symbol: 'none',
+        lineStyle: { width: 2, color: series.color },
+        areaStyle: { color: `${series.color}22` },
+        data: upgradeTimelineRows.map((row) => {
+          const values = row[series.key] as string[];
+          return values.length;
+        }),
+      })),
+    };
+  }, [upgradeTimelineRows, isDark]);
   const hasColumnFilters = useMemo(
     () => Object.values(columnSearch).some((value) => value.trim().length > 0),
     [columnSearch]
@@ -1321,6 +1459,37 @@ export default function EIPsHomePage() {
       setEditorCategoryPage(editorCategoryTotalPages);
     }
   }, [editorCategoryPage, editorCategoryTotalPages]);
+  useEffect(() => {
+    let cancelled = false;
+    if (activePersona !== 'developer') {
+      setUpgradeTimelineRows([]);
+      return;
+    }
+
+    (async () => {
+      setUpgradeTimelineLoading(true);
+      try {
+        const timeline = await client.upgrades.getUpgradeTimeline({ slug: upgradeWatchSlug });
+        if (!cancelled) {
+          setUpgradeTimelineRows(timeline as UpgradeTimelineRow[]);
+        }
+      } catch (err) {
+        console.error('Failed to load developer upgrade watch timeline:', err);
+        if (!cancelled) setUpgradeTimelineRows([]);
+      } finally {
+        if (!cancelled) setUpgradeTimelineLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePersona, upgradeWatchSlug]);
+  useEffect(() => {
+    if (activePersona === 'editor') {
+      setShowProposalTable(false);
+    }
+  }, [activePersona]);
   const isTableFiltered = hasColumnFilters || activeBucket !== null;
   const dismissNewUserGuide = () => {
     window.localStorage.setItem('eipsinsight_home_start_here_dismissed', '1');
@@ -1373,38 +1542,25 @@ export default function EIPsHomePage() {
         </section>
       )}
 
-      {(activePersona !== 'editor' || showPersonaWorkspace) && (
+      {visibleSections.quickAccess && (
         <section className="mb-5" id="persona-home-workspace">
           <div className="rounded-xl border border-border bg-card/60 p-2.5 sm:p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
-                  {PERSONA_LABELS[activePersona]} Shortcuts
+                  {PERSONA_LABELS[activePersona]} Quick Access
                 </p>
-                {activePersona !== 'editor' && (
-                  <p className="text-xs text-muted-foreground">{personaPlan.goal}</p>
-                )}
+                <p className="text-xs text-muted-foreground">{personaPlan.goal}</p>
               </div>
               <div className="inline-flex items-center gap-1.5">
-                {activePersona === 'editor' ? (
-                  <button
-                    type="button"
-                    onClick={() => setShowPersonaWorkspace(false)}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                  >
-                    Close
-                    <XCircle className="h-3.5 w-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={togglePersonaWorkspace}
-                    className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                  >
-                    {showPersonaWorkspace ? 'Close' : 'Show'}
-                    <ChevronDown className={cn('h-3 w-3 transition-transform', showPersonaWorkspace && 'rotate-180')} />
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={togglePersonaWorkspace}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                >
+                  {showPersonaWorkspace ? 'Close' : 'Show'}
+                  <ChevronDown className={cn('h-3 w-3 transition-transform', showPersonaWorkspace && 'rotate-180')} />
+                </button>
                 <Link
                   href="/p"
                   className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
@@ -1415,28 +1571,6 @@ export default function EIPsHomePage() {
               </div>
             </div>
             {showPersonaWorkspace && (
-              activePersona === 'editor' ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {[
-                    { title: 'PR Analytics', href: '/analytics/prs' },
-                    { title: 'Editing Board', href: '/tools/board?status=Waiting+on+Editor&page=1' },
-                    { title: 'Editor Leaderboard', href: '/analytics/editors' },
-                  ].map((item, idx) => (
-                    <Link
-                      key={item.title}
-                      href={item.href}
-                      className={cn(
-                        'inline-flex h-9 items-center rounded-lg border px-3 text-xs font-semibold transition',
-                        idx === 0
-                          ? 'border-primary/40 bg-primary/10 text-primary hover:border-primary/60'
-                          : 'border-border bg-background text-foreground hover:border-primary/35 hover:text-primary',
-                      )}
-                    >
-                      {item.title}
-                    </Link>
-                  ))}
-                </div>
-              ) : (
                 <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {personaPlan.tools.map((tool) => {
                     const Icon = tool.icon;
@@ -1459,23 +1593,82 @@ export default function EIPsHomePage() {
                     );
                   })}
                 </div>
-              )
             )}
           </div>
         </section>
       )}
-
       <div className="flex flex-col">
-      {activePersona === 'editor' && (
-        <section className="mb-6" style={{ order: sectionOrder.reviewQueue }}>
-          <hr className="mb-4 border-border/70" />
+      {activePersona === 'developer' && visibleSections.upgradeWatch && (
+        <section className="mb-6" style={{ order: sectionOrder.upgradeWatch }}>
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div>
+              <h2 className={sectionTitleClass}>Upgrade Watch</h2>
+              <p className={sectionSubtitleClass}>Compact EIP Composition Timeline by upgrade.</p>
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={upgradeWatchSlug}
+                onChange={(e) => setUpgradeWatchSlug(e.target.value)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                {upgradeOptions.map((opt) => (
+                  <option key={opt.slug} value={opt.slug}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/upgrade"
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+              >
+                Explore Upgrade
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/60 p-3">
+            {upgradeTimelineLoading ? (
+              <div className="h-[220px] animate-pulse rounded-lg bg-muted" />
+            ) : !upgradeWatchChartOption ? (
+              <div className="flex h-[220px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
+                No timeline data available for this upgrade.
+              </div>
+            ) : (
+              <ReactECharts option={upgradeWatchChartOption} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
+            )}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
+              {[
+                { key: 'included', label: 'Included', tone: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+                { key: 'scheduled', label: 'SFI', tone: 'border-cyan-500/35 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
+                { key: 'considered', label: 'CFI', tone: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300' },
+                { key: 'proposed', label: 'PFI', tone: 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300' },
+                { key: 'declined', label: 'DFI', tone: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300' },
+              ].map((chip) => (
+                <span key={`upgrade-chip-${chip.key}`} className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold', chip.tone)}>
+                  {chip.label}: {latestUpgradeSnapshot ? (latestUpgradeSnapshot[chip.key as keyof UpgradeTimelineRow] as string[]).length : 0}
+                </span>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+      {activePersona === 'editor' && visibleSections.reviewQueue && (
+        <section
+          className="mb-6"
+          style={activePersona === 'editor' ? undefined : { order: sectionOrder.reviewQueue }}
+        >
           <div className="mb-3 flex items-start justify-between gap-2">
             <div>
               <h2 className={sectionTitleClass}>Editor Review Queue</h2>
               <p className={sectionSubtitleClass}>Open PRs currently waiting on editor action.</p>
             </div>
-            <Link href="/tools/board?status=Waiting+on+Editor&page=1" className="text-xs font-medium text-primary hover:underline">
-              Show more
+            <Link
+              href="/tools/board?status=Waiting+on+Editor&page=1"
+              className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+            >
+              Explore Board
+              <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
@@ -1510,6 +1703,7 @@ export default function EIPsHomePage() {
                     <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Wait</th>
                     <th className="w-28 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Process</th>
                     <th className="w-36 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</th>
+                    <th className="w-48 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Labels</th>
                     <th className="w-20 px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Repo</th>
                     <th className="w-16 px-3 py-2 text-center text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Open</th>
                   </tr>
@@ -1518,14 +1712,14 @@ export default function EIPsHomePage() {
                   {boardPreviewLoading ? (
                     Array.from({ length: 5 }).map((_, i) => (
                       <tr key={`board-row-skeleton-${i}`} className="border-b border-border/60">
-                        <td colSpan={8} className="px-3 py-2.5">
+                        <td colSpan={9} className="px-3 py-2.5">
                           <div className="h-5 animate-pulse rounded bg-muted" />
                         </td>
                       </tr>
                     ))
                   ) : boardPreviewRows.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-3 py-6 text-center text-muted-foreground">
+                      <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
                         No PRs currently waiting on editor.
                       </td>
                     </tr>
@@ -1552,6 +1746,20 @@ export default function EIPsHomePage() {
                           <span className="whitespace-nowrap rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                             {row.govState}
                           </span>
+                        </td>
+                        <td className="px-3 py-2.5">
+                          <div className="flex flex-wrap gap-1">
+                            {(row.labels || []).slice(0, 2).map((label) => (
+                              <span key={`${row.prNumber}-${label}`} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                {label}
+                              </span>
+                            ))}
+                            {(row.labels || []).length > 2 && (
+                              <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                +{(row.labels || []).length - 2}
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-3 py-2.5 text-muted-foreground">{row.repoShort.toUpperCase()}</td>
                         <td className="px-3 py-2.5 text-center">
@@ -1598,10 +1806,11 @@ export default function EIPsHomePage() {
           </div>
         </section>
       )}
-
-      {activePersona === 'editor' && (
-        <section className="mb-6" style={{ order: sectionOrder.categoryBreakdown }}>
-          <hr className="mb-4 border-border/70" />
+      {activePersona === 'editor' && visibleSections.categoryBreakdown && (
+        <section
+          className="mb-6"
+          style={activePersona === 'editor' ? undefined : { order: sectionOrder.categoryBreakdown }}
+        >
           <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
             <div>
               <h2 className={sectionTitleClass}>Category Breakdown</h2>
@@ -1609,8 +1818,23 @@ export default function EIPsHomePage() {
               <p className="mt-1 text-[11px] text-muted-foreground">Month context: {monthLabel(currentMonthYear)}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Link href="/analytics/prs" className="text-xs font-medium text-primary hover:underline">
-                Show more
+              <select
+                value={currentMonthYear}
+                onChange={(e) => setCurrentMonthYear(e.target.value)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                {monthYearOptions.map((opt) => (
+                  <option key={`cat-month-${opt.value}`} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+              <Link
+                href="/analytics/prs"
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+              >
+                Explore PR Analytics
+                <ArrowRight className="h-3 w-3" />
               </Link>
             </div>
           </div>
@@ -1674,14 +1898,20 @@ export default function EIPsHomePage() {
           </div>
         </section>
       )}
-
-      <div style={{ order: sectionOrder.browse }}>
+      {visibleSections.browse && (
+      <div
+        style={activePersona === 'editor' ? undefined : { order: sectionOrder.browse }}
+        className="mb-6"
+      >
       <div className="mb-3 space-y-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start">
-            <h2 className={sectionTitleClass}>
-            Browse by Status, Category, Repository & Stages
-            </h2>
+            <div>
+              <h2 className={sectionTitleClass}>
+              Browse by Status, Category, Repository & Stages
+              </h2>
+              <p className={sectionSubtitleClass}>Explore a compact snapshot here, then jump to full explorer tools.</p>
+            </div>
           </div>
           <div className="w-full overflow-x-auto pb-1 sm:w-auto">
             <div
@@ -1726,6 +1956,12 @@ export default function EIPsHomePage() {
             </div>
           </div>
         </div>
+      </div>
+      <div className="mb-2 flex justify-end">
+        <Link href="/explore" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+          Explore Browse
+          <ArrowRight className="h-3 w-3" />
+        </Link>
       </div>
 
       <div className="mb-3 grid grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-4">
@@ -2311,15 +2547,18 @@ export default function EIPsHomePage() {
         )}
       </div>
       </div>
-
-      {showLearningSection && (
-        <section className="mb-6" style={{ order: sectionOrder.learning }}>
+      )}
+      {visibleSections.reference && (
+        <section
+          className="mb-6"
+          style={activePersona === 'editor' ? undefined : { order: sectionOrder.learning }}
+        >
           <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
         </section>
       )}
-
-      <div style={{ order: sectionOrder.monthly }}>
-      <hr className="my-6 border-border" />
+      {visibleSections.monthly && (
+      <div style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}>
+      {activePersona !== 'editor' && <hr className="my-6 border-border" />}
 
       <div className="mb-3 flex items-center justify-end gap-2">
         <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
@@ -2533,8 +2772,10 @@ export default function EIPsHomePage() {
       </div>
 
       </div>
-      <div style={{ order: sectionOrder.governance }}>
-      <hr className="my-6 border-border" />
+      )}
+      {visibleSections.governance && (
+      <div style={activePersona === 'editor' ? undefined : { order: sectionOrder.governance }}>
+      {activePersona !== 'editor' && <hr className="my-6 border-border" />}
 
       <section className="mb-6 w-full" id="recent-governance-activity">
         <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -2546,7 +2787,13 @@ export default function EIPsHomePage() {
               Latest status transitions with actor context, proposal links, and lifecycle details.
             </p>
           </div>
-          <CopyLinkButton sectionId="recent-governance-activity" className="h-8 w-8 rounded-md" />
+          <div className="flex items-center gap-2">
+            <Link href="/analytics/prs" className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline">
+              Explore PR Analytics
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+            <CopyLinkButton sectionId="recent-governance-activity" className="h-8 w-8 rounded-md" />
+          </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
           <div>
@@ -2673,12 +2920,13 @@ export default function EIPsHomePage() {
         </div>
       </section>
 
-      <hr className="my-6 border-border" />
       </div>
-
-      <section style={{ order: sectionOrder.social }}>
+      )}
+      {visibleSections.social && (
+      <section style={activePersona === 'editor' ? undefined : { order: sectionOrder.social }}>
         <SocialCommunityUpdates />
       </section>
+      )}
       </div>
     </div>
   );
