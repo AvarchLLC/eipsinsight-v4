@@ -428,6 +428,7 @@ function AppSidebarContent() {
 
   // Scroll spy state (kept for future use)
   const [activeSection, setActiveSection] = React.useState("");
+  const [pageSectionItems, setPageSectionItems] = React.useState<SidebarSubItem[]>([]);
   const [membershipTier, setMembershipTier] = React.useState<string>("free");
   const [isAdmin, setIsAdmin] = React.useState(false);
   const [hash, setHash] = React.useState(() => 
@@ -453,6 +454,56 @@ function AppSidebarContent() {
   React.useEffect(() => {
     setHash(window.location.hash);
   }, [pathname, searchParams]);
+
+  // Normalized search param string for reactive comparison
+  const currentSearchStr = React.useMemo(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.sort();
+    return params.toString();
+  }, [searchParams]);
+
+  React.useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const toTitle = (raw: string) =>
+      raw
+        .replace(/[-_]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const build = () => {
+      const query = currentSearchStr ? `?${currentSearchStr}` : "";
+      const seen = new Set<string>();
+      const seenTitles = new Set<string>();
+      const collected: SidebarSubItem[] = [];
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>("section[id], [data-sidebar-section][id]"));
+
+      for (const node of nodes) {
+        const id = (node.id || "").trim();
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        const fromData = node.getAttribute("data-sidebar-label")?.trim();
+        const heading = node.querySelector<HTMLElement>("h1, h2, h3");
+        const title = fromData || heading?.textContent?.trim() || toTitle(id);
+        const titleKey = title.toLowerCase().replace(/\s+/g, " ").trim();
+        if (seenTitles.has(titleKey)) continue;
+        seenTitles.add(titleKey);
+        collected.push({
+          title,
+          href: `${pathname}${query}#${id}`,
+          sectionId: id,
+        });
+      }
+
+      setPageSectionItems(collected);
+    };
+
+    build();
+    const observer = new MutationObserver(() => build());
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [pathname, currentSearchStr]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -485,13 +536,6 @@ function AppSidebarContent() {
       return { ...section, items };
     });
   }, [orderedSections, isAdmin]);
-
-  // Normalized search param string for reactive comparison
-  const currentSearchStr = React.useMemo(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.sort();
-    return params.toString();
-  }, [searchParams]);
 
   // ========================================================================
   // Collapsible management
@@ -545,34 +589,12 @@ function AppSidebarContent() {
   // Scroll spy — active page only (hash sections for any route)
   // ========================================================================
 
-  const activeParentItem = React.useMemo(() => {
-    const allItems = visibleSections.flatMap((section) => section.items);
-
-    return (
-      allItems.find((item) => {
-        if (!item.items?.length) return false;
-        return item.items.some((sub) => {
-          const url = new URL(sub.href, "http://localhost");
-          const hrefPath = url.pathname;
-          const hrefParams = new URLSearchParams(url.search);
-          hrefParams.sort();
-          return pathname === hrefPath && hrefParams.toString() === currentSearchStr;
-        });
-      }) ?? null
-    );
-  }, [visibleSections, pathname, currentSearchStr]);
-
   const trackedSections = React.useMemo(() => {
-    if (!activeParentItem?.items?.length) return [];
-    return activeParentItem.items
-      .map((sub) => {
-        const url = new URL(sub.href, "http://localhost");
-        const id = sub.sectionId || url.hash.replace(/^#/, "");
-        const hrefPath = url.pathname;
-        return id && hrefPath === pathname ? id : null;
-      })
+    if (pageSectionItems.length === 0) return [];
+    return pageSectionItems
+      .map((sub) => sub.sectionId || new URL(sub.href, "http://localhost").hash.replace(/^#/, ""))
       .filter((x): x is string => !!x);
-  }, [activeParentItem, pathname]);
+  }, [pageSectionItems]);
 
   React.useEffect(() => {
     if (trackedSections.length === 0) {
@@ -715,10 +737,12 @@ function AppSidebarContent() {
   };
 
   const renderItem = (item: SidebarItem) => {
-    const hasSubItems = item.items && item.items.length > 0;
-    const isItemOpen = openItem === item.title;
     const isActive = isParentPathActive(item.href);
-    const isChildActive = hasActiveChild(item.items);
+    const contextualSections = isActive ? pageSectionItems : [];
+    const mergedSubItems = [...(item.items ?? []), ...contextualSections];
+    const hasSubItems = mergedSubItems.length > 0;
+    const isItemOpen = openItem === item.title;
+    const isChildActive = hasActiveChild(mergedSubItems);
     const isHighlighted = isActive || isChildActive;
     const effectivePersona = persona ?? DEFAULT_PERSONA;
     const personaPriority = PERSONA_ITEM_PRIORITY[effectivePersona] ?? [];
@@ -790,6 +814,14 @@ function AppSidebarContent() {
               >
                 <SidebarMenuSub className="ml-0 border-l-2 border-border/80 pl-6 pt-2">
                   {item.items?.map(renderSubItem)}
+                  {contextualSections.length > 0 && (
+                    <>
+                      <div className="mb-1 mt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/90">
+                        Sections
+                      </div>
+                      {contextualSections.map(renderSubItem)}
+                    </>
+                  )}
                 </SidebarMenuSub>
               </CollapsibleContent>
             )}

@@ -158,6 +158,9 @@ export function StatusFilterBar({
               <label className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 Type
               </label>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Type is grouped under Category in Explore v4 detail pages.
+              </p>
               <div className="flex flex-wrap gap-2">
                 {types.map((type) => (
                   <button

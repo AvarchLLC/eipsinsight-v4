@@ -66,6 +66,10 @@ function formatLastUpdated(dateStr: string | null): string {
   return `${Math.floor(diffDays / 30)} months ago`;
 }
 
+function toSlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export function StatusCategoryGrid() {
   const [statusCounts, setStatusCounts] = useState<StatusCount[]>([]);
   const [categoryCounts, setCategoryCounts] = useState<CategoryCount[]>([]);
@@ -150,6 +154,22 @@ export function StatusCategoryGrid() {
           ))}
         </div>
 
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          {categoryCounts.map((cat) => (
+            <Link
+              key={`category-drilldown-${cat.category}`}
+              href={`/explore/details/category/${toSlug(cat.category)}`}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                "border-border bg-card/70 text-muted-foreground hover:border-primary/35 hover:text-foreground"
+              )}
+            >
+              {cat.category}
+              <span className="text-[11px] opacity-75">({cat.count})</span>
+            </Link>
+          ))}
+        </div>
+
         {/* Status Cards Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {orderedStatuses.map((status, index) => {
@@ -161,7 +181,7 @@ export function StatusCategoryGrid() {
             return (
               <Link
                 key={status}
-                href={`/explore/status?status=${status.toLowerCase().replace(' ', '-')}${selectedCategory ? `&category=${selectedCategory}` : ''}`}
+                href={`/explore/details/status/${toSlug(status)}${selectedCategory ? `?category=${encodeURIComponent(selectedCategory)}` : ''}`}
               >
                 <motion.div
                   initial={{ opacity: 0, y: 20 }}

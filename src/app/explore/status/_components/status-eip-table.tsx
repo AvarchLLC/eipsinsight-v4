@@ -60,6 +60,10 @@ function formatDate(date: string | null): string {
   return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function toSlug(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
 export function StatusEIPTable({
   eips,
   total,
@@ -164,20 +168,30 @@ export function StatusEIPTable({
                   </span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={cn(
-                    "text-sm font-medium",
-                    categoryColors[eip.category || ''] || 'text-muted-foreground'
-                  )}>
-                    {eip.category || '-'}
-                  </span>
+                  {eip.category ? (
+                    <Link
+                      href={`/explore/details/category/${toSlug(eip.category)}`}
+                      className={cn(
+                        "text-sm font-medium hover:underline",
+                        categoryColors[eip.category || ''] || 'text-muted-foreground'
+                      )}
+                    >
+                      {eip.category}
+                    </Link>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">-</span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={cn(
-                    "inline-flex px-2.5 py-1 rounded-full text-xs font-medium border",
-                    statusColors[eip.status] || statusColors['Draft']
-                  )}>
+                  <Link
+                    href={`/explore/details/status/${toSlug(eip.status)}`}
+                    className={cn(
+                      "inline-flex rounded-full border px-2.5 py-1 text-xs font-medium hover:opacity-90",
+                      statusColors[eip.status] || statusColors['Draft']
+                    )}
+                  >
                     {eip.status}
-                  </span>
+                  </Link>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={cn(

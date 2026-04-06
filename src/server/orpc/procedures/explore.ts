@@ -379,6 +379,53 @@ const ROLE_FILTER_TIME_RANGES = ['30d', '90d', '365d', 'all'] as const;
 type RoleFilterRepo = (typeof ROLE_FILTER_REPOS)[number];
 type RoleFilterCategory = (typeof ROLE_FILTER_CATEGORIES)[number];
 type RoleFilterRange = (typeof ROLE_FILTER_TIME_RANGES)[number];
+type DetailDimension = 'status' | 'category' | 'repo';
+
+const DETAIL_DIMENSIONS = ['status', 'category', 'repo'] as const;
+
+function slugifyDetailLabel(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+async function resolveDetailTarget(dimension: DetailDimension, slug: string): Promise<{
+  valid: boolean;
+  label: string;
+  repoKey: 'eips' | 'ercs' | 'rips' | null;
+}> {
+  const normalizedSlug = slugifyDetailLabel(slug);
+  if (dimension === 'repo') {
+    const repoMap: Record<string, { label: string; repoKey: 'eips' | 'ercs' | 'rips' }> = {
+      eips: { label: 'EIPs', repoKey: 'eips' },
+      ercs: { label: 'ERCs', repoKey: 'ercs' },
+      rips: { label: 'RIPs', repoKey: 'rips' },
+    };
+    const hit = repoMap[normalizedSlug];
+    if (!hit) return { valid: false, label: slug, repoKey: null };
+    return { valid: true, label: hit.label, repoKey: hit.repoKey };
+  }
+
+  if (dimension === 'status') {
+    const statuses = await getStatusCountsCached(null);
+    const hit = statuses.find((row) => slugifyDetailLabel(row.status) === normalizedSlug);
+    if (!hit) return { valid: false, label: slug, repoKey: null };
+    return { valid: true, label: hit.status, repoKey: null };
+  }
+
+  const categories = await getCategoryCountsCached();
+  const hit = categories.find((row) => slugifyDetailLabel(row.category) === normalizedSlug);
+  if (!hit) return { valid: false, label: slug, repoKey: null };
+  return { valid: true, label: hit.category, repoKey: null };
+}
+
+function repoKeyToGithubRepo(repoKey: 'eips' | 'ercs' | 'rips') {
+  if (repoKey === 'ercs') return 'ethereum/ERCs';
+  if (repoKey === 'rips') return 'ethereum/RIPs';
+  return 'ethereum/EIPs';
+}
 
 const CANONICAL_EDITOR_SET = new Set(CANONICAL_EIP_EDITOR_LOWER);
 const CANONICAL_REVIEWER_SET = new Set(CANONICAL_EIP_REVIEWER_LOWER);
@@ -966,6 +1013,581 @@ export const exploreProcedures = {
         .filter(s => !statusOrder.includes(s.status))
         .map(s => ({ status: s.status, count: s.count }));
       return [...ordered, ...extras];
+    }),
+
+  getDetailOverview: optionalAuthProcedure
+    .input(z.object({
+      dimension: z.enum(DETAIL_DIMENSIONS),
+      slug: z.string().min(1),
+    }))
+    .handler(async ({ input }) => {
+      const target = await resolveDetailTarget(input.dimension, input.slug);
+      if (!target.valid) {
+        return {
+          valid: false,
+          dimension: input.dimension,
+          slug: slugifyDetailLabel(input.slug),
+          label: input.slug,
+          total: 0,
+          recentChanges30d: 0,
+          lastUpdated: null as string | null,
+        };
+      }
+
+      const params: unknown[] = [];
+      const eventParams: unknown[] = [];
+      let paramIdx = 1;
+      const eipFilters: string[] = ['e.eip_number NOT IN (2512, 3297, 1047)'];
+      const eventFilters: string[] = ['e.eip_number NOT IN (2512, 3297, 1047)'];
+
+      if (input.dimension === 'status') {
+        eipFilters.push(`COALESCE(NULLIF(s.status, ''), 'Unknown') = $${paramIdx}`);
+        eventFilters.push(`COALESCE(NULLIF(s.status, ''), 'Unknown') = $${paramIdx}`);
+        params.push(target.label);
+        eventParams.push(target.label);
+        paramIdx += 1;
+      } else if (input.dimension === 'category') {
+        eipFilters.push(`COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = $${paramIdx}`);
+        eventFilters.push(`COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = $${paramIdx}`);
+        params.push(target.label);
+        eventParams.push(target.label);
+        paramIdx += 1;
+      } else if (input.dimension === 'repo' && target.repoKey) {
+        eipFilters.push(`LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = $${paramIdx}`);
+        eventFilters.push(`LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = $${paramIdx}`);
+        params.push(target.repoKey);
+        eventParams.push(target.repoKey);
+        paramIdx += 1;
+      }
+
+      const includeRipRows =
+        (input.dimension === 'status') ||
+        (input.dimension === 'category' && ['rip', 'rips'].includes(target.label.toLowerCase())) ||
+        (input.dimension === 'repo' && target.repoKey === 'rips');
+
+      const ripWhereParts: string[] = ['rip.rip_number <> 0'];
+      if (input.dimension === 'status') {
+        ripWhereParts.push(`COALESCE(rip.status, 'Unknown') = $${paramIdx}`);
+        params.push(target.label);
+        paramIdx += 1;
+      }
+      const ripWhere = ripWhereParts.join(' AND ');
+
+      const overviewRows = await prisma.$queryRawUnsafe<Array<{ total: bigint; last_updated: Date | null }>>(
+        `
+        WITH base AS (
+          SELECT s.updated_at AS updated_at
+          FROM eip_snapshots s
+          JOIN eips e ON e.id = s.eip_id
+          LEFT JOIN repositories r ON r.id = s.repository_id
+          WHERE ${eipFilters.join(' AND ')}
+          ${includeRipRows ? `
+          UNION ALL
+          SELECT COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = rip.id), rip.created_at) AS updated_at
+          FROM rips rip
+          WHERE ${ripWhere}
+          ` : ''}
+        )
+        SELECT COUNT(*)::bigint AS total, MAX(updated_at) AS last_updated
+        FROM base
+        `,
+        ...params
+      );
+
+      const recentChangeRows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+        `
+        SELECT COUNT(*)::bigint AS count
+        FROM eip_status_events se
+        JOIN eips e ON e.id = se.eip_id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r ON r.id = se.repository_id
+        WHERE se.changed_at >= NOW() - INTERVAL '30 days'
+          AND ${eventFilters.join(' AND ')}
+        `,
+        ...eventParams
+      );
+
+      return {
+        valid: true,
+        dimension: input.dimension,
+        slug: slugifyDetailLabel(input.slug),
+        label: target.label,
+        total: Number(overviewRows[0]?.total ?? 0),
+        recentChanges30d: Number(recentChangeRows[0]?.count ?? 0),
+        lastUpdated: overviewRows[0]?.last_updated?.toISOString() ?? null,
+      };
+    }),
+
+  getDetailTimeline: optionalAuthProcedure
+    .input(z.object({
+      dimension: z.enum(DETAIL_DIMENSIONS),
+      slug: z.string().min(1),
+      fromMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      toMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const target = await resolveDetailTarget(input.dimension, input.slug);
+      if (!target.valid) {
+        return {
+          valid: false,
+          dimension: input.dimension,
+          slug: slugifyDetailLabel(input.slug),
+          label: input.slug,
+          months: [] as string[],
+          statusSeries: [] as Array<{ month: string; status: string; count: number }>,
+          totals: [] as Array<{ month: string; count: number; touched: number }>,
+          updatedAt: null as string | null,
+        };
+      }
+
+      const toMonth = input.toMonth ?? new Date().toISOString().slice(0, 7);
+      const fromMonth = input.fromMonth ?? (() => {
+        const end = new Date(`${toMonth}-01T00:00:00.000Z`);
+        const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11, 1));
+        return `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+      })();
+      const fromDate = `${fromMonth}-01`;
+      const [toYear, toMon] = toMonth.split('-').map(Number);
+      const toExclusive = new Date(Date.UTC(toYear, toMon, 1)).toISOString().slice(0, 10);
+
+      const params: unknown[] = [fromDate, toExclusive];
+      let paramIdx = 3;
+      const filters: string[] = ['e.eip_number NOT IN (2512, 3297, 1047)'];
+
+      if (input.dimension === 'status') {
+        filters.push(`COALESCE(NULLIF(s.status, ''), 'Unknown') = $${paramIdx}`);
+        params.push(target.label);
+        paramIdx += 1;
+      } else if (input.dimension === 'category') {
+        filters.push(`COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = $${paramIdx}`);
+        params.push(target.label);
+        paramIdx += 1;
+      } else if (input.dimension === 'repo' && target.repoKey) {
+        filters.push(`LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = $${paramIdx}`);
+        params.push(target.repoKey);
+        paramIdx += 1;
+      }
+
+      const timelineRows = await prisma.$queryRawUnsafe<Array<{
+        month: string;
+        status: string | null;
+        count: bigint;
+        touched: bigint;
+        total: bigint;
+        latest_changed_at: Date | null;
+      }>>(
+        `
+        WITH month_series AS (
+          SELECT TO_CHAR(m, 'YYYY-MM') AS month
+          FROM generate_series($1::date, ($2::date - INTERVAL '1 month')::date, INTERVAL '1 month') m
+        ),
+        monthly AS (
+          SELECT
+            TO_CHAR(date_trunc('month', se.changed_at), 'YYYY-MM') AS month,
+            COALESCE(NULLIF(se.to_status, ''), 'Unknown') AS status,
+            COUNT(*)::bigint AS count,
+            COUNT(DISTINCT se.eip_id)::bigint AS touched,
+            MAX(se.changed_at) AS latest_changed_at
+          FROM eip_status_events se
+          JOIN eips e ON e.id = se.eip_id
+          LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+          LEFT JOIN repositories r ON r.id = se.repository_id
+          WHERE se.changed_at >= $1::date
+            AND se.changed_at < $2::date
+            AND ${filters.join(' AND ')}
+          GROUP BY 1, 2
+        ),
+        totals AS (
+          SELECT month, SUM(count)::bigint AS total, SUM(touched)::bigint AS touched
+          FROM monthly
+          GROUP BY month
+        )
+        SELECT
+          ms.month,
+          m.status,
+          COALESCE(m.count, 0::bigint) AS count,
+          COALESCE(m.touched, 0::bigint) AS touched,
+          COALESCE(t.total, 0::bigint) AS total,
+          m.latest_changed_at
+        FROM month_series ms
+        LEFT JOIN monthly m ON m.month = ms.month
+        LEFT JOIN totals t ON t.month = ms.month
+        ORDER BY ms.month ASC, m.status ASC
+        `,
+        ...params
+      );
+
+      const updatedAt = timelineRows.reduce<Date | null>((latest, row) => {
+        if (!row.latest_changed_at) return latest;
+        if (!latest || row.latest_changed_at > latest) return row.latest_changed_at;
+        return latest;
+      }, null);
+
+      const months = Array.from(new Set(timelineRows.map((row) => row.month)));
+      const totalsMap = new Map<string, { count: number; touched: number }>();
+      for (const row of timelineRows) {
+        if (!totalsMap.has(row.month)) {
+          totalsMap.set(row.month, {
+            count: Number(row.total ?? 0),
+            touched: Number(row.touched ?? 0),
+          });
+        }
+      }
+
+      return {
+        valid: true,
+        dimension: input.dimension,
+        slug: slugifyDetailLabel(input.slug),
+        label: target.label,
+        months,
+        statusSeries: timelineRows
+          .filter((row) => Boolean(row.status))
+          .map((row) => ({
+            month: row.month,
+            status: row.status || 'Unknown',
+            count: Number(row.count ?? 0),
+          })),
+        totals: months.map((month) => ({
+          month,
+          count: totalsMap.get(month)?.count ?? 0,
+          touched: totalsMap.get(month)?.touched ?? 0,
+        })),
+        updatedAt: updatedAt?.toISOString() ?? null,
+      };
+    }),
+
+  getDetailRepoGithubStats: optionalAuthProcedure
+    .input(z.object({
+      slug: z.string().min(1),
+    }))
+    .handler(async ({ input }) => {
+      const target = await resolveDetailTarget('repo', input.slug);
+      if (!target.valid || !target.repoKey) {
+        return {
+          valid: false,
+          repo: input.slug,
+          githubRepo: null as string | null,
+          stars: null as number | null,
+          forks: null as number | null,
+          watchlist: null as number | null,
+          openIssues: 0,
+          openPRs: 0,
+          totalOpen: 0,
+          updatedAt: null as string | null,
+        };
+      }
+
+      const [openRows] = await Promise.all([
+        prisma.$queryRaw<Array<{ open_issues: bigint; open_prs: bigint }>>`
+          SELECT
+            (
+              SELECT COUNT(*)::bigint
+              FROM issues i
+              JOIN repositories r ON r.id = i.repository_id
+              WHERE LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = ${target.repoKey}
+                AND LOWER(COALESCE(i.state, '')) = 'open'
+            ) AS open_issues,
+            (
+              SELECT COUNT(*)::bigint
+              FROM pull_requests p
+              JOIN repositories r ON r.id = p.repository_id
+              WHERE LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = ${target.repoKey}
+                AND LOWER(COALESCE(p.state, '')) = 'open'
+            ) AS open_prs
+        `,
+      ]);
+
+      const openRow = openRows[0];
+      const openIssues = Number(openRow?.open_issues ?? 0);
+      const openPRs = Number(openRow?.open_prs ?? 0);
+
+      const githubRepo = repoKeyToGithubRepo(target.repoKey);
+      let stars: number | null = null;
+      let forks: number | null = null;
+      let watchlist: number | null = null;
+
+      try {
+        const ghRes = await fetch(`https://api.github.com/repos/${githubRepo}`, {
+          headers: {
+            Accept: 'application/vnd.github+json',
+            'User-Agent': 'eipsinsight-v4',
+          },
+          cache: 'no-store',
+        });
+        if (ghRes.ok) {
+          const gh = await ghRes.json();
+          stars = typeof gh.stargazers_count === 'number' ? gh.stargazers_count : null;
+          forks = typeof gh.forks_count === 'number' ? gh.forks_count : null;
+          watchlist = typeof gh.subscribers_count === 'number'
+            ? gh.subscribers_count
+            : (typeof gh.watchers_count === 'number' ? gh.watchers_count : null);
+        }
+      } catch {
+        // Graceful fallback: DB-powered open issue/PR counts still returned.
+      }
+
+      return {
+        valid: true,
+        repo: target.label,
+        githubRepo,
+        stars,
+        forks,
+        watchlist,
+        openIssues,
+        openPRs,
+        totalOpen: openIssues + openPRs,
+        updatedAt: new Date().toISOString(),
+      };
+    }),
+
+  getDetailProposals: optionalAuthProcedure
+    .input(z.object({
+      dimension: z.enum(DETAIL_DIMENSIONS),
+      slug: z.string().min(1),
+      q: z.string().optional(),
+      status: z.string().optional(),
+      category: z.string().optional(),
+      sort: z.enum(['updated_desc', 'updated_asc', 'days_desc', 'days_asc', 'number_asc']).default('updated_desc'),
+      page: z.number().min(1).default(1),
+      pageSize: z.number().min(1).max(100).default(20),
+    }))
+    .handler(async ({ input }) => {
+      const target = await resolveDetailTarget(input.dimension, input.slug);
+      if (!target.valid) {
+        return {
+          valid: false,
+          dimension: input.dimension,
+          slug: slugifyDetailLabel(input.slug),
+          label: input.slug,
+          total: 0,
+          totalPages: 1,
+          page: input.page,
+          pageSize: input.pageSize,
+          rows: [] as Array<{
+            id: number;
+            number: number;
+            title: string;
+            author: string | null;
+            status: string;
+            category: string | null;
+            type: string | null;
+            repo: string;
+            kind: 'EIP' | 'ERC' | 'RIP';
+            updatedAt: string | null;
+            daysInStatus: number | null;
+          }>,
+        };
+      }
+
+      const baseParams: unknown[] = [];
+      let baseIdx = 1;
+      const eipBaseFilters: string[] = ['e.eip_number NOT IN (2512, 3297, 1047)'];
+
+      if (input.dimension === 'status') {
+        eipBaseFilters.push(`COALESCE(NULLIF(s.status, ''), 'Unknown') = $${baseIdx}`);
+        baseParams.push(target.label);
+        baseIdx += 1;
+      } else if (input.dimension === 'category') {
+        eipBaseFilters.push(`COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = $${baseIdx}`);
+        baseParams.push(target.label);
+        baseIdx += 1;
+      } else if (input.dimension === 'repo' && target.repoKey) {
+        eipBaseFilters.push(`LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = $${baseIdx}`);
+        baseParams.push(target.repoKey);
+        baseIdx += 1;
+      }
+
+      const includeRipRows =
+        (input.dimension === 'status') ||
+        (input.dimension === 'category' && ['rip', 'rips'].includes(target.label.toLowerCase())) ||
+        (input.dimension === 'repo' && target.repoKey === 'rips');
+
+      const ripBaseFilters: string[] = ['rip.rip_number <> 0'];
+      if (input.dimension === 'status') {
+        ripBaseFilters.push(`COALESCE(rip.status, 'Unknown') = $${baseIdx}`);
+        baseParams.push(target.label);
+        baseIdx += 1;
+      }
+
+      const whereParts: string[] = [];
+      const whereParams: unknown[] = [];
+      let whereIdx = baseIdx;
+
+      if (input.q?.trim()) {
+        whereParts.push(`(CAST(base.number AS TEXT) ILIKE $${whereIdx} OR COALESCE(base.title, '') ILIKE $${whereIdx} OR COALESCE(base.author, '') ILIKE $${whereIdx})`);
+        whereParams.push(`%${input.q.trim()}%`);
+        whereIdx += 1;
+      }
+      if (input.status?.trim()) {
+        whereParts.push(`COALESCE(base.status, '') = $${whereIdx}`);
+        whereParams.push(input.status.trim());
+        whereIdx += 1;
+      }
+      if (input.category?.trim()) {
+        whereParts.push(`COALESCE(base.category, '') = $${whereIdx}`);
+        whereParams.push(input.category.trim());
+        whereIdx += 1;
+      }
+
+      const whereClause = whereParts.length ? `WHERE ${whereParts.join(' AND ')}` : '';
+      const orderByClause = (() => {
+        switch (input.sort) {
+          case 'updated_asc':
+            return 'base.updated_at ASC NULLS LAST';
+          case 'days_desc':
+            return 'base.last_changed_at ASC NULLS LAST';
+          case 'days_asc':
+            return 'base.last_changed_at DESC NULLS LAST';
+          case 'number_asc':
+            return 'base.number ASC';
+          case 'updated_desc':
+          default:
+            return 'base.updated_at DESC NULLS LAST';
+        }
+      })();
+
+      const limit = input.pageSize;
+      const offset = (input.page - 1) * input.pageSize;
+      const allParams = [...baseParams, ...whereParams];
+
+      const rows = await prisma.$queryRawUnsafe<Array<{
+        id: number;
+        number: number;
+        title: string | null;
+        author: string | null;
+        status: string;
+        category: string | null;
+        type: string | null;
+        repo: string;
+        kind: string;
+        updated_at: Date | null;
+        last_changed_at: Date | null;
+      }>>(
+        `
+        WITH base AS (
+          SELECT
+            s.eip_id AS id,
+            e.eip_number AS number,
+            e.title,
+            e.author,
+            COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+            COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') AS category,
+            s.type AS type,
+            LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo,
+            CASE
+              WHEN LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = 'rips' THEN 'RIP'
+              WHEN LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = 'ercs' OR COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = 'ERC' THEN 'ERC'
+              ELSE 'EIP'
+            END AS kind,
+            s.updated_at AS updated_at,
+            (SELECT MAX(changed_at) FROM eip_status_events ese WHERE ese.eip_id = s.eip_id) AS last_changed_at
+          FROM eip_snapshots s
+          JOIN eips e ON e.id = s.eip_id
+          LEFT JOIN repositories r ON r.id = s.repository_id
+          WHERE ${eipBaseFilters.join(' AND ')}
+          ${includeRipRows ? `
+          UNION ALL
+          SELECT
+            (100000000 + rip.id)::int AS id,
+            rip.rip_number AS number,
+            rip.title,
+            NULL::text AS author,
+            COALESCE(rip.status, 'Unknown') AS status,
+            'RIP'::text AS category,
+            NULL::text AS type,
+            'rips'::text AS repo,
+            'RIP'::text AS kind,
+            COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = rip.id), rip.created_at) AS updated_at,
+            COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = rip.id), rip.created_at) AS last_changed_at
+          FROM rips rip
+          WHERE ${ripBaseFilters.join(' AND ')}
+          ` : ''}
+        )
+        SELECT *
+        FROM base
+        ${whereClause}
+        ORDER BY ${orderByClause}, base.number ASC
+        LIMIT ${limit} OFFSET ${offset}
+        `,
+        ...allParams
+      );
+
+      const countRows = await prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+        `
+        WITH base AS (
+          SELECT
+            s.eip_id AS id,
+            e.eip_number AS number,
+            e.title,
+            e.author,
+            COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+            COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') AS category,
+            s.type AS type,
+            LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo,
+            CASE
+              WHEN LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = 'rips' THEN 'RIP'
+              WHEN LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = 'ercs' OR COALESCE(NULLIF(TRIM(s.category), ''), NULLIF(TRIM(s.type), ''), 'Unknown') = 'ERC' THEN 'ERC'
+              ELSE 'EIP'
+            END AS kind,
+            s.updated_at AS updated_at,
+            (SELECT MAX(changed_at) FROM eip_status_events ese WHERE ese.eip_id = s.eip_id) AS last_changed_at
+          FROM eip_snapshots s
+          JOIN eips e ON e.id = s.eip_id
+          LEFT JOIN repositories r ON r.id = s.repository_id
+          WHERE ${eipBaseFilters.join(' AND ')}
+          ${includeRipRows ? `
+          UNION ALL
+          SELECT
+            (100000000 + rip.id)::int AS id,
+            rip.rip_number AS number,
+            rip.title,
+            NULL::text AS author,
+            COALESCE(rip.status, 'Unknown') AS status,
+            'RIP'::text AS category,
+            NULL::text AS type,
+            'rips'::text AS repo,
+            'RIP'::text AS kind,
+            COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = rip.id), rip.created_at) AS updated_at,
+            COALESCE((SELECT MAX(rc.commit_date) FROM rip_commits rc WHERE rc.rip_id = rip.id), rip.created_at) AS last_changed_at
+          FROM rips rip
+          WHERE ${ripBaseFilters.join(' AND ')}
+          ` : ''}
+        )
+        SELECT COUNT(*)::bigint AS count
+        FROM base
+        ${whereClause}
+        `,
+        ...allParams
+      );
+
+      const total = Number(countRows[0]?.count ?? 0);
+      const totalPages = Math.max(1, Math.ceil(total / input.pageSize));
+
+      return {
+        valid: true,
+        dimension: input.dimension,
+        slug: slugifyDetailLabel(input.slug),
+        label: target.label,
+        total,
+        totalPages,
+        page: input.page,
+        pageSize: input.pageSize,
+        rows: rows.map((row) => ({
+          id: row.id,
+          number: row.number,
+          title: row.title || `${row.kind}-${row.number}`,
+          author: row.author || null,
+          status: row.status,
+          category: row.category,
+          type: row.type,
+          repo: row.repo || 'unknown',
+          kind: row.kind === 'RIP' ? 'RIP' : row.kind === 'ERC' ? 'ERC' : 'EIP',
+          updatedAt: row.updated_at?.toISOString() ?? null,
+          daysInStatus: row.last_changed_at
+            ? Math.floor((Date.now() - new Date(row.last_changed_at).getTime()) / (1000 * 60 * 60 * 24))
+            : null,
+        })),
+      };
     }),
 
   // ============================================
