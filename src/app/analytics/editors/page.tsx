@@ -169,6 +169,8 @@ export default function EditorsAnalyticsPage() {
   const [visibleActivityCount, setVisibleActivityCount] = useState<number>(20);
   const [expandedActivityKeys, setExpandedActivityKeys] = useState<Record<string, boolean>>({});
   const [leaderboardHeroView, setLeaderboardHeroView] = useState<"chart" | "list">("chart");
+  const [trendPrimaryMetric, setTrendPrimaryMetric] = useState<"actions" | "reviews">("actions");
+  const [trendSecondaryMetric, setTrendSecondaryMetric] = useState<"actions" | "reviews">("reviews");
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
@@ -284,7 +286,8 @@ export default function EditorsAnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const months = timeRange === "7d" ? 3 : timeRange === "this_month" || timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
+        // Keep trend charts long-horizon so editorial patterns are visible across years.
+        const months = 72;
         
         const [leaderboardData, trendData, reviewedTrendData, categoryData, repoData, dailyStackedData, actionDetails] = await Promise.all([
           leaderboardMode === "monthly"
@@ -589,7 +592,7 @@ export default function EditorsAnalyticsPage() {
     series: trendActors.map((actor, idx) => ({
       name: actor,
       type: "line",
-      smooth: true,
+      smooth: false,
       symbol: "none",
       lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
       data: monthlyTrend.map((p) => Number(p[actor] || 0)),
@@ -619,12 +622,29 @@ export default function EditorsAnalyticsPage() {
     series: reviewedTrendActors.map((actor, idx) => ({
       name: actor,
       type: "line",
-      smooth: true,
+      smooth: false,
       symbol: "none",
       lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 55%)` },
       data: monthlyReviewedTrend.map((p) => Number(p[actor] || 0)),
     })),
   }), [monthlyReviewedTrend, reviewedTrendActors]);
+
+  const trendMetricMeta = useCallback((metric: "actions" | "reviews") => {
+    if (metric === "reviews") {
+      return {
+        title: "PRs Reviewed (Monthly)",
+        subtitle: "Monthly distinct PRs with review events by each editor.",
+        footer: "Counts distinct PRs with review events, not total comments.",
+        option: reviewedTrendOption,
+      };
+    }
+    return {
+      title: "Editor Actions Over Time",
+      subtitle: "Monthly count of all editor actions (reviews, comments, labels, updates).",
+      footer: "Shows monthly total editor actions, not cumulative totals.",
+      option: trendOption,
+    };
+  }, [reviewedTrendOption, trendOption]);
 
   const categoryOption = useMemo(() => ({
     backgroundColor: "transparent",
@@ -1126,22 +1146,40 @@ export default function EditorsAnalyticsPage() {
       <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Editor Actions Over Time</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Monthly count of all editor actions (reviews, comments, labels, updates).</p>
+            <h2 className="text-lg font-semibold text-foreground">{trendMetricMeta(trendPrimaryMetric).title}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{trendMetricMeta(trendPrimaryMetric).subtitle}</p>
           </div>
-          <button onClick={downloadTrendReport} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/85 hover:bg-muted/60">
-            <Download className="h-3.5 w-3.5" />
-            Download Reports
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex rounded-md border border-border bg-muted/30 p-0.5">
+              <button
+                type="button"
+                onClick={() => setTrendPrimaryMetric("actions")}
+                className={`rounded px-2 py-1 text-xs ${trendPrimaryMetric === "actions" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
+              >
+                All Actions
+              </button>
+              <button
+                type="button"
+                onClick={() => setTrendPrimaryMetric("reviews")}
+                className={`rounded px-2 py-1 text-xs ${trendPrimaryMetric === "reviews" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
+              >
+                Reviewed PRs
+              </button>
+            </div>
+            <button onClick={downloadTrendReport} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/85 hover:bg-muted/60">
+              <Download className="h-3.5 w-3.5" />
+              Download Reports
+            </button>
+          </div>
         </div>
         <div className="relative h-72 w-full">
-          <ReactECharts option={trendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+          <ReactECharts option={trendMetricMeta(trendPrimaryMetric).option} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="text-2xl font-semibold text-foreground/10">EIPsInsight.com</span>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Shows monthly total editor actions, not cumulative totals.</p>
+          <p className="text-xs text-muted-foreground">{trendMetricMeta(trendPrimaryMetric).footer}</p>
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
       </div>
@@ -1149,18 +1187,34 @@ export default function EditorsAnalyticsPage() {
       <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">PRs Reviewed (Monthly)</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Monthly distinct PRs with review events by each editor.</p>
+            <h2 className="text-lg font-semibold text-foreground">{trendMetricMeta(trendSecondaryMetric).title}</h2>
+            <p className="mt-0.5 text-xs text-muted-foreground">{trendMetricMeta(trendSecondaryMetric).subtitle}</p>
+          </div>
+          <div className="inline-flex rounded-md border border-border bg-muted/30 p-0.5">
+            <button
+              type="button"
+              onClick={() => setTrendSecondaryMetric("actions")}
+              className={`rounded px-2 py-1 text-xs ${trendSecondaryMetric === "actions" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              All Actions
+            </button>
+            <button
+              type="button"
+              onClick={() => setTrendSecondaryMetric("reviews")}
+              className={`rounded px-2 py-1 text-xs ${trendSecondaryMetric === "reviews" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
+            >
+              Reviewed PRs
+            </button>
           </div>
         </div>
         <div className="relative h-72 w-full">
-          <ReactECharts option={reviewedTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+          <ReactECharts option={trendMetricMeta(trendSecondaryMetric).option} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
             <span className="text-2xl font-semibold text-foreground/10">EIPsInsight.com</span>
           </div>
         </div>
         <div className="mt-3 flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">Counts distinct PRs with review events, not total comments.</p>
+          <p className="text-xs text-muted-foreground">{trendMetricMeta(trendSecondaryMetric).footer}</p>
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
       </div>

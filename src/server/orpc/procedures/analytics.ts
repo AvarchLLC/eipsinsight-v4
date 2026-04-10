@@ -793,6 +793,7 @@ const getEditorsLeaderboardCached = unstable_cache(
         LEFT JOIN repositories r ON r.id = pe.repository_id
         WHERE ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           AND pe.pr_number > 0
+          AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
       ),
       editor_activity AS (
         SELECT actor, pr_number, repository_id, event_type, occurred_at
@@ -954,6 +955,7 @@ const getEditorsByCategoryCached = unstable_cache(
         JOIN eip_snapshots es ON es.eip_id = e.id
         LEFT JOIN repositories r ON r.id = pe.repository_id
         WHERE pe.actor_role = 'EDITOR'
+          AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           AND ($2::text IS NULL OR pe.created_at >= $2::timestamp)
           AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
@@ -1010,8 +1012,8 @@ const getEditorsRepoDistributionCached = unstable_cache(
           em.canonical AS actor,
           COALESCE(r.name, 'Unknown') AS repo,
           CASE
-            WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-              THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+            WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+              THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
             ELSE pe.created_at
           END AS occurred_at
         FROM pr_events pe
@@ -1019,6 +1021,8 @@ const getEditorsRepoDistributionCached = unstable_cache(
         LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
         LEFT JOIN repositories r ON r.id = pe.repository_id
         WHERE pe.pr_number > 0
+          AND pe.created_at <= NOW()
+          AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
       ),
       base AS (
         SELECT actor, repo
@@ -3831,14 +3835,16 @@ export const analyticsProcedures = {
             em.canonical AS actor,
             pe.repository_id,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
         )
         SELECT
           TO_CHAR(date_trunc('day', re.occurred_at), 'YYYY-MM-DD') AS date,
@@ -3886,28 +3892,42 @@ export const analyticsProcedures = {
         raw_events AS (
           SELECT
             em.canonical AS actor,
+            pe.pr_number,
             pe.repository_id,
+            pe.event_type,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
+        ),
+        deduped_events AS (
+          SELECT
+            actor,
+            pr_number,
+            repository_id,
+            event_type,
+            date_trunc('second', occurred_at) AS occurred_at
+          FROM raw_events
+          GROUP BY actor, pr_number, repository_id, event_type, date_trunc('second', occurred_at)
         )
         SELECT
-          TO_CHAR(date_trunc('day', re.occurred_at), 'YYYY-MM-DD') AS date,
-          re.actor,
+          TO_CHAR(date_trunc('day', de.occurred_at), 'YYYY-MM-DD') AS date,
+          de.actor,
           COUNT(*)::bigint AS count
-        FROM raw_events re
-        LEFT JOIN repositories r ON r.id = re.repository_id
-        WHERE ($1::text IS NULL OR re.occurred_at >= $1::timestamp)
-          AND ($2::text IS NULL OR re.occurred_at <= $2::timestamp)
+        FROM deduped_events de
+        LEFT JOIN repositories r ON r.id = de.repository_id
+        WHERE ($1::text IS NULL OR de.occurred_at >= $1::timestamp)
+          AND ($2::text IS NULL OR de.occurred_at < (($2::date + INTERVAL '1 day')::timestamp))
           AND ($3::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($3))
-        GROUP BY date_trunc('day', re.occurred_at), re.actor
-        ORDER BY date ASC, re.actor ASC
+        GROUP BY date_trunc('day', de.occurred_at), de.actor
+        ORDER BY date ASC, de.actor ASC
       `,
         input.from ?? null,
         input.to ?? null,
@@ -3960,6 +3980,7 @@ export const analyticsProcedures = {
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
         )
         SELECT
           re.actor,
@@ -4561,14 +4582,16 @@ export const analyticsProcedures = {
               pe.repository_id,
               pe.event_type AS action_type,
               CASE
-                WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                  THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+                WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                  THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
                 ELSE pe.created_at
               END AS occurred_at
             FROM pr_events pe
             JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
             LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
             WHERE pe.pr_number > 0
+              AND pe.created_at <= NOW()
+              AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
           )
           SELECT re.actor, re.pr_number, r.name AS repo_name,
                  TO_CHAR(re.occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS occurred_at,
@@ -4703,26 +4726,40 @@ export const analyticsProcedures = {
         raw_events AS (
           SELECT
             em.canonical AS actor,
+            pe.pr_number,
             pe.repository_id,
+            pe.event_type,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
+        ),
+        deduped_events AS (
+          SELECT
+            actor,
+            pr_number,
+            repository_id,
+            event_type,
+            date_trunc('second', occurred_at) AS occurred_at
+          FROM raw_events
+          GROUP BY actor, pr_number, repository_id, event_type, date_trunc('second', occurred_at)
         )
         SELECT
-          TO_CHAR(date_trunc('month', re.occurred_at), 'YYYY-MM') as month,
-          re.actor AS actor,
+          TO_CHAR(date_trunc('month', de.occurred_at), 'YYYY-MM') as month,
+          de.actor AS actor,
           COUNT(*)::bigint as count
-        FROM raw_events re
-        LEFT JOIN repositories r ON r.id = re.repository_id
-        WHERE re.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
+        FROM deduped_events de
+        LEFT JOIN repositories r ON r.id = de.repository_id
+        WHERE de.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', re.occurred_at), re.actor
+        GROUP BY date_trunc('month', de.occurred_at), de.actor
         ORDER BY month ASC, count DESC
       `,
         input.repo ?? null,
@@ -4775,26 +4812,38 @@ export const analyticsProcedures = {
             em.canonical AS actor,
             pe.pr_number,
             pe.repository_id,
+            pe.event_type,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
             AND pe.event_type IN ('reviewed', 'approved', 'changes_requested')
+        ),
+        deduped_reviews AS (
+          SELECT
+            actor,
+            pr_number,
+            repository_id,
+            event_type,
+            date_trunc('second', occurred_at) AS occurred_at
+          FROM raw_reviews
+          GROUP BY actor, pr_number, repository_id, event_type, date_trunc('second', occurred_at)
         )
         SELECT
-          TO_CHAR(date_trunc('month', rr.occurred_at), 'YYYY-MM') as month,
-          rr.actor,
-          COUNT(DISTINCT rr.pr_number)::bigint as count
-        FROM raw_reviews rr
-        LEFT JOIN repositories r ON r.id = rr.repository_id
-        WHERE rr.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
+          TO_CHAR(date_trunc('month', dr.occurred_at), 'YYYY-MM') as month,
+          dr.actor,
+          COUNT(DISTINCT CONCAT(dr.repository_id::text, ':', dr.pr_number::text))::bigint as count
+        FROM deduped_reviews dr
+        LEFT JOIN repositories r ON r.id = dr.repository_id
+        WHERE dr.occurred_at >= date_trunc('month', NOW() - INTERVAL '1 month' * $2)
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-        GROUP BY date_trunc('month', rr.occurred_at), rr.actor
+        GROUP BY date_trunc('month', dr.occurred_at), dr.actor
         ORDER BY month ASC, count DESC
       `,
         input.repo ?? null,
@@ -5110,8 +5159,8 @@ export const analyticsProcedures = {
             pe.repository_id,
             LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
@@ -5119,6 +5168,8 @@ export const analyticsProcedures = {
           LEFT JOIN repositories r ON r.id = pe.repository_id
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
         )
         SELECT
           re.actor AS actor,
@@ -5216,14 +5267,16 @@ export const analyticsProcedures = {
             pe.event_type,
             pe.metadata,
             CASE
-              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
-                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
+                THEN COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
               ELSE pe.created_at
             END AS occurred_at
           FROM pr_events pe
           JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.pr_number > 0
+            AND pe.created_at <= NOW()
+            AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
         ),
         leaders AS (
           SELECT
