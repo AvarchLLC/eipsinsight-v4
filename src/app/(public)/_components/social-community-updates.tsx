@@ -72,6 +72,39 @@ const communityDiscussions = [
     url: 'https://ethereum-magicians.org/',
     isHot: false,
   },
+  {
+    id: 6,
+    title: 'EIP-7823: calldata gas economics refinements',
+    platform: 'Ethereum Magicians',
+    category: 'Core',
+    replies: 64,
+    views: 1910,
+    lastActive: '6 hours ago',
+    url: 'https://ethereum-magicians.org/c/eips/14',
+    isHot: true,
+  },
+  {
+    id: 7,
+    title: 'ERC account delegation patterns for consumer wallets',
+    platform: 'Ethereum Magicians',
+    category: 'ERC',
+    replies: 41,
+    views: 1325,
+    lastActive: '10 hours ago',
+    url: 'https://ethereum-magicians.org/c/eips/14',
+    isHot: false,
+  },
+  {
+    id: 8,
+    title: 'EIP process notes: editorial merge policy and review cadence',
+    platform: 'Ethereum PM',
+    category: 'Meta',
+    replies: 22,
+    views: 780,
+    lastActive: '1 day ago',
+    url: 'https://github.com/ethereum/pm/issues',
+    isHot: false,
+  },
 ];
 
 type UpcomingEvent = {
@@ -151,12 +184,26 @@ const getColorClasses = (color: string) => {
 
 type SocialCommunityUpdatesProps = {
   showCommunityResources?: boolean;
+  sectionTitleClass?: string;
+  sectionSubtitleClass?: string;
 };
 
-export default function SocialCommunityUpdates({ showCommunityResources = true }: SocialCommunityUpdatesProps) {
+export default function SocialCommunityUpdates({
+  showCommunityResources = true,
+  sectionTitleClass = 'text-4xl font-semibold tracking-tight sm:text-5xl',
+  sectionSubtitleClass = 'text-sm text-muted-foreground',
+}: SocialCommunityUpdatesProps) {
   const [upcomingEvents, setUpcomingEvents] = React.useState<UpcomingEvent[]>([]);
   const [eventsLoading, setEventsLoading] = React.useState(true);
   const [eventsSyncedAt, setEventsSyncedAt] = React.useState<string | null>(null);
+  const sortedDiscussions = React.useMemo(
+    () =>
+      [...communityDiscussions].sort((a, b) => {
+        if (a.isHot !== b.isHot) return a.isHot ? -1 : 1;
+        return b.replies - a.replies;
+      }),
+    [],
+  );
 
   React.useEffect(() => {
     let cancelled = false;
@@ -190,14 +237,14 @@ export default function SocialCommunityUpdates({ showCommunityResources = true }
     <section className="w-full" id="social-community">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
-          <h2 className="dec-title persona-title text-2xl font-semibold tracking-tight sm:text-3xl">
-          Social & Community Updates
-          </h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+          <div className="inline-flex items-center gap-2">
+            <h2 className={sectionTitleClass}>Social & Community Updates</h2>
+            <CopyLinkButton sectionId="social-community" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+          </div>
+          <p className={cn('mt-1 leading-relaxed', sectionSubtitleClass)}>
             Discussions, channels, and events across the Ethereum standards ecosystem.
           </p>
         </div>
-        <CopyLinkButton sectionId="social-community" className="h-8 w-8 rounded-md" />
       </div>
 
       <div className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -228,7 +275,7 @@ export default function SocialCommunityUpdates({ showCommunityResources = true }
       <div className="grid items-start gap-4 xl:grid-cols-[2fr_1fr]">
         <div className="space-y-3">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Active Discussions</h3>
-          {communityDiscussions.map((discussion) => (
+          {sortedDiscussions.map((discussion) => (
             <motion.a
               key={discussion.id}
               href={discussion.url}

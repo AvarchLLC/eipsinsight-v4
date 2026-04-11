@@ -2,9 +2,10 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, ExternalLink } from 'lucide-react';
+import { ArrowRight, Download, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyLinkButton } from '@/components/header';
+import { client } from '@/lib/orpc';
 
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
 
@@ -62,14 +63,101 @@ export default function EditorReviewQueueSection({
   boardProcessBadgeMap,
   githubRepoFromShort,
 }: EditorReviewQueueSectionProps) {
+  const [downloadingReport, setDownloadingReport] = React.useState(false);
+  const csvEscape = (value: string | number | null | undefined) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+
+  const downloadReport = React.useCallback(async () => {
+    if (downloadingReport) return;
+    setDownloadingReport(true);
+    try {
+      const pageSize = 500;
+      const firstPage = await client.tools.getOpenPRBoard({
+        repo: editorRepoFilter || undefined,
+        govState: ['Waiting on Editor'],
+        processType: selectedBoardProcesses.length ? selectedBoardProcesses : undefined,
+        page: 1,
+        pageSize,
+      });
+
+      let allRows = firstPage.rows ?? [];
+      if ((firstPage.totalPages ?? 1) > 1) {
+        const remainingPages = await Promise.all(
+          Array.from({ length: firstPage.totalPages - 1 }, (_, idx) =>
+            client.tools.getOpenPRBoard({
+              repo: editorRepoFilter || undefined,
+              govState: ['Waiting on Editor'],
+              processType: selectedBoardProcesses.length ? selectedBoardProcesses : undefined,
+              page: idx + 2,
+              pageSize,
+            }),
+          ),
+        );
+        allRows = allRows.concat(remainingPages.flatMap((page) => page.rows ?? []));
+      }
+
+      if (!allRows.length) return;
+
+    const headers = ['Repo', 'PR Number', 'Title', 'Author', 'Process', 'Participants', 'Wait Days', 'Created At', 'PR Link'];
+    const lines = [headers.join(',')];
+    allRows.forEach((row) => {
+      const values = [
+        row.repoShort.toUpperCase(),
+        row.prNumber,
+        row.title ?? '',
+        row.author ?? '',
+        row.processType,
+        row.govState,
+        row.waitDays,
+        row.createdAt,
+        `https://github.com/${row.repo}/pull/${row.prNumber}`,
+      ];
+      lines.push(values.map(csvEscape).join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `editor_review_queue_${(editorRepoFilter || 'all').toLowerCase()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export board report CSV:', err);
+    } finally {
+      setDownloadingReport(false);
+    }
+  }, [downloadingReport, editorRepoFilter, selectedBoardProcesses]);
+
   return (
     <section className="mb-6 border-t border-border/70 pt-6" id="editor-review-queue">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h2 className={sectionTitleClass}>Editor Review Queue</h2>
+          <div className="inline-flex items-center gap-2">
+            <h2 className={sectionTitleClass}>Editor Review Queue</h2>
+            <CopyLinkButton sectionId="editor-review-queue" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+          </div>
           <p className={sectionSubtitleClass}>Open PRs currently waiting on editor action.</p>
         </div>
-        <CopyLinkButton sectionId="editor-review-queue" className="h-8 w-8 rounded-md" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={downloadReport}
+            disabled={boardPreviewLoading || boardPreviewTotal === 0 || downloadingReport}
+            aria-label="Download board report CSV"
+            title="Download board report CSV"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </button>
+          <Link
+            href="/tools/board?status=Waiting+on+Editor&page=1"
+            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+          >
+            Explore Board
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
       </div>
 
       <div className="mb-2 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
@@ -220,15 +308,6 @@ export default function EditorReviewQueueSection({
             </button>
           </div>
         </div>
-      </div>
-      <div className="mt-3 flex justify-center">
-        <Link
-          href="/tools/board?status=Waiting+on+Editor&page=1"
-          className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-        >
-          Explore Board
-          <ArrowRight className="h-3 w-3" />
-        </Link>
       </div>
     </section>
   );

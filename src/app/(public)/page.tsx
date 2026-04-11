@@ -84,6 +84,16 @@ type HomepageEditorRow = {
   prsTouched: number;
 };
 
+type EditorContributionWindow = 'month' | 'all' | 'custom';
+
+type EditorContributionRow = {
+  actor: string;
+  totalActions: number;
+  prsTouched: number;
+  reviews: number;
+  comments: number;
+};
+
 type BoardPreviewRow = {
   prNumber: number;
   title: string | null;
@@ -511,6 +521,29 @@ function monthLabel(monthYear: string) {
   });
 }
 
+function monthRange(monthYear: string) {
+  const [year, month] = monthYear.split('-').map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0, 0));
+  const end = new Date(Date.UTC(year, month, 0, 23, 59, 59, 999));
+  const toInput = (date: Date) => date.toISOString().slice(0, 10);
+  return {
+    fromInput: toInput(start),
+    toInput: toInput(end),
+    fromQuery: start.toISOString(),
+    toQuery: end.toISOString(),
+  };
+}
+
+function dayStartIso(dateInput: string) {
+  const date = new Date(`${dateInput}T00:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function dayEndIso(dateInput: string) {
+  const date = new Date(`${dateInput}T23:59:59.999Z`);
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function proposalUrl(repo: string, kind: string, number: number) {
   if (kind === 'ERC' || repo.toLowerCase().includes('erc')) return `/erc/${number}`;
   if (kind === 'RIP' || repo.toLowerCase().includes('rip')) return `/rip/${number}`;
@@ -751,6 +784,14 @@ export default function EIPsHomePage() {
     return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
   }, []);
   const [currentMonthYear, setCurrentMonthYear] = useState(defaultMonthYear);
+  const [editorContribWindow, setEditorContribWindow] = useState<EditorContributionWindow>('all');
+  const [editorContribFrom, setEditorContribFrom] = useState(monthRange(defaultMonthYear).fromInput);
+  const [editorContribTo, setEditorContribTo] = useState(monthRange(defaultMonthYear).toInput);
+  const [editorContributionRows, setEditorContributionRows] = useState<EditorContributionRow[]>([]);
+  const [editorRepoDistributionRows, setEditorRepoDistributionRows] = useState<
+    Array<{ actor: string; repo: string; count: number; pct: number }>
+  >([]);
+  const [editorContribLoading, setEditorContribLoading] = useState(false);
   const monthYearOptions = useMemo(() => {
     const options: Array<{ value: string; label: string }> = [];
     const cursor = new Date();
@@ -791,6 +832,14 @@ export default function EIPsHomePage() {
   useEffect(() => {
     setShowPersonaWorkspace(true);
   }, [activePersona]);
+
+  useEffect(() => {
+    const { fromInput, toInput } = monthRange(currentMonthYear);
+    setEditorContribFrom(fromInput);
+    setEditorContribTo(toInput);
+    if (editorContribWindow === 'month') {
+    }
+  }, [currentMonthYear, editorContribWindow]);
 
   useEffect(() => {
     if (activePersona !== 'builder') return;
@@ -1211,6 +1260,76 @@ export default function EIPsHomePage() {
     };
   }, [currentMonthYear]);
 
+  useEffect(() => {
+    let cancelled = false;
+    if (activePersona !== 'editor') {
+      setEditorContributionRows([]);
+      setEditorRepoDistributionRows([]);
+      return;
+    }
+
+    (async () => {
+      setEditorContribLoading(true);
+      try {
+        let from: string | undefined;
+        let to: string | undefined;
+
+        if (editorContribWindow === 'month') {
+          const range = monthRange(currentMonthYear);
+          from = range.fromQuery;
+          to = range.toQuery;
+        } else if (editorContribWindow === 'custom') {
+          from = dayStartIso(editorContribFrom) ?? undefined;
+          to = dayEndIso(editorContribTo) ?? undefined;
+        }
+
+        const [leaders, repoDistribution] = await Promise.all([
+          client.analytics.getEditorsLeaderboard({
+            limit: 12,
+            from,
+            to,
+          }),
+          client.analytics.getEditorsRepoDistribution({
+            from,
+            to,
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        setEditorContributionRows(
+          leaders.map((row) => ({
+            actor: row.actor,
+            totalActions: row.totalActions,
+            prsTouched: row.prsTouched,
+            reviews: row.reviews,
+            comments: row.comments,
+          })),
+        );
+        setEditorRepoDistributionRows(
+          repoDistribution.map((row) => ({
+            actor: row.actor,
+            repo: row.repo,
+            count: row.count,
+            pct: row.pct,
+          })),
+        );
+      } catch (err) {
+        console.error('Failed to load editor contribution snapshot:', err);
+        if (!cancelled) {
+          setEditorContributionRows([]);
+          setEditorRepoDistributionRows([]);
+        }
+      } finally {
+        if (!cancelled) setEditorContribLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activePersona, currentMonthYear, editorContribWindow, editorContribFrom, editorContribTo]);
+
   const totalCount = useMemo(
     () => distribution.reduce((acc, row) => acc + row.count, 0),
     [distribution]
@@ -1316,6 +1435,108 @@ export default function EIPsHomePage() {
     () => Math.max(1, ...monthlyEditorRows.map((e) => e.totalActions)),
     [monthlyEditorRows]
   );
+  const editorContributionWindowLabel = useMemo(() => {
+    if (editorContribWindow === 'all') return 'All-Time Contributions';
+    if (editorContribWindow === 'custom') {
+      return `${editorContribFrom || 'Start'} → ${editorContribTo || 'Now'}`;
+    }
+    return monthLabel(currentMonthYear);
+  }, [editorContribWindow, editorContribFrom, editorContribTo, currentMonthYear]);
+  const editorRepoBreakdownOption = useMemo(() => {
+    const topActors = editorContributionRows.slice(0, 8).map((row) => row.actor);
+    const repoAliases = (repo: string) => {
+      const short = repo.includes('/') ? repo.split('/').pop() || repo : repo;
+      return short.toLowerCase();
+    };
+    const bucketed = new Map<string, { eips: number; ercs: number; rips: number }>();
+    topActors.forEach((actor) => {
+      bucketed.set(actor, { eips: 0, ercs: 0, rips: 0 });
+    });
+    editorRepoDistributionRows.forEach((row) => {
+      const actor = topActors.find((name) => name.toLowerCase() === row.actor.toLowerCase());
+      if (!actor) return;
+      const bucket = bucketed.get(actor);
+      if (!bucket) return;
+      const repo = repoAliases(row.repo);
+      if (repo === 'eips') bucket.eips += row.count;
+      else if (repo === 'ercs') bucket.ercs += row.count;
+      else if (repo === 'rips') bucket.rips += row.count;
+    });
+    const eipsSeries = topActors.map((actor) => bucketed.get(actor)?.eips ?? 0);
+    const ercsSeries = topActors.map((actor) => bucketed.get(actor)?.ercs ?? 0);
+    const ripsSeries = topActors.map((actor) => bucketed.get(actor)?.rips ?? 0);
+    const totals = topActors.map((actor) => {
+      const b = bucketed.get(actor);
+      return (b?.eips ?? 0) + (b?.ercs ?? 0) + (b?.rips ?? 0);
+    });
+
+    return {
+      tooltip: {
+        trigger: 'axis',
+        axisPointer: { type: 'shadow' },
+        backgroundColor: isDark ? 'rgba(15,23,42,0.94)' : 'rgba(255,255,255,0.98)',
+        borderColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)',
+        textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
+        formatter: (params: Array<{ seriesName: string; value: number; marker: string; axisValue: string }>) => {
+          if (!params?.length) return '';
+          const actor = params[0]?.axisValue ?? '';
+          const avatar = editorAvatar(actor);
+          const lines = params
+            .filter((entry) => ['EIPs', 'ERCs', 'RIPs'].includes(entry.seriesName))
+            .map((entry) => `${entry.marker} ${entry.seriesName}: ${Number(entry.value ?? 0).toLocaleString()}`);
+          const total = params
+            .filter((entry) => ['EIPs', 'ERCs', 'RIPs'].includes(entry.seriesName))
+            .reduce((sum, entry) => sum + Number(entry.value ?? 0), 0);
+          const header = `
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+              <img src="${avatar}" alt="${actor}" width="22" height="22" style="width:22px;height:22px;border-radius:999px;border:1px solid rgba(148,163,184,0.35);" />
+              <strong>${actor}</strong>
+            </div>
+          `;
+          return [header, ...lines, `<strong>Total: ${total.toLocaleString()}</strong>`].join('<br/>');
+        },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: isDark ? '#cbd5e1' : '#475569', fontSize: 11 },
+      },
+      grid: { left: 70, right: 10, top: 28, bottom: 12, containLabel: true },
+      xAxis: {
+        type: 'value',
+        splitLine: { lineStyle: { color: isDark ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.24)' } },
+        axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 11 },
+      },
+      yAxis: {
+        type: 'category',
+        data: topActors,
+        inverse: true,
+        axisLabel: { color: isDark ? '#cbd5e1' : '#334155', fontSize: 11 },
+        axisTick: { show: false },
+      },
+      series: [
+        { name: 'EIPs', type: 'bar', stack: 'repo', data: eipsSeries, itemStyle: { color: '#10b981' }, barMaxWidth: 12 },
+        { name: 'ERCs', type: 'bar', stack: 'repo', data: ercsSeries, itemStyle: { color: '#60a5fa' }, barMaxWidth: 12 },
+        { name: 'RIPs', type: 'bar', stack: 'repo', data: ripsSeries, itemStyle: { color: '#a78bfa' }, barMaxWidth: 12 },
+        {
+          type: 'scatter',
+          symbolSize: 1,
+          silent: true,
+          data: topActors.map((actor, index) => [totals[index], actor]),
+          tooltip: { show: false },
+          label: {
+            show: true,
+            position: 'right',
+            offset: [4, 0],
+            color: isDark ? '#e2e8f0' : '#0f172a',
+            fontSize: 11,
+            formatter: (params: { value: [number, string] }) => Number(params.value?.[0] ?? 0).toLocaleString(),
+          },
+          itemStyle: { color: 'transparent' },
+          emphasis: { disabled: true },
+        },
+      ],
+    };
+  }, [editorContributionRows, editorRepoDistributionRows, isDark]);
   const showDistributionSkeleton = distributionLoading && distribution.length === 0;
   const showTableSkeleton = tableLoading && !tableData;
   const showInsightSkeleton = widgetsLoading && febDelta.length === 0;
@@ -1453,19 +1674,38 @@ export default function EIPsHomePage() {
   const downloadLeaderboardDetailedCSV = async () => {
     try {
       setDownloadingLeaderboard(true);
-      const res = await client.analytics.exportMonthlyEditorLeaderboardDetailedCSV({
-        monthYear: currentMonthYear,
-        limit: 10,
-      });
-      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = res.filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (activePersona === 'editor' && editorContribWindow !== 'month') {
+        const from = editorContribWindow === 'custom' ? dayStartIso(editorContribFrom) ?? undefined : undefined;
+        const to = editorContribWindow === 'custom' ? dayEndIso(editorContribTo) ?? undefined : undefined;
+        const res = await client.analytics.getEditorsLeaderboardExport({
+          from,
+          to,
+          detailsOnly: true,
+        });
+        const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else {
+        const res = await client.analytics.exportMonthlyEditorLeaderboardDetailedCSV({
+          monthYear: currentMonthYear,
+          limit: 10,
+        });
+        const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = res.filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
     } catch (err) {
       console.error('Failed to export editor leaderboard CSV:', err);
     } finally {
@@ -1742,26 +1982,26 @@ export default function EIPsHomePage() {
 
       {visibleSections.quickAccess && (
         <section className="mb-5" id="persona-home-workspace">
-          <div className="rounded-xl border border-border bg-card/60 p-2.5 sm:p-3">
+          <div className="rounded-xl border border-border/80 bg-gradient-to-b from-card/90 to-card/60 p-3 shadow-sm sm:p-3.5">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
                   {PERSONA_LABELS[activePersona]} Quick Access
                 </p>
-                <p className="text-xs text-muted-foreground">{personaPlan.goal}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{personaPlan.goal}</p>
               </div>
               <div className="inline-flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={togglePersonaWorkspace}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 >
                   {showPersonaWorkspace ? 'Close' : 'Show'}
                   <ChevronDown className={cn('h-3 w-3 transition-transform', showPersonaWorkspace && 'rotate-180')} />
                 </button>
                 <Link
                   href="/p"
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/50 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
                 >
                   Persona
                   <ArrowRight className="h-3 w-3" />
@@ -1769,14 +2009,14 @@ export default function EIPsHomePage() {
               </div>
             </div>
             {showPersonaWorkspace && (
-                <div className="mt-2 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
                   {personaPlan.tools.map((tool) => {
                     const Icon = tool.icon;
                     return (
                       <Link
                         key={tool.key}
                         href={tool.href}
-                        className="group rounded-lg border border-border bg-background/70 px-2.5 py-2.5 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                        className="group rounded-lg border border-border/90 bg-background/75 px-2.5 py-2.5 transition hover:border-primary/35 hover:bg-primary/[0.04]"
                       >
                         <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Icon className="h-3.5 w-3.5" />
@@ -1796,6 +2036,94 @@ export default function EIPsHomePage() {
         </section>
       )}
       <PersonaDashboardComponent>
+      {activePersona === 'editor' && (
+        <section className="mb-6 border-t border-border/70 pt-6" id="editor-contributions-overview">
+          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</h2>
+                <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
+              <p className={sectionSubtitleClass}>
+                Contribution ranking with action coverage and repository breakdown.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <select
+                value={editorContribWindow}
+                onChange={(e) => setEditorContribWindow(e.target.value as EditorContributionWindow)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                <option value="month">This Month</option>
+                <option value="all">All-Time</option>
+                <option value="custom">Custom Range</option>
+              </select>
+              {editorContribWindow === 'month' && (
+                <select
+                  value={currentMonthYear}
+                  onChange={(e) => setCurrentMonthYear(e.target.value)}
+                  className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                >
+                  {monthYearOptions.map((opt) => (
+                    <option key={`editor-contrib-month-${opt.value}`} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <button
+                onClick={downloadLeaderboardDetailedCSV}
+                disabled={downloadingLeaderboard}
+                aria-label="Download editor leaderboard CSV"
+                title="Download editor leaderboard CSV"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+              <Link
+                href="/analytics/editors"
+                className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              >
+                Explore Editor Analytics
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+
+          {editorContribWindow === 'custom' && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <input
+                type="date"
+                value={editorContribFrom}
+                onChange={(e) => setEditorContribFrom(e.target.value)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              />
+              <span className="text-xs text-muted-foreground">to</span>
+              <input
+                type="date"
+                value={editorContribTo}
+                onChange={(e) => setEditorContribTo(e.target.value)}
+                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              />
+            </div>
+          )}
+
+          <div className="rounded-xl border border-border/70 bg-gradient-to-b from-background/70 to-card/50 p-3 shadow-sm">
+            {editorContribLoading ? (
+              <div className="h-[300px] animate-pulse rounded-lg bg-muted/50" />
+            ) : editorContributionRows.length === 0 ? (
+              <div className="flex h-[300px] items-center justify-center rounded-lg border border-border/60 bg-background/40 text-sm text-muted-foreground">
+                No editor contribution data for this range.
+              </div>
+            ) : (
+              <div className="h-[300px]">
+                <ReactECharts option={editorRepoBreakdownOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
+              </div>
+            )}
+          </div>
+
+        </section>
+      )}
       {activePersona === 'developer' && visibleSections.upgradeWatch && (
         <DeveloperUpgradeWatchSection
           sectionTitleClass={sectionTitleClass}
@@ -1822,10 +2150,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Learning Resources</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Learning Resources</h2>
+                <CopyLinkButton sectionId="newcomer-learning-resources" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
             </div>
-            <CopyLinkButton sectionId="newcomer-learning-resources" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {[
@@ -1869,6 +2199,7 @@ export default function EIPsHomePage() {
           <div className="mb-2 flex items-start justify-end">
             <CopyLinkButton
               sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
+              tooltipLabel="Copy link"
               className="h-8 w-8 rounded-md"
             />
           </div>
@@ -1892,10 +2223,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Trending Proposals</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Trending Proposals</h2>
+                <CopyLinkButton sectionId="newcomer-trending-proposals" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
             </div>
-            <CopyLinkButton sectionId="newcomer-trending-proposals" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {newcomerTrendingLoading ? (
@@ -1946,10 +2279,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Upgrade Watch</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Upgrade Watch</h2>
+                <CopyLinkButton sectionId="newcomer-upgrade-watch" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
             </div>
-            <CopyLinkButton sectionId="newcomer-upgrade-watch" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             {[
@@ -1988,7 +2323,7 @@ export default function EIPsHomePage() {
           id="developer-governance-over-time"
         >
           <div className="mb-2 flex items-start justify-end">
-            <CopyLinkButton sectionId="developer-governance-over-time" className="h-8 w-8 rounded-md" />
+            <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
           <GovernanceOverTime />
           <div className="mt-2 flex justify-center">
@@ -2010,10 +2345,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>EIP Builder</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>EIP Builder</h2>
+                <CopyLinkButton sectionId="builder-eip-builder-focus" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
             </div>
-            <CopyLinkButton sectionId="builder-eip-builder-focus" className="h-8 w-8 rounded-md" />
           </div>
           <div className="rounded-xl border border-primary/30 bg-primary/10 p-4">
             <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
@@ -2043,7 +2380,10 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Board</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Board</h2>
+                <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Compact open PR snapshot from the Editing Board.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -2058,7 +2398,6 @@ export default function EIPsHomePage() {
                 <option value="ercs">ERCs</option>
                 <option value="rips">RIPs</option>
               </select>
-              <CopyLinkButton sectionId="developer-board-snapshot" className="h-8 w-8 rounded-md" />
             </div>
           </div>
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
@@ -2205,10 +2544,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Tool Shortcuts</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Tool Shortcuts</h2>
+                <CopyLinkButton sectionId="builder-tool-shortcuts" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
             </div>
-            <CopyLinkButton sectionId="builder-tool-shortcuts" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {[
@@ -2252,10 +2593,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</h2>
+                <CopyLinkButton sectionId="newcomer-tools-shortcuts" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
             </div>
-            <CopyLinkButton sectionId="newcomer-tools-shortcuts" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {[
@@ -2339,9 +2682,18 @@ export default function EIPsHomePage() {
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start">
             <div>
-              <h2 className={sectionTitleClass}>
-                Browse by Status, Category, Repository & Stages
-              </h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>
+                  Browse by Status, Category, Repository & Stages
+                </h2>
+                {(activePersona === 'editor' || activePersona === 'builder') && (
+                  <CopyLinkButton
+                    sectionId={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
+                    tooltipLabel="Copy link"
+                    className="h-8 w-8 rounded-md"
+                  />
+                )}
+              </div>
               <p className={sectionSubtitleClass}>
                 {activePersona === 'builder'
                   ? 'ERC-focused browse view with quick status/category/repository checks.'
@@ -2380,12 +2732,6 @@ export default function EIPsHomePage() {
                 </span>
               );
             })()}
-            {(activePersona === 'editor' || activePersona === 'builder') && (
-              <CopyLinkButton
-                sectionId={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
-                className="h-8 w-8 rounded-md"
-              />
-            )}
           </div>
         </div>
       </div>
@@ -2992,10 +3338,12 @@ export default function EIPsHomePage() {
           {activePersona === 'editor' && (
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
-                <h2 className={sectionTitleClass}>Reference</h2>
+                <div className="inline-flex items-center gap-2">
+                  <h2 className={sectionTitleClass}>Reference</h2>
+                  <CopyLinkButton sectionId="home-reference" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+                </div>
                 <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
               </div>
-              <CopyLinkButton sectionId="home-reference" className="h-8 w-8 rounded-md" />
             </div>
           )}
           <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
@@ -3023,7 +3371,10 @@ export default function EIPsHomePage() {
       {activePersona === 'editor' && (
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
-            <h2 className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</h2>
+            <div className="inline-flex items-center gap-2">
+              <h2 className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</h2>
+              <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+            </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
           </div>
           <div className="flex items-center gap-2">
@@ -3042,7 +3393,6 @@ export default function EIPsHomePage() {
                 </option>
               ))}
             </select>
-            <CopyLinkButton sectionId="editor-monthly-insight" className="h-8 w-8 rounded-md" />
           </div>
         </div>
       )}
@@ -3158,115 +3508,117 @@ export default function EIPsHomePage() {
             activePersona === 'editor' ? 'h-[460px] sm:h-[500px]' : 'h-[560px] sm:h-[620px]',
           )}
         >
-          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Trophy className="h-4 w-4 text-primary" />
-                <h3 className={panelTitleClass}>Editor Leaderboard ({monthLabel(currentMonthYear)})</h3>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Ranked by editor actions this month (open + closed PRs).
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <Link
-                href="/analytics/editors"
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-              >
-                Explore Editor Leaderboard
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-              <button
-                onClick={downloadLeaderboardDetailedCSV}
-                disabled={downloadingLeaderboard}
-                aria-label="Download editor leaderboard CSV"
-                title="Download editor leaderboard CSV"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-1 pr-2">
-            {showEditorSkeleton
-              ? Array.from({ length: 6 }).map((_, i) => (
-                  <div key={`editor-skeleton-${i}`} className="rounded-lg border border-border p-2.5">
-                    <div className="mb-2 flex items-center gap-2">
-                      <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-                      <div className="flex-1">
-                        <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
-                        <div className="h-3 w-36 animate-pulse rounded bg-muted" />
-                      </div>
-                    </div>
-                    <div className="h-1.5 animate-pulse rounded-full bg-muted" />
+          <>
+              <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-primary" />
+                    <h3 className={panelTitleClass}>Editor Leaderboard ({monthLabel(currentMonthYear)})</h3>
                   </div>
-                ))
-              : monthlyEditorRows.length === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                  <Trophy className="h-10 w-10 text-muted-foreground/40" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">No editor activity yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground/70">
-                      Editor actions for {monthLabel(currentMonthYear)} will appear here as PRs are reviewed.
-                    </p>
-                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Ranked by editor actions this month (open + closed PRs).
+                  </p>
                 </div>
-              )
-              : monthlyEditorRows.map((row, idx) => (
-                  <div
-                    key={`editor-${row.actor}`}
-                    className={`rounded-lg px-2.5 py-2.5 border ${idx === 0 ? 'bg-primary/10 border-primary/30' : 'bg-muted/40 border-border'}`}
+                <div className="inline-flex items-center gap-2">
+                  <Link
+                    href="/analytics/editors"
+                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
                   >
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <div className="flex min-w-0 items-center gap-2">
-                        <div className="h-8 w-8 shrink-0 rounded-full bg-background/80 p-[1.5px] ring-1 ring-border">
-                          <div className="h-full w-full overflow-hidden rounded-full">
-                            <Image
-                              src={editorAvatar(row.actor)}
-                              alt={row.actor}
-                              width={32}
-                              height={32}
-                              className="h-full w-full object-cover object-center"
-                            />
+                    Explore Editor Leaderboard
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                  <button
+                    onClick={downloadLeaderboardDetailedCSV}
+                    disabled={downloadingLeaderboard}
+                    aria-label="Download editor leaderboard CSV"
+                    title="Download editor leaderboard CSV"
+                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-1 pr-2">
+                {showEditorSkeleton
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div key={`editor-skeleton-${i}`} className="rounded-lg border border-border p-2.5">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+                          <div className="flex-1">
+                            <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
+                            <div className="h-3 w-36 animate-pulse rounded bg-muted" />
                           </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
-                          <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
+                        <div className="h-1.5 animate-pulse rounded-full bg-muted" />
+                      </div>
+                    ))
+                  : monthlyEditorRows.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                      <Trophy className="h-10 w-10 text-muted-foreground/40" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">No editor activity yet</p>
+                        <p className="mt-1 text-xs text-muted-foreground/70">
+                          Editor actions for {monthLabel(currentMonthYear)} will appear here as PRs are reviewed.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                  : monthlyEditorRows.map((row, idx) => (
+                      <div
+                        key={`editor-${row.actor}`}
+                        className={`rounded-lg px-2.5 py-2.5 border ${idx === 0 ? 'bg-primary/10 border-primary/30' : 'bg-muted/40 border-border'}`}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="h-8 w-8 shrink-0 rounded-full bg-background/80 p-[1.5px] ring-1 ring-border">
+                              <div className="h-full w-full overflow-hidden rounded-full">
+                                <Image
+                                  src={editorAvatar(row.actor)}
+                                  alt={row.actor}
+                                  width={32}
+                                  height={32}
+                                  className="h-full w-full object-cover object-center"
+                                />
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
+                              <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
+                            </div>
+                          </div>
+                          <span className="ml-2 min-w-[2.5ch] shrink-0 text-right text-sm leading-tight font-semibold tabular-nums text-primary">
+                            {row.totalActions}
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
+                          <div
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{ width: `${row.totalActions > 0 ? Math.max(8, (row.totalActions / maxEditor) * 100) : 0}%` }}
+                          />
                         </div>
                       </div>
-                      <span className="ml-2 min-w-[2.5ch] shrink-0 text-right text-sm leading-tight font-semibold tabular-nums text-primary">
-                        {row.totalActions}
-                      </span>
-                    </div>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
-                      <div
-                        className="h-full bg-primary transition-all duration-300"
-                        style={{ width: `${row.totalActions > 0 ? Math.max(8, (row.totalActions / maxEditor) * 100) : 0}%` }}
-                      />
-                    </div>
-                  </div>
-                ))}
-          </div>
+                    ))}
+              </div>
 
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
-            {monthlyLeaderboardUpdatedAt ? (
-              <LastUpdated
-                timestamp={monthlyLeaderboardUpdatedAt}
-                prefix="Updated"
-                showAbsolute
-                className="bg-muted/40 text-xs"
-              />
-            ) : (
-              <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-                No editor activity recorded for this period
-              </span>
-            )}
-            <span className="text-xs text-muted-foreground">
-              Monthly editor activity snapshot
-            </span>
-          </div>
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+                {monthlyLeaderboardUpdatedAt ? (
+                  <LastUpdated
+                    timestamp={monthlyLeaderboardUpdatedAt}
+                    prefix="Updated"
+                    showAbsolute
+                    className="bg-muted/40 text-xs"
+                  />
+                ) : (
+                  <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+                    No editor activity recorded for this period
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  Monthly editor activity snapshot
+                </span>
+              </div>
+          </>
         </div>
       </div>
 
@@ -3301,9 +3653,12 @@ export default function EIPsHomePage() {
       <section className="mb-6 w-full" id="recent-governance-activity">
         <div className="mb-4 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div>
-            <h2 className={sectionTitleClass}>
-              {(activePersona === 'developer' || activePersona === 'builder') ? 'Recent Activity' : 'Recent Governance Activity'}
-            </h2>
+            <div className="inline-flex items-center gap-2">
+              <h2 className={sectionTitleClass}>
+                {(activePersona === 'developer' || activePersona === 'builder') ? 'Recent Activity' : 'Recent Governance Activity'}
+              </h2>
+              <CopyLinkButton sectionId="recent-governance-activity" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+            </div>
             <p className={sectionSubtitleClass}>
               {(activePersona === 'developer' || activePersona === 'builder')
                 ? 'Latest governance and PR movement with actor context and proposal links.'
@@ -3311,7 +3666,13 @@ export default function EIPsHomePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <CopyLinkButton sectionId="recent-governance-activity" className="h-8 w-8 rounded-md" />
+            <Link
+              href="/analytics/prs"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            >
+              Explore PR Analytics
+              <ArrowRight className="h-3 w-3" />
+            </Link>
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -3438,15 +3799,6 @@ export default function EIPsHomePage() {
             </div>
           </aside>
         </div>
-        <div className="mt-3 flex justify-center">
-          <Link
-            href="/analytics/prs"
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            Explore PR Analytics
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
       </section>
 
       </div>
@@ -3456,7 +3808,11 @@ export default function EIPsHomePage() {
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.social }}
         className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-6')}
       >
-        <SocialCommunityUpdates showCommunityResources={activePersona !== 'editor'} />
+        <SocialCommunityUpdates
+          showCommunityResources={activePersona !== 'editor'}
+          sectionTitleClass={sectionTitleClass}
+          sectionSubtitleClass={sectionSubtitleClass}
+        />
       </section>
       )}
       {visibleSections.social && activePersona === 'builder' && (
@@ -3467,10 +3823,12 @@ export default function EIPsHomePage() {
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
-              <h2 className={sectionTitleClass}>Practical Resources</h2>
+              <div className="inline-flex items-center gap-2">
+                <h2 className={sectionTitleClass}>Practical Resources</h2>
+                <CopyLinkButton sectionId="builder-practical-resources" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+              </div>
               <p className={sectionSubtitleClass}>Documentation and references to contribute effectively.</p>
             </div>
-            <CopyLinkButton sectionId="builder-practical-resources" className="h-8 w-8 rounded-md" />
           </div>
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
             {[

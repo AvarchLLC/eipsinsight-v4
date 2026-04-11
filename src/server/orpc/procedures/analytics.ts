@@ -4557,6 +4557,7 @@ export const analyticsProcedures = {
       from: z.string().optional(),
       to: z.string().optional(),
       actor: z.string().optional(),
+      detailsOnly: z.boolean().optional(),
     }))
     .handler(async ({ context, input }) => {
       await requireTier(context, 'pro');
@@ -4629,13 +4630,31 @@ export const analyticsProcedures = {
 
       const detailRows = [
         '',
-        'Editor,PR Number,Repository,Occurred At,Action Type',
+        'Editor,PR Number,Repository,Occurred At,Action Type,PR Link',
         ...details.map((r) =>
-          [r.actor, r.pr_number, r.repo_name ?? '', r.occurred_at, r.action_type].map(escape).join(',')
+          [
+            r.actor,
+            r.pr_number,
+            r.repo_name ?? '',
+            r.occurred_at,
+            r.action_type,
+            r.repo_name ? `https://github.com/${r.repo_name}/pull/${r.pr_number}` : '',
+          ].map(escape).join(',')
         ),
       ];
 
-      const csv = [...summaryRows, ...detailRows].join('\n');
+      const csv = input.detailsOnly
+        ? ['Editor,PR Number,Repository,Occurred At,Action Type,PR Link', ...details.map((r) =>
+            [
+              r.actor,
+              r.pr_number,
+              r.repo_name ?? '',
+              r.occurred_at,
+              r.action_type,
+              r.repo_name ? `https://github.com/${r.repo_name}/pull/${r.pr_number}` : '',
+            ].map(escape).join(',')
+          )].join('\n')
+        : [...summaryRows, ...detailRows].join('\n');
       const monthLabel = input.from
         ? `${input.from.slice(0, 7)}`
         : new Date().toISOString().slice(0, 7);

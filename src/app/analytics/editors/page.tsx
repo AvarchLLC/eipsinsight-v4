@@ -1005,17 +1005,15 @@ export default function EditorsAnalyticsPage() {
         </div>
       )}
 
-      <section
-        id="editor-leaderboard-hero"
-        className="rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm sm:p-5"
-      >
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
+      <section id="editor-leaderboard-hero" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
             <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Editors - {leaderboardLabel}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Ranked by actions with PR coverage context.</p>
+            <CopyLinkButton sectionId="editor-leaderboard-hero" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
           </div>
-          <CopyLinkButton sectionId="editor-leaderboard-hero" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          <p className="mt-0.5 text-xs text-muted-foreground">Ranked by actions with PR coverage context.</p>
         </div>
+        <div className="rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm sm:p-5">
         <div className="mb-3 flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
             <button
@@ -1084,8 +1082,17 @@ export default function EditorsAnalyticsPage() {
           <span>EIPsInsight.com</span>
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
+        </div>
       </section>
 
+      <section id="editor-snapshot" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Editor Snapshot</h2>
+            <CopyLinkButton sectionId="editor-snapshot" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Coverage, participation, and response metrics in this scope.</p>
+        </div>
       <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm sm:p-5">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
           <div className="rounded-lg border border-border/60 bg-background/35 p-4">
@@ -1141,12 +1148,20 @@ export default function EditorsAnalyticsPage() {
           Inactive editors: {inactiveEditorList.length}
         </div>
       </div>
+      </section>
 
+      <section id="editor-trends" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Editorial Trends</h2>
+            <CopyLinkButton sectionId="editor-trends" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">{trendMetricMeta(trendPrimaryMetric).subtitle}</p>
+        </div>
       <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">{trendMetricMeta(trendPrimaryMetric).title}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{trendMetricMeta(trendPrimaryMetric).subtitle}</p>
+            <h3 className="text-lg font-semibold text-foreground">{trendMetricMeta(trendPrimaryMetric).title}</h3>
           </div>
           <div className="flex items-center gap-2">
             <div className="inline-flex rounded-md border border-border bg-muted/30 p-0.5">
@@ -1182,11 +1197,17 @@ export default function EditorsAnalyticsPage() {
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
       </div>
+      </section>
 
-      <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
-        <div className="mb-4">
-          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Top Active Editors</h2>
+      <section id="top-active-editors" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Top Active Editors</h2>
+            <CopyLinkButton sectionId="top-active-editors" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Most active official editors for the selected scope.</p>
         </div>
+      <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {topEditorCards.map((editor) => {
             const categories = (categoriesByActor[editor.actor] || []).slice(0, 2);
@@ -1255,12 +1276,20 @@ export default function EditorsAnalyticsPage() {
           )}
         </div>
       </div>
+      </section>
 
+      <section id="editor-category-coverage" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Category Coverage</h2>
+            <CopyLinkButton sectionId="editor-category-coverage" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Who covers what and where concentration risk appears.</p>
+        </div>
       <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-foreground">Category Coverage</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">Who covers what and where concentration risk appears.</p>
+            <h3 className="text-lg font-semibold text-foreground">Coverage Matrix</h3>
           </div>
           <button onClick={downloadCoverageReport} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/85 hover:bg-muted/60">
             <Download className="h-3.5 w-3.5" />
@@ -1303,16 +1332,24 @@ export default function EditorsAnalyticsPage() {
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
       </div>
+      </section>
 
       {/* Editor Directory */}
+      <section id="editor-activity-directory" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Editor Activity Directory</h2>
+            <CopyLinkButton sectionId="editor-activity-directory" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Who is doing the work in this scope.</p>
+        </div>
       <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-col gap-1">
-            <h2 className="text-xl font-semibold text-foreground">
-              Editor Activity Directory
+            <h3 className="text-xl font-semibold text-foreground">
+              Directory Table
               <span className="ml-2 text-sm font-normal text-muted-foreground">— {leaderboardLabel}</span>
-            </h2>
-            <p className="text-xs text-muted-foreground">Who is doing the work in this scope.</p>
+            </h3>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <select
@@ -1458,13 +1495,22 @@ export default function EditorsAnalyticsPage() {
           </table>
         </div>
       </div>
+      </section>
 
       {/* Daily + Repo */}
+      <section id="editor-operations" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Operational Breakdown</h2>
+            <CopyLinkButton sectionId="editor-operations" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Daily throughput and repository concentration.</p>
+        </div>
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2 rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
-          <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="space-y-2 lg:col-span-2">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Daily Editorial Activity</h2>
+              <h3 className="text-lg font-semibold text-foreground">Daily Editorial Activity</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">Which editors drove activity day by day.</p>
             </div>
             <button onClick={downloadDailyActivityReport} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/85 hover:bg-muted/60">
@@ -1472,6 +1518,7 @@ export default function EditorsAnalyticsPage() {
               Download Reports
             </button>
           </div>
+        <div className="rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
           <div className="relative h-64 w-full">
             <ReactECharts option={dailyActivityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -1485,11 +1532,12 @@ export default function EditorsAnalyticsPage() {
             <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
           </div>
         </div>
+        </div>
 
-        <div className="rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
-          <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-lg font-semibold text-foreground">Repo Distribution</h2>
+              <h3 className="text-lg font-semibold text-foreground">Repo Distribution</h3>
               <p className="mt-0.5 text-xs text-muted-foreground">Where editor work is concentrated.</p>
             </div>
             <button onClick={downloadRepoDistributionReport} className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-foreground/85 hover:bg-muted/60">
@@ -1497,6 +1545,7 @@ export default function EditorsAnalyticsPage() {
               Download Reports
             </button>
           </div>
+        <div className="rounded-lg border border-border/70 bg-card/60 p-4 backdrop-blur-sm">
           <div className="relative h-64 w-full">
             <ReactECharts option={repoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
@@ -1507,13 +1556,19 @@ export default function EditorsAnalyticsPage() {
             <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
           </div>
         </div>
-      </div>
-
-      <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm">
-        <div className="border-b border-border/70 px-5 py-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-foreground">Recent Activities</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Live feed</p>
         </div>
+      </div>
+      </section>
+
+      <section id="editor-recent-activity" className="space-y-3 border-b border-border/70 pb-6">
+        <div>
+          <div className="inline-flex items-center gap-2">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Recent Activities</h2>
+            <CopyLinkButton sectionId="editor-recent-activity" className="h-8 w-8 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
+          </div>
+          <p className="mt-0.5 text-xs text-muted-foreground">Live feed with repository/editor/action filters.</p>
+        </div>
+      <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm">
         <div className="border-b border-border/70 px-5 py-3">
           <div className="grid grid-cols-1 gap-2 md:grid-cols-3">
             <select
@@ -1640,6 +1695,7 @@ export default function EditorsAnalyticsPage() {
           </div>
         )}
       </div>
+      </section>
 
       <div className="rounded-xl border border-border/60 bg-muted/30 p-3.5 backdrop-blur-sm">
         <div className="flex flex-wrap items-center gap-2">

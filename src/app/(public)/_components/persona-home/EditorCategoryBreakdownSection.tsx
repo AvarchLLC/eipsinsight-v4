@@ -55,7 +55,10 @@ export default function EditorCategoryBreakdownSection({
     <section className="mb-6 border-t border-border/70 pt-6" id="editor-category-breakdown">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
-          <h2 className={sectionTitleClass}>Category Breakdown</h2>
+          <div className="inline-flex items-center gap-2">
+            <h2 className={sectionTitleClass}>Category Breakdown</h2>
+            <CopyLinkButton sectionId="editor-category-breakdown" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+          </div>
           <p className={sectionSubtitleClass}>Participants × process stacked distribution for open PRs.</p>
           <p className="mt-1 text-[11px] text-muted-foreground">Month context: {monthLabelText}</p>
         </div>
@@ -71,7 +74,13 @@ export default function EditorCategoryBreakdownSection({
               </option>
             ))}
           </select>
-          <CopyLinkButton sectionId="editor-category-breakdown" className="h-8 w-8 rounded-md" />
+          <Link
+            href="/analytics/prs"
+            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+          >
+            Explore PR Analytics
+            <ArrowRight className="h-3 w-3" />
+          </Link>
         </div>
       </div>
       <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
@@ -151,15 +160,6 @@ export default function EditorCategoryBreakdownSection({
             </button>
           </div>
         </div>
-      </div>
-      <div className="mt-3 flex justify-center">
-        <Link
-          href="/analytics/prs"
-          className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-        >
-          Explore PR Analytics
-          <ArrowRight className="h-3 w-3" />
-        </Link>
       </div>
     </section>
   );

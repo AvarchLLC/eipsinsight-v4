@@ -140,6 +140,8 @@ export default function BoardPage() {
   const [showInfo, setShowInfo] = useState(false);
   const [data, setData] = useState<BoardData | null>(null);
   const [stats, setStats] = useState<StatsData | null>(null);
+  const [csvExporting, setCsvExporting] = useState(false);
+  const [mdExporting, setMdExporting] = useState(false);
 
   const typedRepo = repo || undefined;
 
@@ -219,11 +221,47 @@ export default function BoardPage() {
 
   const csvEscape = (value: string | number | null | undefined) => `"${String(value ?? "").replaceAll(`"`, `""`)}` + `"`;
 
-  const downloadCSV = () => {
-    if (!rows.length) return;
+  const getAllFilteredRows = async (): Promise<PRRow[]> => {
+    const exportPageSize = 500;
+    const firstPage = await client.tools.getOpenPRBoard({
+      repo: typedRepo,
+      govState: selectedGovStates.length ? selectedGovStates : undefined,
+      processType: selectedProcessTypes.length ? selectedProcessTypes : undefined,
+      search: search || undefined,
+      page: 1,
+      pageSize: exportPageSize,
+    });
+
+    let exportRows = firstPage.rows ?? [];
+    if ((firstPage.totalPages ?? 1) > 1) {
+      const remainingPages = await Promise.all(
+        Array.from({ length: firstPage.totalPages - 1 }, (_, idx) =>
+          client.tools.getOpenPRBoard({
+            repo: typedRepo,
+            govState: selectedGovStates.length ? selectedGovStates : undefined,
+            processType: selectedProcessTypes.length ? selectedProcessTypes : undefined,
+            search: search || undefined,
+            page: idx + 2,
+            pageSize: exportPageSize,
+          }),
+        ),
+      );
+      exportRows = exportRows.concat(remainingPages.flatMap((pageData) => pageData.rows ?? []));
+    }
+
+    return exportRows;
+  };
+
+  const downloadCSV = async () => {
+    if (csvExporting) return;
+    setCsvExporting(true);
+    try {
+      const exportRows = await getAllFilteredRows();
+      if (!exportRows.length) return;
+
     const headers = ["Month", "Repo", "Process", "Participants", "PRNumber", "PRLink", "Title", "Author", "CreatedAt", "Labels"];
     const lines = [headers.join(",")];
-    rows.forEach((row) => {
+    exportRows.forEach((row) => {
       const repoName = row.repo.split("/")[1] ?? row.repo;
       const prLink = `https://github.com/${row.repo}/pull/${row.prNumber}`;
       const values = [
@@ -250,38 +288,51 @@ export default function BoardPage() {
     a.remove();
     URL.revokeObjectURL(url);
     toast.success("CSV downloaded", {
-      description: `${rows.length} PR rows exported.`,
+      description: `${exportRows.length} PR rows exported.`,
     });
+    } catch (err) {
+      console.error("CSV export failed:", err);
+      toast.error("Failed to export CSV");
+    } finally {
+      setCsvExporting(false);
+    }
   };
 
   const copyAsMarkdown = async () => {
-    if (!rows.length) return;
-    const grouped = new Map<string, PRRow[]>();
-    rows.forEach((row) => {
-      const process = row.processType || "Other";
-      if (!grouped.has(process)) grouped.set(process, []);
-      grouped.get(process)!.push(row);
-    });
-    const order = PROCESS_ORDER.concat([...grouped.keys()].filter((p) => !PROCESS_ORDER.includes(p)));
-    let markdown = `## Open PR Board — ${monthLabel}\n\n`;
-    for (const process of order) {
-      const sectionRows = grouped.get(process);
-      if (!sectionRows?.length) continue;
-      markdown += `### ${process}\n`;
-      sectionRows.forEach((row) => {
-        const title = (row.title ?? "Untitled").replace(/\]/g, "\\]");
-        const url = `https://github.com/${row.repo}/pull/${row.prNumber}`;
-        markdown += `- [${title} #${row.prNumber}](${url}) — ${row.govState}\n`;
-      });
-      markdown += "\n";
-    }
+    if (mdExporting) return;
+    setMdExporting(true);
     try {
+      const exportRows = await getAllFilteredRows();
+      if (!exportRows.length) return;
+      const grouped = new Map<string, PRRow[]>();
+      exportRows.forEach((row) => {
+        const process = row.processType || "Other";
+        if (!grouped.has(process)) grouped.set(process, []);
+        grouped.get(process)!.push(row);
+      });
+
+      const order = PROCESS_ORDER.concat([...grouped.keys()].filter((p) => !PROCESS_ORDER.includes(p)));
+      let markdown = `## Open PR Board — ${monthLabel}\n\n`;
+      for (const process of order) {
+        const sectionRows = grouped.get(process);
+        if (!sectionRows?.length) continue;
+        markdown += `### ${process}\n`;
+        sectionRows.forEach((row) => {
+          const title = (row.title ?? "Untitled").replace(/\]/g, "\\]");
+          const url = `https://github.com/${row.repo}/pull/${row.prNumber}`;
+          markdown += `- [${title} #${row.prNumber}](${url}) — ${row.govState}\n`;
+        });
+        markdown += "\n";
+      }
+
       await navigator.clipboard.writeText(markdown.trim());
       toast.success("Copied as markdown", {
-        description: `${rows.length} PRs copied to clipboard.`,
+        description: `${exportRows.length} PRs copied to clipboard.`,
       });
     } catch {
       toast.error("Failed to copy markdown");
+    } finally {
+      setMdExporting(false);
     }
   };
 
@@ -475,8 +526,8 @@ export default function BoardPage() {
               Showing <span className="text-foreground">{startIdx}–{endIdx}</span> of <span className="text-foreground">{totalMatching.toLocaleString()}</span> PRs
             </p>
             <div className="flex flex-wrap items-center gap-2">
-              <button onClick={downloadCSV} disabled={!rows.length || loading} className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50">Download CSV</button>
-              <button onClick={copyAsMarkdown} disabled={!rows.length || loading} className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">Copy as MD</button>
+              <button onClick={downloadCSV} disabled={!rows.length || loading || csvExporting} className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs text-primary transition-colors hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-50">{csvExporting ? "Exporting..." : "Download CSV"}</button>
+              <button onClick={copyAsMarkdown} disabled={!rows.length || loading || mdExporting} className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-50">{mdExporting ? "Copying..." : "Copy as MD"}</button>
               <button onClick={copyFilterLink} className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:bg-muted">Copy link</button>
             </div>
           </div>

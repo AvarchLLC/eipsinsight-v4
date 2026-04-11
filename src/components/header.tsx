@@ -5,7 +5,15 @@ import { Copy, Check, Activity, Sparkles, TrendingUp, BarChart3 } from 'lucide-r
 import { useState } from 'react';
 import { motion } from 'motion/react';
 
-export function CopyLinkButton({ sectionId, className }: { sectionId: string; className?: string }) {
+export function CopyLinkButton({
+  sectionId,
+  className,
+  tooltipLabel = 'Copy section link',
+}: {
+  sectionId: string;
+  className?: string;
+  tooltipLabel?: string;
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -27,8 +35,8 @@ export function CopyLinkButton({ sectionId, className }: { sectionId: string; cl
         'transition-colors hover:border-primary/40 hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40',
         className
       )}
-      title="Copy section link"
-      aria-label="Copy section link"
+      title={tooltipLabel}
+      aria-label={tooltipLabel}
       type="button"
     >
       {copied ? (
