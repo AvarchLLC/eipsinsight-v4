@@ -5157,6 +5157,7 @@ export const analyticsProcedures = {
             em.canonical AS actor,
             pe.pr_number,
             pe.repository_id,
+            pe.event_type,
             LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short,
             CASE
               WHEN pe.created_at > COALESCE(pr.updated_at, pr.closed_at, pr.merged_at, pr.created_at, pe.created_at) + INTERVAL '30 days'
@@ -5170,21 +5171,32 @@ export const analyticsProcedures = {
           WHERE pe.pr_number > 0
             AND pe.created_at <= NOW()
             AND pe.event_type NOT IN ('subscribed', 'mentioned', 'referenced')
+        ),
+        deduped_events AS (
+          SELECT
+            actor,
+            pr_number,
+            repository_id,
+            event_type,
+            repo_short,
+            date_trunc('second', occurred_at) AS occurred_at
+          FROM raw_events
+          GROUP BY actor, pr_number, repository_id, event_type, repo_short, date_trunc('second', occurred_at)
         )
         SELECT
-          re.actor AS actor,
+          de.actor AS actor,
           COUNT(*)::bigint AS total_actions,
-          COUNT(DISTINCT re.pr_number)::bigint AS prs_touched,
-          COUNT(*) FILTER (WHERE re.repo_short = 'eips')::bigint AS eips_actions,
-          COUNT(*) FILTER (WHERE re.repo_short = 'ercs')::bigint AS ercs_actions,
-          COUNT(*) FILTER (WHERE re.repo_short = 'rips')::bigint AS rips_actions,
-          MAX(re.occurred_at) AS latest_occurred_at
-        FROM raw_events re
-        WHERE re.occurred_at >= $2::date
-          AND re.occurred_at < $3::date
-          AND ($5::int[] IS NULL OR re.repository_id = ANY($5))
-        GROUP BY re.actor
-        ORDER BY total_actions DESC, prs_touched DESC, re.actor ASC
+          COUNT(DISTINCT CONCAT(de.repository_id::text, ':', de.pr_number::text))::bigint AS prs_touched,
+          COUNT(*) FILTER (WHERE de.repo_short = 'eips')::bigint AS eips_actions,
+          COUNT(*) FILTER (WHERE de.repo_short = 'ercs')::bigint AS ercs_actions,
+          COUNT(*) FILTER (WHERE de.repo_short = 'rips')::bigint AS rips_actions,
+          MAX(de.occurred_at) AS latest_occurred_at
+        FROM deduped_events de
+        WHERE de.occurred_at >= $2::date
+          AND de.occurred_at < $3::date
+          AND ($5::int[] IS NULL OR de.repository_id = ANY($5))
+        GROUP BY de.actor
+        ORDER BY total_actions DESC, prs_touched DESC, de.actor ASC
         LIMIT $4
         `,
         allEditors, monthStart, nextMonth, input.limit, repoIds, CANONICAL_EIP_EDITOR_LOWER

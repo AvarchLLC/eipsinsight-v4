@@ -170,7 +170,6 @@ export default function EditorsAnalyticsPage() {
   const [expandedActivityKeys, setExpandedActivityKeys] = useState<Record<string, boolean>>({});
   const [leaderboardHeroView, setLeaderboardHeroView] = useState<"chart" | "list">("chart");
   const [trendPrimaryMetric, setTrendPrimaryMetric] = useState<"actions" | "reviews">("actions");
-  const [trendSecondaryMetric, setTrendSecondaryMetric] = useState<"actions" | "reviews">("reviews");
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange);
@@ -1180,41 +1179,6 @@ export default function EditorsAnalyticsPage() {
         </div>
         <div className="mt-3 flex items-center justify-between">
           <p className="text-xs text-muted-foreground">{trendMetricMeta(trendPrimaryMetric).footer}</p>
-          <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
-        </div>
-      </div>
-
-      <div className="rounded-xl border border-border/70 bg-card/60 p-5 backdrop-blur-sm">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">{trendMetricMeta(trendSecondaryMetric).title}</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">{trendMetricMeta(trendSecondaryMetric).subtitle}</p>
-          </div>
-          <div className="inline-flex rounded-md border border-border bg-muted/30 p-0.5">
-            <button
-              type="button"
-              onClick={() => setTrendSecondaryMetric("actions")}
-              className={`rounded px-2 py-1 text-xs ${trendSecondaryMetric === "actions" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
-            >
-              All Actions
-            </button>
-            <button
-              type="button"
-              onClick={() => setTrendSecondaryMetric("reviews")}
-              className={`rounded px-2 py-1 text-xs ${trendSecondaryMetric === "reviews" ? "bg-card text-foreground" : "text-muted-foreground hover:bg-muted"}`}
-            >
-              Reviewed PRs
-            </button>
-          </div>
-        </div>
-        <div className="relative h-72 w-full">
-          <ReactECharts option={trendMetricMeta(trendSecondaryMetric).option} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <span className="text-2xl font-semibold text-foreground/10">EIPsInsight.com</span>
-          </div>
-        </div>
-        <div className="mt-3 flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">{trendMetricMeta(trendSecondaryMetric).footer}</p>
           <LastUpdated timestamp={dataUpdatedAt} className="text-xs" />
         </div>
       </div>
