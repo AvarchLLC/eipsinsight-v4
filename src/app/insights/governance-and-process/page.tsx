@@ -320,7 +320,7 @@ export default function GovernanceProcessPage() {
             <select
               value={repoFilter}
               onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-              className="h-9 rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground"
+              className="h-8 rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground"
             >
               <option value="all">All Repos</option>
               <option value="eips">EIPs</option>

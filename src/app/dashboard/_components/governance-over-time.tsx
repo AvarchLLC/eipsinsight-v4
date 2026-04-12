@@ -477,7 +477,7 @@ export default function GovernanceOverTime() {
         <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           Governance Over Time
         </h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground">
           How proposals have evolved across categories and lifecycle stages
         </p>
       </header>
@@ -494,7 +494,7 @@ export default function GovernanceOverTime() {
           )}
 
           {/* Two-Column Layout: Chart + Controls/Legend */}
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-6 w-full max-w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 w-full max-w-full">
             {/* Left: Chart */}
             <div>
               {/* Chart Container - Primary Signal */}
@@ -502,7 +502,7 @@ export default function GovernanceOverTime() {
                 initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="rounded-2xl border border-border bg-card/70 p-6 backdrop-blur-xl"
+                className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm"
               >
                 {loading ? (
                   <div className="flex items-center justify-center h-96">
@@ -539,7 +539,7 @@ export default function GovernanceOverTime() {
                     <button
                       key={year}
                       onClick={() => setSelectedYear(year === selectedYear ? null : year)}
-                      className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-all ${
+                      className={`px-3 py-2 text-xs font-medium rounded-md transition-all ${
                         selectedYear === year
                           ? 'border border-primary/40 bg-primary/10 text-primary'
                           : 'border border-border text-muted-foreground hover:border-primary/40 hover:bg-primary/10 hover:text-foreground'
@@ -569,23 +569,23 @@ export default function GovernanceOverTime() {
               {/* Compact Controls */}
               <div className="space-y-3 rounded-xl border border-border bg-card/60 p-3 backdrop-blur-md">
               {/* Category/Status Toggle */}
-                <div className="flex rounded-lg bg-muted/60 p-0.5">
+                <div className="flex gap-1.5 rounded-lg bg-muted/60 p-1">
                 <button
                   onClick={() => setViewMode('category')}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                     viewMode === 'category'
-                        ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary/10 border border-primary/40 text-primary'
+                      : 'border border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   Category
                 </button>
                 <button
                   onClick={() => setViewMode('status')}
-                    className={`flex-1 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                    className={`flex-1 px-3 py-1.5 rounded-md text-[11px] font-medium transition-colors ${
                     viewMode === 'status'
-                        ? 'bg-primary/10 text-primary'
-                      : 'text-muted-foreground hover:text-foreground'
+                        ? 'bg-primary/10 border border-primary/40 text-primary'
+                      : 'border border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   Status

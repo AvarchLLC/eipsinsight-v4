@@ -172,11 +172,11 @@ export function RepositorySubscriptionCard({ repo }: RepositorySubscriptionCardP
               onClick={() => void handleFilterChange(option.id)}
               disabled={isUpdating}
               className={cn(
-                "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm transition-colors",
+                "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors",
                 "disabled:cursor-not-allowed disabled:opacity-70",
                 selected
-                  ? "border-primary/35 bg-primary/10 shadow-sm"
-                  : "border-border/70 bg-background/55 hover:border-primary/25 hover:bg-primary/5"
+                  ? "border-primary/40 bg-primary/10 text-primary"
+                  : "border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground"
               )}
             >
               <span className="font-medium text-foreground">{option.label}</span>

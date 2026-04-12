@@ -131,7 +131,7 @@ export default function EditorReviewQueueSection({
 
   return (
     <section className="mb-6 border-t border-border/70 pt-6" id="editor-review-queue">
-      <div className="mb-3 flex items-start justify-between gap-2">
+      <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
             <h2 className={sectionTitleClass}>Editor Review Queue</h2>
@@ -152,7 +152,7 @@ export default function EditorReviewQueueSection({
           </button>
           <Link
             href="/tools/board?status=Waiting+on+Editor&page=1"
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
           >
             Explore Board
             <ArrowRight className="h-3 w-3" />
@@ -160,7 +160,7 @@ export default function EditorReviewQueueSection({
         </div>
       </div>
 
-      <div className="mb-2 inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 p-0.5 text-xs">
+      <div className="mb-3 inline-flex items-center gap-1 rounded-md border border-border/70 bg-muted/60 p-1 text-xs shadow-sm">
         {(
           [
             { key: '', label: 'All' },
@@ -173,8 +173,8 @@ export default function EditorReviewQueueSection({
             key={`editor-queue-repo-${item.label}`}
             onClick={() => setEditorRepoFilter(item.key)}
             className={cn(
-              'rounded px-2.5 py-1',
-              editorRepoFilter === item.key ? 'bg-card text-foreground' : 'text-muted-foreground',
+              'rounded px-2.5 py-1.5 transition',
+              editorRepoFilter === item.key ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
             )}
           >
             {item.label}
@@ -182,9 +182,9 @@ export default function EditorReviewQueueSection({
         ))}
       </div>
 
-      <div className="mb-3 rounded-lg border border-border/70 bg-card/40 p-2.5">
-        <p className="mb-2 text-xs font-medium text-muted-foreground">Process (multi-select)</p>
-        <div className="flex flex-wrap gap-1.5">
+      <div className="mb-4 rounded-lg border border-border/70 bg-card/60 p-3 shadow-sm">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Process (multi-select)</p>
+        <div className="flex flex-wrap gap-2">
           {orderedBoardProcessTypes.map((processType) => {
             const count = boardProcessStats.find((item) => item.type === processType)?.count ?? 0;
             const active = selectedBoardProcesses.includes(processType);

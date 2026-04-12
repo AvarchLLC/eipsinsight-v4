@@ -1938,15 +1938,15 @@ export default function EIPsHomePage() {
           : NewcomerHomeDashboard;
 
   return (
-    <div className="w-full overflow-x-clip px-2.5 py-5 sm:px-4 sm:py-6 lg:px-5 xl:px-6">
+    <div className="w-full overflow-x-clip px-2.5 py-6 sm:px-4 sm:py-7 lg:px-5 xl:px-6">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
         <EIPsPageHeader />
       </motion.div>
 
-      <hr className="mb-6 border-border" />
+      <hr className="mb-6 border-border/70" />
 
       {showNewUserGuide && activePersona === 'newcomer' && (
-        <section className="mb-5 rounded-xl border border-primary/25 bg-primary/5 p-2.5 sm:p-4">
+        <section className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-3 sm:p-4 shadow-sm">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Start Here</p>
@@ -1981,14 +1981,14 @@ export default function EIPsHomePage() {
       )}
 
       {visibleSections.quickAccess && (
-        <section className="mb-5" id="persona-home-workspace">
-          <div className="rounded-xl border border-border/80 bg-gradient-to-b from-card/90 to-card/60 p-3 shadow-sm sm:p-3.5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+        <section className="mb-6" id="persona-home-workspace">
+          <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-primary">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
                   {PERSONA_LABELS[activePersona]} Quick Access
                 </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{personaPlan.goal}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{personaPlan.goal}</p>
               </div>
               <div className="inline-flex items-center gap-1.5">
                 <button
@@ -2009,21 +2009,21 @@ export default function EIPsHomePage() {
               </div>
             </div>
             {showPersonaWorkspace && (
-                <div className="mt-2.5 grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                   {personaPlan.tools.map((tool) => {
                     const Icon = tool.icon;
                     return (
                       <Link
                         key={tool.key}
                         href={tool.href}
-                        className="group rounded-lg border border-border/90 bg-background/75 px-2.5 py-2.5 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                        className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
                       >
                         <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                           <Icon className="h-3.5 w-3.5" />
                         </div>
                         <p className="text-sm font-semibold text-foreground">{tool.title}</p>
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">{tool.blurb}</p>
-                        <div className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary">
+                        <p className="mt-1 text-xs text-muted-foreground">{tool.blurb}</p>
+                        <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
                           {tool.cta}
                           <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
                         </div>
@@ -2038,7 +2038,7 @@ export default function EIPsHomePage() {
       <PersonaDashboardComponent>
       {activePersona === 'editor' && (
         <section className="mb-6 border-t border-border/70 pt-6" id="editor-contributions-overview">
-          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</h2>
@@ -2091,7 +2091,7 @@ export default function EIPsHomePage() {
           </div>
 
           {editorContribWindow === 'custom' && (
-            <div className="mb-3 flex flex-wrap items-center gap-2">
+            <div className="mb-4 flex flex-wrap items-center gap-3">
               <input
                 type="date"
                 value={editorContribFrom}
@@ -2108,7 +2108,7 @@ export default function EIPsHomePage() {
             </div>
           )}
 
-          <div className="rounded-xl border border-border/70 bg-gradient-to-b from-background/70 to-card/50 p-3 shadow-sm">
+          <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
             {editorContribLoading ? (
               <div className="h-[300px] animate-pulse rounded-lg bg-muted/50" />
             ) : editorContributionRows.length === 0 ? (
@@ -2148,7 +2148,7 @@ export default function EIPsHomePage() {
           className="mb-6"
           id="newcomer-learning-resources"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Learning Resources</h2>
@@ -2157,7 +2157,7 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {[
               { title: 'Resource Hub', href: '/resources', desc: 'Beginner-friendly entry point for standards learning.', icon: BookOpen },
               { title: 'Documentation', href: '/resources/docs', desc: 'Core docs and practical explainers for proposals.', icon: FileText },
@@ -2168,7 +2168,7 @@ export default function EIPsHomePage() {
                 <Link
                   key={`newcomer-learn-${item.title}`}
                   href={item.href}
-                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
                 >
                   <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Icon className="h-3.5 w-3.5" />
@@ -2179,10 +2179,10 @@ export default function EIPsHomePage() {
               );
             })}
           </div>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/resources"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Resources
               <ArrowRight className="h-3 w-3" />
@@ -2196,18 +2196,11 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
         >
-          <div className="mb-2 flex items-start justify-end">
-            <CopyLinkButton
-              sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
-              tooltipLabel="Copy link"
-              className="h-8 w-8 rounded-md"
-            />
-          </div>
           <TrendingProposals />
-          <div className="mt-2 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/explore/trending"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Trending
               <ArrowRight className="h-3 w-3" />
@@ -2215,13 +2208,17 @@ export default function EIPsHomePage() {
           </div>
         </section>
       )}
+      
+      {((activePersona === 'developer' || activePersona === 'builder') && visibleSections.trending) || (activePersona === 'newcomer' && visibleSections.trending) ? (
+        <hr className="mb-6 border-border/70" />
+      ) : null}
       {activePersona === 'newcomer' && visibleSections.trending && (
         <section
           style={{ order: sectionOrder.trending }}
           className="mb-6 border-t border-border/70 pt-6"
           id="newcomer-trending-proposals"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Trending Proposals</h2>
@@ -2230,7 +2227,7 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {newcomerTrendingLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={`newcomer-trending-skeleton-${i}`} className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
@@ -2246,7 +2243,7 @@ export default function EIPsHomePage() {
                   href={item.url}
                   target={item.destination === 'magicians' ? '_blank' : undefined}
                   rel={item.destination === 'magicians' ? 'noopener noreferrer' : undefined}
-                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
                 >
                   <div className="mb-1 inline-flex rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
                     {item.proposalType}-{item.proposalNumber}
@@ -2260,10 +2257,10 @@ export default function EIPsHomePage() {
               ))
             )}
           </div>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/explore/trending"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Trending
               <ArrowRight className="h-3 w-3" />
@@ -2277,7 +2274,7 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="newcomer-upgrade-watch"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Upgrade Watch</h2>
@@ -2286,7 +2283,7 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
             {[
               { key: 'included', label: 'Included', tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
               { key: 'scheduled', label: 'Scheduled', tone: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
@@ -2294,7 +2291,7 @@ export default function EIPsHomePage() {
               { key: 'proposed', label: 'Proposed', tone: 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300' },
               { key: 'declined', label: 'Declined', tone: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300' },
             ].map((metric) => (
-              <div key={`newcomer-upgrade-${metric.key}`} className={cn('rounded-lg border px-3 py-3', metric.tone)}>
+              <div key={`newcomer-upgrade-${metric.key}`} className={cn('rounded-lg border px-3 py-3 shadow-sm', metric.tone)}>
                 <p className="text-[11px] font-medium uppercase tracking-wide">{metric.label}</p>
                 <p className="mt-1 text-2xl font-semibold text-foreground">
                   {(latestUpgradeSnapshot?.[metric.key as keyof UpgradeTimelineRow] as string[] | undefined)?.length ?? 0}
@@ -2305,10 +2302,10 @@ export default function EIPsHomePage() {
           <p className="mt-2 text-xs text-muted-foreground">
             Showing latest snapshot for <span className="font-medium text-foreground">Glamsterdam</span>.
           </p>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/upgrade"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Upgrades
               <ArrowRight className="h-3 w-3" />
@@ -2322,14 +2319,14 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="developer-governance-over-time"
         >
-          <div className="mb-2 flex items-start justify-end">
+          <div className="mb-4 flex items-start justify-end">
             <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
           <GovernanceOverTime />
-          <div className="mt-2 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/dashboard"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Governance
               <ArrowRight className="h-3 w-3" />
@@ -2343,7 +2340,7 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="builder-eip-builder-focus"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>EIP Builder</h2>
@@ -2352,19 +2349,19 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
             </div>
           </div>
-          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4">
-            <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
+          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 shadow-sm">
+            <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
               <Code className="h-4 w-4" />
             </div>
             <h3 className="text-base font-semibold text-foreground">Build proposals faster with guided drafting</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-2 text-sm text-muted-foreground">
               Start new standards, validate formatting early, and keep contribution quality high before opening PRs.
             </p>
           </div>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/tools/eip-builder"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore EIP Builder
               <ArrowRight className="h-3 w-3" />
@@ -2378,7 +2375,7 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="developer-board-snapshot"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Board</h2>
@@ -2400,7 +2397,7 @@ export default function EIPsHomePage() {
               </select>
             </div>
           </div>
-          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+          <div className="overflow-hidden rounded-xl border border-border/70 bg-card/60 shadow-sm">
             <div className="hidden md:block">
               <table className="min-w-full text-xs">
                 <thead>
@@ -2525,10 +2522,10 @@ export default function EIPsHomePage() {
               </div>
             </div>
           </div>
-          <div className="mt-3 flex justify-center">
+          <div className="mt-4 flex justify-center">
             <Link
               href="/tools/board"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Board
               <ArrowRight className="h-3 w-3" />
@@ -2542,7 +2539,7 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="builder-tool-shortcuts"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Tool Shortcuts</h2>
@@ -2551,7 +2548,7 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { title: 'Editing Board', href: '/tools/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
               { title: 'Timeline', href: '/tools/timeline', blurb: 'Proposal lifecycle flow.', icon: GitBranch },
@@ -2563,7 +2560,7 @@ export default function EIPsHomePage() {
                 <Link
                   key={`builder-tool-${tool.title}`}
                   href={tool.href}
-                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
                 >
                   <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Icon className="h-3.5 w-3.5" />
@@ -2591,7 +2588,7 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id="newcomer-tools-shortcuts"
         >
-          <div className="mb-3 flex items-start justify-between gap-3">
+          <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <h2 className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</h2>
@@ -2600,7 +2597,7 @@ export default function EIPsHomePage() {
               <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
             </div>
           </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { title: 'Tools Home', href: '/tools', blurb: 'See all available standards tools.', icon: Wrench },
               { title: 'Editing Board', href: '/tools/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
@@ -2612,7 +2609,7 @@ export default function EIPsHomePage() {
                 <Link
                   key={`newcomer-tool-${tool.title}`}
                   href={tool.href}
-                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/35 hover:bg-primary/[0.04]"
+                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
                 >
                   <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
                     <Icon className="h-3.5 w-3.5" />
@@ -2678,8 +2675,8 @@ export default function EIPsHomePage() {
         className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
         id={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
       >
-      <div className="mb-3 space-y-2">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 items-start">
             <div>
               <div className="inline-flex items-center gap-2">
@@ -2736,12 +2733,12 @@ export default function EIPsHomePage() {
         </div>
       </div>
 
-      <div className="mb-3 grid grid-cols-1 gap-2 min-[520px]:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-4">
         {(dimension === 'stages' ? stagesDistributionLoading : showDistributionSkeleton) ? (
           Array.from({ length: 6 }).map((_, i) => (
             <div
               key={`dist-skeleton-${i}`}
-              className="rounded-xl border border-border bg-card/60 p-3"
+              className="rounded-xl border border-border/70 bg-card/60 p-3 shadow-sm"
             >
               <div className="mb-2 h-7 w-7 animate-pulse rounded-lg bg-muted" />
               <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
@@ -2755,7 +2752,7 @@ export default function EIPsHomePage() {
           type="button"
           onClick={() => setActiveBucket(null)}
           className={cn(
-            'group relative overflow-hidden rounded-xl border px-3 py-2 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none',
+            'group relative overflow-hidden rounded-xl border px-3 py-3 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none shadow-sm',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
             activeBucket === null
               ? cn(
@@ -2764,7 +2761,7 @@ export default function EIPsHomePage() {
                   'ring-1 ring-primary/40',
                   'before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-[radial-gradient(420px_circle_at_30%_10%,rgba(var(--persona-accent-rgb),0.20),transparent_60%)]',
                 )
-              : 'border-border bg-card/60 hover:border-primary/40',
+              : 'border-border/70 bg-card/60 hover:border-primary/40 hover:bg-primary/[0.05]',
           )}
         >
           <div className="relative z-10">
@@ -2777,7 +2774,7 @@ export default function EIPsHomePage() {
             <Layers className="h-3 w-3" />
           </div>
           <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
-          <p className="mt-0.5 text-lg font-semibold leading-none text-foreground sm:text-xl">{dimension === 'stages' ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString() : totalCount.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-semibold leading-none text-foreground sm:text-3xl">{dimension === 'stages' ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString() : totalCount.toLocaleString()}</p>
           </div>
         </button>
 

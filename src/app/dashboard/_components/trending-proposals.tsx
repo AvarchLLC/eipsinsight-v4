@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { ArrowRight, ExternalLink, MessageSquare, Clock, Eye, Heart, Tag } from 'lucide-react';
 import { client } from '@/lib/orpc';
+import { CopyLinkButton } from '@/components/header';
 import { InfiniteSlider } from '@/components/ui/infinite-slider';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -77,13 +78,16 @@ export default function TrendingProposals() {
 
   return (
     <section id="trending-proposals" className="relative w-full pt-2 pb-4">
-      <header className="mb-4">
-        <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-          Trending Proposals
-        </h2>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          Most impactful proposals shaping Ethereum today
-        </p>
+      <header className="mb-4 flex items-start justify-between gap-3">
+        <div>
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Trending Proposals
+          </h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Most impactful proposals shaping Ethereum today
+          </p>
+        </div>
+        <CopyLinkButton sectionId="trending-proposals" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
       </header>
       <div className="relative w-full">
         {loading ? (
@@ -142,18 +146,18 @@ export default function TrendingProposals() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-border bg-card/70 p-3.5 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
+                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-border/70 bg-card/60 p-3 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/[0.05]"
                   >
                     {/* Header: Badge + Status */}
-                    <div className="mb-1.5 flex items-center gap-1.5">
+                    <div className="mb-2 flex items-center gap-2">
                       <span
-                        className={`inline-flex items-center rounded border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${typeColors[proposal.proposalType]}`}
+                        className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold uppercase tracking-wider ${typeColors[proposal.proposalType]}`}
                       >
                         {proposal.proposalType}-{proposal.proposalNumber}
                       </span>
                       {proposal.status && (
                         <span
-                          className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[9px] font-semibold ${
+                          className={`inline-flex items-center rounded border px-2 py-1 text-[10px] font-medium ${
                             statusColors[proposal.status] || statusColors['Draft']
                           }`}
                         >
@@ -163,14 +167,14 @@ export default function TrendingProposals() {
                     </div>
 
                     {/* Title */}
-                    <h3 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-foreground transition-colors group-hover:text-primary">
+                    <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                       {proposal.title}
                     </h3>
 
                     {/* Tags + Category */}
-                    <div className="mb-1.5 flex items-center gap-2 flex-wrap">
+                    <div className="mb-2 flex items-center gap-2 flex-wrap">
                       {proposal.tags && proposal.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-2">
                           {proposal.tags.slice(0, 2).map((tag, idx) => (
                             <span
                               key={idx}
@@ -210,11 +214,11 @@ export default function TrendingProposals() {
                     </div>
 
                     {/* Author + Time + CTA */}
-                    <div className="mt-auto flex items-center justify-between border-t border-border pt-2">
+                    <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-3">
                       <div className="flex items-center gap-2">
-                        <Avatar className="h-7 w-7 border border-border">
+                        <Avatar className="h-8 w-8 border border-border/70">
                           <AvatarImage src={proposal.authorAvatar} alt={authorName} />
-                          <AvatarFallback className="bg-primary/10 text-[10px] font-bold text-primary">
+                          <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
                             {authorInitials}
                           </AvatarFallback>
                         </Avatar>

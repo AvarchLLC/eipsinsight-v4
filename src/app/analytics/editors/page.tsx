@@ -862,7 +862,7 @@ export default function EditorsAnalyticsPage() {
           ].join("<br/>");
         },
       },
-      grid: { top: 8, left: 120, right: 18, bottom: 8, containLabel: false },
+      grid: { top: 8, left: 120, right: 100, bottom: 8, containLabel: true },
       xAxis: {
         type: "value",
         max: Math.ceil(maxValue * 1.15),
