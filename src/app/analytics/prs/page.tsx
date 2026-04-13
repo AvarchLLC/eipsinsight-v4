@@ -22,6 +22,7 @@ import {
 import { cn } from "@/lib/utils";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 interface PRMonthlyPoint {
   month: string;
@@ -697,7 +698,7 @@ export default function PRsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineBrandLoader size="md" label="Loading analytics..." />
       </div>
     );
   }

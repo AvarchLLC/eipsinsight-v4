@@ -3,9 +3,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { AlertCircle, Download, FileText, Loader2, Repeat2, Sparkles, Users } from "lucide-react";
+import { AlertCircle, Download, FileText, Repeat2, Sparkles, Users } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import ReactECharts from "echarts-for-react";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 interface AuthorKPIs {
   totalAuthors: number;
@@ -336,7 +337,7 @@ export default function AuthorsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineBrandLoader size="md" label="Loading analytics..." />
       </div>
     );
   }

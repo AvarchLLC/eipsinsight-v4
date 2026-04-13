@@ -2,12 +2,13 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, ChevronDown, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, ChevronDown, Download } from "lucide-react";
 import ReactECharts from "echarts-for-react";
 import { client } from "@/lib/orpc";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 const STATE_ORDER = ["STALLED", "WAITING_ON_EDITOR", "WAITING_ON_AUTHOR", "MERGED", "CLOSED"] as const;
 const STATE_COLORS: Record<string, string> = {
@@ -373,8 +374,8 @@ export default function GovernanceProcessPage() {
         </div>
 
         {loading ? (
-          <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-border bg-card/60">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <div className="min-h-[320px] rounded-xl border border-border bg-card/60">
+            <InlineBrandLoader size="sm" label="Loading insights..." />
           </div>
         ) : (
           <>

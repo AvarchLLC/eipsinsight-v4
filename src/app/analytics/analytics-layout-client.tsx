@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useMemo, useCallback, Suspe
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Calendar, Database } from "lucide-react";
 import { toast } from "sonner";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 // ─── Export Helper Functions ─────────────────────────────────────
 
@@ -366,8 +367,8 @@ export default function AnalyticsLayout({
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center text-muted-foreground text-sm">
-          Loading analytics…
+        <div className="min-h-screen bg-background">
+          <InlineBrandLoader size="md" label="Loading analytics..." />
         </div>
       }
     >
