@@ -256,6 +256,30 @@ const PERSONA_SECTION_ORDER: Record<Persona, string[]> = {
 
 const DEFAULT_SECTION_ORDER = ["standards", "analytics", "tools", "learn"];
 
+// ============================================================================
+// Persona-based visibility
+// "main" and "account" sections are always shown (pinned first/last).
+// Developer = all sections visible (baseline, ordering only).
+// ============================================================================
+
+const PERSONA_VISIBLE_SECTIONS: Record<Persona, string[]> = {
+  developer:  ["standards", "analytics", "tools", "learn"], // all — baseline
+  editor:     ["analytics", "standards"],                    // hide tools + learn
+  researcher: ["analytics", "standards", "tools", "learn"],
+  builder:    ["tools", "standards", "learn", "analytics"],
+  enterprise: ["standards", "analytics", "learn", "tools"],
+  newcomer:   ["learn", "standards", "analytics", "tools"],
+};
+
+// Sub-item allow-lists per persona. Keyed by SidebarItem title.
+// Undefined entry = allow all sub-items.
+const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>>> = {
+  editor: {
+    // Authors and Contributors are not part of the editorial workflow
+    Analytics: ["EIPs", "PRs", "Board", "Editors", "Reviewers"],
+  },
+};
+
 const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   developer: [
     "Upgrades",
@@ -441,6 +465,9 @@ function AppSidebarContent() {
   const { state, toggleSidebar: toggleSidebarUI } = useSidebar();
   const { isOpen, toggleSidebar } = useSidebarStore();
   const persona = usePersonaStore((s) => s.persona);
+  const sidebarShowAllSections = usePersonaStore(
+    (s) => s.defaultView.sidebarShowAllSections ?? false
+  );
 
   // Accordion behavior: only one parent open at a time
   const [openItem, setOpenItem] = React.useState<string | null>(() => {
@@ -524,6 +551,11 @@ function AppSidebarContent() {
         });
       }
 
+      // Only surface "On this page" when there are at least 2 meaningful sections
+      if (collected.length < 2) {
+        setPageSectionItems([]);
+        return;
+      }
       setPageSectionItems(collected);
     };
 
@@ -555,15 +587,44 @@ function AppSidebarContent() {
   );
 
   const visibleSections = React.useMemo(() => {
-    return orderedSections.map((section) => {
-      if (section.id !== "account") return section;
-      const items = section.items.filter((item) => {
-        if (item.title === "Admin") return isAdmin;
-        return true;
+    const effectivePersona = persona || DEFAULT_PERSONA;
+    const bypassFilter = sidebarShowAllSections || !FEATURES.PERSONA_NAV_VISIBILITY;
+
+    return orderedSections
+      .filter((section) => {
+        // main and account are always shown
+        if (section.id === "main" || section.id === "account") return true;
+        if (bypassFilter) return true;
+        return PERSONA_VISIBLE_SECTIONS[effectivePersona]?.includes(section.id) ?? true;
+      })
+      .map((section) => {
+        // account section: preserve existing Admin gate
+        if (section.id === "account") {
+          return {
+            ...section,
+            items: section.items.filter((item) => {
+              if (item.title === "Admin") return isAdmin;
+              return true;
+            }),
+          };
+        }
+        // sub-item filtering per persona
+        if (bypassFilter) return section;
+        const personaSubFilter = PERSONA_VISIBLE_SUBITEMS[effectivePersona];
+        if (!personaSubFilter) return section;
+        return {
+          ...section,
+          items: section.items.map((item) => {
+            const allowedSubs = personaSubFilter[item.title];
+            if (!allowedSubs || !item.items) return item;
+            return {
+              ...item,
+              items: item.items.filter((sub) => allowedSubs.includes(sub.title)),
+            };
+          }),
+        };
       });
-      return { ...section, items };
-    });
-  }, [orderedSections, isAdmin]);
+  }, [orderedSections, isAdmin, persona, sidebarShowAllSections]);
 
   // ========================================================================
   // Collapsible management

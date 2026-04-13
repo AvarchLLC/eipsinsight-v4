@@ -19,6 +19,7 @@ import {
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 type SearchKind = "all" | "proposals" | "prs" | "issues" | "people";
 type RepoFilter = "all" | "eip" | "erc" | "rip";
@@ -573,8 +574,7 @@ function SearchPageContent() {
 
           {loading ? (
             <div className="rounded-xl border border-border bg-card/60 px-4 py-12 text-center">
-              <Loader2 className="mx-auto h-5 w-5 animate-spin text-primary" />
-              <p className="mt-3 text-sm text-muted-foreground">Searching proposals, PRs, issues, and people…</p>
+              <InlineBrandLoader size="sm" label="Searching proposals, PRs, issues, and people..." />
             </div>
           ) : totalResults === 0 ? (
             <div className="rounded-xl border border-border bg-card/60 px-4 py-12 text-center">
@@ -861,8 +861,8 @@ export default function SearchPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        <div className="min-h-screen bg-background">
+          <InlineBrandLoader size="md" label="Loading search..." />
         </div>
       }
     >

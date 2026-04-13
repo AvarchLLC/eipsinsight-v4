@@ -3,10 +3,11 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
-import { Loader2, Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
+import { Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import {
   ChartContainer,
   ChartTooltip,
@@ -250,7 +251,7 @@ export default function ContributorsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineBrandLoader size="md" label="Loading analytics..." />
       </div>
     );
   }

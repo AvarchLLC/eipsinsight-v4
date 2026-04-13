@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { client } from "@/lib/orpc";
 import { SubscriptionsPanel } from "@/components/subscriptions-panel";
-import { usePersonaStore } from "@/stores/personaStore";
+import { usePersonaStore, type DefaultView } from "@/stores/personaStore";
 import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
 import { PERSONAS, PERSONA_LIST, getPersonaMeta, type Persona } from "@/lib/persona";
 import { FEATURES } from "@/lib/features";
@@ -145,9 +145,23 @@ export default function SettingsPage() {
 // =============================================================================
 
 function PersonaPreferencesSection() {
-  const { persona, setPersona, isHydrated } = usePersonaStore();
+  const { persona, setPersona, defaultView, setDefaultView, isHydrated } = usePersonaStore();
   const { syncPersonaToServer, isAuthenticated } = usePersonaSyncOnChange();
   const [savingPersona, setSavingPersona] = useState(false);
+  const sidebarShowAllSections = defaultView.sidebarShowAllSections ?? false;
+
+  const handleToggleSidebarAll = async (checked: boolean) => {
+    setDefaultView({ sidebarShowAllSections: checked });
+    if (isAuthenticated) {
+      try {
+        await client.preferences.update({
+          default_view: { ...defaultView, sidebarShowAllSections: checked } as DefaultView,
+        });
+      } catch (error) {
+        console.error("Failed to sync sidebar preference:", error);
+      }
+    }
+  };
 
   const handleSelectPersona = async (newPersona: Persona) => {
     if (newPersona === persona) return;
@@ -279,6 +293,33 @@ function PersonaPreferencesSection() {
           Full persona guide
           <ArrowRight className="h-3 w-3" />
         </Link>
+      </div>
+
+      {/* Sidebar visibility toggle */}
+      <div className="mt-4 flex items-center justify-between gap-4 border-t border-border pt-4">
+        <div>
+          <p className="text-sm font-medium text-foreground">Show all sidebar sections</p>
+          <p className="text-xs text-muted-foreground">
+            When enabled, full navigation is shown regardless of persona.
+          </p>
+        </div>
+        <button
+          role="switch"
+          aria-checked={sidebarShowAllSections}
+          onClick={() => handleToggleSidebarAll(!sidebarShowAllSections)}
+          className={cn(
+            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors",
+            "focus:outline-none focus:ring-2 focus:ring-primary/30",
+            sidebarShowAllSections ? "bg-primary" : "bg-muted"
+          )}
+        >
+          <span
+            className={cn(
+              "pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow-sm transition-transform",
+              sidebarShowAllSections ? "translate-x-4" : "translate-x-0"
+            )}
+          />
+        </button>
       </div>
     </div>
   );

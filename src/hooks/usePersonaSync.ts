@@ -93,6 +93,9 @@ export function usePersonaSync() {
  */
 export function usePersonaSyncOnChange() {
   const { data: session } = useSession();
+  const sidebarShowAllSections = usePersonaStore(
+    (s) => s.defaultView.sidebarShowAllSections
+  );
 
   const syncPersonaToServer = useCallback(
     async (newPersona: Persona) => {
@@ -106,13 +109,15 @@ export function usePersonaSyncOnChange() {
             upgradesView: cfg.upgradesView,
             analyticsView: cfg.analyticsDefault,
             standardsView: cfg.standardsFocus,
+            // Preserve the sidebar toggle so persona switches don't overwrite it
+            ...(sidebarShowAllSections !== undefined && { sidebarShowAllSections }),
           },
         });
       } catch (error) {
         console.error("Failed to sync persona to server:", error);
       }
     },
-    [session?.user]
+    [session?.user, sidebarShowAllSections]
   );
 
   return { syncPersonaToServer, isAuthenticated: !!session?.user };

@@ -29,6 +29,7 @@ import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation"
 import ReactECharts from "echarts-for-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { CopyLinkButton } from "@/components/header";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 interface EditorLeaderboardRow {
   actor: string;
@@ -1088,9 +1089,8 @@ export default function EditorsAnalyticsPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        <div className="flex flex-col items-center justify-center rounded-xl border border-border/70 bg-card/60 py-16 backdrop-blur-sm">
-          <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground">Loading analytics data...</p>
+        <div className="rounded-xl border border-border/70 bg-card/60 py-16 backdrop-blur-sm">
+          <InlineBrandLoader size="md" label="Loading analytics..." />
         </div>
       </div>
     );

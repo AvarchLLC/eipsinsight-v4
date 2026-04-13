@@ -12,6 +12,7 @@ export interface DefaultView {
   upgradesView?: string;
   analyticsView?: string;
   standardsView?: string;
+  sidebarShowAllSections?: boolean;
 }
 
 interface PersonaState {

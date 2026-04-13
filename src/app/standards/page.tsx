@@ -10,7 +10,6 @@ import React, {
 import { useRouter, useSearchParams } from "next/navigation";
 import { client } from "@/lib/orpc";
 import {
-  Loader2,
   Download,
   Search,
   X,
@@ -58,6 +57,7 @@ import { cn } from "@/lib/utils";
 import { StandardsPageHeader } from "@/app/standards/_components/standards-page-header";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 // ──────── Types ────────
 type RepoTab = "all" | "eips" | "ercs" | "rips";
@@ -1000,8 +1000,8 @@ function StandardsPageContent() {
         )}
 
         {loading ? (
-          <div className="flex items-center justify-center min-h-[400px]">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <div className="min-h-[400px]">
+            <InlineBrandLoader size="md" label="Loading standards..." />
           </div>
         ) : (
           <>
@@ -2266,8 +2266,8 @@ export default function StandardsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="min-h-screen bg-background">
+          <InlineBrandLoader size="md" label="Loading standards..." />
         </div>
       }
     >

@@ -1,10 +1,11 @@
 /**
  * Feature flags for safe rollout of new functionality.
- * 
+ *
  * Set these in your .env.local file:
  * NEXT_PUBLIC_FEATURE_PERSONA_ONBOARDING=true
  * NEXT_PUBLIC_FEATURE_PERSONA_SWITCHER=true
  * NEXT_PUBLIC_FEATURE_PERSONA_NAV_REORDER=true
+ * NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY=false  # set to false to disable visibility filtering
  */
 
 export const FEATURES = {
@@ -35,6 +36,15 @@ export const FEATURES = {
    */
   PERSONA_CONTEXT_HEADERS:
     process.env.NEXT_PUBLIC_FEATURE_PERSONA_CONTEXT_HEADERS === "true",
+
+  /**
+   * Enable persona-aware sidebar visibility filtering
+   * Sidebar sections and sub-items are shown/hidden based on the user's persona.
+   * Users can override this with the "Show all sidebar sections" setting.
+   * Defaults ON — set NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY=false to disable.
+   */
+  PERSONA_NAV_VISIBILITY:
+    process.env.NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY !== "false",
 } as const;
 
 /**

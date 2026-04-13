@@ -23,6 +23,7 @@ import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { toast } from "sonner";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#22D3EE",
@@ -838,7 +839,7 @@ export default function EIPsAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineBrandLoader size="md" label="Loading analytics..." />
       </div>
     );
   }

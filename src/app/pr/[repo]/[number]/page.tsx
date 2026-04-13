@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { PageHeader } from '@/components/header';
 import { client } from '@/lib/orpc';
+import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import {
   ArrowUpRight,
   CheckCircle2,
@@ -13,7 +14,6 @@ import {
   ExternalLink,
   FileCode2,
   GitCommitHorizontal,
-  Loader2,
   XCircle,
 } from 'lucide-react';
 
@@ -162,8 +162,8 @@ export default function PRDetailPage() {
   if (loading) {
     return (
       <div className="w-full px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mx-auto flex min-h-[360px] w-full max-w-[1320px] items-center justify-center">
-          <Loader2 className="h-7 w-7 animate-spin text-primary" />
+        <div className="mx-auto min-h-[360px] w-full max-w-[1320px]">
+          <InlineBrandLoader size="md" label="Loading PR details..." />
         </div>
       </div>
     );

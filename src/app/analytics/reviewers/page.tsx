@@ -5,8 +5,9 @@ import Link from "next/link";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { CANONICAL_EIP_REVIEWERS } from "@/data/eip-contributor-roles";
-import { Loader2, Users, Clock, MessageSquare, AlertCircle, Search, ChevronLeft, ChevronRight, ChevronDown, Download, LayoutGrid, BarChart3 } from "lucide-react";
+import { Users, Clock, MessageSquare, AlertCircle, Search, ChevronLeft, ChevronRight, ChevronDown, Download, LayoutGrid, BarChart3 } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import {
   ChartContainer,
   ChartTooltip,
@@ -483,7 +484,7 @@ export default function ReviewersAnalyticsPage() {
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <InlineBrandLoader size="md" label="Loading analytics..." />
       </div>
     );
   }

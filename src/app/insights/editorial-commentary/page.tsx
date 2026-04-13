@@ -19,6 +19,7 @@ import { client } from "@/lib/orpc";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import { cn } from "@/lib/utils";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#22d3ee",
@@ -294,8 +295,8 @@ export default function EditorialCommentaryPage() {
         </section>
 
         {loading && (
-          <div className="flex min-h-[220px] items-center justify-center rounded-xl border border-border/60 bg-card/60">
-            <Loader2 className="h-7 w-7 animate-spin text-primary" />
+          <div className="min-h-[220px] rounded-xl border border-border/60 bg-card/60">
+            <InlineBrandLoader size="sm" label="Loading timeline..." />
           </div>
         )}
 

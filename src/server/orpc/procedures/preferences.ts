@@ -12,6 +12,7 @@ const defaultViewSchema = z.object({
   upgradesView: z.string().optional(),
   analyticsView: z.string().optional(),
   standardsView: z.string().optional(),
+  sidebarShowAllSections: z.boolean().optional(),
 }).optional()
 
 export const preferencesProcedures = {
