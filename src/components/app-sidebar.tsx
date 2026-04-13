@@ -807,10 +807,12 @@ function AppSidebarContent() {
   const renderItem = (item: SidebarItem) => {
     const isActive = isParentPathActive(item.href);
     const contextualSectionItems: SidebarSubItem[] = isActive ? pageSectionItems : [];
-    const mergedSubItems = [...(item.items ?? []), ...contextualSectionItems];
-    const hasSubItems = mergedSubItems.length > 0;
+    const staticItems = item.items ?? [];
+    const hasStaticItems = staticItems.length > 0;
+    const hasPageSections = contextualSectionItems.length > 0;
+    const hasSubItems = hasStaticItems || hasPageSections;
     const isItemOpen = openItem === item.title;
-    const isChildActive = hasActiveChild(mergedSubItems);
+    const isChildActive = hasActiveChild([...staticItems, ...contextualSectionItems]);
     const isHighlighted = isActive || isChildActive;
     const effectivePersona = persona ?? DEFAULT_PERSONA;
     const personaPriority = PERSONA_ITEM_PRIORITY[effectivePersona] ?? [];
@@ -881,7 +883,23 @@ function AppSidebarContent() {
                 )}
               >
                 <SidebarMenuSub className="ml-0 border-l-2 border-border/80 pl-6 pt-2">
-                  {mergedSubItems.map((sub, idx) => renderSubItem(sub, `${item.title}.${idx}`))}
+                  {staticItems.map((sub, idx) => renderSubItem(sub, `${item.title}.${idx}`))}
+                  
+                  {/* Visual separator for page sections */}
+                  {hasPageSections && hasStaticItems && (
+                    <div className="my-2 px-3">
+                      <div className="h-px bg-border/40" />
+                    </div>
+                  )}
+                  
+                  {/* Page sections header */}
+                  {hasPageSections && (
+                    <div className="px-3 py-2 mt-1">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">On this page</p>
+                    </div>
+                  )}
+                  
+                  {contextualSectionItems.map((sub, idx) => renderSubItem(sub, `${item.title}.page.${idx}`))}
                 </SidebarMenuSub>
               </CollapsibleContent>
             )}
