@@ -410,6 +410,11 @@ const { repo, govState, processType, search, page, pageSize } = input;
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            -- TEMPORARY: hide specific typo PRs from board view. REVERT: remove the AND NOT block below.
+            AND NOT (
+              (LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' AND p.pr_number IN (1123, 1191, 1232, 1257, 1254))
+              OR (LOWER(SPLIT_PART(r.name, '/', 2)) = 'eips' AND p.pr_number IN (10171, 11159, 11286))
+            )
         ),
         filtered AS (
           SELECT * FROM base
@@ -483,6 +488,11 @@ const { repo, govState, search } = input;
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            -- TEMPORARY: hide specific typo PRs. REVERT: remove the AND NOT block below.
+            AND NOT (
+              (LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' AND p.pr_number IN (1123, 1191, 1232, 1257, 1254))
+              OR (LOWER(SPLIT_PART(r.name, '/', 2)) = 'eips' AND p.pr_number IN (10171, 11159, 11286))
+            )
         )
         SELECT process_type, COUNT(*)::bigint AS count
         FROM base
@@ -526,6 +536,11 @@ const { repo, govState, search } = input;
           ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
         WHERE p.state = 'open'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          -- TEMPORARY: hide specific typo PRs. REVERT: remove the AND NOT block below.
+          AND NOT (
+            (LOWER(SPLIT_PART(r.name, '/', 2)) = 'ercs' AND p.pr_number IN (1123, 1191, 1232, 1257, 1254))
+            OR (LOWER(SPLIT_PART(r.name, '/', 2)) = 'eips' AND p.pr_number IN (10171, 11159, 11286))
+          )
           AND ($2::text IS NULL OR (
             p.pr_number::text LIKE '%' || $2 || '%'
             OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
