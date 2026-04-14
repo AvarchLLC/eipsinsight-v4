@@ -152,6 +152,24 @@ function getMonthWindow(year: number, month: number): { from: string; to: string
   };
 }
 
+// TEMPORARY: normalize spike months to prevent visual distortion in the trend charts.
+// Months "2022-08" and "2026-02" had anomalously high counts; capped at 65 per actor.
+// REVERT: remove this function and its call sites in setMonthlyTrend / setMonthlyReviewedTrend.
+const TEMP_NORMALIZE_MONTHS: Record<string, number> = { "2022-08": 65, "2026-02": 65 };
+function normalizeTrendSpikes(data: MonthlyTrendPoint[]): MonthlyTrendPoint[] {
+  return data.map((point) => {
+    const cap = TEMP_NORMALIZE_MONTHS[point.month];
+    if (!cap) return point;
+    const normalized: MonthlyTrendPoint = { month: point.month };
+    for (const key of Object.keys(point)) {
+      if (key === "month") continue;
+      const val = Number(point[key] || 0);
+      normalized[key] = val > cap ? cap : val;
+    }
+    return normalized;
+  });
+}
+
 function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>) {
   const escape = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
   const csv = [headers.map(escape).join(","), ...rows.map((row) => row.map(escape).join(","))].join("\n");
@@ -375,8 +393,8 @@ export default function EditorsAnalyticsPage() {
         ]);
 
         setLeaderboard(leaderboardData.rows);
-        setMonthlyTrend(trendData);
-        setMonthlyReviewedTrend(reviewedTrendData);
+        setMonthlyTrend(normalizeTrendSpikes(trendData)); // TEMPORARY: see normalizeTrendSpikes
+        setMonthlyReviewedTrend(normalizeTrendSpikes(reviewedTrendData)); // TEMPORARY: see normalizeTrendSpikes
         setCategoryCoverage(categoryData);
         setRepoDistribution(repoData);
         setDailyActivityStacked(dailyStackedData);
@@ -1649,8 +1667,9 @@ export default function EditorsAnalyticsPage() {
       </div>
       </section>
 
+      {/* TEMPORARY: Operational Breakdown section hidden. REVERT: remove the `hidden` class below. */}
       {/* Daily + Repo */}
-      <section id="editor-operations" className="space-y-4 border-b border-border/70 pb-8">
+      <section id="editor-operations" className="hidden space-y-4 border-b border-border/70 pb-8">
         <div>
           <div className="inline-flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />
