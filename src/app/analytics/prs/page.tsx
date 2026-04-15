@@ -436,13 +436,35 @@ export default function PRsAnalyticsPage() {
       };
     }
 
-    const states = Array.from(new Set(govWaitStatesByMonth.flatMap((m) => m.rows.map((r) => r.state))));
+    const VALID_GOV_STATES = ["Waiting on Editor", "Waiting on Author", "AWAITED"];
+    const filteredGovWait = govWaitStatesByMonth.map(m => ({
+      ...m,
+      rows: m.rows.filter(r => VALID_GOV_STATES.includes(r.state))
+    }));
+    const states = VALID_GOV_STATES.filter((s) =>
+      filteredGovWait.some((m) => m.rows.some((r) => r.state === s && r.count > 0))
+    );
+    const validSeries = states.map((state) => {
+      const data = months.map((month) => {
+        const row = filteredGovWait.find((d) => d.month === month);
+        const value = row?.rows.find((r) => r.state === state)?.count ?? 0;
+        return Math.max(0, value);
+      });
+      return {
+        name: state,
+        type: "bar",
+        stack: "open",
+        data: data,
+        itemStyle: { color: GOVERNANCE_COLORS[state] || "#64748B" },
+      };
+    });
     return {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
       legend: {
         top: 0,
         textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+        data: validSeries.map(s => s.name),
       },
       grid: { top: 38, left: 38, right: 18, bottom: 46 },
       xAxis: {
@@ -471,16 +493,7 @@ export default function PRsAnalyticsPage() {
           end: 100,
         },
       ],
-      series: states.map((state) => ({
-        name: state,
-        type: "bar",
-        stack: "open",
-        data: months.map((month) => {
-          const row = govWaitStatesByMonth.find((d) => d.month === month);
-          return row?.rows.find((r) => r.state === state)?.count ?? 0;
-        }),
-        itemStyle: { color: GOVERNANCE_COLORS[state] || "#64748B" },
-      })),
+      series: validSeries,
     };
   }, [govWaitStatesByMonth, monthlySeries, openPRDistributionMode, processCategoriesByMonth]);
 
@@ -688,7 +701,8 @@ export default function PRsAnalyticsPage() {
     monthlySeries.forEach((m) => {
       combined.push({ type: "Monthly Activity", month: m.month, openAtMonthEnd: m.openAtMonthEnd, created: m.created, merged: m.merged, closed: m.closed });
     });
-    governanceStates.forEach((g) => combined.push({ type: "Governance State", state: g.state, count: g.count }));
+    const validGovernanceStates = governanceStates.filter(g => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(g.state));
+    validGovernanceStates.forEach((g) => combined.push({ type: "Governance State", state: g.state, count: g.count }));
     processCategories.forEach((p) => combined.push({ type: "Process", category: p.category, count: p.count }));
     govWaitStates.forEach((g) => combined.push({ type: "Participant State", state: g.state, count: g.count, medianWaitDays: g.medianWaitDays }));
     openPRs.forEach((pr) => combined.push({ type: "Open PR", ...pr }));
@@ -969,8 +983,11 @@ export default function PRsAnalyticsPage() {
             <div>
               <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Participant status mix</h3>
               <div className="space-y-2">
-                {governanceStates.map((g) => {
-                  const total = governanceStates.reduce((acc, s) => acc + s.count, 0);
+                {governanceStates
+                  .filter(g => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(g.state))
+                  .map((g) => {
+                  const filteredStates = governanceStates.filter(s => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(s.state));
+                  const total = filteredStates.reduce((acc, s) => acc + s.count, 0);
                   const pct = total > 0 ? (g.count / total) * 100 : 0;
                   const color = GOVERNANCE_COLORS[g.state] ?? "#64748b";
                   return (

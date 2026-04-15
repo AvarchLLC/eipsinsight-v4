@@ -666,47 +666,32 @@ const getPRGovernanceStatesCached = unstable_cache(
   async (repo: string | null) => {
     const results = await prisma.$queryRawUnsafe<Array<{
       state: string;
-      label: string;
       count: bigint;
     }>>(`
-      WITH pr_metadata AS (
+      WITH mapped_states AS (
         SELECT 
-          pr.pr_number,
-          r.name as repo,
-          pr.title,
-          pr.author,
-          CASE 
-            WHEN pr.merged_at IS NOT NULL THEN 'merged'
-            WHEN pr.state = 'open' THEN 'open'
-            ELSE 'closed'
-          END as state,
-          COALESCE(gs.current_state, 'NO_STATE') as governance_state
+          CASE
+            WHEN COALESCE(gs.current_state, 'NO_STATE') IN ('WAITING_ON_EDITOR', 'WAITING_EDITOR') THEN 'Waiting on Editor'
+            WHEN COALESCE(gs.current_state, 'NO_STATE') IN ('WAITING_ON_AUTHOR', 'WAITING_AUTHOR') THEN 'Waiting on Author'
+            WHEN COALESCE(gs.current_state, 'NO_STATE') = 'DRAFT' THEN 'AWAITED'
+            ELSE NULL
+          END as state
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
         LEFT JOIN pr_governance_state gs ON pr.pr_number = gs.pr_number AND pr.repository_id = gs.repository_id
         WHERE pr.state = 'open'
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
-      ),
-      governance_mapping AS (
-        SELECT 'WAITING_ON_EDITOR' as state, 'waiting for editors review' as label UNION ALL
-        SELECT 'WAITING_ON_AUTHOR', 'author review' UNION ALL
-        SELECT 'STALLED', 'stalled' UNION ALL
-        SELECT 'DRAFT', 'draft' UNION ALL
-        SELECT 'NO_STATE', 'uncategorized'
       )
-      SELECT 
-        pm.governance_state as state,
-        COALESCE(gm.label, pm.governance_state) as label,
-        COUNT(*)::bigint as count
-      FROM pr_metadata pm
-      LEFT JOIN governance_mapping gm ON pm.governance_state = gm.state
-      GROUP BY pm.governance_state, gm.label
+      SELECT state, COUNT(*)::bigint as count
+      FROM mapped_states
+      WHERE state IS NOT NULL
+      GROUP BY state
       ORDER BY count DESC
     `, repo || null);
 
     return results.map(r => ({
       state: r.state,
-      label: r.label,
+      label: r.state,
       count: Number(r.count),
     }));
   },
@@ -2171,6 +2156,7 @@ export const analyticsProcedures = {
         SELECT month, state, COUNT(*)::bigint AS count
         FROM open_with_state
         WHERE state IS NOT NULL
+          AND state IN ('Waiting on Editor', 'Waiting on Author', 'AWAITED')
         GROUP BY month, state
         ORDER BY month, count DESC
       `, input.repo || null, input.from ?? null, input.to ?? null);
