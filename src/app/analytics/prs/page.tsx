@@ -437,18 +437,22 @@ export default function PRsAnalyticsPage() {
     }
 
     const VALID_GOV_STATES = ["Waiting on Editor", "Waiting on Author", "AWAITED"];
+    
+    // Ultra-aggressive filtering: only allow exactly these 3 states
     const filteredGovWait = govWaitStatesByMonth.map(m => ({
       ...m,
-      rows: m.rows.filter(r => VALID_GOV_STATES.includes(r.state))
+      rows: m.rows
+        .filter(r => VALID_GOV_STATES.includes(r.state))
+        .map(r => ({ ...r, state: r.state as typeof VALID_GOV_STATES[number] }))
     }));
-    const states = VALID_GOV_STATES.filter((s) =>
-      filteredGovWait.some((m) => m.rows.some((r) => r.state === s && r.count > 0))
-    );
-    const validSeries = states.map((state) => {
+    
+    // Build series for only the 3 valid states, no others
+    const validSeries = VALID_GOV_STATES.map((state) => {
+      const hasData = filteredGovWait.some((m) => m.rows.some((r) => r.state === state && r.count > 0));
       const data = months.map((month) => {
         const row = filteredGovWait.find((d) => d.month === month);
         const value = row?.rows.find((r) => r.state === state)?.count ?? 0;
-        return Math.max(0, value);
+        return Math.max(0, Number(value));
       });
       return {
         name: state,
@@ -456,8 +460,10 @@ export default function PRsAnalyticsPage() {
         stack: "open",
         data: data,
         itemStyle: { color: GOVERNANCE_COLORS[state] || "#64748B" },
+        show: hasData,
       };
-    });
+    }).filter(s => s.show);
+    
     return {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
@@ -493,7 +499,7 @@ export default function PRsAnalyticsPage() {
           end: 100,
         },
       ],
-      series: validSeries,
+      series: validSeries.map(({ show, ...s }) => s),
     };
   }, [govWaitStatesByMonth, monthlySeries, openPRDistributionMode, processCategoriesByMonth]);
 

@@ -685,6 +685,7 @@ const getPRGovernanceStatesCached = unstable_cache(
       SELECT state, COUNT(*)::bigint as count
       FROM mapped_states
       WHERE state IS NOT NULL
+        AND state IN ('Waiting on Editor', 'Waiting on Author', 'AWAITED')
       GROUP BY state
       ORDER BY count DESC
     `, repo || null);
@@ -696,7 +697,7 @@ const getPRGovernanceStatesCached = unstable_cache(
     }));
   },
   ['analytics-getPRGovernanceStates'],
-  { tags: ['analytics-prs-governance'], revalidate: 300 }
+  { tags: ['analytics-prs-governance'], revalidate: 60 }
 );
 
 const getContributorActivityByTypeCached = unstable_cache(
