@@ -92,6 +92,8 @@ interface OpenPRRow {
   waitingSince: string | null;
   lastEventType: string | null;
   linkedEIPs: string | null;
+  labels: string[];
+  processType: string;
 }
 
 interface ProcessCategory {
@@ -292,8 +294,8 @@ export default function PRsAnalyticsPage() {
         setProcessCategoriesByMonth(processTimeline);
         setGovWaitStatesByMonth(participantTimeline);
 
-        const openExport = await client.analytics.getPROpenExport({ repo: repoParam });
-        setOpenPRs(openExport.slice(0, 100));
+        const openExport = await client.analytics.getPROpenExport({ repo: repoParam, month: contextMonth });
+        setOpenPRs(openExport);
         setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Failed to fetch PR analytics:", err);
@@ -589,21 +591,20 @@ export default function PRsAnalyticsPage() {
   const downloadOpenPRsDetailedCSV = useCallback(() => {
     const generatedAt = new Date().toISOString();
     const rows: Array<Record<string, string | number | null>> = openPRs.map((pr) => ({
-      report_section: "eip_open_prs",
-      generated_at: generatedAt,
-      repo_filter: repoFilter,
-      time_range: timeRange,
-      month_context: monthContext,
       pr_number: pr.prNumber,
       repo: pr.repo,
       title: pr.title,
       author: pr.author,
+      process_type: pr.processType,
       governance_state: pr.governanceState,
-      waiting_since: pr.waitingSince,
-      last_event_type: pr.lastEventType,
+      labels: pr.labels.join("; "),
       linked_eips: pr.linkedEIPs,
       created_at: pr.createdAt,
-      metric_definition: "Open PR snapshot row shown in the EIP Open PRs table",
+      waiting_since: pr.waitingSince,
+      last_event_type: pr.lastEventType,
+      month_context: monthContext,
+      repo_filter: repoFilter,
+      generated_at: generatedAt,
     }));
     downloadObjectRowsCsv(
       rows,
