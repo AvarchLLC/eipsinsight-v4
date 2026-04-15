@@ -152,19 +152,15 @@ function getMonthWindow(year: number, month: number): { from: string; to: string
   };
 }
 
-// TEMPORARY: normalize spike months to prevent visual distortion in the trend charts.
-// Months "2022-08" and "2026-02" had anomalously high counts; capped at 65 per actor.
-// REVERT: remove this function and its call sites in setMonthlyTrend / setMonthlyReviewedTrend.
-const TEMP_NORMALIZE_MONTHS: Record<string, number> = { "2022-08": 65, "2026-02": 65 };
+// TEMPORARY: cap 2022-08 spike at 65 per actor. REVERT: remove this function + call sites.
 function normalizeTrendSpikes(data: MonthlyTrendPoint[]): MonthlyTrendPoint[] {
   return data.map((point) => {
-    const cap = TEMP_NORMALIZE_MONTHS[point.month];
-    if (!cap) return point;
+    if (point.month !== "2022-08") return point;
     const normalized: MonthlyTrendPoint = { month: point.month };
     for (const key of Object.keys(point)) {
       if (key === "month") continue;
       const val = Number(point[key] || 0);
-      normalized[key] = val > cap ? cap : val;
+      normalized[key] = val > 65 ? 65 : val;
     }
     return normalized;
   });
@@ -393,11 +389,14 @@ export default function EditorsAnalyticsPage() {
         ]);
 
         setLeaderboard(leaderboardData.rows);
-        setMonthlyTrend(normalizeTrendSpikes(trendData)); // TEMPORARY: see normalizeTrendSpikes
-        setMonthlyReviewedTrend(normalizeTrendSpikes(reviewedTrendData)); // TEMPORARY: see normalizeTrendSpikes
+        setMonthlyTrend(normalizeTrendSpikes(trendData)); // TEMPORARY
+        setMonthlyReviewedTrend(normalizeTrendSpikes(reviewedTrendData)); // TEMPORARY
         setCategoryCoverage(categoryData);
         setRepoDistribution(repoData);
-        setDailyActivityStacked(dailyStackedData);
+        // TEMPORARY: cap 2022-08-18 spike at 15 per actor. REVERT: revert this line.
+        setDailyActivityStacked(dailyStackedData.map((row) =>
+          row.date === "2022-08-18" ? { ...row, count: Math.min(row.count, 15) } : row
+        ));
         setEditorActionDetails(actionDetails);
         if (leaderboardData.updatedAt) {
           setDataUpdatedAt(new Date(leaderboardData.updatedAt));
@@ -1667,9 +1666,8 @@ export default function EditorsAnalyticsPage() {
       </div>
       </section>
 
-      {/* TEMPORARY: Operational Breakdown section hidden. REVERT: remove the `hidden` class below. */}
       {/* Daily + Repo */}
-      <section id="editor-operations" className="hidden space-y-4 border-b border-border/70 pb-8">
+      <section id="editor-operations" className="space-y-4 border-b border-border/70 pb-8">
         <div>
           <div className="inline-flex items-center gap-2">
             <Zap className="h-5 w-5 text-primary" />

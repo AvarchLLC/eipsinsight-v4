@@ -2032,7 +2032,6 @@ export const analyticsProcedures = {
                    WHEN COALESCE(gs.current_state, 'NO_STATE') IN ('WAITING_ON_EDITOR', 'WAITING_EDITOR') THEN 'Waiting on Editor'
                    WHEN COALESCE(gs.current_state, 'NO_STATE') IN ('WAITING_ON_AUTHOR', 'WAITING_AUTHOR') THEN 'Waiting on Author'
                    WHEN COALESCE(gs.current_state, 'NO_STATE') = 'DRAFT' THEN 'AWAITED'
-                   ELSE COALESCE(gs.subcategory, 'Uncategorized')
                  END AS state,
                  gs.waiting_since,
                  sc.snapshot_ts
@@ -2044,6 +2043,7 @@ export const analyticsProcedures = {
             AND (pr.merged_at IS NULL OR pr.merged_at > sc.snapshot_ts)
             AND (pr.closed_at IS NULL OR pr.closed_at > sc.snapshot_ts)
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND COALESCE(gs.current_state, 'NO_STATE') IN ('WAITING_ON_EDITOR', 'WAITING_EDITOR', 'WAITING_ON_AUTHOR', 'WAITING_AUTHOR', 'DRAFT', 'NO_STATE')
         ),
         wait_days AS (
           SELECT state, pr_number,
@@ -2052,6 +2052,7 @@ export const analyticsProcedures = {
                    EXTRACT(DAY FROM (snapshot_ts - COALESCE(waiting_since, snapshot_ts)))
                  )::int AS wait_days
           FROM open_with_state
+          WHERE state IS NOT NULL
         ),
         by_state AS (
           SELECT state,
