@@ -329,7 +329,7 @@ export function SearchBar() {
               </p>
             </div>
           ) : (
-            <div className="max-h-[70vh] overflow-y-auto overscroll-contain">
+            <div className="max-h-[70vh] overflow-y-auto overscroll-contain space-y-0">
               {/* Proposals Section */}
               {results.proposals.length > 0 && (
                 <div className="border-b border-border/80">
@@ -339,58 +339,63 @@ export function SearchBar() {
                       Proposals ({results.proposals.length})
                     </h3>
                   </div>
-                  {results.proposals.map((result, index) => {
-                    const statusColor = statusColors[result.status] || statusColors['Draft'];
-                    const isSelected = selectedIndex === index;
-                    
-                    return (
-                      <div
-                        key={`proposal-${result.repo}-${result.number}`}
-                        data-index={index}
-                        onClick={() => handleResultClick(result)}
-                        className={cn(
-                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
-                          isSelected 
-                            ? "border-l-2 border-l-primary bg-primary/10"
-                            : "hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                              <span className="font-mono text-sm font-bold text-primary">
-                                {result.repo.toUpperCase()}-{result.number}
-                              </span>
-                              <span className={cn(
-                                "px-2 py-0.5 text-xs font-semibold rounded-full border",
-                                statusColor.bg,
-                                statusColor.text,
-                                statusColor.border
-                              )}>
-                                {result.status}
-                              </span>
-                              {result.category && (
-                                <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                                  {result.category}
+                  <div className={cn(
+                    "overflow-y-auto",
+                    results.proposals.length > 3 ? "max-h-56" : ""
+                  )}>
+                    {results.proposals.map((result, index) => {
+                      const statusColor = statusColors[result.status] || statusColors['Draft'];
+                      const isSelected = selectedIndex === index;
+                      
+                      return (
+                        <div
+                          key={`proposal-${result.repo}-${result.number}`}
+                          data-index={index}
+                          onClick={() => handleResultClick(result)}
+                          className={cn(
+                            "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
+                            isSelected 
+                              ? "border-l-2 border-l-primary bg-primary/10"
+                              : "hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                                <span className="font-mono text-sm font-bold text-primary">
+                                  {result.repo.toUpperCase()}-{result.number}
                                 </span>
-                              )}
-                            </div>
-                            <div className="mb-1 line-clamp-2 text-sm font-medium text-foreground">
-                              {result.title}
-                            </div>
-                            {result.author ? (
-                              <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
-                                <Users className="h-3 w-3" />
-                                {result.author.split(',')[0]}
-                                {result.author.split(',').length > 1 && ` +${result.author.split(',').length - 1} more`}
+                                <span className={cn(
+                                  "px-2 py-0.5 text-xs font-semibold rounded-full border",
+                                  statusColor.bg,
+                                  statusColor.text,
+                                  statusColor.border
+                                )}>
+                                  {result.status}
+                                </span>
+                                {result.category && (
+                                  <span className="rounded-md border border-border bg-muted/60 px-2 py-0.5 text-xs font-medium text-muted-foreground">
+                                    {result.category}
+                                  </span>
+                                )}
                               </div>
-                            ) : null}
+                              <div className="mb-1 line-clamp-2 text-sm font-medium text-foreground">
+                                {result.title}
+                              </div>
+                              {result.author ? (
+                                <div className="flex items-center gap-1 truncate text-xs text-muted-foreground">
+                                  <Users className="h-3 w-3" />
+                                  {result.author.split(',')[0]}
+                                  {result.author.split(',').length > 1 && ` +${result.author.split(',').length - 1} more`}
+                                </div>
+                              ) : null}
+                            </div>
+                            <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                           </div>
-                          <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               
@@ -403,44 +408,49 @@ export function SearchBar() {
                       Authors ({results.authors.length})
                     </h3>
                   </div>
-                  {results.authors.map((result, index) => {
-                    const globalIndex = results.proposals.length + index;
-                    const isSelected = selectedIndex === globalIndex;
-                    
-                    return (
-                      <div
-                        key={`author-${result.name}`}
-                        data-index={globalIndex}
-                        onClick={() => handleResultClick(result)}
-                        className={cn(
-                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
-                          isSelected 
-                            ? "border-l-2 border-l-primary bg-primary/10"
-                            : "hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 flex-1 min-w-0">
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-                              <span className="text-sm font-bold text-primary">
-                                {result.name.charAt(0).toUpperCase()}
-                              </span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <div className="truncate text-sm font-semibold text-foreground">
-                                {result.name}
+                  <div className={cn(
+                    "overflow-y-auto",
+                    results.authors.length > 3 ? "max-h-56" : ""
+                  )}>
+                    {results.authors.map((result, index) => {
+                      const globalIndex = results.proposals.length + index;
+                      const isSelected = selectedIndex === globalIndex;
+                      
+                      return (
+                        <div
+                          key={`author-${result.name}`}
+                          data-index={globalIndex}
+                          onClick={() => handleResultClick(result)}
+                          className={cn(
+                            "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
+                            isSelected 
+                              ? "border-l-2 border-l-primary bg-primary/10"
+                              : "hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 flex-1 min-w-0">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
+                                <span className="text-sm font-bold text-primary">
+                                  {result.name.charAt(0).toUpperCase()}
+                                </span>
                               </div>
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <FileText className="h-3 w-3" />
-                                {result.contributionCount} contribution{result.contributionCount !== 1 ? 's' : ''}
+                              <div className="flex-1 min-w-0">
+                                <div className="truncate text-sm font-semibold text-foreground">
+                                  {result.name}
+                                </div>
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <FileText className="h-3 w-3" />
+                                  {result.contributionCount} contribution{result.contributionCount !== 1 ? 's' : ''}
+                                </div>
                               </div>
                             </div>
+                            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                           </div>
-                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               
@@ -453,52 +463,57 @@ export function SearchBar() {
                       Pull Requests ({results.prs.length})
                     </h3>
                   </div>
-                  {results.prs.map((result, index) => {
-                    const globalIndex = results.proposals.length + results.authors.length + index;
-                    const isSelected = selectedIndex === globalIndex;
-                    
-                    return (
-                      <div
-                        key={`pr-${result.repo}-${result.prNumber}`}
-                        data-index={globalIndex}
-                        onClick={() => handleResultClick(result)}
-                        className={cn(
-                          "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
-                          isSelected 
-                            ? "border-l-2 border-l-primary bg-primary/10"
-                            : "hover:bg-muted/50"
-                        )}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-mono text-sm font-bold text-primary">
-                                #{result.prNumber}
-                              </span>
-                              {result.state && (
-                                <span className={cn(
-                                  "px-2 py-0.5 text-xs font-medium rounded-md",
-                                  result.state === 'open' ? "bg-emerald-500/20 text-emerald-300" :
-                                  "bg-slate-500/20 text-slate-300"
-                                )}>
-                                  {result.state}
+                  <div className={cn(
+                    "overflow-y-auto",
+                    results.prs.length > 3 ? "max-h-56" : ""
+                  )}>
+                    {results.prs.map((result, index) => {
+                      const globalIndex = results.proposals.length + results.authors.length + index;
+                      const isSelected = selectedIndex === globalIndex;
+                      
+                      return (
+                        <div
+                          key={`pr-${result.repo}-${result.prNumber}`}
+                          data-index={globalIndex}
+                          onClick={() => handleResultClick(result)}
+                          className={cn(
+                            "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
+                            isSelected 
+                              ? "border-l-2 border-l-primary bg-primary/10"
+                              : "hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-mono text-sm font-bold text-primary">
+                                  #{result.prNumber}
                                 </span>
-                              )}
-                            </div>
-                            {result.title && (
-                              <div className="line-clamp-2 text-sm text-foreground">
-                                {result.title}
+                                {result.state && (
+                                  <span className={cn(
+                                    "px-2 py-0.5 text-xs font-medium rounded-md",
+                                    result.state === 'open' ? "bg-emerald-500/20 text-emerald-300" :
+                                    "bg-slate-500/20 text-slate-300"
+                                  )}>
+                                    {result.state}
+                                  </span>
+                                )}
                               </div>
-                            )}
-                            <div className="mt-1 text-xs text-muted-foreground">
-                              {result.repo}
+                              {result.title && (
+                                <div className="line-clamp-2 text-sm text-foreground">
+                                  {result.title}
+                                </div>
+                              )}
+                              <div className="mt-1 text-xs text-muted-foreground">
+                                {result.repo}
+                              </div>
                             </div>
+                            <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                           </div>
-                          <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               )}
               
