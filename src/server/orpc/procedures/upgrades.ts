@@ -115,6 +115,41 @@ function getCanonicalUpgradeName(upgrade: string, date: string): string {
   return upgrade;
 }
 
+function normalizeUpgradeBucket(bucket: string | null | undefined): 'included' | 'scheduled' | 'considered' | 'proposed' | 'declined' | null {
+  if (!bucket) return null;
+  const normalized = bucket.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (normalized === 'included' || normalized.includes('included')) return 'included';
+  if (
+    normalized === 'scheduled' ||
+    normalized === 'sfi' ||
+    normalized.includes('scheduled for inclusion')
+  ) {
+    return 'scheduled';
+  }
+  if (
+    normalized === 'considered' ||
+    normalized === 'cfi' ||
+    normalized.includes('considered for inclusion')
+  ) {
+    return 'considered';
+  }
+  if (
+    normalized === 'proposed' ||
+    normalized === 'pfi' ||
+    normalized.includes('proposed for inclusion')
+  ) {
+    return 'proposed';
+  }
+  if (
+    normalized === 'declined' ||
+    normalized === 'dfi' ||
+    normalized.includes('declined')
+  ) {
+    return 'declined';
+  }
+  return null;
+}
+
 async function computeIndependentIncludedAuthorRows() {
   const eipToUpgrades = new Map<number, Set<string>>();
 
@@ -400,7 +435,7 @@ export const upgradesProcedures = {
         const eip = eips.find(e => e.eip_number === comp.eip_number);
         return {
           eip_number: comp.eip_number,
-          bucket: comp.bucket || null,
+          bucket: normalizeUpgradeBucket(comp.bucket),
           title: eip?.title || '',
           status: eip?.eip_snapshots?.status || null,
           updated_at: comp.updated_at?.toISOString() || null,
@@ -498,7 +533,7 @@ export const upgradesProcedures = {
 
         dateChanges.get(dateStr)!.push({
           eipNumber: event.eip_number,
-          bucket: event.bucket ? event.bucket.toLowerCase() : null,
+          bucket: normalizeUpgradeBucket(event.bucket),
           type: event.event_type || 'added',
         });
       });
@@ -545,8 +580,9 @@ export const upgradesProcedures = {
         if (date === finalSnapshotDate) {
           cumulativeState.clear();
           currentComposition.forEach((comp) => {
-            if (comp.bucket) {
-              cumulativeState.set(comp.eip_number, comp.bucket.toLowerCase());
+            const normalizedBucket = normalizeUpgradeBucket(comp.bucket);
+            if (normalizedBucket) {
+              cumulativeState.set(comp.eip_number, normalizedBucket);
             }
           });
         }

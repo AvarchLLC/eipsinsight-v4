@@ -312,7 +312,6 @@ export function SearchBar() {
         <div
           ref={dropdownRef}
           className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl"
-          style={{ maxHeight: '480px' }}
         >
           {loading ? (
             <div className="p-8 text-center">
@@ -330,7 +329,7 @@ export function SearchBar() {
               </p>
             </div>
           ) : (
-            <div className="max-h-[480px] overflow-y-auto">
+            <div className="max-h-[70vh] overflow-y-auto overscroll-contain">
               {/* Proposals Section */}
               {results.proposals.length > 0 && (
                 <div className="border-b border-border/80">

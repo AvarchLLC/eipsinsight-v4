@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { WhatsNewV4Dialog } from "@/components/whats-new-v4-dialog";
 import { Providers } from "@/providers/Providers";
 import { buildMetadata } from "@/lib/seo";
+import { GivethBanner } from "@/components/giveth-banner";
 
 const Libre_Baskerville = LibreBaskervilleFont({
   variable: "--font-libre-baskerville",
@@ -78,6 +79,7 @@ export default function RootLayout({
           <SidebarProvider>
             <AppSidebar />
             <SidebarInset className="flex h-screen flex-col overflow-hidden">
+              <GivethBanner />
               <div className="shrink-0">
                 <Navbar />
               </div>

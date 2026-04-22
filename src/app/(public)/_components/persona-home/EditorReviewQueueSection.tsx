@@ -138,7 +138,13 @@ export default function EditorReviewQueueSection({
             <h2 className={sectionTitleClass}>Editor Review Queue</h2>
             <CopyLinkButton sectionId="editor-review-queue" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
-          <p className={sectionSubtitleClass}>Open PRs currently waiting on editor action.</p>
+          <p className={sectionSubtitleClass}>
+            Open PRs currently waiting on editor action in the{' '}
+            <Link href="/tools/board" className="text-primary underline-offset-2 hover:underline">
+              Editing Board
+            </Link>
+            .
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button

@@ -664,9 +664,18 @@ const searchTerm = `%${input.query}%`;
       const numericQuery = input.query.replace(/[^\d]/g, '');
       const exactNumber = numericQuery ? parseInt(numericQuery, 10) : null;
       const exactTitle = input.query.trim().toLowerCase();
+      const normalizedQuery = input.query.trim().toLowerCase();
+      const hintedRepo =
+        /\brips?\b/.test(normalizedQuery)
+          ? '%rip%'
+          : /\bercs?\b/.test(normalizedQuery)
+            ? '%erc%'
+            : /\beips?\b/.test(normalizedQuery)
+              ? '%eip%'
+              : null;
 
-      // Get all matching proposals first
-      const allResults = await prisma.$queryRawUnsafe<Array<{
+      // Get all matching proposals first (EIP/ERC snapshots + RIP table)
+      const eipLikeResults = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
         title: string | null;
         author: string | null;
@@ -693,8 +702,39 @@ const searchTerm = `%${input.query}%`;
           OR s.status ILIKE $1
           OR s.type ILIKE $1
           OR s.category ILIKE $1
+          OR ($3::int IS NOT NULL AND e.eip_number = $3)
+          OR ($4::text IS NOT NULL AND LOWER(r.name) LIKE LOWER($4))
         LIMIT $2
-      `, searchTerm, input.limit * 2); // Get more to score and filter
+      `, searchTerm, input.limit * 2, exactNumber, hintedRepo); // Get more to score and filter
+      const ripResults = await prisma.$queryRawUnsafe<Array<{
+        eip_number: number;
+        title: string | null;
+        author: string | null;
+        status: string;
+        type: string | null;
+        category: string | null;
+        repo: string;
+      }>>(`
+        SELECT
+          rp.rip_number AS eip_number,
+          rp.title,
+          rp.author,
+          COALESCE(rp.status, 'Unknown') AS status,
+          'RIP'::text AS type,
+          'RIP'::text AS category,
+          'ethereum/RIPs'::text AS repo
+        FROM rips rp
+        WHERE
+          rp.rip_number::text ILIKE $1
+          OR COALESCE(rp.title, '') ILIKE $1
+          OR COALESCE(rp.author, '') ILIKE $1
+          OR COALESCE(rp.status, '') ILIKE $1
+          OR ($3::int IS NOT NULL AND rp.rip_number = $3)
+          OR ($4::text IS NOT NULL AND LOWER('ethereum/RIPs') LIKE LOWER($4))
+        LIMIT $2
+      `, searchTerm, input.limit * 2, exactNumber, hintedRepo);
+
+      const allResults = [...eipLikeResults, ...ripResults];
 
       // Score and sort results
       const scoredResults = allResults.map(r => {
@@ -737,17 +777,23 @@ const searchTerm = `%${input.query}%`;
         
         return { ...r, score };
       })
-      .filter(r => r.score > 0)
+      .filter(r => r.score > 0);
+
+      const uniqueScoredResults = Array.from(
+        new Map(
+          scoredResults.map((row) => [`${row.repo}:${row.eip_number}`, row] as const)
+        ).values()
+      )
       .sort((a, b) => {
         if (b.score !== a.score) return b.score - a.score;
         return a.eip_number - b.eip_number;
       })
       .slice(0, input.limit);
 
-      return scoredResults.map(r => ({
+      return uniqueScoredResults.map(r => ({
         kind: 'proposal' as const,
         number: r.eip_number,
-        repo: r.repo.includes('EIPs') ? 'eip' : r.repo.includes('ERCs') ? 'erc' : 'rip',
+        repo: r.repo.toLowerCase().includes('/eips') ? 'eip' : r.repo.toLowerCase().includes('/ercs') ? 'erc' : 'rip',
         title: r.title || '',
         status: r.status,
         category: r.category || null,

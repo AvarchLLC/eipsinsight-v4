@@ -60,6 +60,7 @@ import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { ASSOCIATE_EIP_EDITORS, CANONICAL_EIP_EDITORS } from '@/data/eip-contributor-roles';
+import { getUpgradeTimelineData } from '@/data/upgrade-timelines';
 import { useEffectivePersona, useIsHydrated } from '@/stores/personaStore';
 
 type Dimension = 'status' | 'category' | 'repo' | 'stages';
@@ -130,6 +131,25 @@ type UpgradeTimelineRow = {
   considered: string[];
   proposed: string[];
 };
+
+function normalizeUpgradeEipIds(values: string[]): string[] {
+  return values
+    .map((value) => String(value).replace(/^EIP-/i, '').trim())
+    .filter((value) => value.length > 0);
+}
+
+function normalizeUpgradeTimelineRows(rows: UpgradeTimelineRow[]): UpgradeTimelineRow[] {
+  return [...rows]
+    .map((row) => ({
+      date: row.date,
+      included: normalizeUpgradeEipIds(row.included),
+      scheduled: normalizeUpgradeEipIds(row.scheduled),
+      declined: normalizeUpgradeEipIds(row.declined),
+      considered: normalizeUpgradeEipIds(row.considered),
+      proposed: normalizeUpgradeEipIds(row.proposed),
+    }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
 
 type NewcomerTrendingProposal = {
   proposalNumber: number;
@@ -1912,7 +1932,7 @@ export default function EIPsHomePage() {
   const upgradeWatchChartOption = useMemo(() => {
     if (!upgradeTimelineRows.length) return null;
 
-    const compactDates = upgradeTimelineRows.map((row) => row.date.slice(5));
+    const timelineDates = upgradeTimelineRows.map((row) => row.date);
     const seriesConfig = [
       { key: 'included', label: 'Included', color: '#10b981' },
       { key: 'scheduled', label: 'SFI', color: '#06b6d4' },
@@ -1922,7 +1942,7 @@ export default function EIPsHomePage() {
     ] as const;
 
     return {
-      grid: { left: 36, right: 10, top: 24, bottom: 26 },
+      grid: { left: 36, right: 10, top: 24, bottom: 56 },
       tooltip: {
         trigger: 'axis',
         backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
@@ -1937,9 +1957,16 @@ export default function EIPsHomePage() {
       },
       xAxis: {
         type: 'category',
-        data: compactDates,
+        data: timelineDates,
         boundaryGap: false,
-        axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10, hideOverlap: true },
+        axisLabel: {
+          color: isDark ? '#94a3b8' : '#64748b',
+          fontSize: 10,
+          hideOverlap: true,
+          rotate: 0,
+          interval: (index: number) => index % 2 === 0,
+          formatter: (value: string) => value,
+        },
       },
       yAxis: {
         type: 'value',
@@ -1947,6 +1974,32 @@ export default function EIPsHomePage() {
         axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
         splitLine: { lineStyle: { color: isDark ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.2)', type: 'dashed' } },
       },
+      dataZoom: [
+        {
+          type: 'inside',
+          xAxisIndex: 0,
+          filterMode: 'none',
+          zoomOnMouseWheel: true,
+          moveOnMouseMove: true,
+          moveOnMouseWheel: true,
+          preventDefaultMouseMove: false,
+        },
+        {
+          type: 'slider',
+          xAxisIndex: 0,
+          filterMode: 'none',
+          height: 16,
+          bottom: 8,
+          borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
+          backgroundColor: isDark ? 'rgba(15,23,42,0.5)' : 'rgba(241,245,249,0.7)',
+          fillerColor: isDark ? 'rgba(59,130,246,0.28)' : 'rgba(59,130,246,0.2)',
+          handleStyle: {
+            color: isDark ? '#334155' : '#cbd5e1',
+            borderColor: isDark ? '#64748b' : '#94a3b8',
+          },
+          textStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
+        },
+      ],
       series: seriesConfig.map((series) => ({
         name: series.label,
         type: 'bar',
@@ -1985,9 +2038,28 @@ export default function EIPsHomePage() {
     (async () => {
       setUpgradeTimelineLoading(true);
       try {
+        const canonicalTimeline = getUpgradeTimelineData(upgradeWatchSlug);
+        if (canonicalTimeline && canonicalTimeline.length > 0) {
+          if (!cancelled) {
+            setUpgradeTimelineRows(
+              normalizeUpgradeTimelineRows(
+                canonicalTimeline.map((item) => ({
+                  date: item.date,
+                  included: item.included,
+                  scheduled: item.scheduled,
+                  declined: item.declined,
+                  considered: item.considered,
+                  proposed: item.proposed,
+                }))
+              )
+            );
+          }
+          return;
+        }
+
         const timeline = await client.upgrades.getUpgradeTimeline({ slug: upgradeWatchSlug });
         if (!cancelled) {
-          setUpgradeTimelineRows(timeline as UpgradeTimelineRow[]);
+          setUpgradeTimelineRows(normalizeUpgradeTimelineRows(timeline as UpgradeTimelineRow[]));
         }
       } catch (err) {
         console.error('Failed to load developer upgrade watch timeline:', err);
@@ -2219,6 +2291,7 @@ export default function EIPsHomePage() {
           setUpgradeWatchSlug={setUpgradeWatchSlug}
           upgradeOptions={upgradeOptions}
           upgradeTimelineLoading={upgradeTimelineLoading}
+          upgradeTimelineRows={upgradeTimelineRows}
           upgradeWatchChartOption={upgradeWatchChartOption}
           latestCounts={{
             included: latestUpgradeSnapshot?.included.length ?? 0,
@@ -2482,7 +2555,13 @@ export default function EIPsHomePage() {
                 <h2 className={sectionTitleClass}>Board</h2>
                 <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" />
               </div>
-              <p className={sectionSubtitleClass}>Compact open PR snapshot from the Editing Board.</p>
+              <p className={sectionSubtitleClass}>
+                Compact open PR snapshot from the{' '}
+                <Link href="/tools/board" className="text-primary underline-offset-2 hover:underline">
+                  Editing Board
+                </Link>
+                .
+              </p>
             </div>
             <div className="flex items-center gap-2">
               <select
