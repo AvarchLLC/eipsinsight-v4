@@ -1742,24 +1742,27 @@ export default function EIPsHomePage() {
     try {
       setUpgradeMetadataDownloading(true);
       const selectedUpgradeLabel = upgradeOptions.find((opt) => opt.slug === upgradeWatchSlug)?.label ?? upgradeWatchSlug;
+      const latestIncluded = latestUpgradeSnapshot?.included.length ?? 0;
+      const latestScheduled = latestUpgradeSnapshot?.scheduled.length ?? 0;
+      const latestConsidered = latestUpgradeSnapshot?.considered.length ?? 0;
+      const latestProposed = latestUpgradeSnapshot?.proposed.length ?? 0;
+      const latestDeclined = latestUpgradeSnapshot?.declined.length ?? 0;
+      const latestTotal = latestIncluded + latestScheduled + latestConsidered + latestProposed + latestDeclined;
       const header = [
         'upgrade_slug',
         'upgrade_label',
         'date',
-        'included_count',
-        'scheduled_count',
-        'considered_count',
-        'proposed_count',
-        'declined_count',
         'total_count',
-        'included_eips',
-        'scheduled_eips',
-        'considered_eips',
-        'proposed_eips',
-        'declined_eips',
-        'all_eips',
+        `included_eips (${latestIncluded})`,
+        `scheduled_eips (${latestScheduled})`,
+        `considered_eips (${latestConsidered})`,
+        `proposed_eips (${latestProposed})`,
+        `declined_eips (${latestDeclined})`,
+        `all_eips (${latestTotal})`,
       ];
-      const rows = upgradeTimelineRows.map((row) => {
+      const rows = [...upgradeTimelineRows]
+        .sort((a, b) => b.date.localeCompare(a.date))
+        .map((row) => {
         const toEipCode = (value: string) => {
           const normalized = String(value ?? '').trim().replace(/^EIP[-\s]*/i, '');
           return normalized ? `EIP-${normalized}` : '';
@@ -1779,22 +1782,18 @@ export default function EIPsHomePage() {
         const all = [...included, ...scheduled, ...considered, ...proposed, ...declined]
           .filter(Boolean)
           .sort((a, b) => Number(a.replace('EIP-', '')) - Number(b.replace('EIP-', '')));
+        const withCount = (values: string[]) => (values.length ? `${values.join(' | ')} (${values.length})` : '(0)');
         return [
           upgradeWatchSlug,
           selectedUpgradeLabel,
           row.date,
-          included.length,
-          scheduled.length,
-          considered.length,
-          proposed.length,
-          declined.length,
           total,
-          included.join(' | '),
-          scheduled.join(' | '),
-          considered.join(' | '),
-          proposed.join(' | '),
-          declined.join(' | '),
-          all.join(' | '),
+          withCount(included),
+          withCount(scheduled),
+          withCount(considered),
+          withCount(proposed),
+          withCount(declined),
+          withCount(all),
         ];
       });
 
