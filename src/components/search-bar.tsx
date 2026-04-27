@@ -329,7 +329,10 @@ export function SearchBar() {
               </p>
             </div>
           ) : (
-            <div className="max-h-[70vh] overflow-y-auto overscroll-contain space-y-0">
+            <div
+              className="max-h-[70vh] overflow-y-auto overscroll-contain space-y-0 pr-2"
+              style={{ scrollbarGutter: 'stable both-edges' }}
+            >
               {/* Proposals Section */}
               {results.proposals.length > 0 && (
                 <div className="border-b border-border/80">
@@ -339,10 +342,13 @@ export function SearchBar() {
                       Proposals ({results.proposals.length})
                     </h3>
                   </div>
-                  <div className={cn(
+                  <div
+                    className={cn(
                     "overflow-y-auto",
                     results.proposals.length > 3 ? "max-h-56" : ""
-                  )}>
+                    )}
+                    style={{ scrollbarGutter: 'stable both-edges' }}
+                  >
                     {results.proposals.map((result, index) => {
                       const statusColor = statusColors[result.status] || statusColors['Draft'];
                       const isSelected = selectedIndex === index;
@@ -408,10 +414,13 @@ export function SearchBar() {
                       Authors ({results.authors.length})
                     </h3>
                   </div>
-                  <div className={cn(
+                  <div
+                    className={cn(
                     "overflow-y-auto",
                     results.authors.length > 3 ? "max-h-56" : ""
-                  )}>
+                    )}
+                    style={{ scrollbarGutter: 'stable both-edges' }}
+                  >
                     {results.authors.map((result, index) => {
                       const globalIndex = results.proposals.length + index;
                       const isSelected = selectedIndex === globalIndex;
@@ -463,10 +472,13 @@ export function SearchBar() {
                       Pull Requests ({results.prs.length})
                     </h3>
                   </div>
-                  <div className={cn(
+                  <div
+                    className={cn(
                     "overflow-y-auto",
                     results.prs.length > 3 ? "max-h-56" : ""
-                  )}>
+                    )}
+                    style={{ scrollbarGutter: 'stable both-edges' }}
+                  >
                     {results.prs.map((result, index) => {
                       const globalIndex = results.proposals.length + results.authors.length + index;
                       const isSelected = selectedIndex === globalIndex;

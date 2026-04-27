@@ -1742,60 +1742,136 @@ export default function EIPsHomePage() {
     try {
       setUpgradeMetadataDownloading(true);
       const selectedUpgradeLabel = upgradeOptions.find((opt) => opt.slug === upgradeWatchSlug)?.label ?? upgradeWatchSlug;
-      const latestIncluded = latestUpgradeSnapshot?.included.length ?? 0;
-      const latestScheduled = latestUpgradeSnapshot?.scheduled.length ?? 0;
-      const latestConsidered = latestUpgradeSnapshot?.considered.length ?? 0;
-      const latestProposed = latestUpgradeSnapshot?.proposed.length ?? 0;
-      const latestDeclined = latestUpgradeSnapshot?.declined.length ?? 0;
-      const latestTotal = latestIncluded + latestScheduled + latestConsidered + latestProposed + latestDeclined;
+      const categoryColumns = ['Core', 'Networking', 'Informational', 'Meta'] as const;
+      const stageRows = [
+        { key: 'scheduled', label: 'SFI' },
+        { key: 'considered', label: 'CFI' },
+        { key: 'proposed', label: 'PFI' },
+      ] as const;
+
+      const normalizeCategory = (value: string | null | undefined): (typeof categoryColumns)[number] | null => {
+        const normalized = String(value ?? '').trim().toLowerCase();
+        if (!normalized) return null;
+        if (normalized === 'core') return 'Core';
+        if (normalized === 'networking') return 'Networking';
+        if (normalized === 'informational') return 'Informational';
+        if (normalized === 'meta') return 'Meta';
+        return null;
+      };
+
+      const parseEipNumber = (value: string): number | null => {
+        const normalized = String(value ?? '').trim().replace(/^EIP[-\s]*/i, '');
+        const number = Number(normalized);
+        return Number.isFinite(number) ? number : null;
+      };
+
+      const rowsByMonth = new Map<string, UpgradeTimelineRow>();
+      [...upgradeTimelineRows]
+        .sort((a, b) => a.date.localeCompare(b.date))
+        .forEach((row) => {
+          const month = row.date.slice(0, 7);
+          rowsByMonth.set(month, row);
+        });
+
+      const monthRows = Array.from(rowsByMonth.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+      const numbersToResolve = new Set<number>();
+      monthRows.forEach(([, row]) => {
+        stageRows.forEach((stage) => {
+          (row[stage.key] ?? []).forEach((value) => {
+            const number = parseEipNumber(value);
+            if (number !== null) numbersToResolve.add(number);
+          });
+        });
+      });
+
+      const proposalMeta = new Map<number, { prefix: 'EIP' | 'RIP'; path: string; category: (typeof categoryColumns)[number] | null }>();
+      await Promise.all(
+        Array.from(numbersToResolve).map(async (number) => {
+          try {
+            const proposal = await client.proposals.getProposal({ repo: 'eip', number });
+            proposalMeta.set(number, {
+              prefix: 'EIP',
+              path: `/eip/${number}`,
+              category: normalizeCategory((proposal as { category?: string | null }).category),
+            });
+            return;
+          } catch {
+            // Fallback to RIP if number is not available in EIP repo.
+          }
+
+          try {
+            const proposal = await client.proposals.getProposal({ repo: 'rip', number });
+            proposalMeta.set(number, {
+              prefix: 'RIP',
+              path: `/rip/${number}`,
+              category: normalizeCategory((proposal as { category?: string | null }).category),
+            });
+          } catch {
+            proposalMeta.set(number, {
+              prefix: 'EIP',
+              path: `/eip/${number}`,
+              category: null,
+            });
+          }
+        }),
+      );
+
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
       const header = [
         'upgrade_slug',
         'upgrade_label',
-        'date',
+        'month',
+        'status',
+        'core',
+        'networking',
+        'informational',
+        'meta',
         'total_count',
-        `included_eips (${latestIncluded})`,
-        `scheduled_eips (${latestScheduled})`,
-        `considered_eips (${latestConsidered})`,
-        `proposed_eips (${latestProposed})`,
-        `declined_eips (${latestDeclined})`,
-        `all_eips (${latestTotal})`,
       ];
-      const rows = [...upgradeTimelineRows]
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .map((row) => {
-        const toEipCode = (value: string) => {
-          const normalized = String(value ?? '').trim().replace(/^EIP[-\s]*/i, '');
-          return normalized ? `EIP-${normalized}` : '';
-        };
-        const sortEips = (values: string[]) =>
-          [...values]
-            .map(toEipCode)
-            .filter(Boolean)
-            .sort((a, b) => Number(a.replace('EIP-', '')) - Number(b.replace('EIP-', '')));
 
-        const included = sortEips(row.included ?? []);
-        const scheduled = sortEips(row.scheduled ?? []);
-        const considered = sortEips(row.considered ?? []);
-        const proposed = sortEips(row.proposed ?? []);
-        const declined = sortEips(row.declined ?? []);
-        const total = included.length + scheduled.length + considered.length + proposed.length + declined.length;
-        const all = [...included, ...scheduled, ...considered, ...proposed, ...declined]
-          .filter(Boolean)
-          .sort((a, b) => Number(a.replace('EIP-', '')) - Number(b.replace('EIP-', '')));
-        const withCount = (values: string[]) => (values.length ? `${values.join(' | ')} (${values.length})` : '(0)');
-        return [
-          upgradeWatchSlug,
-          selectedUpgradeLabel,
-          row.date,
-          total,
-          withCount(included),
-          withCount(scheduled),
-          withCount(considered),
-          withCount(proposed),
-          withCount(declined),
-          withCount(all),
-        ];
-      });
+      const rows = monthRows.flatMap(([month, row]) =>
+        stageRows.map((stage) => {
+          const byCategory: Record<(typeof categoryColumns)[number], string[]> = {
+            Core: [],
+            Networking: [],
+            Informational: [],
+            Meta: [],
+          };
+
+          (row[stage.key] ?? []).forEach((value) => {
+            const number = parseEipNumber(value);
+            if (number === null) return;
+            const meta = proposalMeta.get(number);
+            const category = meta?.category;
+            if (!category) return;
+            const prefix = meta?.prefix ?? 'EIP';
+            const path = meta?.path ?? `/eip/${number}`;
+            byCategory[category].push(`${prefix}-${number} (${origin}${path})`);
+          });
+
+          categoryColumns.forEach((category) => {
+            byCategory[category].sort((a, b) => {
+              const numA = Number(a.match(/-(\d+)/)?.[1] ?? 0);
+              const numB = Number(b.match(/-(\d+)/)?.[1] ?? 0);
+              return numA - numB;
+            });
+          });
+
+          const total = categoryColumns.reduce((sum, category) => sum + byCategory[category].length, 0);
+
+          return [
+            upgradeWatchSlug,
+            selectedUpgradeLabel,
+            month,
+            stage.label,
+            byCategory.Core.length ? `${byCategory.Core.join(' | ')} (${byCategory.Core.length})` : '(0)',
+            byCategory.Networking.length ? `${byCategory.Networking.join(' | ')} (${byCategory.Networking.length})` : '(0)',
+            byCategory.Informational.length ? `${byCategory.Informational.join(' | ')} (${byCategory.Informational.length})` : '(0)',
+            byCategory.Meta.length ? `${byCategory.Meta.join(' | ')} (${byCategory.Meta.length})` : '(0)',
+            total,
+          ];
+        }),
+      );
 
       const csv = [header, ...rows]
         .map((line) => line.map((v) => csvEscape(v as string | number)).join(','))
