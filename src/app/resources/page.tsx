@@ -3,12 +3,10 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import {
-  BookOpen,
   ExternalLink,
   FileText,
   Github,
   HeartHandshake,
-  HelpCircle,
   Lightbulb,
   Newspaper,
   Target,
@@ -28,7 +26,7 @@ const learningPaths = [
     title: "New To EIPs",
     estimate: "~10 min",
     description: "Understand what Ethereum Improvement Proposals are and how decisions move through governance.",
-    href: "/resources/docs",
+    href: "https://docs.eipsinsight.com/",
     links: ["What is an EIP?", "How governance works", "Key proposals explained"],
   },
   {
@@ -49,44 +47,12 @@ const learningPaths = [
 
 const resourceCategories = [
   {
-    title: "FAQ",
-    group: "Learn",
-    description: "Quick explanations and common governance questions.",
-    count: "20+ answers",
-    href: "/resources/faq",
-    icon: HelpCircle,
-  },
-  {
-    title: "Documentation",
+    title: "Docs",
     group: "Docs",
-    description: "Specs, process guides, and proposal references.",
-    count: "Core guides",
-    href: "/resources/docs",
-    icon: BookOpen,
-  },
-  {
-    title: "Blogs",
-    group: "Media",
-    description: "Deep analysis and commentary on proposals.",
-    count: "Long-form analysis",
-    href: "/resources/blogs",
+    description: "Official docs, process guides, and references for Ethereum standards.",
+    count: "Open docs",
+    href: "https://docs.eipsinsight.com/",
     icon: FileText,
-  },
-  {
-    title: "Videos",
-    group: "Media",
-    description: "Walkthroughs and explainers for protocol changes.",
-    count: "Explainer library",
-    href: "/resources/videos",
-    icon: Video,
-  },
-  {
-    title: "News",
-    group: "Updates",
-    description: "Recent ecosystem and governance updates.",
-    count: "Latest updates",
-    href: "/resources/news",
-    icon: Newspaper,
   },
 ];
 
@@ -156,13 +122,12 @@ const deepLearningBlocks = [
   {
     title: "Educational Resources",
     description: "Start from fundamentals and progress into standards process and governance analytics.",
-    href: "/resources/docs",
+    href: "https://docs.eipsinsight.com/",
   },
 ];
 
 const recommendedReading = [
-  { title: "What Is an EIP?", href: "/resources/docs" },
-  { title: "EIP Lifecycle (Draft to Final)", href: "/resources/docs" },
+  { title: "Docs", href: "https://docs.eipsinsight.com/" },
   { title: "How ERC Standards Work", href: "/erc" },
   { title: "Explore High-Impact EIPs", href: "/explore/trending" },
 ];
@@ -210,10 +175,12 @@ export default function ResourcesPage() {
 
           <div className="mt-5 flex flex-wrap items-center gap-2">
             <Link
-              href="/resources/docs"
+              href="https://docs.eipsinsight.com/"
+              target="_blank"
+              rel="noreferrer"
               className="inline-flex h-9 items-center rounded-md border border-primary/40 bg-primary/10 px-3 text-sm text-primary transition hover:bg-primary/15"
             >
-              Understand EIP Process
+              Docs
             </Link>
             <Link
               href="/explore/trending"
@@ -290,16 +257,18 @@ export default function ResourcesPage() {
         <section className="space-y-4">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Resource Categories</p>
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Learn, Docs, Media, Updates</h2>
-            <p className="mt-0.5 text-sm text-muted-foreground">Pick a format quickly, then go deeper by topic and workflow.</p>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Docs</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">Open the official documentation hub for standards references and process guides.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-1">
             {resourceCategories.map((category) => {
               const Icon = category.icon;
               return (
                 <Link
                   key={category.title}
                   href={category.href}
+                  target="_blank"
+                  rel="noreferrer"
                   className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
                 >
                   <div className="mb-3 inline-flex rounded-md border border-border bg-muted/60 p-2">
@@ -568,7 +537,7 @@ export default function ResourcesPage() {
         <section className="rounded-xl border border-border bg-card/60 p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Need A Quick Start?</h3>
           <div className="mt-2 flex flex-wrap gap-2">
-            <Link href="/resources/docs" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
+            <Link href="https://docs.eipsinsight.com/" target="_blank" rel="noreferrer" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">
               Start with Docs
             </Link>
             <Link href="/insights" className="inline-flex h-8 items-center rounded-md border border-border bg-muted/40 px-3 text-xs text-muted-foreground hover:border-primary/30 hover:text-foreground">

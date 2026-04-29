@@ -20,7 +20,7 @@ const nodes: Array<{
     key: 'pfi',
     short: 'PFI',
     title: 'Proposed',
-    fullTitle: 'Proposed for Inclusion',
+    fullTitle: 'Proposed For Inclusion (PFI)',
     detail: 'Entry point for candidate EIPs being pitched for an upcoming upgrade.',
     className:
       'border-amber-500/35 bg-amber-50/90 text-amber-800 dark:bg-amber-500/12 dark:text-amber-200',
@@ -30,7 +30,7 @@ const nodes: Array<{
     key: 'cfi',
     short: 'CFI',
     title: 'Considered',
-    fullTitle: 'Considered for Inclusion',
+    fullTitle: 'Considered For Inclusion (CFI)',
     detail: 'Under active review and compared against competing upgrade priorities.',
     className:
       'border-violet-500/35 bg-violet-50/90 text-violet-800 dark:bg-violet-500/12 dark:text-violet-200',
@@ -40,7 +40,7 @@ const nodes: Array<{
     key: 'sfi',
     short: 'SFI',
     title: 'Scheduled',
-    fullTitle: 'Scheduled for Inclusion',
+    fullTitle: 'Scheduled For Inclusion (SFI)',
     detail: 'Accepted into the upgrade scope pending final implementation and testing.',
     className:
       'border-orange-500/35 bg-orange-50/90 text-orange-800 dark:bg-orange-500/12 dark:text-orange-200',
@@ -60,7 +60,7 @@ const nodes: Array<{
     key: 'dfi',
     short: 'DFI',
     title: 'Declined',
-    fullTitle: 'Declined for Inclusion',
+    fullTitle: 'Declined For Inclusion (DFI)',
     detail: 'Exit path if the EIP is deferred, dropped, or rejected during planning.',
     className:
       'border-rose-500/35 bg-rose-50/90 text-rose-800 dark:bg-rose-500/12 dark:text-rose-200',
@@ -166,9 +166,9 @@ export function EipInclusionProcessGraph() {
           <span>Starts here</span>
         </div>
 
-        <div className="flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-gradient-to-br from-background via-background to-primary/[0.03] p-2">
+        <div className="flex flex-1 items-center justify-center overflow-hidden rounded-lg border border-border/60 bg-linear-to-br from-background via-background to-primary/3 p-2">
           <div className="origin-center transition-transform duration-200" style={{ transform: `scale(${zoom})` }}>
-            <div className="relative h-[188px] w-[900px]">
+            <div className="relative h-47 w-225">
               <svg
                 aria-hidden="true"
                 className="absolute inset-0 h-full w-full"

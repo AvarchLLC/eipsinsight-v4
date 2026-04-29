@@ -42,10 +42,10 @@ function formatBucket(bucket: string | null): string {
   if (!bucket) return 'Unknown';
   const bucketMap: Record<string, string> = {
     'included': 'Included',
-    'scheduled': 'Scheduled for Inclusion',
-    'proposed': 'Proposed for Inclusion',
-    'considered': 'Considered for Inclusion',
-    'declined': 'Declined',
+    'scheduled': 'Scheduled For Inclusion (SFI)',
+    'proposed': 'Proposed For Inclusion (PFI)',
+    'considered': 'Considered For Inclusion (CFI)',
+    'declined': 'Declined For Inclusion (DFI)',
   };
   return bucketMap[bucket.toLowerCase()] || bucket.charAt(0).toUpperCase() + bucket.slice(1);
 }
@@ -71,20 +71,13 @@ export function UpgradeEIPsShowcase({
   }, {} as Record<string, EIPItem[]>);
 
   // Bucket order
-  const bucketOrder = ['included', 'scheduled', 'proposed', 'considered', 'declined'];
+  const bucketOrder = ['proposed', 'considered', 'scheduled', 'declined', 'included'];
   const orderedBuckets = bucketOrder.filter(b => compositionByBucket[b] && compositionByBucket[b].length > 0);
   const allExpanded = orderedBuckets.length > 0 && orderedBuckets.every((bucket) => expandedBuckets.has(bucket));
 
   const showInitialRows = 2;
   const cardsPerRow = 3;
   const initialVisibleCount = showInitialRows * cardsPerRow;
-  const dashboardBreakdown = {
-    totalEips: composition.length,
-    inReview: compositionByBucket.considered?.length ?? 0,
-    blocked: compositionByBucket.declined?.length ?? 0,
-    readyForLastCall: compositionByBucket.scheduled?.length ?? 0,
-  };
-
   const EIPCard = ({ eip }: { eip: EIPItem }) => {
     const bucketColor = bucketColors[eip.bucket || ''] || bucketColors['proposed'];
     const statusColor = statusColors[eip.status || ''] || statusColors['Draft'];
@@ -188,24 +181,6 @@ export function UpgradeEIPsShowcase({
           )}
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
-          <div className="rounded-lg border border-border bg-card/60 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Total EIPs</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">{dashboardBreakdown.totalEips}</p>
-          </div>
-          <div className="rounded-lg border border-cyan-400/25 bg-cyan-500/8 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-cyan-700 dark:text-cyan-300">In Review</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">{dashboardBreakdown.inReview}</p>
-          </div>
-          <div className="rounded-lg border border-red-400/25 bg-red-500/8 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-red-700 dark:text-red-300">Blocked</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">{dashboardBreakdown.blocked}</p>
-          </div>
-          <div className="rounded-lg border border-amber-400/25 bg-amber-500/8 p-3">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">Ready for Last Call</p>
-            <p className="mt-1 text-xl font-semibold text-foreground">{dashboardBreakdown.readyForLastCall}</p>
-          </div>
-        </div>
       </div>
 
       {orderedBuckets.map((bucket) => {
@@ -290,22 +265,6 @@ export function UpgradeEIPsShowcase({
         );
       })}
 
-      {/* Summary */}
-      <div className="rounded-lg border border-border bg-card/60 p-3">
-        <div className="flex items-center justify-center gap-4 text-xs text-muted-foreground flex-wrap">
-          <div>
-            <span className="font-semibold text-foreground">{composition.length}</span> Total EIPs
-          </div>
-          {orderedBuckets.map((bucket) => (
-            <div key={bucket}>
-              <span className={cn('font-semibold', bucketColors[bucket].text)}>
-                {compositionByBucket[bucket].length}
-              </span>{' '}
-              {formatBucket(bucket)}
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }

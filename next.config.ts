@@ -147,6 +147,16 @@ const nextConfig: NextConfig = {
         destination: '/resources/docs',
         permanent: true,
       },
+      {
+        source: '/resources/docs',
+        destination: 'https://docs.eipsinsight.com/',
+        permanent: true,
+      },
+      {
+        source: '/docs',
+        destination: 'https://docs.eipsinsight.com/',
+        permanent: true,
+      },
     ];
   },
 };

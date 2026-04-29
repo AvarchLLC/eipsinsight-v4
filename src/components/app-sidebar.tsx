@@ -205,12 +205,10 @@ const sidebarSections: SidebarSection[] = [
         icon: BookOpen,
         href: "/resources",
         items: [
-          { title: "Overview", href: "/resources" },
-          { title: "FAQ", href: "/resources/faq" },
+          { title: "Docs", href: "/resources/docs" },
           { title: "Blogs", href: "/resources/blogs" },
           { title: "Videos", href: "/resources/videos" },
           { title: "News", href: "/resources/news" },
-          { title: "Documentation", href: "/resources/docs" },
           { title: "About Us", href: "/about" },
         ],
       },

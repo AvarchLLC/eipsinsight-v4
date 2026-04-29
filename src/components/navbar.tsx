@@ -111,12 +111,10 @@ const mobileNavSections = [
   {
     label: "Resources",
     items: [
-      { title: "Resources Home", href: "/resources", icon: BookOpen },
-      { title: "FAQ", href: "/resources/faq", icon: BookOpen },
+      { title: "Docs", href: "/resources/docs", icon: BookOpen },
       { title: "Blogs", href: "/resources/blogs", icon: BookOpen },
       { title: "Videos", href: "/resources/videos", icon: BookOpen },
       { title: "News", href: "/resources/news", icon: BookOpen },
-      { title: "Documentation", href: "/resources/docs", icon: BookOpen },
       { title: "About Us", href: "/about", icon: Info },
     ],
   },
