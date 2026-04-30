@@ -126,40 +126,52 @@ function slugify(text: string): string {
     .replace(/-+/g, '-');
 }
 
+function parseHeadingTextAndId(children: ReactNode) {
+  const rawText = extractText(children).trim();
+  const customIdMatch = rawText.match(/^(.*?)\s*\{#([a-zA-Z0-9_-]+)\}\s*$/);
+  if (customIdMatch) {
+    return {
+      text: customIdMatch[1].trim(),
+      id: customIdMatch[2].trim(),
+    };
+  }
+  return { text: rawText, id: slugify(rawText) };
+}
+
 const markdownComponents: Components = {
   h1: ({ children, ...props }) => {
-    const id = slugify(extractText(children));
+    const parsed = parseHeadingTextAndId(children);
     return (
-      <h1 id={id} className="dec-title mt-8 mb-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl" {...props}>
-        {children}
+      <h1 id={parsed.id} className="dec-title mt-8 mb-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl" {...props}>
+        {parsed.text}
       </h1>
     );
   },
   h2: ({ children, ...props }) => {
-    const id = slugify(extractText(children));
+    const parsed = parseHeadingTextAndId(children);
     return (
       <h2
-        id={id}
+        id={parsed.id}
         className="dec-title mt-10 mb-3 border-b border-border pb-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl"
         {...props}
       >
-        {children}
+        {parsed.text}
       </h2>
     );
   },
   h3: ({ children, ...props }) => {
-    const id = slugify(extractText(children));
+    const parsed = parseHeadingTextAndId(children);
     return (
-      <h3 id={id} className="mt-8 mb-2 text-lg font-semibold text-foreground" {...props}>
-        {children}
+      <h3 id={parsed.id} className="mt-8 mb-2 text-lg font-semibold text-foreground" {...props}>
+        {parsed.text}
       </h3>
     );
   },
   h4: ({ children, ...props }) => {
-    const id = slugify(extractText(children));
+    const parsed = parseHeadingTextAndId(children);
     return (
-      <h4 id={id} className="mt-6 mb-2 text-base font-semibold text-foreground" {...props}>
-        {children}
+      <h4 id={parsed.id} className="mt-6 mb-2 text-base font-semibold text-foreground" {...props}>
+        {parsed.text}
       </h4>
     );
   },
@@ -172,6 +184,16 @@ const markdownComponents: Components = {
     const url = href ?? '';
     const isInternalRoute = /^\/(eip|erc|rip)\/\d+$/.test(url);
     const isExternal = /^(https?:\/\/|mailto:)/.test(url);
+    const isHashLink = url.startsWith('#');
+    const onClick = (event: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!isHashLink) return;
+      const id = url.slice(1);
+      const element = document.getElementById(id);
+      if (!element) return;
+      event.preventDefault();
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      window.history.replaceState(null, '', `#${id}`);
+    };
 
     return (
       <a
@@ -179,6 +201,7 @@ const markdownComponents: Components = {
         className="text-primary underline transition-colors hover:text-primary/80"
         target={isExternal && !isInternalRoute ? '_blank' : undefined}
         rel={isExternal && !isInternalRoute ? 'noopener noreferrer' : undefined}
+        onClick={onClick}
         {...props}
       >
         {children}
