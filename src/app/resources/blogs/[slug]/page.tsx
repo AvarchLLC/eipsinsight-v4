@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -54,34 +54,25 @@ type BlogPost = {
 
 type Heading = { id: string; text: string; level: number };
 
-function extractHeadings(markdown: string): Heading[] {
-  const headings: Heading[] = [];
-  const lines = markdown.split("\n");
-
-  for (const line of lines) {
-    const h2 = line.match(/^##\s+(.+)$/);
-    const h3 = line.match(/^###\s+(.+)$/);
-
-    if (h2) {
-      const text = h2[1].trim();
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      headings.push({ id, text, level: 2 });
-    } else if (h3) {
-      const text = h3[1].trim();
-      const id = text.toLowerCase().replace(/[^a-z0-9]+/g, "-");
-      headings.push({ id, text, level: 3 });
-    }
-  }
-
-  return headings;
-}
-
 function formatPublishedDate(date: Date | string) {
   return new Date(date).toLocaleDateString(undefined, {
     year: "numeric",
     month: "long",
     day: "numeric",
   });
+}
+
+function getScrollParent(element: HTMLElement | null): HTMLElement | Window {
+  if (!element) return window;
+  let current: HTMLElement | null = element.parentElement;
+  while (current) {
+    const style = window.getComputedStyle(current);
+    const overflowY = style.overflowY;
+    const isScrollable = (overflowY === "auto" || overflowY === "scroll") && current.scrollHeight > current.clientHeight;
+    if (isScrollable) return current;
+    current = current.parentElement;
+  }
+  return window;
 }
 
 export default function BlogPostPage() {
@@ -97,8 +88,7 @@ export default function BlogPostPage() {
   const [copied, setCopied] = useState(false);
   const [likeKey, setLikeKey] = useState<string | null>(null);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
-
-  const headings = useMemo(() => (post?.content ? extractHeadings(post.content) : []), [post?.content]);
+  const [headings, setHeadings] = useState<Heading[]>([]);
   const profile = post?.author?.blog_editor_profile;
   const hasSocial = profile && (profile.linkedin || profile.x || profile.facebook || profile.telegram);
 
@@ -202,6 +192,32 @@ export default function BlogPostPage() {
   }, [post?.id, post?.category?.slug]);
 
   useEffect(() => {
+    if (!post?.content) {
+      setHeadings([]);
+      return;
+    }
+
+    const collect = () => {
+      const nodes = Array.from(
+        document.querySelectorAll<HTMLElement>(".prose h2[id], .prose h3[id]")
+      );
+
+      const next = nodes
+        .map((node) => ({
+          id: node.id,
+          text: (node.textContent ?? "").trim(),
+          level: node.tagName.toLowerCase() === "h3" ? 3 : 2,
+        }))
+        .filter((heading) => heading.text && heading.text.toLowerCase() !== "table of contents");
+
+      setHeadings(next);
+    };
+
+    const frame = window.requestAnimationFrame(collect);
+    return () => window.cancelAnimationFrame(frame);
+  }, [post?.content]);
+
+  useEffect(() => {
     if (!headings.length) {
       setActiveHeadingId(null);
       return;
@@ -238,14 +254,24 @@ export default function BlogPostPage() {
     };
 
     updateActiveHeading();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const scrollRoot = getScrollParent(elements[0]);
+    if (scrollRoot === window) {
+      window.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+    } else {
+      scrollRoot.addEventListener("scroll", onScroll, { passive: true });
+      window.addEventListener("resize", onScroll);
+    }
 
     return () => {
       if (frameId !== null) {
         window.cancelAnimationFrame(frameId);
       }
-      window.removeEventListener("scroll", onScroll);
+      if (scrollRoot === window) {
+        window.removeEventListener("scroll", onScroll);
+      } else {
+        scrollRoot.removeEventListener("scroll", onScroll);
+      }
       window.removeEventListener("resize", onScroll);
     };
   }, [headings]);
@@ -289,7 +315,9 @@ export default function BlogPostPage() {
   const handleTocClick = (event: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     event.preventDefault();
     setActiveHeadingId(id);
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const element = document.getElementById(id);
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   if (loading) {
@@ -319,9 +347,9 @@ export default function BlogPostPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex flex-col gap-10 lg:flex-row lg:gap-12">
-          <article className="min-w-0 max-w-2xl flex-1">
+      <div className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-8 lg:flex-row lg:gap-8">
+          <article className="min-w-0 max-w-[980px] flex-1">
             <Link
               href="/resources/blogs"
               className="mb-6 inline-flex items-center gap-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
@@ -350,7 +378,7 @@ export default function BlogPostPage() {
                     fill
                     className="object-cover object-center"
                     priority
-                    sizes="(max-width: 1024px) 100vw, 720px"
+                    sizes="(max-width: 1024px) 100vw, 980px"
                   />
                 </div>
               )}
@@ -552,10 +580,10 @@ export default function BlogPostPage() {
           </article>
 
           {headings.length > 0 && (
-            <aside className="hidden w-64 shrink-0 lg:block">
-              <div className="sticky top-24 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
+            <aside className="hidden w-72 shrink-0 xl:block">
+              <div className="sticky top-20 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">On this page</p>
-                <nav className="mt-3 border-l-2 border-border/70">
+                <nav className="mt-3 max-h-[calc(100vh-7rem)] overflow-y-auto border-l-2 border-border/70 pr-1">
                   {headings.map((heading) => {
                     const isActive = activeHeadingId === heading.id;
                     return (

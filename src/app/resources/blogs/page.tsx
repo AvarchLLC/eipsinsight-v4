@@ -44,7 +44,6 @@ function BlogsContent() {
   const categorySlug = searchParams.get("category");
 
   const [posts, setPosts] = useState<BlogPost[]>([]);
-  const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [categories, setCategories] = useState<BlogCategory[]>([]);
@@ -52,7 +51,6 @@ function BlogsContent() {
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
 
     Promise.all([
       client.blog.list({
@@ -68,7 +66,6 @@ function BlogsContent() {
       .then(([res, canManage, cats]) => {
         if (cancelled) return;
         setPosts(res.posts);
-        setTotal(res.total);
         setIsAdmin(canManage);
         setCategories(cats);
       })
@@ -134,37 +131,68 @@ function BlogsContent() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+      <div className="page-shell py-6">
         <Link
           href="/resources"
-          className="mb-2 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Back to Resources
         </Link>
 
-        <header className="mb-6">
-          <span className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-            Resources
-          </span>
-          <h1 className="mt-3 dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-            Blogs
-          </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Deep dives, explainers, and editorial context around Ethereum standards, governance, and ecosystem changes.
-          </p>
+        <header className="mb-6 grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-8">
+            <span className="inline-flex items-center rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+              Editorial Desk
+            </span>
+            <h1 className="mt-3 dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              EIPsInsight Blogs
+            </h1>
+            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Long-form writing on Ethereum standards, governance workflows, upgrade intelligence, and contributor coordination.
+            </p>
+          </div>
+          <div className="rounded-xl border border-border bg-card/60 p-4 lg:col-span-4">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Reading Surface</p>
+            <p className="mt-1 text-sm text-foreground">
+              {filteredPosts.length} visible post{filteredPosts.length !== 1 ? "s" : ""}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {categorySlug
+                ? `Filtered by ${categories.find((item) => item.slug === categorySlug)?.name ?? categorySlug}`
+                : "Unfiltered editorial stream"}
+            </p>
+          </div>
         </header>
 
-        <section className="rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Reading Surface
-              </p>
-              <p className="mt-1 text-sm text-muted-foreground">
-                {filteredPosts.length} visible post{filteredPosts.length !== 1 ? "s" : ""}
-                {categorySlug ? ` in ${categories.find((item) => item.slug === categorySlug)?.name ?? categorySlug}` : ""}.
-              </p>
+        <section className="mb-8 rounded-xl border border-border bg-card/60 p-4 backdrop-blur-sm">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/resources/blogs"
+                className={cn(
+                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                  !categorySlug
+                    ? "border-primary/30 bg-primary/10 text-primary"
+                    : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                )}
+              >
+                All posts ({posts.length})
+              </Link>
+              {categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/resources/blogs?category=${category.slug}`}
+                  className={cn(
+                    "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
+                    categorySlug === category.slug
+                      ? "border-primary/30 bg-primary/10 text-primary"
+                      : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
+                  )}
+                >
+                  {category.name} ({categoryCounts.get(category.slug) ?? 0})
+                </Link>
+              ))}
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -200,36 +228,6 @@ function BlogsContent() {
               ) : null}
             </div>
           </div>
-
-          {categories.length > 0 ? (
-            <div className="mt-4 flex flex-wrap gap-2">
-              <Link
-                href="/resources/blogs"
-                className={cn(
-                  "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
-                  !categorySlug
-                    ? "border-primary/30 bg-primary/10 text-primary"
-                    : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                )}
-              >
-                All posts ({posts.length})
-              </Link>
-              {categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/resources/blogs?category=${category.slug}`}
-                  className={cn(
-                    "inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
-                    categorySlug === category.slug
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-muted/40 text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                  )}
-                >
-                  {category.name} ({categoryCounts.get(category.slug) ?? 0})
-                </Link>
-              ))}
-            </div>
-          ) : null}
         </section>
 
         <div className="mt-8">
@@ -269,7 +267,7 @@ function BlogsContent() {
               ) : null}
             </div>
           ) : (
-            <div className="space-y-8">
+            <div className="space-y-10">
               {leadPost ? (
                 <section className="grid gap-4 xl:grid-cols-12">
                   <Link
@@ -357,7 +355,7 @@ function BlogsContent() {
 
                     <div className="rounded-xl border border-border bg-card/60 p-4">
                       <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        Reading Intent
+                        Explore Further
                       </p>
                       <div className="mt-3 grid gap-2">
                         <Link
@@ -386,7 +384,8 @@ function BlogsContent() {
 
               {archivePosts.length > 0 ? (
                 <section>
-                  <div className="mb-4">
+                  <div className="mb-4 flex items-end justify-between gap-3">
+                    <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                       Latest Posts
                     </p>
@@ -396,6 +395,7 @@ function BlogsContent() {
                     <p className="mt-0.5 text-sm text-muted-foreground">
                       Commentary and explainers across governance, standards, and protocol change coordination.
                     </p>
+                    </div>
                   </div>
 
                   <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
