@@ -55,7 +55,7 @@ export default function Footer() {
               Join us:
             </p>
             <div className="mt-2 inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
-              v4.0.0
+              v4.1
             </div>
           </section>
 

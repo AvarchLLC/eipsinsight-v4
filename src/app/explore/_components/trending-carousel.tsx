@@ -38,7 +38,7 @@ function TrendingEIPCard({ proposal, index }: { proposal: TrendingProposal; inde
         transition={{ duration: 0.3, delay: index * 0.05 }}
         whileHover={{ scale: 1.02, y: -4 }}
         className={cn(
-          "relative flex h-[320px] w-72 flex-shrink-0 flex-col rounded-xl p-5",
+          "relative flex h-[400px] w-72 flex-shrink-0 flex-col rounded-xl p-5",
           "bg-card shadow-sm",
           "border border-border ring-1 ring-border/50",
           "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10",
@@ -69,7 +69,7 @@ function TrendingEIPCard({ proposal, index }: { proposal: TrendingProposal; inde
         </div>
 
         {/* Title */}
-        <h3 className="dec-title mb-3 min-h-[3.5rem] line-clamp-2 text-sm font-medium tracking-tight text-foreground">
+        <h3 className="dec-title mb-3 min-h-[5rem] line-clamp-3 text-sm font-medium tracking-tight text-foreground">
           {proposal.title}
         </h3>
 
