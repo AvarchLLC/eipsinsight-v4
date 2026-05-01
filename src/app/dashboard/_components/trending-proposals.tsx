@@ -28,6 +28,173 @@ type TrendingProposal = {
   magiciansUrl: string;
 };
 
+const typeColors = {
+  EIP: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+  ERC: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
+  RIP: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/20',
+};
+
+const statusColors: Record<string, string> = {
+  Draft: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
+  Review: 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/20',
+  'Last Call': 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/20',
+  Final: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
+  Withdrawn: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/20',
+  Stagnant: 'bg-slate-500/15 text-slate-600 dark:text-slate-500 border-slate-500/20',
+};
+
+function formatTimeAgo(dateString: string) {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
+  const authorInitials = proposal.author
+    ? proposal.author.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()
+    : proposal.authorUsername
+    ? proposal.authorUsername.slice(0, 2).toUpperCase()
+    : '??';
+  const authorName = proposal.author || proposal.authorUsername || 'Unknown Author';
+
+  return (
+    <motion.a
+      href={proposal.url}
+      target={proposal.destination === 'magicians' ? '_blank' : '_self'}
+      rel={proposal.destination === 'magicians' ? 'noopener noreferrer' : undefined}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.4, ease: 'easeOut' }}
+      className="group relative flex h-[220px] w-[300px] shrink-0 flex-col rounded-lg border border-border/70 bg-card/60 p-3 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/[0.05]"
+    >
+      {/* Header: Badge + Status */}
+      <div className="mb-2 flex items-center gap-2">
+        <span
+          className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold uppercase tracking-wider ${typeColors[proposal.proposalType]}`}
+        >
+          {proposal.proposalType}-{proposal.proposalNumber}
+        </span>
+        {proposal.status && (
+          <span
+            className={`inline-flex items-center rounded border px-2 py-1 text-[10px] font-medium ${
+              statusColors[proposal.status] ?? statusColors['Draft']
+            }`}
+          >
+            {proposal.status}
+          </span>
+        )}
+      </div>
+
+      {/* Title */}
+      <h3 className="mb-2 line-clamp-3 min-h-[2.8rem] text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+        {proposal.title}
+      </h3>
+
+      {/* Tags + Category */}
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        {proposal.tags && proposal.tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {proposal.tags.slice(0, 2).map((tag, idx) => (
+              <span
+                key={idx}
+                className="inline-flex items-center gap-0.5 rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
+              >
+                <Tag className="h-2 w-2" />
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        {proposal.category && (
+          <span className="rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+            {proposal.category}
+          </span>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div className="mb-2 flex items-center gap-2.5 text-[10px] text-muted-foreground">
+        {proposal.views !== undefined && (
+          <div className="flex items-center gap-1">
+            <Eye className="h-2.5 w-2.5" />
+            <span className="font-medium">{proposal.views}</span>
+          </div>
+        )}
+        {proposal.likes !== undefined && proposal.likes > 0 && (
+          <div className="flex items-center gap-1 text-rose-400">
+            <Heart className="h-2.5 w-2.5 fill-rose-400/30" />
+            <span className="font-medium">{proposal.likes}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-1 text-primary">
+          <MessageSquare className="h-2.5 w-2.5" />
+          <span className="font-medium">{proposal.replies}</span>
+        </div>
+      </div>
+
+      {/* Author + Time + CTA */}
+      <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <Avatar className="h-8 w-8 shrink-0 border border-border/70">
+            <AvatarImage src={proposal.authorAvatar} alt={authorName} />
+            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+              {authorInitials}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex min-w-0 flex-col">
+            <span className="truncate text-[11px] font-semibold text-foreground">{authorName}</span>
+            <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+              <Clock className="h-2 w-2 shrink-0" />
+              <span>{formatTimeAgo(proposal.lastActivityAt)}</span>
+            </div>
+          </div>
+        </div>
+        <div className="ml-2 flex shrink-0 items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition-colors group-hover:bg-primary/20">
+          {proposal.destination === 'internal' ? (
+            <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+          ) : (
+            <ExternalLink className="h-3 w-3" />
+          )}
+        </div>
+      </div>
+
+      {/* Hover glow */}
+      <div className="absolute inset-0 -z-10 rounded-lg bg-primary/0 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-10" />
+    </motion.a>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className="h-[170px] w-[300px] shrink-0 animate-pulse rounded-lg border border-border bg-muted/40">
+      <div className="flex flex-col gap-2 p-3.5">
+        <div className="h-4 w-20 rounded bg-muted" />
+        <div className="h-4 w-full rounded bg-muted" />
+        <div className="flex gap-1.5">
+          <div className="h-3 w-14 rounded bg-muted" />
+          <div className="h-3 w-16 rounded bg-muted" />
+        </div>
+        <div className="flex gap-2">
+          <div className="h-2.5 w-10 rounded bg-muted" />
+          <div className="h-2.5 w-8 rounded bg-muted" />
+        </div>
+        <div className="mt-auto flex items-center gap-2 border-t border-border/30 pt-2.5">
+          <div className="h-7 w-7 rounded-full bg-muted" />
+          <div className="h-2.5 w-20 rounded bg-muted" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function TrendingProposals() {
   const [proposals, setProposals] = useState<TrendingProposal[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,35 +214,6 @@ export default function TrendingProposals() {
     fetchTrendingProposals();
   }, []);
 
-  const typeColors = {
-    EIP: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
-    ERC: 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
-    RIP: 'bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/20',
-  };
-
-  const statusColors: Record<string, string> = {
-    'Draft': 'bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20',
-    'Review': 'bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/20',
-    'Last Call': 'bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/20',
-    'Final': 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20',
-    'Withdrawn': 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/20',
-    'Stagnant': 'bg-slate-500/15 text-slate-600 dark:text-slate-500 border-slate-500/20',
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  };
-
   return (
     <section id="trending-proposals" className="relative w-full pt-2 pb-4">
       <header className="mb-4 flex items-start justify-between gap-3">
@@ -89,31 +227,12 @@ export default function TrendingProposals() {
         </div>
         <CopyLinkButton sectionId="trending-proposals" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
       </header>
+
       <div className="relative w-full">
         {loading ? (
-          <div className="flex gap-3 py-8">
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="h-[170px] w-[300px] shrink-0 animate-pulse rounded-lg border border-border bg-muted/40 backdrop-blur-sm"
-              >
-                <div className="p-3.5">
-                  <div className="mb-2 h-4 w-20 rounded bg-slate-800/50" />
-                  <div className="mb-2 h-4 w-full rounded bg-slate-800/50" />
-                  <div className="mb-2 flex gap-1.5">
-                    <div className="h-3 w-14 rounded bg-slate-800/50" />
-                    <div className="h-3 w-16 rounded bg-slate-800/50" />
-                  </div>
-                  <div className="mb-2.5 flex gap-2">
-                    <div className="h-2.5 w-10 rounded bg-slate-800/50" />
-                    <div className="h-2.5 w-8 rounded bg-slate-800/50" />
-                  </div>
-                  <div className="mt-auto flex items-center gap-2 border-t border-slate-700/30 pt-2.5">
-                    <div className="h-7 w-7 rounded-full bg-slate-800/50" />
-                    <div className="h-2.5 w-20 rounded bg-slate-800/50" />
-                  </div>
-                </div>
-              </div>
+          <div className="flex gap-3 overflow-hidden py-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
             ))}
           </div>
         ) : proposals.length === 0 ? (
@@ -121,142 +240,42 @@ export default function TrendingProposals() {
             <p className="text-muted-foreground">No active proposal discussions at the moment.</p>
           </div>
         ) : (
-          <div className="relative py-8">
-            <div className="overflow-visible">
-              <InfiniteSlider
-                speed={40}
-                speedOnHover={15}
-                gap={12}
-                className="w-full"
-              >
-              {proposals.map((proposal) => {
-                const authorInitials = proposal.author 
-                  ? proposal.author.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-                  : proposal.authorUsername
-                  ? proposal.authorUsername.slice(0, 2).toUpperCase()
-                  : '??';
-                const authorName = proposal.author || proposal.authorUsername || 'Unknown Author';
-
-                return (
-                  <motion.a
+          <div className="relative">
+            {/*
+             * THE FIX: InfiniteSlider has overflow:hidden baked in, which clips
+             * cards top and bottom. We escape it with the negative margin trick:
+             *
+             *   -my-8  pulls the wrapper's edges inward so the parent layout
+             *          is unaffected (no extra space created)
+             *   py-8   pushes the slider's own content outward past the clipping
+             *          boundary so shadows/glows have room to breathe
+             *
+             * The section itself must NOT have overflow:hidden for this to work.
+             * Any ancestor with overflow:hidden will re-clip — check your layout.
+             */}
+            <div className="-my-8 py-8">
+              <InfiniteSlider speed={40} speedOnHover={15} gap={12} className="w-full">
+                {proposals.map((proposal) => (
+                  <ProposalCard
                     key={`${proposal.proposalType}-${proposal.proposalNumber}`}
-                    href={proposal.url}
-                    target={proposal.destination === 'magicians' ? '_blank' : '_self'}
-                    rel={proposal.destination === 'magicians' ? 'noopener noreferrer' : undefined}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-border/70 bg-card/60 p-3 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/[0.05]"
-                  >
-                    {/* Header: Badge + Status */}
-                    <div className="mb-2 flex items-center gap-2">
-                      <span
-                        className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold uppercase tracking-wider ${typeColors[proposal.proposalType]}`}
-                      >
-                        {proposal.proposalType}-{proposal.proposalNumber}
-                      </span>
-                      {proposal.status && (
-                        <span
-                          className={`inline-flex items-center rounded border px-2 py-1 text-[10px] font-medium ${
-                            statusColors[proposal.status] || statusColors['Draft']
-                          }`}
-                        >
-                          {proposal.status}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Title */}
-                    <h3 className="mb-2 line-clamp-2 text-sm font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
-                      {proposal.title}
-                    </h3>
-
-                    {/* Tags + Category */}
-                    <div className="mb-2 flex items-center gap-2 flex-wrap">
-                      {proposal.tags && proposal.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {proposal.tags.slice(0, 2).map((tag, idx) => (
-                            <span
-                              key={idx}
-                              className="inline-flex items-center gap-0.5 rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
-                            >
-                              <Tag className="h-2 w-2" />
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                      {proposal.category && (
-                        <span className="rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
-                          {proposal.category}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Stats: Views, Likes, Replies */}
-                    <div className="mb-2 flex items-center gap-2.5 text-[10px] text-muted-foreground">
-                      {proposal.views !== undefined && (
-                        <div className="flex items-center gap-1">
-                          <Eye className="h-2.5 w-2.5" />
-                          <span className="font-medium">{proposal.views}</span>
-                        </div>
-                      )}
-                      {proposal.likes !== undefined && proposal.likes > 0 && (
-                        <div className="flex items-center gap-1 text-rose-400">
-                          <Heart className="h-2.5 w-2.5 fill-rose-400/30" />
-                          <span className="font-medium">{proposal.likes}</span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-1 text-primary">
-                        <MessageSquare className="h-2.5 w-2.5" />
-                        <span className="font-medium">{proposal.replies}</span>
-                      </div>
-                    </div>
-
-                    {/* Author + Time + CTA */}
-                    <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-3">
-                      <div className="flex items-center gap-2">
-                        <Avatar className="h-8 w-8 border border-border/70">
-                          <AvatarImage src={proposal.authorAvatar} alt={authorName} />
-                          <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
-                            {authorInitials}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex flex-col min-w-0">
-                          <span className="truncate text-[11px] font-semibold text-foreground">{authorName}</span>
-                          <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
-                            <Clock className="h-2 w-2" />
-                            <span>{formatTimeAgo(proposal.lastActivityAt)}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition-colors group-hover:bg-primary/20">
-                        {proposal.destination === 'internal' ? (
-                          <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-                        ) : (
-                          <ExternalLink className="h-3 w-3" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Hover glow effect */}
-                    <div className="absolute inset-0 -z-10 rounded-lg bg-primary/0 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-10" />
-                  </motion.a>
-                );
-              })}
+                    proposal={proposal}
+                  />
+                ))}
               </InfiniteSlider>
             </div>
 
-            {/* Progressive blur edges */}
-            <div className="pointer-events-none absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-background to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-background to-transparent" />
+            {/* Left edge fade */}
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-32 bg-gradient-to-r from-background to-transparent" />
+            {/* Right edge fade */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-32 bg-gradient-to-l from-background to-transparent" />
+
             <ProgressiveBlur
-              className="pointer-events-none absolute left-0 top-0 h-full w-24"
+              className="pointer-events-none absolute left-0 top-0 z-10 h-full w-32"
               direction="left"
               blurIntensity={2}
             />
             <ProgressiveBlur
-              className="pointer-events-none absolute right-0 top-0 h-full w-24"
+              className="pointer-events-none absolute right-0 top-0 z-10 h-full w-32"
               direction="right"
               blurIntensity={2}
             />

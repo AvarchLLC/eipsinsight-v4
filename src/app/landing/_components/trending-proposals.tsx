@@ -142,7 +142,7 @@ export default function TrendingProposals() {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 0.4, ease: 'easeOut' }}
-                    className="group relative flex h-[170px] w-[300px] shrink-0 flex-col rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/90 dark:via-slate-900/70 dark:to-slate-900/90 p-3.5 backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:shadow-xl hover:shadow-cyan-500/15"
+                    className="group relative flex h-[220px] w-[300px] shrink-0 flex-col rounded-lg border border-slate-200 dark:border-slate-700/50 bg-gradient-to-br from-white via-slate-50 to-white dark:from-slate-900/90 dark:via-slate-900/70 dark:to-slate-900/90 p-3.5 backdrop-blur-md transition-all duration-300 hover:border-cyan-400/60 hover:shadow-xl hover:shadow-cyan-500/15"
                   >
                     {/* Header: Badge + Status */}
                     <div className="mb-1.5 flex items-center gap-1.5">
@@ -163,7 +163,7 @@ export default function TrendingProposals() {
                     </div>
 
                     {/* Title */}
-                    <h3 className="mb-1.5 line-clamp-2 text-sm font-bold leading-tight text-slate-900 dark:text-slate-100 transition-colors group-hover:text-slate-950 dark:group-hover:text-white">
+                    <h3 className="mb-1.5 line-clamp-3 min-h-[2.8rem] text-sm font-bold text-slate-900 dark:text-slate-100 transition-colors group-hover:text-slate-950 dark:group-hover:text-white">
                       {proposal.title}
                     </h3>
 
