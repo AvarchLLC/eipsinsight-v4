@@ -88,14 +88,13 @@ const PT_COLORS: Record<string, string> = {
   "New EIP": "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border-emerald-500/20",
   Website: "bg-purple-500/15 text-purple-700 dark:text-purple-300 border-purple-500/20",
   "EIP-1": "bg-blue-500/15 text-blue-700 dark:text-blue-300 border-blue-500/20",
-  Tooling: "bg-orange-500/15 text-orange-700 dark:text-orange-300 border-orange-500/20",
   "Status Change": "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300 border-cyan-500/20",
   "PR DRAFT": "bg-slate-500/15 text-slate-700 dark:text-slate-300 border-slate-500/20",
   "Content Edit": "bg-muted text-muted-foreground border-border",
   Misc: "bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
 };
 
-const PROCESS_ORDER = ["Status Change", "New EIP", "PR DRAFT", "Typo", "Website", "EIP-1", "Tooling", "Content Edit", "Misc"];
+const PROCESS_ORDER = ["Status Change", "New EIP", "PR DRAFT", "Typo", "Website", "EIP-1", "Content Edit", "Misc"];
 
 function getLabelColor(label: string): string {
   if (label.startsWith("c-")) return "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300";
