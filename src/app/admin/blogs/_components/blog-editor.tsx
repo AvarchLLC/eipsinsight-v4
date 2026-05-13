@@ -23,6 +23,7 @@ import {
   User,
   Tag,
   Clock,
+  Calendar,
   Star,
 } from "lucide-react";
 import { client } from "@/lib/orpc";
@@ -42,6 +43,7 @@ interface BlogEditorProps {
     readingTimeMinutes?: number | null;
     tags?: string[];
     featured?: boolean;
+    publicationDate?: string;
   };
 }
 
@@ -135,6 +137,13 @@ function useMarkdownToolbar(textareaRef: React.RefObject<HTMLTextAreaElement | n
 }
 
 export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
+  const formatDateInput = (value?: string) => {
+    if (!value) return new Date().toISOString().slice(0, 10);
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return new Date().toISOString().slice(0, 10);
+    return d.toISOString().slice(0, 10);
+  };
+
   const [slug, setSlug] = useState(initialData.slug);
   const [title, setTitle] = useState(initialData.title);
   const [excerpt, setExcerpt] = useState(initialData.excerpt);
@@ -146,6 +155,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
   const [tags, setTags] = useState<string[]>(initialData.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [featured, setFeatured] = useState(initialData.featured ?? false);
+  const [publicationDate, setPublicationDate] = useState<string>(formatDateInput(initialData.publicationDate));
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [generatingMeta, setGeneratingMeta] = useState(false);
@@ -290,6 +300,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           readingTimeMinutes: readingTimeMinutes ?? undefined,
           tags,
           featured,
+          publicationDate,
         });
         window.location.href = "/admin?tab=blogs";
       } else if (postId) {
@@ -305,6 +316,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           readingTimeMinutes,
           tags,
           featured,
+          publicationDate,
         });
         window.location.href = "/admin?tab=blogs";
       }
@@ -444,6 +456,18 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                 value={readingTimeMinutes ?? ""}
                 onChange={(e) => setReadingTimeMinutes(e.target.value ? parseInt(e.target.value, 10) : null)}
                 placeholder="e.g. 5"
+                className={fieldClass}
+              />
+            </div>
+            <div>
+              <label className={cn(labelClass, "flex items-center gap-1.5")}>
+                <Calendar className="h-4 w-4" />
+                Publication date
+              </label>
+              <input
+                type="date"
+                value={publicationDate}
+                onChange={(e) => setPublicationDate(e.target.value)}
                 className={fieldClass}
               />
             </div>

@@ -17,6 +17,7 @@ export default function EditBlogPage() {
     content: string;
     coverImage: string | null;
     published: boolean;
+    createdAt: string | Date;
     categoryId?: string | null;
     readingTimeMinutes?: number | null;
     tags?: string[];
@@ -64,6 +65,7 @@ export default function EditBlogPage() {
         readingTimeMinutes: post.readingTimeMinutes ?? null,
         tags: post.tags ?? [],
         featured: post.featured ?? false,
+        publicationDate: new Date(post.createdAt).toISOString(),
       }}
     />
   );

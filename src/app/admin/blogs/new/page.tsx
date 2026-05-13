@@ -14,6 +14,7 @@ export default function NewBlogPage() {
         content: "",
         coverImage: null,
         published: false,
+        publicationDate: new Date().toISOString(),
       }}
     />
   );
