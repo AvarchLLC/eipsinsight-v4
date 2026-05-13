@@ -46,6 +46,7 @@ const blogSchema = z.object({
   readingTimeMinutes: z.number().min(0).optional().nullable(),
   tags: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
+  publicationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 })
 
 const authorProfileSchema = z.object({
@@ -141,6 +142,9 @@ export const blogProcedures = {
         throw new ORPCError('BAD_REQUEST', { message: 'A blog post with this slug already exists' })
       }
       const { categoryId, readingTimeMinutes, tags, featured, ...rest } = input
+      const publicationDate = input.publicationDate
+        ? new Date(`${input.publicationDate}T12:00:00.000Z`)
+        : undefined
       const post = await prisma.blog.create({
         data: {
           ...rest,
@@ -150,6 +154,7 @@ export const blogProcedures = {
           readingTimeMinutes: readingTimeMinutes ?? null,
           tags: tags ?? [],
           featured: featured ?? false,
+          ...(publicationDate ? { createdAt: publicationDate } : {}),
         },
         include: {
           author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
@@ -174,6 +179,7 @@ export const blogProcedures = {
         readingTimeMinutes: z.number().min(0).optional().nullable(),
         tags: z.array(z.string()).optional(),
         featured: z.boolean().optional(),
+        publicationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
       }),
     )
     .handler(async ({ input, context }) => {
@@ -185,10 +191,13 @@ export const blogProcedures = {
       if (existing.authorId !== session.user.id && (await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } }))?.role !== 'admin') {
         throw new ORPCError('FORBIDDEN', { message: 'You can only edit your own posts' })
       }
-      const { id, ...data } = input
+      const { id, publicationDate, ...data } = input
       const post = await prisma.blog.update({
         where: { id },
-        data: data as Record<string, unknown>,
+        data: {
+          ...(data as Record<string, unknown>),
+          ...(publicationDate ? { createdAt: new Date(`${publicationDate}T12:00:00.000Z`) } : {}),
+        },
         include: {
           author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
           category: { select: { id: true, slug: true, name: true } },
