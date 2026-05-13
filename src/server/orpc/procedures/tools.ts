@@ -17,7 +17,6 @@ const PROCESS_TYPE_SQL = `CASE
   WHEN p.labels @> ARRAY['c-new']::text[] THEN 'New EIP'
   WHEN LOWER(COALESCE(p.title, '')) ~ 'website|jekyll|_config' THEN 'Website'
   WHEN LOWER(COALESCE(p.title, '')) ~ 'update eip-1[: ]' OR LOWER(COALESCE(p.title, '')) = 'update eip-1' THEN 'EIP-1'
-  WHEN p.labels && ARRAY['dependencies']::text[] OR LOWER(COALESCE(p.title, '')) ~ '^bump ' THEN 'Tooling'
   WHEN p.labels && ARRAY['c-status', 'c-update']::text[] THEN 'Status Change'
   ELSE 'Content Edit'
 END`;
@@ -403,13 +402,16 @@ const { repo, govState, processType, search, page, pageSize } = input;
               END
             ) AS gov_state,
             GREATEST(EXTRACT(DAY FROM (NOW() - COALESCE(gs.waiting_since, p.created_at, NOW())))::int, 0) AS wait_days,
-            COALESCE(gs.category, ${PROCESS_TYPE_SQL}) AS process_type
+            CASE WHEN COALESCE(gs.category, '') = 'Tooling' THEN 'Content Edit'
+              ELSE COALESCE(gs.category, ${PROCESS_TYPE_SQL})
+            END AS process_type
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND COALESCE(gs.category, '') != 'Tooling'
         ),
         filtered AS (
           SELECT * FROM base
@@ -476,7 +478,9 @@ const { repo, govState, search } = input;
                 ELSE 'Uncategorized'
               END
             ) AS gov_state,
-            COALESCE(gs.category, ${PROCESS_TYPE_SQL}) AS process_type
+            CASE WHEN COALESCE(gs.category, '') = 'Tooling' THEN 'Content Edit'
+              ELSE COALESCE(gs.category, ${PROCESS_TYPE_SQL})
+            END AS process_type
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
@@ -531,6 +535,7 @@ const { repo, govState, search } = input;
             OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
             OR LOWER(COALESCE(p.author, '')) LIKE '%' || LOWER($2) || '%'
           ))
+          AND COALESCE(gs.category, '') != 'Tooling'
         GROUP BY state, label
         ORDER BY count DESC
       `, repo || null, search || null);

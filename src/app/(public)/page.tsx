@@ -405,12 +405,12 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'See what is changing, what is active, and where to dive deeper next.',
     goal: 'Quickly understand ongoing protocol changes and identify actionable items.',
     tools: [
-      { key: 'upgrade', title: 'Upgrade Watch', href: '/upgrade', cta: 'Explore Upgrades', icon: Zap, blurb: 'Protocol changes and rollout context.' },
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Most active standards this week.' },
-      { key: 'browse', title: 'Browse by Filters', href: '/explore', cta: 'Explore Browse', icon: Filter, blurb: 'Filter by status, category, and repo.' },
-      { key: 'board', title: 'Editing Board Snapshot', href: '/tools/board', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Jump into active proposal queue.' },
-      { key: 'timeline', title: 'Timeline Snapshot', href: '/tools/timeline', cta: 'Explore Timeline', icon: GitBranch, blurb: 'Recent lifecycle and PR movement.' },
-      { key: 'governance', title: 'Recent Governance Activity', href: '/analytics/prs', cta: 'Explore PR Analytics', icon: ArrowUpDown, blurb: 'Latest governance signals and PR activity.' },
+      { key: 'pull-requests', title: 'Pull Requests Insights', href: '/analytics/prs', cta: 'Explore Pull Requests', icon: GitPullRequest, blurb: 'Track PR flow, reviews, and governance movement.' },
+      { key: 'eips', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore EIPs', icon: FileText, blurb: 'Analyze proposal activity and lifecycle progress.' },
+      { key: 'network-upgrades', title: 'Network Upgrades Insights', href: '/upgrade', cta: 'Explore Upgrades', icon: Network, blurb: 'Follow upgrade timelines and protocol rollout context.' },
+      { key: 'editors', title: 'Editors Insights', href: '/analytics/editors', cta: 'Explore Editors', icon: Trophy, blurb: 'View editorial workload and contribution metrics.' },
+      { key: 'authors', title: 'Authors Insights', href: '/analytics/authors', cta: 'Explore Authors', icon: Activity, blurb: 'See authorship trends and contribution momentum.' },
+      { key: 'monthly', title: 'Monthly Insights', href: '/insights/year-month-analysis', cta: 'Explore Monthly', icon: ArrowUpDown, blurb: 'Open month-by-month standards and governance insights.' },
     ],
   },
   editor: {
