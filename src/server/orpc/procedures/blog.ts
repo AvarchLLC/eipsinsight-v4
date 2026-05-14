@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { sendEmail } from '@/lib/email'
 import { env } from '@/env'
+import { Prisma } from '@/generated/prisma/client'
 import * as z from 'zod'
 
 async function requireAdmin(context: Ctx) {
@@ -35,6 +36,28 @@ async function requireEditor(context: Ctx) {
   return session
 }
 
+function mapBlogWriteError(error: unknown) {
+  if (error instanceof ORPCError) return error
+
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error.code === 'P2002') {
+      return new ORPCError('BAD_REQUEST', { message: 'A blog post with this slug already exists' })
+    }
+    if (error.code === 'P2003') {
+      return new ORPCError('BAD_REQUEST', { message: 'Selected category is invalid. Please choose a valid category.' })
+    }
+    if (error.code === 'P2025') {
+      return new ORPCError('NOT_FOUND', { message: 'Blog post not found' })
+    }
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return new ORPCError('BAD_REQUEST', { message: 'Invalid blog input. Please check slug, URLs, and publication date.' })
+  }
+
+  return new ORPCError('INTERNAL_SERVER_ERROR', { message: 'Failed to save blog post. Please try again.' })
+}
+
 const blogSchema = z.object({
   slug: z.string().min(1).regex(/^[a-z0-9-]+$/, 'Slug must be lowercase alphanumeric with hyphens'),
   title: z.string().min(1),
@@ -46,7 +69,10 @@ const blogSchema = z.object({
   readingTimeMinutes: z.number().min(0).optional().nullable(),
   tags: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
-  publicationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  publicationDate: z
+    .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
+    .optional()
+    .transform((v) => (v === "" ? undefined : v)),
 })
 
 const authorProfileSchema = z.object({
@@ -136,32 +162,36 @@ export const blogProcedures = {
     .$context<Ctx>()
     .input(blogSchema)
     .handler(async ({ input, context }) => {
-      const session = await requireEditor(context)
-      const existing = await prisma.blog.findUnique({ where: { slug: input.slug } })
-      if (existing) {
-        throw new ORPCError('BAD_REQUEST', { message: 'A blog post with this slug already exists' })
+      try {
+        const session = await requireEditor(context)
+        const existing = await prisma.blog.findUnique({ where: { slug: input.slug } })
+        if (existing) {
+          throw new ORPCError('BAD_REQUEST', { message: 'A blog post with this slug already exists' })
+        }
+        const { categoryId, readingTimeMinutes, tags, featured, publicationDate: rawPublicationDate, ...rest } = input
+        const publicationDate = rawPublicationDate
+          ? new Date(`${rawPublicationDate}T12:00:00.000Z`)
+          : undefined
+        const post = await prisma.blog.create({
+          data: {
+            ...rest,
+            authorId: session.user.id,
+            published: input.published ?? false,
+            categoryId: categoryId || null,
+            readingTimeMinutes: readingTimeMinutes ?? null,
+            tags: tags ?? [],
+            featured: featured ?? false,
+            ...(publicationDate ? { createdAt: publicationDate } : {}),
+          },
+          include: {
+            author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
+            category: { select: { id: true, slug: true, name: true } },
+          },
+        })
+        return post
+      } catch (error) {
+        throw mapBlogWriteError(error)
       }
-      const { categoryId, readingTimeMinutes, tags, featured, ...rest } = input
-      const publicationDate = input.publicationDate
-        ? new Date(`${input.publicationDate}T12:00:00.000Z`)
-        : undefined
-      const post = await prisma.blog.create({
-        data: {
-          ...rest,
-          authorId: session.user.id,
-          published: input.published ?? false,
-          categoryId: categoryId || null,
-          readingTimeMinutes: readingTimeMinutes ?? null,
-          tags: tags ?? [],
-          featured: featured ?? false,
-          ...(publicationDate ? { createdAt: publicationDate } : {}),
-        },
-        include: {
-          author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
-          category: { select: { id: true, slug: true, name: true } },
-        },
-      })
-      return post
     }),
 
   update: os
@@ -179,31 +209,38 @@ export const blogProcedures = {
         readingTimeMinutes: z.number().min(0).optional().nullable(),
         tags: z.array(z.string()).optional(),
         featured: z.boolean().optional(),
-        publicationDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+        publicationDate: z
+          .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
+          .optional()
+          .transform((v) => (v === "" ? undefined : v)),
       }),
     )
     .handler(async ({ input, context }) => {
-      const session = await requireEditor(context)
-      const existing = await prisma.blog.findUnique({ where: { id: input.id } })
-      if (!existing) {
-        throw new ORPCError('NOT_FOUND', { message: 'Blog post not found' })
+      try {
+        const session = await requireEditor(context)
+        const existing = await prisma.blog.findUnique({ where: { id: input.id } })
+        if (!existing) {
+          throw new ORPCError('NOT_FOUND', { message: 'Blog post not found' })
+        }
+        if (existing.authorId !== session.user.id && (await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } }))?.role !== 'admin') {
+          throw new ORPCError('FORBIDDEN', { message: 'You can only edit your own posts' })
+        }
+        const { id, publicationDate, ...data } = input
+        const post = await prisma.blog.update({
+          where: { id },
+          data: {
+            ...(data as Record<string, unknown>),
+            ...(publicationDate ? { createdAt: new Date(`${publicationDate}T12:00:00.000Z`) } : {}),
+          },
+          include: {
+            author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
+            category: { select: { id: true, slug: true, name: true } },
+          },
+        })
+        return post
+      } catch (error) {
+        throw mapBlogWriteError(error)
       }
-      if (existing.authorId !== session.user.id && (await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } }))?.role !== 'admin') {
-        throw new ORPCError('FORBIDDEN', { message: 'You can only edit your own posts' })
-      }
-      const { id, publicationDate, ...data } = input
-      const post = await prisma.blog.update({
-        where: { id },
-        data: {
-          ...(data as Record<string, unknown>),
-          ...(publicationDate ? { createdAt: new Date(`${publicationDate}T12:00:00.000Z`) } : {}),
-        },
-        include: {
-          author: { select: { id: true, name: true, image: true, blog_editor_profile: true } },
-          category: { select: { id: true, slug: true, name: true } },
-        },
-      })
-      return post
     }),
 
   delete: os
