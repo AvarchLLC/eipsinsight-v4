@@ -300,7 +300,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           readingTimeMinutes: readingTimeMinutes ?? undefined,
           tags,
           featured,
-          publicationDate,
+          publicationDate: publicationDate || undefined,
         });
         window.location.href = "/admin?tab=blogs";
       } else if (postId) {
@@ -316,7 +316,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           readingTimeMinutes,
           tags,
           featured,
-          publicationDate,
+          publicationDate: publicationDate || undefined,
         });
         window.location.href = "/admin?tab=blogs";
       }
