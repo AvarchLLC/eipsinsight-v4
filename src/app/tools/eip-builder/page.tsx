@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import NextLink from "next/link";
 import { cn } from "@/lib/utils";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 // ──────────────────────────────────────────────
 // Types
@@ -306,10 +307,20 @@ export default function EIPBuilderPage() {
       const start = ref.selectionStart;
       const end = ref.selectionEnd;
       const current = data[key] || "";
-      const newVal = current.substring(0, start) + syntax + current.substring(end);
+      const selected = current.substring(start, end);
+
+      let insertion = syntax;
+      if (selected) {
+        if (syntax === "**bold** ") insertion = `**${selected}**`;
+        else if (syntax === "*italic* ") insertion = `*${selected}*`;
+        else if (syntax === "`code` ") insertion = `\`${selected}\``;
+        else if (syntax === "[link](url) ") insertion = `[${selected}](url)`;
+      }
+
+      const newVal = current.substring(0, start) + insertion + current.substring(end);
       setLastEdited("form");
       setData((prev) => ({ ...prev, [key]: newVal }));
-      requestAnimationFrame(() => { ref.selectionStart = ref.selectionEnd = start + syntax.length; ref.focus(); });
+      requestAnimationFrame(() => { ref.selectionStart = ref.selectionEnd = start + insertion.length; ref.focus(); });
     } else {
       setLastEdited("form");
       setData((prev) => ({ ...prev, [key]: `${prev[key] || ""}${syntax}` }));
@@ -637,17 +648,8 @@ export default function EIPBuilderPage() {
                       </table>
                     </div>
                   )}
-                  <div className="prose prose-sm dark:prose-invert max-w-none rounded-lg border border-border bg-card/60 p-6">
-                    {previewBody.split("\n").map((line, i) => {
-                      if (line.startsWith("## ")) return <h2 key={i} className="text-lg font-bold text-slate-900 dark:text-white mt-6 mb-2 first:mt-0">{line.replace("## ", "")}</h2>;
-                      if (line.startsWith("### ")) return <h3 key={i} className="text-base font-semibold text-slate-900 dark:text-white mt-4 mb-1">{line.replace("### ", "")}</h3>;
-                      if (line.startsWith("# ")) return <h1 key={i} className="text-xl font-bold text-slate-900 dark:text-white mt-6 mb-2">{line.replace("# ", "")}</h1>;
-                      if (line.startsWith("> ")) return <blockquote key={i} className="border-l-2 border-cyan-500/40 pl-3 text-slate-600 dark:text-slate-400 italic">{line.replace("> ", "")}</blockquote>;
-                      if (line.startsWith("- ")) return <li key={i} className="text-sm text-slate-700 dark:text-slate-300 ml-4 list-disc">{line.replace("- ", "")}</li>;
-                      if (line.startsWith("---")) return <hr key={i} className="border-slate-200 dark:border-slate-700/50 my-4" />;
-                      if (!line.trim()) return <br key={i} />;
-                      return <p key={i} className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{line}</p>;
-                    })}
+                  <div className="rounded-lg border border-border bg-card/60 p-6">
+                    <MarkdownRenderer content={previewBody} skipPreamble />
                   </div>
                 </div>
               ) : (
