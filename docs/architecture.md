@@ -15,8 +15,15 @@
 | `/search` | Search (EIPs, PRs, issues) | ✅ |
 | `/standards` | Standards (EIPs, ERCs, RIPs) | ✅ |
 | `/analytics` | Analytics hub | ✅ |
-| `/tools` | Tools hub | ✅ |
-| `/insights` | Insights hub | ✅ |
+| `/tools` | Tools hub (Selection page) | ✅ |
+| `/board` | EIP / ERC / RIP Board | ✅ |
+| `/eip-builder` | EIP Builder | ✅ |
+| `/dependencies` | Dependency Graph | ✅ |
+| `/timeline` | Status & Commit Timeline | ✅ |
+| `/insights` | Monthly analysis (Primary) | ✅ |
+| `/insights/hub` | Insights hub (Selection page) | ✅ |
+| `/insights/governance` | Governance & process analysis | ✅ |
+| `/insights/commentary` | Editorial commentary | ✅ |
 | `/upgrade` | Network Upgrades (singular) | ✅ |
 | `/resources` | Resources hub | ✅ |
 | `/profile` | User profile | ✅ |
@@ -42,7 +49,9 @@ These URLs never change and are safe to share:
 | `/rip/1` | RIP-1 |
 | `/analytics/prs` | PRs analytics |
 | `/analytics/editors` | Editors analytics |
-| `/insights/year-month-analysis` | Year-month analysis |
+| `/insights` | Monthly analysis |
+| `/insights/2026/5` | May 2026 insights |
+| `/board` | Proposals board |
 
 ---
 
@@ -79,18 +88,19 @@ app/
     reviewers/page.tsx        → /analytics/reviewers
     authors/page.tsx          → /analytics/authors
     contributors/page.tsx     → /analytics/contributors
-  tools/
-    page.tsx                  → /tools
-    eip-builder/page.tsx      → /tools/eip-builder
-    board/page.tsx            → /tools/board
-    dependencies/page.tsx     → /tools/dependencies
-    timeline/page.tsx         → /tools/timeline
+  (tools)/
+    layout.tsx
+    tools/page.tsx            → /tools (Hub)
+    eip-builder/page.tsx      → /eip-builder
+    board/page.tsx            → /board
+    dependencies/page.tsx     → /dependencies
+    timeline/page.tsx         → /timeline
   insights/
-    page.tsx                  → /insights
-    year-month-analysis/page.tsx
-    governance-and-process/page.tsx
-    upgrade-insights/page.tsx
-    editorial-commentary/page.tsx
+    page.tsx                  → /insights (Monthly analysis)
+    hub/page.tsx              → /insights/hub (Selection)
+    governance/page.tsx       → /insights/governance
+    commentary/page.tsx       → /insights/commentary
+    [year]/[month]/page.tsx   → /insights/:year/:month
   upgrade/
     page.tsx                  → /upgrade
     [slug]/page.tsx           → /upgrade/:slug
@@ -132,6 +142,11 @@ app/
 | `/eips/:path*` | `/eip/:path*` |
 | `/ercs/:path*` | `/erc/:path*` |
 | `/rips/:path*` | `/rip/:path*` |
+| `/insights/year-month-analysis` | `/insights` |
+| `/tools/board` | `/board` |
+| `/tools/eip-builder` | `/eip-builder` |
+| `/tools/dependencies` | `/dependencies` |
+| `/tools/timeline` | `/timeline` |
 
 ---
 
@@ -159,7 +174,7 @@ export const PERSONA_DEFAULTS: Record<Persona, string> = {
 |------|-----------------|
 | Upgrades path | `/upgrade` (singular), not `/upgrades` |
 | EIP/ERC/RIP pages | `/eip/:n`, `/erc/:n`, `/rip/:n` via `(proposal)/[repo]/[number]` |
-| Board | `/tools/board` (under Tools, not Analytics) |
+| Board | `/board` (Direct link) |
 | Persona redirects | Client-side in `app/p/[persona]/page.tsx` — stores persona, then redirects |
 | Nav reordering | `PERSONA_NAV_ORDER` + `FEATURES.PERSONA_NAV_REORDER` |
 | Per-persona defaults | `PERSONA_PAGE_CONFIG` (analytics view, standards focus, etc.) |

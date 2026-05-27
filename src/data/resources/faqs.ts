@@ -69,7 +69,7 @@ export const faqs: FAQ[] = [
     answer:
       "You can contribute by drafting proposals, opening pull requests, reviewing drafts, commenting during Last Call, improving documentation, or helping with research and implementation feedback. Effective contributions usually start with reading EIP-1 and reviewing similar accepted proposals before opening a PR.",
     relatedLinks: [
-      { label: "Open EIP Builder", href: "/tools/eip-builder" },
+      { label: "Open EIP Builder", href: "/eip-builder" },
       { label: "Search PRs and issues", href: "/search?tab=prs" },
     ],
   },
@@ -110,7 +110,7 @@ export const faqs: FAQ[] = [
     answer:
       "There is no fixed duration. Simple proposals can move quickly, while technically complex or contentious proposals may take months or years. Review time depends on editorial feedback, community discussion, implementation readiness, and whether consensus has formed around the change.",
     relatedLinks: [
-      { label: "See governance trends", href: "/insights/governance-and-process" },
+      { label: "See governance trends", href: "/insights/governance" },
       { label: "Explore by status", href: "/explore/status" },
     ],
   },
@@ -121,7 +121,7 @@ export const faqs: FAQ[] = [
     answer:
       "The most common blockers are incomplete specification details, lack of editor or reviewer feedback, failing PR checks, unresolved technical objections, and unclear implementation strategy. For protocol-wide changes, timing around network upgrades can also delay progress.",
     relatedLinks: [
-      { label: "Open PR board", href: "/tools/board" },
+      { label: "Open PR board", href: "/board" },
       { label: "PR analytics", href: "/analytics/prs" },
     ],
   },
@@ -144,7 +144,7 @@ export const faqs: FAQ[] = [
       "Status can move backward when new objections appear, specification changes become necessary, implementation work reveals issues, or reviewers determine that more discussion is required before finalization. This is normal in a governance process that values correctness and consensus over speed.",
     relatedLinks: [
       { label: "Monthly insight", href: "/insights" },
-      { label: "Editorial commentary", href: "/insights/editorial-commentary" },
+      { label: "Editorial commentary", href: "/insights/commentary" },
     ],
   },
 
@@ -198,7 +198,7 @@ export const faqs: FAQ[] = [
       "Yes. EIPsInsight links standards data with pull requests, issue activity, reviews, and governance signals. This helps explain not only what changed in a proposal, but also how discussion and editorial work influenced that change.",
     relatedLinks: [
       { label: "PR detail pages", href: "/analytics/prs" },
-      { label: "Timeline tool", href: "/tools/timeline" },
+      { label: "Timeline tool", href: "/timeline" },
     ],
   },
   {
@@ -219,7 +219,7 @@ export const faqs: FAQ[] = [
     answer:
       "Most proposal and PR data is refreshed frequently through automated syncs, while heavier analytics may use short-lived caching for performance. Operational views such as boards and timelines are designed to stay close to source activity, while monthly and historical analysis views emphasize accuracy over immediate real-time updates.",
     relatedLinks: [
-      { label: "Open board", href: "/tools/board" },
+      { label: "Open board", href: "/board" },
       { label: "Open analytics", href: "/analytics" },
     ],
   },

@@ -2,7 +2,14 @@ import { Suspense } from "react";
 import { MonthlyDrilldown } from "@/components/insights/MonthlyDrilldown";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
-export default function InsightsPage() {
+export default async function MonthlyInsightDetailPage({
+  params,
+}: {
+  params: Promise<{ year: string; month: string }>;
+}) {
+  const { year, month } = await params;
+  const monthStr = `${year}-${month.padStart(2, "0")}`;
+
   return (
     <Suspense
       fallback={
@@ -11,7 +18,7 @@ export default function InsightsPage() {
         </div>
       }
     >
-      <MonthlyDrilldown />
+      <MonthlyDrilldown initialMonth={monthStr} basePath={`/insights/${year}/${month}`} />
     </Suspense>
   );
 }

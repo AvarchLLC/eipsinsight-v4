@@ -7,7 +7,7 @@ import { ThemedLogoGif } from "@/components/themed-logo-gif";
 const productLinks = [
   { name: "All", href: "/standards" },
   { name: "Status", href: "/standards?view=status" },
-  { name: "March 2026 Insights", href: "/insights/year-month-analysis?month=2026-03" },
+  { name: "March 2026 Insights", href: "/insights/2026/3" },
   { name: "About Us", href: "/about" },
   { name: "Resources", href: "/resources" },
 ];

@@ -410,7 +410,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
       { key: 'network-upgrades', title: 'Network Upgrades Insights', href: '/upgrade', cta: 'Explore Upgrades', icon: Network, blurb: 'Follow upgrade timelines and protocol rollout context.' },
       { key: 'editors', title: 'Editors Insights', href: '/analytics/editors', cta: 'Explore Editors', icon: Trophy, blurb: 'View editorial workload and contribution metrics.' },
       { key: 'authors', title: 'Authors Insights', href: '/analytics/authors', cta: 'Explore Authors', icon: Activity, blurb: 'See authorship trends and contribution momentum.' },
-      { key: 'monthly', title: 'Monthly Insights', href: '/insights/year-month-analysis', cta: 'Explore Monthly', icon: ArrowUpDown, blurb: 'Open month-by-month standards and governance insights.' },
+      { key: 'monthly', title: 'Monthly Insights', href: '/insights', cta: 'Explore Monthly', icon: ArrowUpDown, blurb: 'Open month-by-month standards and governance insights.' },
     ],
   },
   editor: {
@@ -419,7 +419,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     goal: 'Efficiently manage review workload and track proposal progression.',
     tools: [
       { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Explore PR Analytics', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.' },
-      { key: 'editing-board', title: 'Editing Board', href: '/tools/board?status=Waiting+on+Editor&page=1', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.' },
+      { key: 'editing-board', title: 'Editing Board', href: '/board?status=Waiting+on+Editor&page=1', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.' },
       { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'Explore Leaderboard', icon: Trophy, blurb: 'Monthly editorial activity snapshot.' },
     ],
   },
@@ -430,7 +430,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     tools: [
       { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Find active standards quickly.' },
       { key: 'erc-focus', title: 'ERC-focused Browse', href: '/explore?repo=ercs', cta: 'Explore ERCs', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
-      { key: 'eip-builder', title: 'EIP Builder', href: '/tools/eip-builder', cta: 'Explore EIP Builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
+      { key: 'eip-builder', title: 'EIP Builder', href: '/eip-builder', cta: 'Explore EIP Builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
       { key: 'resources', title: 'Practical Docs/Resources', href: '/resources/docs', cta: 'Explore Resources', icon: BookOpen, blurb: 'Guides, references, and examples.' },
       { key: 'contributors', title: 'Recent Activity Snapshot', href: '/analytics/contributors', cta: 'Explore Contributors', icon: Activity, blurb: 'Latest contributor movement and momentum.' },
     ],
@@ -2608,7 +2608,7 @@ export default function EIPsHomePage() {
           </div>
           <div className="mt-4 flex justify-center">
             <Link
-              href="/tools/eip-builder"
+              href="/eip-builder"
               className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore EIP Builder
@@ -2632,7 +2632,7 @@ export default function EIPsHomePage() {
               </div>
               <p className={sectionSubtitleClass}>
                 Compact open PR snapshot from the{' '}
-                <Link href="/tools/board" className="text-primary underline-offset-2 hover:underline">
+                <Link href="/board" className="text-primary underline-offset-2 hover:underline">
                   Editing Board
                 </Link>
                 .
@@ -2779,7 +2779,7 @@ export default function EIPsHomePage() {
           </div>
           <div className="mt-4 flex justify-center">
             <Link
-              href="/tools/board"
+              href="/board"
               className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
             >
               Explore Board
@@ -2809,10 +2809,10 @@ export default function EIPsHomePage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { title: 'Editing Board', href: '/tools/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
-              { title: 'Timeline', href: '/tools/timeline', blurb: 'Proposal lifecycle flow.', icon: GitBranch },
-              { title: 'Dependencies', href: '/tools/dependencies', blurb: 'Inter-proposal links.', icon: Network },
-              { title: 'EIP Builder', href: '/tools/eip-builder', blurb: 'Draft with validation.', icon: Code },
+              { title: 'Editing Board', href: '/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
+              { title: 'Timeline', href: '/timeline', blurb: 'Proposal lifecycle flow.', icon: GitBranch },
+              { title: 'Dependencies', href: '/dependencies', blurb: 'Inter-proposal links.', icon: Network },
+              { title: 'EIP Builder', href: '/eip-builder', blurb: 'Draft with validation.', icon: Code },
             ].map((tool) => {
               const Icon = tool.icon;
               return (
@@ -2863,9 +2863,9 @@ export default function EIPsHomePage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { title: 'Tools Home', href: '/tools', blurb: 'See all available standards tools.', icon: Wrench },
-              { title: 'Editing Board', href: '/tools/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
-              { title: 'Timeline', href: '/tools/timeline', blurb: 'See proposal lifecycle changes.', icon: GitBranch },
-              { title: 'Dependencies', href: '/tools/dependencies', blurb: 'Explore proposal relationships.', icon: Network },
+              { title: 'Editing Board', href: '/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
+              { title: 'Timeline', href: '/timeline', blurb: 'See proposal lifecycle changes.', icon: GitBranch },
+              { title: 'Dependencies', href: '/dependencies', blurb: 'Explore proposal relationships.', icon: Network },
             ].map((tool) => {
               const Icon = tool.icon;
               return (
@@ -3697,7 +3697,7 @@ export default function EIPsHomePage() {
             </div>
             <div className="inline-flex items-center gap-2">
               <Link
-                href={`/insights/year-month-analysis?month=${currentMonthYear}`}
+                href={`/insights/${currentMonthYear.split('-')[0]}/${parseInt(currentMonthYear.split('-')[1], 10)}`}
                 className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
               >
                 Explore Month Analysis
@@ -3886,7 +3886,7 @@ export default function EIPsHomePage() {
       {activePersona === 'editor' && (
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <Link
-            href="/insights/year-month-analysis"
+            href="/insights"
             className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
           >
             Explore Month Analysis

@@ -110,7 +110,12 @@ function availableMonthsDefaultStart(toMonth: string) {
   return `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-function DrilldownPageContent() {
+export interface MonthlyDrilldownProps {
+  initialMonth?: string;
+  basePath?: string;
+}
+
+export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: MonthlyDrilldownProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -118,7 +123,7 @@ function DrilldownPageContent() {
   const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 
   const repo = (searchParams.get("repo") || "all") as "all" | "eips" | "ercs" | "rips";
-  const month = searchParams.get("month") || defaultMonth;
+  const month = initialMonth || searchParams.get("month") || defaultMonth;
   const historyFrom = searchParams.get("from") || availableMonthsDefaultStart(defaultMonth);
   const historyTo = searchParams.get("to") || month;
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
@@ -226,7 +231,14 @@ function DrilldownPageContent() {
       else next.set(k, v);
     });
     if (!updates.page) next.set("page", "1");
-    router.replace(`/insights/year-month-analysis?${next.toString()}`);
+
+    // If month is updated, we might need to redirect to the new path if we're in [year]/[month]
+    if (updates.month) {
+      const [y, m] = updates.month.split("-");
+      router.push(`/insights/${y}/${parseInt(m, 10)}?${next.toString()}`);
+    } else {
+      router.replace(`${basePath}?${next.toString()}`);
+    }
   };
 
   const summary = data?.summary;
@@ -676,13 +688,13 @@ function DrilldownPageContent() {
           indicator={{ icon: "chart", label: "Monthly", pulse: (summary?.totalChanged || 0) > 50 }}
           title={`Monthly Insight - ${monthLabel(month)}`}
           description={`Monthly governance movement for ${monthLabel(month)} across EIPs, ERCs, and RIPs, with clear status distribution and change signals.`}
-          sectionId="monthly-insight"
+          sectionId="insights"
         />
         <SectionSeparator className="pb-2" />
 
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link href="/insights" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> Back to Insights
+          <Link href="/insights/hub" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+            <ArrowLeft className="h-3.5 w-3.5" /> More Insights
           </Link>
 
           <div className="space-y-4">
@@ -1132,19 +1144,5 @@ function DrilldownPageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function YearMonthAnalysisPage() {
-  return (
-    <Suspense
-      fallback={
-        <div className="flex min-h-screen items-center justify-center bg-background">
-          <InlineBrandLoader size="md" label="Loading insight page..." />
-        </div>
-      }
-    >
-      <DrilldownPageContent />
-    </Suspense>
   );
 }

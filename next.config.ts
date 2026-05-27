@@ -141,6 +141,31 @@ const nextConfig: NextConfig = {
         destination: '/standards?repo=rips',
         permanent: true,
       },
+      {
+        source: '/insights/year-month-analysis',
+        destination: '/insights',
+        permanent: true,
+      },
+      {
+        source: '/tools/board',
+        destination: '/board',
+        permanent: true,
+      },
+      {
+        source: '/tools/eip-builder',
+        destination: '/eip-builder',
+        permanent: true,
+      },
+      {
+        source: '/tools/dependencies',
+        destination: '/dependencies',
+        permanent: true,
+      },
+      {
+        source: '/tools/timeline',
+        destination: '/timeline',
+        permanent: true,
+      },
       // Legacy onboarding/resource links
       {
         source: '/resources/getting-started',

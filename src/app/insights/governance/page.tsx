@@ -307,13 +307,13 @@ export default function GovernanceProcessPage() {
         indicator={{ icon: "activity", label: "Governance", pulse: activePipeline > 0 }}
         title="Governance & Process Insights"
         description="A compact governance health report: process flow, blockers, and decision speed."
-        sectionId="governance-process-insights"
+        sectionId="governance"
       />
       <SectionSeparator />
 
       <div className="w-full space-y-4 px-4 pb-10 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <Link href="/insights" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/insights/hub" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             Back to Insights
           </Link>

@@ -582,7 +582,7 @@ export default function ProposalDetailPage() {
                     {repoDisplayName}
                   </span>
                   <Link
-                    href={`/tools/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}
+                    href={`/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}
                     className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                   >
                     <Activity className="h-3.5 w-3.5" />
@@ -804,7 +804,7 @@ export default function ProposalDetailPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lifecycle Timeline</h3>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Link href={`/tools/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}>
+                  <Link href={`/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}>
                     <Button variant="outline" size="sm" className="h-8 border-border bg-muted/50 text-xs text-foreground hover:bg-muted">
                       Show Full Timeline
                     </Button>

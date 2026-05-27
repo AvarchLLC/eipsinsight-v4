@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "Dependencies Tool",
   description: "Inspect dependency relationships between Ethereum improvement proposals.",
-  path: "/tools/dependencies",
+  path: "/dependencies",
   keywords: ["EIP dependencies", "proposal relations", "Ethereum standards graph"],
 });
 

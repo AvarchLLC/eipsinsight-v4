@@ -144,7 +144,7 @@ function TimelineContent() {
           const params = new URLSearchParams(window.location.search);
           params.set("repo", repo);
           params.set("number", String(proposalNum));
-          window.history.replaceState(null, "", `/tools/timeline?${params.toString()}`);
+          window.history.replaceState(null, "", `/timeline?${params.toString()}`);
         }
       } catch (err) {
         console.error(err);

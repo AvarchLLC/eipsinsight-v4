@@ -213,7 +213,7 @@ export interface PersonaPageConfig {
   showTechnicalTerms: boolean;
   showDetailedStats: boolean;
   
-  // Boards default view (for /tools/boards)
+  // Boards default view (for /board)
   boardsDefault: "all" | "editor" | "core" | "historical";
 }
 

@@ -799,7 +799,7 @@ export default function DependenciesPage() {
                     <ArrowUpRight className="h-4 w-4" />
                   </Link>
                   <Link
-                    href={`/tools/timeline?repo=eips&number=${selectedNode.id}`}
+                    href={`/timeline?repo=eips&number=${selectedNode.id}`}
                     className="inline-flex h-9 items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 text-sm text-primary transition-colors hover:bg-primary/15"
                   >
                     Open Timeline

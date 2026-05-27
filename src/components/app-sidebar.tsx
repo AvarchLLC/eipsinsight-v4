@@ -160,7 +160,7 @@ const sidebarSections: SidebarSection[] = [
           { title: "EIPs", href: "/analytics/eips" },
           { title: "PRs", href: "/analytics/prs" },
           { title: "Issues", href: "/analytics/issues" },
-          { title: "Board", href: "/tools/board" },
+          { title: "Board", href: "/board" },
           { title: "Editors", href: "/analytics/editors" },
           { title: "Reviewers", href: "/analytics/reviewers" },
           { title: "Authors", href: "/analytics/authors" },
@@ -172,10 +172,10 @@ const sidebarSections: SidebarSection[] = [
         icon: Lightbulb,
         href: "/insights",
         items: [
-          { title: "Overview", href: "/insights" },
-          { title: "Year-Month Analysis", href: "/insights/year-month-analysis" },
-          { title: "Governance & Process", href: "/insights/governance-and-process" },
-          { title: "Editorial Commentary", href: "/insights/editorial-commentary" },
+          { title: "Monthly Analysis", href: "/insights" },
+          { title: "Governance & Process", href: "/insights/governance" },
+          { title: "Editorial Commentary", href: "/insights/commentary" },
+          { title: "Selection Hub", href: "/insights/hub" },
         ],
       },
     ],
@@ -189,9 +189,10 @@ const sidebarSections: SidebarSection[] = [
         icon: Wrench,
         href: "/tools",
         items: [
-          { title: "Overview", href: "/tools" },
-          { title: "EIP Builder", href: "/tools/eip-builder" },
-          { title: "Timeline", href: "/tools/timeline" },
+          { title: "Board", href: "/board" },
+          { title: "EIP Builder", href: "/eip-builder" },
+          { title: "Timeline", href: "/timeline" },
+          { title: "Dependencies", href: "/dependencies" },
         ],
       },
     ],
@@ -449,9 +450,15 @@ function getActiveItemTitle(pathname: string): string | null {
     return "Standards";
   if (pathname.startsWith("/explore")) return "Explore";
   if (pathname.startsWith("/upgrade")) return "Upgrades";
-  if (pathname === "/tools/board") return "Analytics";
   if (pathname.startsWith("/analytics")) return "Analytics";
-  if (pathname.startsWith("/tools")) return "Tools";
+  if (
+    pathname === "/board" ||
+    pathname.startsWith("/eip-builder") ||
+    pathname.startsWith("/timeline") ||
+    pathname.startsWith("/dependencies") ||
+    pathname.startsWith("/tools")
+  )
+    return "Tools";
   if (pathname.startsWith("/insights")) return "Insights";
   if (pathname.startsWith("/resources")) return "Resources";
   if (pathname.startsWith("/profile")) return "Settings";
@@ -731,7 +738,7 @@ function AppSidebarContent() {
    * - URL items: exact match on pathname + normalized query params
    *
    * This fixes the old bug where "Overview" (/tools) was highlighted when
-   * visiting /tools/eip-builder, because the old code used prefix matching.
+   * visiting /eip-builder, because the old code used prefix matching.
    */
   const isSubItemActive = React.useCallback(
     (subItem: SidebarSubItem): boolean => {

@@ -140,7 +140,7 @@ export default function EditorReviewQueueSection({
           </div>
           <p className={sectionSubtitleClass}>
             Open PRs currently waiting on editor action in the{' '}
-            <Link href="/tools/board" className="text-primary underline-offset-2 hover:underline">
+            <Link href="/board" className="text-primary underline-offset-2 hover:underline">
               Editing Board
             </Link>
             .
@@ -158,7 +158,7 @@ export default function EditorReviewQueueSection({
             <Download className="h-3.5 w-3.5" />
           </button>
           <Link
-            href="/tools/board?status=Waiting+on+Editor&page=1"
+            href="/board?status=Waiting+on+Editor&page=1"
             className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
           >
             Explore Board

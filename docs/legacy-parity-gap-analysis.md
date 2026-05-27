@@ -90,7 +90,7 @@ These existed in legacy and still add value if rebuilt in current design languag
 
 4. Status Transition Stacked Bars for monthly deltas (drilldown-linked)
 - Legacy signal: quick status flow intuition.
-- Target pages: `/insights/year-month-analysis`, new `/insights/monthly-drilldown`
+- Target pages: `/insights`, new `/insights/monthly-drilldown`
 
 5. Last-Updated block on all analytics cards/charts
 - Legacy signal: trust in freshness.
@@ -134,7 +134,7 @@ Sprint 2
 - Status transition charts linked to drilldown
 
 Sprint 3
-- Board parity expansion in `/tools/board`
+- Board parity expansion in `/board`
 - Feedback ops dashboard (admin)
 
 Sprint 4
