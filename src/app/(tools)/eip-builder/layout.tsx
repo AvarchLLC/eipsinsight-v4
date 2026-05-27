@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "EIP Builder",
   description: "Draft and structure Ethereum improvement proposals with guided tooling.",
-  path: "/tools/eip-builder",
+  path: "/eip-builder",
   keywords: ["EIP builder", "proposal drafting tool", "Ethereum standards writing"],
 });
 

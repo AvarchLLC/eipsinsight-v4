@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "Board Tool",
   description: "Visual board for managing and monitoring Ethereum proposal workflows.",
-  path: "/tools/board",
+  path: "/board",
   keywords: ["proposal board", "Ethereum workflow board", "EIP management"],
 });
 

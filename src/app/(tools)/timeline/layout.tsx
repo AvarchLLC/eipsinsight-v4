@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "Timeline Tool",
   description: "Track chronological progress and milestones across Ethereum standards.",
-  path: "/tools/timeline",
+  path: "/timeline",
   keywords: ["EIP timeline tool", "proposal milestones", "Ethereum timeline"],
 });
 

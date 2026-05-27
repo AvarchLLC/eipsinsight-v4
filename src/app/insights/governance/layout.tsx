@@ -4,7 +4,7 @@ import { buildMetadata } from "@/lib/seo";
 export const metadata: Metadata = buildMetadata({
   title: "Governance And Process",
   description: "Governance workflow insights for Ethereum proposals and standards lifecycle processes.",
-  path: "/insights/governance-and-process",
+  path: "/insights/governance",
   keywords: ["Ethereum governance", "EIP process", "proposal workflow"],
 });
 

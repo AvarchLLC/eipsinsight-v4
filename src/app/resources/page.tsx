@@ -33,7 +33,7 @@ const learningPaths = [
     title: "Contributors",
     estimate: "~30 min",
     description: "Learn how to draft proposals, collaborate in PRs, and navigate editorial workflow.",
-    href: "/tools/eip-builder",
+    href: "/eip-builder",
     links: ["How to write an EIP", "PR process", "Editor workflow"],
   },
   {
@@ -111,7 +111,7 @@ const deepLearningBlocks = [
   {
     title: "Expert Analysis",
     description: "Read structured commentary on high-impact EIPs and protocol-level implications.",
-    href: "/insights/editorial-commentary",
+    href: "/insights/commentary",
   },
   {
     title: "Community Engagement",
@@ -189,7 +189,7 @@ export default function ResourcesPage() {
               Explore Trending Proposals
             </Link>
             <Link
-              href="/tools/eip-builder"
+              href="/eip-builder"
               className="inline-flex h-9 items-center rounded-md border border-border bg-muted/40 px-3 text-sm text-muted-foreground transition hover:border-primary/30 hover:text-foreground"
             >
               Learn How To Write an EIP

@@ -87,9 +87,9 @@ EIPsInsight
 | Search | `/search` |
 | Analytics | `/analytics`, `/analytics/eips`, `/analytics/prs`, `/analytics/editors`, etc. |
 | Standards | `/standards` (sidebar), `/standards?repo=eips|ercs|rips` |
-| Tools | `/tools`, `/tools/eip-builder`, `/tools/board`, `/tools/dependencies`, `/tools/timeline` |
+| Tools | `/tools`, `/board`, `/eip-builder`, `/dependencies`, `/timeline` |
 | Resources | `/resources`, `/resources/faq`, `/resources/blogs`, `/resources/videos`, `/resources/news`, `/resources/docs` |
-| Insights | `/insights`, `/insights/year-month-analysis`, etc. |
+| Insights | `/insights`, `/insights/hub`, `/insights/governance`, `/insights/commentary` |
 | Network Upgrades | `/upgrade`, `/upgrade/pectra`, `/upgrade/fusaka`, `/upgrade/glamsterdam`, `/upgrade/hegota` |
 | Individual EIP/ERC/RIP | `/eip/:n`, `/erc/:n`, `/rip/:n` |
 

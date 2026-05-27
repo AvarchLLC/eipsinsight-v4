@@ -56,7 +56,7 @@ function proposalHref(row: TrendingProposalRow) {
 }
 
 function timelineHref(row: TrendingProposalRow) {
-  return `/tools/timeline?repo=${row.repo}&proposal=${row.kind}-${row.number}`;
+  return `/timeline?repo=${row.repo}&proposal=${row.kind}-${row.number}`;
 }
 
 export function TrendingList({ proposals, loading, selectedEipId, onSelect, windowLabel }: TrendingListProps) {
