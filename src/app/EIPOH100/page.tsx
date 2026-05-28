@@ -97,6 +97,23 @@ function formatHourLabel(isoStr: string) {
   return new Date(isoStr).toLocaleTimeString("en-US", { hour: "numeric", hour12: true });
 }
 
+function relativeTime(dt: Date | string) {
+  const diff = Date.now() - new Date(dt).getTime();
+  const mins = Math.floor(diff / 60_000);
+  const hours = Math.floor(diff / 3_600_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(diff / 86_400_000)}d ago`;
+}
+
+function repoTagStyle(eipType: string): { label: string; cls: string } {
+  const t = eipType.toUpperCase().replace(/S$/, "");
+  if (t === "ERC") return { label: "ERCs", cls: "bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400" };
+  if (t === "RIP") return { label: "RIPs", cls: "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-400" };
+  return { label: "EIPs", cls: "bg-violet-500/10 border-violet-500/20 text-violet-700 dark:text-violet-400" };
+}
+
 function sprintProgress() {
   const now = new Date();
   const start = new Date(now);
@@ -363,6 +380,58 @@ export default function EIPOH100Page() {
     };
   }, [hourlyByType, chartColors]);
 
+  // ─── Derived: repo-type totals for pie ─────────────────────────────────
+  const typeComparison = useMemo(() => {
+    const totals = new Map<string, number>();
+    hourlyByType.forEach(({ repoType, prsChecked }) => {
+      totals.set(repoType, (totals.get(repoType) ?? 0) + prsChecked);
+    });
+    return Array.from(totals.entries())
+      .map(([repoType, value]) => ({ repoType, value }))
+      .sort((a, b) => b.value - a.value);
+  }, [hourlyByType]);
+
+  // ─── ECharts: repo distribution donut ──────────────────────────────────
+  const pieOption = useMemo(() => {
+    const { mutedFg, fg, card, border } = chartColors;
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "item",
+        backgroundColor: card,
+        borderColor: border,
+        textStyle: { color: fg, fontSize: 12 },
+        formatter: (p: { name: string; value: number; percent: number }) =>
+          `<div style="padding:4px 8px"><b>${p.name}</b><br/>${p.value} PRs &mdash; ${p.percent}%</div>`,
+      },
+      legend: {
+        orient: "vertical",
+        right: 8,
+        top: "center",
+        textStyle: { color: mutedFg, fontSize: 11 },
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 10,
+      },
+      series: [{
+        type: "pie",
+        radius: ["44%", "70%"],
+        center: ["38%", "50%"],
+        data: typeComparison.map((item) => ({
+          name: TYPE_LABELS[item.repoType] ?? item.repoType.toUpperCase(),
+          value: item.value,
+          itemStyle: { color: TYPE_SERIES_COLORS[item.repoType] ?? "#94a3b8" },
+        })),
+        label: { show: false },
+        emphasis: {
+          label: { show: true, fontSize: 13, fontWeight: "bold", color: fg },
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: "rgba(0,0,0,0.15)" },
+        },
+        itemStyle: { borderRadius: 5, borderColor: card, borderWidth: 2 },
+      }],
+    };
+  }, [typeComparison, chartColors]);
+
   // ─── Render ────────────────────────────────────────────────────────────
   const [p1, p2, p3, ...rest] = leaderboard;
   const feedVisible = expandedFeed ? recentActivity : recentActivity.slice(0, 6);
@@ -599,6 +668,48 @@ export default function EIPOH100Page() {
                 />
               )}
             </section>
+
+            {/* Repo distribution donut */}
+            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
+              <div className="mb-1 flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
+                  Activity by Repo
+                </h2>
+              </div>
+              <p className="mb-3 text-xs text-muted-foreground">Share of PRs checked per repository today</p>
+              {loading ? (
+                <div className="h-[180px] animate-pulse rounded-lg bg-muted" />
+              ) : typeComparison.length === 0 ? (
+                <div className="flex h-[180px] items-center justify-center">
+                  <p className="text-sm text-muted-foreground">No data yet for today.</p>
+                </div>
+              ) : (
+                <>
+                  <ReactECharts
+                    option={pieOption}
+                    style={{ height: 160, width: "100%" }}
+                    opts={{ renderer: "svg" }}
+                    notMerge
+                  />
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {typeComparison.map((item) => {
+                      const { label, cls } = repoTagStyle(item.repoType);
+                      const total = typeComparison.reduce((s, i) => s + i.value, 0);
+                      const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                      return (
+                        <div key={item.repoType} className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium ${cls}`}>
+                          <span className="h-2 w-2 rounded-full" style={{ background: TYPE_SERIES_COLORS[item.repoType] ?? "#94a3b8" }} />
+                          {label}
+                          <span className="font-bold tabular-nums">{item.value}</span>
+                          <span className="text-[10px] opacity-70">({pct}%)</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+            </section>
           </div>
         </div>
 
@@ -623,74 +734,91 @@ export default function EIPOH100Page() {
           </div>
 
           {loading ? (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[52px] animate-pulse rounded-lg bg-muted" />
+                <div key={i} className="h-[100px] animate-pulse rounded-lg bg-muted" />
               ))}
             </div>
           ) : recentActivity.length === 0 ? (
             <p className="text-sm text-muted-foreground">No recent activity.</p>
           ) : (
             <>
-              <div className="grid gap-1.5 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <AnimatePresence initial={false}>
-                  {feedVisible.map((item, idx) => (
-                    <motion.a
-                      key={`${item.kind}-${item.eip}-${idx}`}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.18, delay: idx * 0.025 }}
-                      href={
-                        item.kind === "pr_event"
-                          ? (item.eventUrl ?? `https://github.com/${item.repository}/pull/${item.prNumber}`)
-                          : `/${item.eipType === "RIP" ? "rip" : item.eipType === "ERC" ? "erc" : "eip"}/${item.eip}`
-                      }
-                      target={item.kind === "pr_event" ? "_blank" : undefined}
-                      rel={item.kind === "pr_event" ? "noopener noreferrer" : undefined}
-                      className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2 transition-colors hover:border-primary/40 hover:bg-muted/40"
-                    >
-                      <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
-                        <Image
-                          src={editorAvatar(item.actor)}
-                          alt={item.actor}
-                          width={24}
-                          height={24}
-                          className="h-full w-full object-cover"
-                        />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-xs">
-                          <span className="font-semibold text-foreground">{item.actor}</span>
-                          {item.kind === "status_change" ? (
-                            <span className="text-muted-foreground">
-                              {" "}moved {item.eipType}-{item.eip} →{" "}
-                              <span className="font-medium text-foreground">{item.toStatus}</span>
+                  {feedVisible.map((item, idx) => {
+                    const { label: repoLabel, cls: repoCls } = repoTagStyle(item.eipType);
+                    const isStatusChange = item.kind === "status_change";
+                    const href = isStatusChange
+                      ? `/${item.eipType === "RIP" ? "rip" : item.eipType === "ERC" ? "erc" : "eip"}/${item.eip}`
+                      : (item.eventUrl ?? `https://github.com/${item.repository}/pull/${item.prNumber}`);
+                    const actionLabel = isStatusChange
+                      ? `${item.fromStatus ?? "—"} → ${item.toStatus}`
+                      : formatEditorAction(item.eventType ?? "");
+                    const actionCls = isStatusChange
+                      ? "border-border bg-muted/60 text-muted-foreground"
+                      : "border-primary/30 bg-primary/10 text-primary";
+
+                    return (
+                      <motion.div
+                        key={`${item.kind}-${item.eip}-${idx}`}
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.18, delay: idx * 0.025 }}
+                        className="rounded-lg border border-border bg-background transition-colors hover:border-primary/40"
+                      >
+                        {/* Row 1 — actor + action badge + timestamp */}
+                        <div className="flex items-center gap-2 px-3 pt-3">
+                          <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+                            <Image
+                              src={editorAvatar(item.actor)}
+                              alt={item.actor}
+                              width={24}
+                              height={24}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <span className="text-xs font-semibold text-foreground truncate">{item.actor}</span>
+                          <span className={`flex-shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${actionCls}`}>
+                            {actionLabel}
+                          </span>
+                          <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                            {relativeTime(item.occurredAt)}
+                          </span>
+                        </div>
+
+                        {/* Row 2 — title */}
+                        <p className="line-clamp-2 px-3 py-2 text-xs leading-relaxed text-foreground">
+                          {item.title || (isStatusChange ? `${item.eipType}-${item.eip}` : `PR #${item.prNumber}`)}
+                        </p>
+
+                        {/* Row 3 — repo chip + PR/proposal number + view link */}
+                        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
+                          <span className={`rounded-md border px-1.5 py-px text-[10px] font-medium ${repoCls}`}>
+                            {repoLabel}
+                          </span>
+                          {isStatusChange ? (
+                            <span className="text-[10px] text-muted-foreground">
+                              {item.eipType}-{item.eip}
                             </span>
                           ) : (
-                            <span className="text-muted-foreground">
-                              {" "}{formatEditorAction(item.eventType ?? "")}{" "}
-                              <span className="font-medium text-foreground">
-                                {item.eipType.toUpperCase()} #{item.prNumber}
-                              </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              PR #{item.prNumber}
                             </span>
                           )}
-                        </p>
-                        <p className="truncate text-[10px] text-muted-foreground">{item.title}</p>
-                      </div>
-                      <span
-                        className={`flex-shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${
-                          item.kind === "pr_event"
-                            ? "border-primary/30 bg-primary/10 text-primary"
-                            : "border-border bg-muted/60 text-muted-foreground"
-                        }`}
-                      >
-                        {item.kind === "pr_event"
-                          ? formatEditorAction(item.eventType ?? "")
-                          : "status"}
-                      </span>
-                    </motion.a>
-                  ))}
+                          <a
+                            href={href}
+                            target={isStatusChange ? undefined : "_blank"}
+                            rel={isStatusChange ? undefined : "noopener noreferrer"}
+                            className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
+                          >
+                            View
+                            <ArrowRight className="h-3 w-3" />
+                          </a>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
 
@@ -698,7 +826,7 @@ export default function EIPOH100Page() {
                 <button
                   type="button"
                   onClick={() => setExpandedFeed((v) => !v)}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
                 >
                   {expandedFeed ? (
                     <><ChevronUp className="h-3.5 w-3.5" /> Show less</>
