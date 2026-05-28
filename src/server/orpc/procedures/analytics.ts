@@ -6700,4 +6700,257 @@ export const analyticsProcedures = {
         filename: `editor-leaderboard-detailed-${input.repo ?? 'all'}-${input.actor ? `${input.actor.toLowerCase()}-` : ''}${monthYear}.csv`,
       };
     }),
+
+  getAllRecentActivity: optionalAuthProcedure
+    .input(z.object({
+      limit: z.number().optional().default(20),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const results = await prisma.$queryRawUnsafe<Array<{
+        kind: string;
+        occurred_at: Date;
+        eip: string;
+        eip_type: string;
+        title: string;
+        from_status: string | null;
+        to_status: string | null;
+        actor: string;
+        repository: string;
+        pr_number: string | null;
+        event_type: string | null;
+        event_url: string | null;
+        days: number;
+      }>>(
+        `
+        (
+          SELECT
+            'status_change' AS kind,
+            se.changed_at AS occurred_at,
+            e.eip_number::text AS eip,
+            CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END AS eip_type,
+            e.title,
+            se.from_status,
+            se.to_status,
+            COALESCE(pe_actor.actor, ca_actor.actor, 'system') AS actor,
+            r.name AS repository,
+            NULL::text AS pr_number,
+            NULL::text AS event_type,
+            NULL::text AS event_url,
+            EXTRACT(DAY FROM (NOW() - se.changed_at))::int AS days
+          FROM eip_status_events se
+          JOIN eips e ON se.eip_id = e.id
+          LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+          LEFT JOIN repositories r ON se.repository_id = r.id
+          LEFT JOIN LATERAL (
+            SELECT pe.actor FROM pr_events pe
+            WHERE pe.repository_id = se.repository_id
+              AND (se.pr_number IS NULL OR pe.pr_number = se.pr_number)
+              AND pe.created_at <= se.changed_at + INTERVAL '1 day'
+            ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - pe.created_at))) ASC
+            LIMIT 1
+          ) pe_actor ON true
+          LEFT JOIN LATERAL (
+            SELECT ca.actor FROM contributor_activity ca
+            WHERE ca.repository_id = se.repository_id
+              AND (se.pr_number IS NULL OR ca.pr_number = se.pr_number)
+              AND ca.occurred_at <= se.changed_at + INTERVAL '1 day'
+            ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - ca.occurred_at))) ASC
+            LIMIT 1
+          ) ca_actor ON true
+          WHERE se.changed_at >= NOW() - INTERVAL '7 days'
+            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        )
+        UNION ALL
+        (
+          SELECT
+            'pr_event' AS kind,
+            pe.created_at AS occurred_at,
+            pe.pr_number::text AS eip,
+            LOWER(SPLIT_PART(r.name, '/', 2)) AS eip_type,
+            COALESCE(pr.title, 'PR #' || pe.pr_number::text) AS title,
+            NULL::text AS from_status,
+            pe.event_type AS to_status,
+            pe.actor,
+            r.name AS repository,
+            pe.pr_number::text AS pr_number,
+            pe.event_type,
+            COALESCE(
+              pe.metadata->>'html_url',
+              CASE
+                WHEN pe.event_type IN ('commented', 'issue_comment') AND pe.metadata->>'comment_id' IS NOT NULL
+                  THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#issuecomment-' || (pe.metadata->>'comment_id')
+                WHEN pe.event_type = 'review_comment' AND pe.metadata->>'comment_id' IS NOT NULL
+                  THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#discussion_r' || (pe.metadata->>'comment_id')
+                WHEN pe.event_type = 'reviewed' AND pe.metadata->>'review_id' IS NOT NULL
+                  THEN 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text || '#pullrequestreview-' || (pe.metadata->>'review_id')
+                ELSE 'https://github.com/' || r.name || '/pull/' || pe.pr_number::text
+              END
+            ) AS event_url,
+            EXTRACT(DAY FROM (NOW() - pe.created_at))::int AS days
+          FROM pr_events pe
+          JOIN repositories r ON pe.repository_id = r.id
+          LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
+          WHERE pe.actor_role = 'EDITOR'
+            AND pe.created_at >= NOW() - INTERVAL '7 days'
+            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+        )
+        ORDER BY occurred_at DESC
+        LIMIT $2
+        `,
+        input.repo ?? null,
+        input.limit
+      );
+      return results.map((r) => ({
+        kind: r.kind as 'status_change' | 'pr_event',
+        occurredAt: r.occurred_at,
+        eip: r.eip,
+        eipType: r.eip_type,
+        title: r.title,
+        fromStatus: r.from_status,
+        toStatus: r.to_status,
+        actor: r.actor,
+        repository: r.repository,
+        prNumber: r.pr_number,
+        eventType: r.event_type,
+        eventUrl: r.event_url,
+        days: r.days,
+      }));
+    }),
+
+  getEventDayActivity: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        hour: Date;
+        prs_checked: bigint;
+        total_events: bigint;
+      }>>(
+        `
+        SELECT
+          DATE_TRUNC('hour', pe.created_at) AS hour,
+          COUNT(DISTINCT pe.pr_number)::bigint AS prs_checked,
+          COUNT(*)::bigint AS total_events
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        WHERE pe.created_at >= $1::date
+          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
+        GROUP BY DATE_TRUNC('hour', pe.created_at)
+        ORDER BY hour ASC
+        `,
+        targetDate,
+        input.repo ?? null
+      );
+      return results.map((r) => ({
+        hour: r.hour.toISOString(),
+        prsChecked: Number(r.prs_checked),
+        totalEvents: Number(r.total_events),
+      }));
+    }),
+
+  getEventDayEditorLeaderboard: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        editor: string;
+        prs_reviewed: bigint;
+        total_events: bigint;
+      }>>(
+        `
+        SELECT
+          pe.actor AS editor,
+          COUNT(DISTINCT pe.pr_number)::bigint AS prs_reviewed,
+          COUNT(*)::bigint AS total_events
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        WHERE pe.actor_role = 'EDITOR'
+          AND pe.created_at >= $1::date
+          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
+        GROUP BY pe.actor
+        ORDER BY prs_reviewed DESC, total_events DESC
+        `,
+        targetDate,
+        input.repo ?? null
+      );
+      return results.map((r) => ({
+        editor: r.editor,
+        prsReviewed: Number(r.prs_reviewed),
+        totalEvents: Number(r.total_events),
+      }));
+    }),
+
+  getEventDayTypeComparison: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        repo_type: string;
+        prs_checked: bigint;
+        total_events: bigint;
+      }>>(
+        `
+        SELECT
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_type,
+          COUNT(DISTINCT pe.pr_number)::bigint AS prs_checked,
+          COUNT(*)::bigint AS total_events
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        WHERE pe.created_at >= $1::date
+          AND pe.created_at < $1::date + INTERVAL '1 day'
+        GROUP BY LOWER(SPLIT_PART(r.name, '/', 2))
+        ORDER BY prs_checked DESC
+        `,
+        targetDate
+      );
+      return results.map((r) => ({
+        repoType: r.repo_type,
+        label: r.repo_type.toUpperCase(),
+        prsChecked: Number(r.prs_checked),
+        totalEvents: Number(r.total_events),
+      }));
+    }),
+
+  getEventDayHourlyByType: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        hour: Date;
+        repo_type: string;
+        prs_checked: bigint;
+      }>>(
+        `
+        SELECT
+          DATE_TRUNC('hour', pe.created_at) AS hour,
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_type,
+          COUNT(DISTINCT pe.pr_number)::bigint AS prs_checked
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        WHERE pe.created_at >= $1::date
+          AND pe.created_at < $1::date + INTERVAL '1 day'
+        GROUP BY DATE_TRUNC('hour', pe.created_at), LOWER(SPLIT_PART(r.name, '/', 2))
+        ORDER BY hour ASC
+        `,
+        targetDate
+      );
+      return results.map((r) => ({
+        hour: r.hour.toISOString(),
+        repoType: r.repo_type,
+        prsChecked: Number(r.prs_checked),
+      }));
+    }),
 }
