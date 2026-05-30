@@ -39,7 +39,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { eipNo, content } = body;
+    const { eipNo, content, proposalType } = body;
+    const type: string = proposalType ?? "EIP";
 
     if (!content || !eipNo) {
       return NextResponse.json(
@@ -67,12 +68,12 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({
             model,
-            message: `Analyze EIP ${eipNo} and create a concise, well-structured summary in 80-120 words.
+            message: `Analyze ${type} ${eipNo} and create a concise, well-structured summary in 80-120 words.
 
 **Format your response with these sections:**
 
 **Purpose**
-What problem does this EIP solve? (1-2 sentences)
+What problem does this ${type} solve? (1-2 sentences)
 
 **Technical Approach**
 Key changes or mechanisms introduced (2-3 key points)
@@ -81,11 +82,11 @@ Key changes or mechanisms introduced (2-3 key points)
 How it benefits developers, users, or the network (1-2 sentences)
 
 **Significance**
-Why this EIP matters for Ethereum (1 sentence)
+Why this ${type} matters for Ethereum (1 sentence)
 
 Keep it concise, technical but accessible. Use bullet points for multiple items.
 
-EIP ${eipNo} Content:
+${type} ${eipNo} Content:
 ${truncatedContent}`,
             temperature: 0.4,
             chat_history: [],

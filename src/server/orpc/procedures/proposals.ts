@@ -9,6 +9,13 @@ import * as z from 'zod'
 interface FrontmatterData {
   discussions_to: string | null;
   requires: number[];
+  title: string | null;
+  author: string | null;
+  status: string | null;
+  type: string | null;
+  category: string | null;
+  created: string | null;
+  last_call_deadline: string | null;
 }
 
 function getConstantUpgradeOverrides(eipNumber: number): Map<string, { bucket: string; date: string }> {
@@ -149,23 +156,39 @@ async function fetchProposalContent(
   const content = await res.text();
 
   // Parse frontmatter
-  let discussions_to: string | null = null;
-  let requires: number[] = [];
+  const fm_data: FrontmatterData = {
+    discussions_to: null,
+    requires: [],
+    title: null,
+    author: null,
+    status: null,
+    type: null,
+    category: null,
+    created: null,
+    last_call_deadline: null,
+  };
 
-  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n/);
+  const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
   if (frontmatterMatch) {
     const fm = frontmatterMatch[1];
 
-    const discussionsMatch = fm.match(/^discussions-to:\s*(.+)$/im);
-    if (discussionsMatch) {
-      discussions_to = discussionsMatch[1]
-        .trim()
-        .replace(/^["']|["']$/g, '');
-    }
+    const str = (pattern: RegExp) => {
+      const m = fm.match(pattern);
+      return m ? m[1].trim().replace(/^["']|["']$/g, '') : null;
+    };
+
+    fm_data.discussions_to = str(/^discussions-to:\s*(.+)$/im);
+    fm_data.title          = str(/^title:\s*(.+)$/im);
+    fm_data.author         = str(/^author:\s*(.+)$/im);
+    fm_data.status         = str(/^status:\s*(.+)$/im);
+    fm_data.type           = str(/^type:\s*(.+)$/im);
+    fm_data.category       = str(/^category:\s*(.+)$/im);
+    fm_data.created        = str(/^created:\s*(.+)$/im);
+    fm_data.last_call_deadline = str(/^last-call-deadline:\s*(.+)$/im);
 
     const requiresMatch = fm.match(/^requires:\s*(.+)$/im);
     if (requiresMatch) {
-      requires = requiresMatch[1]
+      fm_data.requires = requiresMatch[1]
         .trim()
         .split(/[,\s\n\[\]]+/)
         .map((s) => parseInt(s, 10))
@@ -175,7 +198,7 @@ async function fetchProposalContent(
 
   return {
     content,
-    frontmatter: { discussions_to, requires },
+    frontmatter: fm_data,
   };
 }
 
@@ -220,15 +243,43 @@ export const proposalsProcedures = {
       });
 
       if (!eip) {
-        throw new ORPCError('NOT_FOUND', { 
-          message: `${repoName.toUpperCase()}-${input.number} not found` 
-        });
+        // DB row missing — fall back to parsing the GitHub markdown directly.
+        // This handles proposals that exist on GitHub but haven't been synced yet.
+        try {
+          const { frontmatter } = await fetchProposalContent(repoName, input.number);
+          if (!frontmatter.title) {
+            throw new ORPCError('NOT_FOUND', {
+              message: `${repoName.toUpperCase()}-${input.number} not found`,
+            });
+          }
+          const authors = frontmatter.author
+            ? frontmatter.author.split(',').map((a) => a.trim()).filter(Boolean)
+            : [];
+          return {
+            repo: repoName,
+            number: input.number,
+            title: frontmatter.title,
+            authors,
+            created: frontmatter.created ?? null,
+            type: frontmatter.type ?? null,
+            category: frontmatter.category ?? null,
+            status: frontmatter.status ?? 'Unknown',
+            last_call_deadline: frontmatter.last_call_deadline ?? null,
+            discussions_to: frontmatter.discussions_to,
+            requires: frontmatter.requires,
+          };
+        } catch (err) {
+          if (err instanceof ORPCError) throw err;
+          throw new ORPCError('NOT_FOUND', {
+            message: `${repoName.toUpperCase()}-${input.number} not found`,
+          });
+        }
       }
 
       const snapshot = eip.eip_snapshots;
 
       // Parse authors (assuming comma-separated in author field)
-      const authors = eip.author 
+      const authors = eip.author
         ? eip.author.split(',').map(a => a.trim()).filter(Boolean)
         : [];
 
@@ -241,7 +292,6 @@ export const proposalsProcedures = {
         discussions_to = frontmatter.discussions_to;
         requires = frontmatter.requires;
       } catch (error) {
-        // Fail silently if markdown fetch fails, keep discussions_to as null
         console.error(`Failed to fetch discussions_to for ${repoName}-${input.number}:`, error);
       }
 
@@ -267,14 +317,15 @@ export const proposalsProcedures = {
       number: z.number(),
     }))
     .handler(async ({ input }) => {
-const eip = await prisma.eips.findUnique({
+      const repoName = input.repo.toLowerCase().replace(/s$/, '');
+      const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
       if (!eip) {
-        throw new ORPCError('NOT_FOUND', { 
-          message: `EIP-${input.number} not found` 
-        });
+        // Proposal exists on GitHub but hasn't been synced — no events yet.
+        console.warn(`${repoName.toUpperCase()}-${input.number} not in DB; returning empty status events`);
+        return [];
       }
 
       const events = await prisma.eip_status_events.findMany({
@@ -303,14 +354,14 @@ const eip = await prisma.eips.findUnique({
       number: z.number(),
     }))
     .handler(async ({ input }) => {
-const eip = await prisma.eips.findUnique({
+      const repoName = input.repo.toLowerCase().replace(/s$/, '');
+      const eip = await prisma.eips.findUnique({
         where: { eip_number: input.number },
       });
 
       if (!eip) {
-        throw new ORPCError('NOT_FOUND', { 
-          message: `EIP-${input.number} not found` 
-        });
+        console.warn(`${repoName.toUpperCase()}-${input.number} not in DB; returning empty type events`);
+        return [];
       }
 
       const events = await prisma.eip_type_events.findMany({

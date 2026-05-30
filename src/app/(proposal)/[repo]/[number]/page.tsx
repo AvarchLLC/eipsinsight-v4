@@ -487,7 +487,7 @@ export default function ProposalDetailPage() {
 
   // Fetch AI summary when markdown content is available
   useEffect(() => {
-    if (!markdownContent || !number || normalizedRepo !== 'eip') return;
+    if (!markdownContent || !number) return;
 
     let cancelled = false;
     setAiSummaryLoading(true);
@@ -496,7 +496,7 @@ export default function ProposalDetailPage() {
     fetch('/api/eip-summary', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eipNo: number, content: markdownContent }),
+      body: JSON.stringify({ eipNo: number, content: markdownContent, proposalType: repoDisplayName }),
     })
       .then(async (res) => {
         const data = await res.json();
@@ -689,6 +689,25 @@ export default function ProposalDetailPage() {
 
         <div className="mx-auto mt-6 w-full px-3 pb-10 sm:px-4 lg:px-5 xl:px-6">
           <div className="space-y-4">
+          {/* Network upgrade chip — shown before the preamble when upgrades exist */}
+          {upgrades.length > 0 && latestUpgrade && (
+            <div className="flex flex-wrap gap-2">
+              {upgrades.map((upgrade) => (
+                <span
+                  key={upgrade.slug ?? upgrade.name}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium',
+                    getBucketBadgeClass(upgrade.bucket)
+                  )}
+                >
+                  <span className="font-semibold">{upgrade.name}</span>
+                  <span className="opacity-50">·</span>
+                  <span>{formatInclusionBucket(upgrade.bucket)}</span>
+                </span>
+              ))}
+            </div>
+          )}
+
           {/* 2. Preamble Table (RFC-style, flat, authoritative) */}
           <div id="preamble" className="scroll-mt-28">
             <div className="overflow-hidden rounded-xl border border-border bg-card/60">

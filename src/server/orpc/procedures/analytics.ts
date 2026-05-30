@@ -6860,32 +6860,45 @@ export const analyticsProcedures = {
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      // Exclude bots and associate editors that would skew sprint metrics
+      const EXCLUDED = ['abcoathup', 'eip-review-bot'];
       const results = await prisma.$queryRawUnsafe<Array<{
         editor: string;
         prs_reviewed: bigint;
         total_events: bigint;
+        reviews: bigint;
+        comments: bigint;
+        merges: bigint;
       }>>(
         `
         SELECT
           pe.actor AS editor,
           COUNT(DISTINCT pe.pr_number)::bigint AS prs_reviewed,
-          COUNT(*)::bigint AS total_events
+          COUNT(*)::bigint AS total_events,
+          COUNT(*) FILTER (WHERE pe.event_type IN ('reviewed', 'approved', 'changes_requested'))::bigint AS reviews,
+          COUNT(*) FILTER (WHERE pe.event_type IN ('commented', 'issue_comment', 'review_comment'))::bigint AS comments,
+          COUNT(*) FILTER (WHERE pe.event_type = 'merged')::bigint AS merges
         FROM pr_events pe
         JOIN repositories r ON pe.repository_id = r.id
         WHERE pe.actor_role = 'EDITOR'
           AND pe.created_at >= $1::date
           AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND pe.actor != ALL($3::text[])
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
         GROUP BY pe.actor
         ORDER BY prs_reviewed DESC, total_events DESC
         `,
         targetDate,
-        input.repo ?? null
+        input.repo ?? null,
+        EXCLUDED
       );
       return results.map((r) => ({
         editor: r.editor,
         prsReviewed: Number(r.prs_reviewed),
         totalEvents: Number(r.total_events),
+        reviews: Number(r.reviews),
+        comments: Number(r.comments),
+        merges: Number(r.merges),
       }));
     }),
 
@@ -6919,6 +6932,44 @@ export const analyticsProcedures = {
         label: r.repo_type.toUpperCase(),
         prsChecked: Number(r.prs_checked),
         totalEvents: Number(r.total_events),
+      }));
+    }),
+
+  getEventDayStatusChanges: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        from_status: string | null;
+        to_status: string;
+        proposal_type: string;
+        count: bigint;
+      }>>(
+        `
+        SELECT
+          se.from_status,
+          se.to_status,
+          CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END AS proposal_type,
+          COUNT(*)::bigint AS count
+        FROM eip_status_events se
+        JOIN eips e ON se.eip_id = e.id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r ON se.repository_id = r.id
+        WHERE se.changed_at >= $1::date
+          AND se.changed_at < $1::date + INTERVAL '1 day'
+        GROUP BY se.from_status, se.to_status, proposal_type
+        ORDER BY count DESC
+        `,
+        targetDate
+      );
+      return results.map((r) => ({
+        fromStatus: r.from_status ?? '—',
+        toStatus: r.to_status,
+        proposalType: r.proposal_type,
+        count: Number(r.count),
+        label: `${r.from_status ?? 'New'} → ${r.to_status}`,
       }));
     }),
 

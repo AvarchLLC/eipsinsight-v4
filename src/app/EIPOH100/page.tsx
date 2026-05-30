@@ -17,7 +17,18 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
+  MessageSquare,
+  GitMerge,
+  Eye,
+  LayoutDashboard,
+  BarChart3,
+  Info,
+  FileText,
+  Network,
+  ArrowUpDown,
+  BookOpen,
 } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { client } from "@/lib/orpc";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -28,6 +39,9 @@ type EditorEntry = {
   editor: string;
   prsReviewed: number;
   totalEvents: number;
+  reviews: number;
+  comments: number;
+  merges: number;
 };
 
 type HourlyActivity = {
@@ -40,6 +54,14 @@ type HourlyByType = {
   hour: string;
   repoType: string;
   prsChecked: number;
+};
+
+type StatusChange = {
+  fromStatus: string;
+  toStatus: string;
+  proposalType: string;
+  count: number;
+  label: string;
 };
 
 type RecentActivity = {
@@ -61,6 +83,9 @@ type RecentActivity = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_DATE = "2025-06-02";
+const BLITZ_START_HOUR_UTC = 14;  // data window opens at 14:00 UTC
+const BLITZ_END_HOUR_UTC   = 18;  // sprint ends at 18:00 UTC
+const EXCLUDED_ACTORS = new Set(["abcoathup", "eip-review-bot"]);
 
 const TYPE_SERIES_COLORS: Record<string, string> = {
   eips: "#6366f1",
@@ -71,6 +96,16 @@ const TYPE_LABELS: Record<string, string> = {
   eips: "EIPs",
   ercs: "ERCs",
   rips: "RIPs",
+};
+
+const STATUS_CHANGE_COLORS: Record<string, string> = {
+  "Draft → Review": "#6366f1",
+  "Review → Last Call": "#f59e0b",
+  "Last Call → Final": "#10b981",
+  "Draft → Final": "#10b981",
+  "Draft → Withdrawn": "#ef4444",
+  "Review → Withdrawn": "#ef4444",
+  default: "#94a3b8",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -116,75 +151,92 @@ function repoTagStyle(eipType: string): { label: string; cls: string } {
 
 function sprintProgress() {
   const now = new Date();
-  const start = new Date(now);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(now);
-  end.setHours(23, 59, 59, 999);
-  const pct = ((now.getTime() - start.getTime()) / (end.getTime() - start.getTime())) * 100;
-  const remaining = end.getTime() - now.getTime();
+  const startUTC = new Date(now);
+  startUTC.setUTCHours(BLITZ_START_HOUR_UTC, 0, 0, 0);
+  const endUTC = new Date(now);
+  endUTC.setUTCHours(BLITZ_END_HOUR_UTC, 0, 0, 0);
+
+  if (now < startUTC) {
+    const diff = startUTC.getTime() - now.getTime();
+    const h = Math.floor(diff / 3_600_000);
+    const m = Math.floor((diff % 3_600_000) / 60_000);
+    return { pct: 0, remaining: `Starts in ${h}h ${m}m`, status: "upcoming" as const };
+  }
+  if (now >= endUTC) {
+    return { pct: 100, remaining: "Sprint complete", status: "complete" as const };
+  }
+  const pct = ((now.getTime() - startUTC.getTime()) / (endUTC.getTime() - startUTC.getTime())) * 100;
+  const remaining = endUTC.getTime() - now.getTime();
   const h = Math.floor(remaining / 3_600_000);
   const m = Math.floor((remaining % 3_600_000) / 60_000);
-  return { pct: Math.min(100, pct), remaining: `${h}h ${m}m remaining today` };
+  return { pct, remaining: `${h}h ${m}m left in sprint`, status: "active" as const };
 }
-
-// ─── Theme-aware chart color hook ─────────────────────────────────────────────
 
 function useChartColors() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === "dark";
-  return useMemo(
-    () => ({
-      mutedFg: isDark ? "oklch(0.708 0 0)" : "oklch(0.5 0.02 260)",
-      border: isDark ? "oklch(1 0 0 / 12%)" : "oklch(0.88 0.02 250)",
-      fg: isDark ? "oklch(0.985 0 0)" : "oklch(0.2 0.02 260)",
-      card: isDark ? "oklch(0.205 0 0)" : "oklch(1 0 0)",
-    }),
-    [isDark]
+  return useMemo(() => ({
+    mutedFg: isDark ? "oklch(0.708 0 0)" : "oklch(0.5 0.02 260)",
+    border: isDark ? "oklch(1 0 0 / 12%)" : "oklch(0.88 0.02 250)",
+    fg: isDark ? "oklch(0.985 0 0)" : "oklch(0.2 0.02 260)",
+    card: isDark ? "oklch(0.205 0 0)" : "oklch(1 0 0)",
+  }), [isDark]);
+}
+
+// ─── Tooltip helper ──────────────────────────────────────────────────────────
+
+function Tip({ text, side = "top" }: { text: string; side?: "top" | "bottom" | "left" | "right" }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Info className="h-3 w-3 flex-shrink-0 cursor-default text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors" />
+      </TooltipTrigger>
+      <TooltipContent side={side}>
+        <p className="max-w-[220px] leading-snug">{text}</p>
+      </TooltipContent>
+    </Tooltip>
+  );
+}
+
+// ─── Countdown ring ──────────────────────────────────────────────────────────
+
+function CountdownRing({ seconds, total = 60 }: { seconds: number; total?: number }) {
+  const r = 8;
+  const circ = 2 * Math.PI * r;
+  const offset = circ * (1 - seconds / total);
+  return (
+    <svg width="20" height="20" viewBox="0 0 20 20" className="-rotate-90 flex-shrink-0">
+      <circle cx="10" cy="10" r={r} fill="none" strokeWidth="2.5" className="stroke-emerald-500/20" />
+      <circle
+        cx="10" cy="10" r={r} fill="none" strokeWidth="2.5"
+        strokeDasharray={circ}
+        strokeDashoffset={offset}
+        strokeLinecap="round"
+        className="stroke-emerald-500 transition-[stroke-dashoffset] duration-1000 ease-linear"
+      />
+    </svg>
   );
 }
 
 // ─── Podium card ─────────────────────────────────────────────────────────────
 
-function PodiumCard({
-  entry,
-  rank,
-  max,
-  delay,
-}: {
-  entry: EditorEntry;
-  rank: 1 | 2 | 3;
-  max: number;
-  delay: number;
+function PodiumCard({ entry, rank, max, delay }: {
+  entry: EditorEntry; rank: 1 | 2 | 3; max: number; delay: number;
 }) {
   const medals = { 1: "🥇", 2: "🥈", 3: "🥉" } as const;
   const baseHeights = { 1: "h-[80px]", 2: "h-[56px]", 3: "h-[44px]" } as const;
-
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay }}
       className={`flex flex-col items-center gap-2 rounded-xl border bg-card p-3 shadow-sm ${
-        rank === 1
-          ? "border-amber-400/50 shadow-amber-400/10 dark:border-amber-400/40"
-          : "border-border"
+        rank === 1 ? "border-amber-400/50 shadow-amber-400/10 dark:border-amber-400/40" : "border-border"
       }`}
     >
       <div className="relative">
-        <div
-          className={`overflow-hidden rounded-full ring-2 ${
-            rank === 1
-              ? "h-14 w-14 ring-amber-400/60"
-              : "h-10 w-10 ring-border"
-          }`}
-        >
-          <Image
-            src={editorAvatar(entry.editor)}
-            alt={entry.editor}
-            width={rank === 1 ? 56 : 40}
-            height={rank === 1 ? 56 : 40}
-            className="h-full w-full object-cover"
-          />
+        <div className={`overflow-hidden rounded-full ring-2 ${rank === 1 ? "h-14 w-14 ring-amber-400/60" : "h-10 w-10 ring-border"}`}>
+          <Image src={editorAvatar(entry.editor)} alt={entry.editor} width={rank === 1 ? 56 : 40} height={rank === 1 ? 56 : 40} className="h-full w-full object-cover" />
         </div>
         <span className="absolute -bottom-1 -right-1 text-base leading-none">{medals[rank]}</span>
       </div>
@@ -196,10 +248,135 @@ function PodiumCard({
           {entry.prsReviewed}
           <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">PRs</span>
         </p>
-        <p className="text-[10px] text-muted-foreground">{entry.totalEvents} actions</p>
+        <div className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-muted-foreground">
+          <span title="Reviews"><Eye className="inline h-2.5 w-2.5" /> {entry.reviews}</span>
+          <span title="Comments"><MessageSquare className="inline h-2.5 w-2.5" /> {entry.comments}</span>
+          {entry.merges > 0 && <span title="Merges"><GitMerge className="inline h-2.5 w-2.5" /> {entry.merges}</span>}
+        </div>
       </div>
-      {/* Podium base */}
       <div className={`w-full rounded-md border border-border bg-muted ${baseHeights[rank]}`} />
+    </motion.div>
+  );
+}
+
+// ─── Blitz Start Animation ────────────────────────────────────────────────────
+
+const PARTICLES = [
+  { x: "-120px", y: "-140px", delay: 0 },
+  { x: "130px",  y: "-150px", delay: 0.1 },
+  { x: "-160px", y: "60px",   delay: 0.18 },
+  { x: "170px",  y: "70px",   delay: 0.08 },
+  { x: "20px",   y: "-180px", delay: 0.25 },
+  { x: "-50px",  y: "160px",  delay: 0.15 },
+  { x: "90px",   y: "150px",  delay: 0.22 },
+  { x: "-200px", y: "-30px",  delay: 0.05 },
+];
+
+function BlitzStartAnimation({ label, onDismiss }: { label: string; onDismiss: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDismiss, 6_000);
+    return () => clearTimeout(t);
+  }, [onDismiss]);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 backdrop-blur-md"
+      onClick={onDismiss}
+    >
+      {/* Expanding pulse rings */}
+      {[0, 0.5, 1].map((delay, i) => (
+        <motion.span
+          key={i}
+          className="pointer-events-none absolute h-72 w-72 rounded-full border border-violet-500/50"
+          initial={{ scale: 0.3, opacity: 0.9 }}
+          animate={{ scale: 5, opacity: 0 }}
+          transition={{ duration: 2.5, delay, repeat: Infinity, ease: "easeOut" }}
+        />
+      ))}
+
+      {/* Floating particles */}
+      {PARTICLES.map((p, i) => (
+        <motion.span
+          key={i}
+          className="pointer-events-none absolute select-none text-xl"
+          style={{ x: 0, y: 0 }}
+          animate={{ x: p.x, y: p.y, opacity: [0, 1, 0], scale: [0.5, 1.2, 0.8] }}
+          transition={{ duration: 1.8, delay: p.delay, ease: "easeOut" }}
+        >
+          ⚡
+        </motion.span>
+      ))}
+
+      {/* Card */}
+      <motion.div
+        initial={{ scale: 0.5, opacity: 0, y: 32 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.85, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 280, damping: 22, delay: 0.08 }}
+        className="relative z-10 mx-4 flex flex-col items-center rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/95 to-black/95 px-12 py-10 text-center shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Icon */}
+        <motion.div
+          animate={{ rotate: [0, -12, 14, -8, 0], scale: [1, 1.35, 1.35, 1.1, 1] }}
+          transition={{ duration: 0.9, delay: 0.25 }}
+          className="mb-5 text-7xl leading-none select-none"
+        >
+          ⚡
+        </motion.div>
+
+        {/* Headline */}
+        <motion.h2
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-gradient-to-r from-violet-400 via-indigo-300 to-cyan-400 bg-clip-text text-5xl font-black tracking-tight text-transparent sm:text-6xl"
+        >
+          BLITZ STARTED
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-2 text-base font-medium text-white/60"
+        >
+          {label}
+        </motion.p>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.62 }}
+          className="mt-1 text-sm text-white/40"
+        >
+          14:00 – 18:00 UTC · Sprint is live
+        </motion.p>
+
+        {/* CTA */}
+        <motion.button
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.75 }}
+          onClick={onDismiss}
+          className="mt-8 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-8 py-2.5 text-sm font-semibold text-white shadow-lg shadow-violet-600/30 hover:from-violet-500 hover:to-indigo-500 transition-all"
+        >
+          Let&apos;s Sprint 🚀
+        </motion.button>
+
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1 }}
+          className="mt-3 text-[11px] text-white/25"
+        >
+          Auto-dismisses in 6 seconds · click anywhere to close
+        </motion.p>
+      </motion.div>
     </motion.div>
   );
 }
@@ -209,29 +386,36 @@ function PodiumCard({
 export default function EIPOH100Page() {
   const today = new Date().toISOString().slice(0, 10);
   const displayDate = today === EVENT_DATE ? EVENT_DATE : today;
+  const blitzLabel = `EIP/ERC Blitz · ${new Date(displayDate + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
 
   const [leaderboard, setLeaderboard] = useState<EditorEntry[]>([]);
   const [hourlyActivity, setHourlyActivity] = useState<HourlyActivity[]>([]);
   const [hourlyByType, setHourlyByType] = useState<HourlyByType[]>([]);
+  const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [sprint, setSprint] = useState(sprintProgress());
   const [expandedFeed, setExpandedFeed] = useState(false);
+  const [countdown, setCountdown] = useState(60);
+  const [showBlitzAnim, setShowBlitzAnim] = useState(false);
+  const prevSprintStatus = React.useRef(sprint.status);
 
   const chartColors = useChartColors();
 
   const fetchData = useCallback(async () => {
     try {
-      const [editors, hourly, byType, activity] = await Promise.all([
+      const [editors, hourly, byType, changes, activity] = await Promise.all([
         client.analytics.getEventDayEditorLeaderboard({ date: displayDate }),
         client.analytics.getEventDayActivity({ date: displayDate }),
         client.analytics.getEventDayHourlyByType({ date: displayDate }),
+        client.analytics.getEventDayStatusChanges({ date: displayDate }),
         client.analytics.getAllRecentActivity({ limit: 10 }),
       ]);
-      setLeaderboard(editors);
+      setLeaderboard(editors as EditorEntry[]);
       setHourlyActivity(hourly);
       setHourlyByType(byType);
+      setStatusChanges(changes);
       setRecentActivity(activity as typeof recentActivity);
       setLastRefreshed(new Date());
     } catch (err) {
@@ -243,210 +427,192 @@ export default function EIPOH100Page() {
 
   useEffect(() => {
     fetchData();
-    const dataInterval = setInterval(fetchData, 60_000);
-    const clockInterval = setInterval(() => setSprint(sprintProgress()), 30_000);
-    return () => {
-      clearInterval(dataInterval);
-      clearInterval(clockInterval);
-    };
+    setCountdown(60);
+    let remaining = 60;
+
+    const tick = setInterval(() => {
+      remaining -= 1;
+      setCountdown(remaining);
+      const next = sprintProgress();
+      setSprint(next);
+      if (prevSprintStatus.current === "upcoming" && next.status === "active") {
+        setShowBlitzAnim(true);
+      }
+      prevSprintStatus.current = next.status;
+      if (remaining <= 0) {
+        remaining = 60;
+        setCountdown(60);
+        fetchData();
+      }
+    }, 1_000);
+
+    return () => clearInterval(tick);
   }, [fetchData]);
 
-  // ─── Derived stats ─────────────────────────────────────────────────────
-  const totalPRs = useMemo(
-    () => hourlyActivity.reduce((s, h) => s + h.prsChecked, 0),
-    [hourlyActivity]
+  // ─── 14:00 UTC predicate (used by all charts) ───────────────────────────
+  const afterBlitzStart = useCallback(
+    (isoHour: string) => new Date(isoHour).getUTCHours() >= BLITZ_START_HOUR_UTC,
+    []
   );
-  const totalEvents = useMemo(
-    () => hourlyActivity.reduce((s, h) => s + h.totalEvents, 0),
-    [hourlyActivity]
+
+  // ─── Derived stats ──────────────────────────────────────────────────────
+  const blitzHourly = useMemo(
+    () => hourlyActivity.filter(h => afterBlitzStart(h.hour)),
+    [hourlyActivity, afterBlitzStart]
   );
+  const totalPRs = useMemo(() => blitzHourly.reduce((s, h) => s + h.prsChecked, 0), [blitzHourly]);
+  const actionBreakdown = useMemo(() => ({
+    reviews:  leaderboard.reduce((s, e) => s + e.reviews, 0),
+    comments: leaderboard.reduce((s, e) => s + e.comments, 0),
+    merges:   leaderboard.reduce((s, e) => s + e.merges, 0),
+    total:    leaderboard.reduce((s, e) => s + e.totalEvents, 0),
+  }), [leaderboard]);
   const maxPRs = leaderboard[0]?.prsReviewed ?? 1;
 
-  // ─── ECharts: hourly bar ────────────────────────────────────────────────
+  // ─── Filtered recent activity (exclude bots / associate editors) ─────────
+  const filteredActivity = useMemo(
+    () => recentActivity.filter(a => !EXCLUDED_ACTORS.has(a.actor)),
+    [recentActivity]
+  );
+
+  // ─── ECharts: hourly bar — data from 14:00 UTC only ────────────────────
   const barOption = useMemo(() => {
-    const hours = hourlyActivity.map((h) => formatHourLabel(h.hour));
-    const values = hourlyActivity.map((h) => h.prsChecked);
+    const hours = blitzHourly.map(h => formatHourLabel(h.hour));
+    const values = blitzHourly.map(h => h.prsChecked);
     const { mutedFg, border, fg, card } = chartColors;
     return {
       backgroundColor: "transparent",
       tooltip: {
-        trigger: "axis",
-        axisPointer: { type: "shadow" },
-        backgroundColor: card,
-        borderColor: border,
-        textStyle: { color: fg, fontSize: 12 },
+        trigger: "axis", axisPointer: { type: "shadow" },
+        backgroundColor: card, borderColor: border, textStyle: { color: fg, fontSize: 12 },
         formatter: (p: Array<{ name: string; value: number }>) =>
           `<div style="padding:4px 6px"><b>${p[0]?.name}</b><br/>PRs checked: <strong>${p[0]?.value ?? 0}</strong></div>`,
       },
       grid: { left: 32, right: 12, top: 8, bottom: 28 },
       xAxis: {
-        type: "category",
-        data: hours,
+        type: "category", data: hours,
         axisLabel: { color: mutedFg, fontSize: 11 },
-        axisLine: { lineStyle: { color: border } },
-        splitLine: { show: false },
+        axisLine: { lineStyle: { color: border } }, splitLine: { show: false },
       },
       yAxis: {
-        type: "value",
-        minInterval: 1,
+        type: "value", minInterval: 1,
         axisLabel: { color: mutedFg, fontSize: 11 },
         splitLine: { lineStyle: { color: border, type: "dashed" } },
       },
-      series: [
-        {
-          type: "bar",
-          data: values,
-          barMaxWidth: 36,
-          itemStyle: {
-            color: {
-              type: "linear",
-              x: 0, y: 0, x2: 0, y2: 1,
-              colorStops: [
-                { offset: 0, color: "#6366f1" },
-                { offset: 1, color: "#6366f155" },
-              ],
-            },
-            borderRadius: [4, 4, 0, 0],
-          },
+      series: [{
+        type: "bar", data: values, barMaxWidth: 36,
+        itemStyle: {
+          color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [{ offset: 0, color: "#6366f1" }, { offset: 1, color: "#6366f155" }] },
+          borderRadius: [4, 4, 0, 0],
         },
-      ],
+      }],
     };
-  }, [hourlyActivity, chartColors]);
+  }, [blitzHourly, chartColors]);
 
-  // ─── ECharts: line by type ──────────────────────────────────────────────
+  // ─── ECharts: line by type — data from 14:00 UTC only ─────────────────
   const lineOption = useMemo(() => {
-    const allHours = Array.from(new Set(hourlyByType.map((r) => r.hour))).sort();
-    const types = Array.from(new Set(hourlyByType.map((r) => r.repoType)));
+    const blitzByType = hourlyByType.filter(r => afterBlitzStart(r.hour));
+    const allHours = Array.from(new Set(blitzByType.map(r => r.hour))).sort();
+    const types = Array.from(new Set(blitzByType.map(r => r.repoType)));
     const hourLabels = allHours.map(formatHourLabel);
     const { mutedFg, border, fg, card } = chartColors;
-
-    const series = types.map((type) => {
-      const dataMap = new Map(
-        hourlyByType.filter((r) => r.repoType === type).map((r) => [r.hour, r.prsChecked])
-      );
+    const series = types.map(type => {
+      const dataMap = new Map(blitzByType.filter(r => r.repoType === type).map(r => [r.hour, r.prsChecked]));
       const color = TYPE_SERIES_COLORS[type] ?? "#94a3b8";
       return {
         name: TYPE_LABELS[type] ?? type.toUpperCase(),
-        type: "line",
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 5,
-        data: allHours.map((h) => dataMap.get(h) ?? 0),
-        lineStyle: { width: 2.5, color },
-        itemStyle: { color },
-        areaStyle: {
-          color: {
-            type: "linear",
-            x: 0, y: 0, x2: 0, y2: 1,
-            colorStops: [
-              { offset: 0, color: `${color}40` },
-              { offset: 1, color: `${color}05` },
-            ],
-          },
-        },
+        type: "line", smooth: true, symbol: "circle", symbolSize: 5,
+        data: allHours.map(h => dataMap.get(h) ?? 0),
+        lineStyle: { width: 2.5, color }, itemStyle: { color },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [{ offset: 0, color: `${color}40` }, { offset: 1, color: `${color}05` }] } },
       };
     });
-
     return {
       backgroundColor: "transparent",
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: card,
-        borderColor: border,
-        textStyle: { color: fg, fontSize: 12 },
-      },
-      legend: {
-        data: types.map((t) => TYPE_LABELS[t] ?? t.toUpperCase()),
-        textStyle: { color: mutedFg, fontSize: 11 },
-        top: 0,
-        right: 0,
-      },
+      tooltip: { trigger: "axis", backgroundColor: card, borderColor: border, textStyle: { color: fg, fontSize: 12 } },
+      legend: { data: types.map(t => TYPE_LABELS[t] ?? t.toUpperCase()), textStyle: { color: mutedFg, fontSize: 11 }, top: 0, right: 0 },
       grid: { left: 32, right: 12, top: 28, bottom: 28 },
-      xAxis: {
-        type: "category",
-        data: hourLabels,
-        boundaryGap: false,
-        axisLabel: { color: mutedFg, fontSize: 11 },
-        axisLine: { lineStyle: { color: border } },
-        splitLine: { show: false },
-      },
-      yAxis: {
-        type: "value",
-        minInterval: 1,
-        axisLabel: { color: mutedFg, fontSize: 11 },
-        splitLine: { lineStyle: { color: border, type: "dashed" } },
-      },
+      xAxis: { type: "category", data: hourLabels, boundaryGap: false,
+        axisLabel: { color: mutedFg, fontSize: 11 }, axisLine: { lineStyle: { color: border } }, splitLine: { show: false } },
+      yAxis: { type: "value", minInterval: 1,
+        axisLabel: { color: mutedFg, fontSize: 11 }, splitLine: { lineStyle: { color: border, type: "dashed" } } },
       series,
     };
-  }, [hourlyByType, chartColors]);
+  }, [hourlyByType, afterBlitzStart, chartColors]);
 
-  // ─── Derived: repo-type totals for pie ─────────────────────────────────
+  // ─── Derived: repo-type totals for donut — 14:00 UTC only ───────────────
   const typeComparison = useMemo(() => {
     const totals = new Map<string, number>();
-    hourlyByType.forEach(({ repoType, prsChecked }) => {
-      totals.set(repoType, (totals.get(repoType) ?? 0) + prsChecked);
-    });
-    return Array.from(totals.entries())
-      .map(([repoType, value]) => ({ repoType, value }))
-      .sort((a, b) => b.value - a.value);
-  }, [hourlyByType]);
+    hourlyByType
+      .filter(r => afterBlitzStart(r.hour))
+      .forEach(({ repoType, prsChecked }) => totals.set(repoType, (totals.get(repoType) ?? 0) + prsChecked));
+    return Array.from(totals.entries()).map(([repoType, value]) => ({ repoType, value })).sort((a, b) => b.value - a.value);
+  }, [hourlyByType, afterBlitzStart]);
 
-  // ─── ECharts: repo distribution donut ──────────────────────────────────
   const pieOption = useMemo(() => {
     const { mutedFg, fg, card, border } = chartColors;
     return {
       backgroundColor: "transparent",
-      tooltip: {
-        trigger: "item",
-        backgroundColor: card,
-        borderColor: border,
-        textStyle: { color: fg, fontSize: 12 },
+      tooltip: { trigger: "item", backgroundColor: card, borderColor: border, textStyle: { color: fg, fontSize: 12 },
         formatter: (p: { name: string; value: number; percent: number }) =>
-          `<div style="padding:4px 8px"><b>${p.name}</b><br/>${p.value} PRs &mdash; ${p.percent}%</div>`,
-      },
-      legend: {
-        orient: "vertical",
-        right: 8,
-        top: "center",
-        textStyle: { color: mutedFg, fontSize: 11 },
-        itemWidth: 10,
-        itemHeight: 10,
-        itemGap: 10,
-      },
-      series: [{
-        type: "pie",
-        radius: ["44%", "70%"],
-        center: ["38%", "50%"],
-        data: typeComparison.map((item) => ({
+          `<div style="padding:4px 8px"><b>${p.name}</b><br/>${p.value} PRs &mdash; ${p.percent}%</div>` },
+      legend: { orient: "vertical", right: 8, top: "center", textStyle: { color: mutedFg, fontSize: 11 }, itemWidth: 10, itemHeight: 10, itemGap: 10 },
+      series: [{ type: "pie", radius: ["44%", "70%"], center: ["38%", "50%"],
+        data: typeComparison.map(item => ({
           name: TYPE_LABELS[item.repoType] ?? item.repoType.toUpperCase(),
           value: item.value,
           itemStyle: { color: TYPE_SERIES_COLORS[item.repoType] ?? "#94a3b8" },
         })),
         label: { show: false },
-        emphasis: {
-          label: { show: true, fontSize: 13, fontWeight: "bold", color: fg },
-          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: "rgba(0,0,0,0.15)" },
-        },
+        emphasis: { label: { show: true, fontSize: 13, fontWeight: "bold", color: fg },
+          itemStyle: { shadowBlur: 10, shadowOffsetX: 0, shadowColor: "rgba(0,0,0,0.15)" } },
         itemStyle: { borderRadius: 5, borderColor: card, borderWidth: 2 },
       }],
     };
   }, [typeComparison, chartColors]);
 
+  // ─── ECharts: status changes horizontal bar ──────────────────────────────
+  const statusChangesOption = useMemo(() => {
+    const { mutedFg, border, fg, card } = chartColors;
+    const sorted = [...statusChanges].sort((a, b) => a.count - b.count);
+    const labels = sorted.map(s => s.label);
+    const values = sorted.map(s => s.count);
+    const colors = sorted.map(s => STATUS_CHANGE_COLORS[s.label] ?? STATUS_CHANGE_COLORS.default);
+    return {
+      backgroundColor: "transparent",
+      tooltip: { trigger: "axis", axisPointer: { type: "shadow" },
+        backgroundColor: card, borderColor: border, textStyle: { color: fg, fontSize: 12 },
+        formatter: (p: Array<{ name: string; value: number }>) =>
+          `<div style="padding:4px 6px"><b>${p[0]?.name}</b><br/>Changes: <strong>${p[0]?.value ?? 0}</strong></div>` },
+      grid: { left: 110, right: 24, top: 8, bottom: 8, containLabel: false },
+      xAxis: { type: "value", minInterval: 1,
+        axisLabel: { color: mutedFg, fontSize: 11 },
+        splitLine: { lineStyle: { color: border, type: "dashed" } } },
+      yAxis: { type: "category", data: labels,
+        axisLabel: { color: mutedFg, fontSize: 11, width: 100, overflow: "truncate" },
+        axisLine: { lineStyle: { color: border } } },
+      series: [{ type: "bar", data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i], borderRadius: [0, 4, 4, 0] } })), barMaxWidth: 24 }],
+    };
+  }, [statusChanges, chartColors]);
+
   // ─── Render ────────────────────────────────────────────────────────────
   const [p1, p2, p3, ...rest] = leaderboard;
-  const feedVisible = expandedFeed ? recentActivity : recentActivity.slice(0, 6);
+  const feedVisible = expandedFeed ? filteredActivity : filteredActivity.slice(0, 6);
 
   return (
+    <TooltipProvider>
+    <AnimatePresence>
+      {showBlitzAnim && (
+        <BlitzStartAnimation label={blitzLabel} onDismiss={() => setShowBlitzAnim(false)} />
+      )}
+    </AnimatePresence>
     <div className="min-h-screen bg-background">
       <div className="page-shell py-8">
 
         {/* ── Header ── */}
-        <motion.header
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-8"
-        >
+        <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 shadow-md">
@@ -454,32 +620,28 @@ export default function EIPOH100Page() {
               </div>
               <div>
                 <h1 className="dec-title persona-title text-3xl font-semibold tracking-tight sm:text-4xl">
-                  EIPOH100
+                  {blitzLabel}
                 </h1>
-                <p className="mt-0.5 max-w-lg text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Editor Sprint · June 2, 2025 · Live dashboard
+                <p className="mt-0.5 text-sm text-muted-foreground sm:text-base">
+                  Live editor sprint dashboard · Refreshes every 60s
                 </p>
               </div>
             </div>
-
             <div className="flex flex-wrap items-center gap-2.5">
-              {lastRefreshed && (
-                <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5" />
-                  {lastRefreshed.toLocaleTimeString()}
-                </span>
-              )}
-              <button
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground" suppressHydrationWarning>
+                <Clock className="h-3.5 w-3.5" />
+                {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+              </span>
+<button
                 type="button"
-                onClick={fetchData}
+                onClick={() => { fetchData(); setCountdown(60); }}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Refresh
+                <RefreshCw className="h-3.5 w-3.5" />Refresh
               </button>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-400">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500" />
-                Live · 60s
+                <CountdownRing seconds={countdown} />
+                <span className="tabular-nums">Live · {countdown}s</span>
               </span>
             </div>
           </div>
@@ -487,359 +649,347 @@ export default function EIPOH100Page() {
           {/* Sprint progress */}
           <div className="mt-5 rounded-xl border border-border bg-card p-4">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Daily Sprint Progress
-              </span>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  Sprint Progress
+                </span>
+                {sprint.status === "upcoming" && (
+                  <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-px text-[10px] font-medium text-amber-700 dark:text-amber-400">
+                    Not started
+                  </span>
+                )}
+                {sprint.status === "complete" && (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                    Complete
+                  </span>
+                )}
+              </div>
               <span className="text-[11px] text-muted-foreground">{sprint.remaining}</span>
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
               <motion.div
-                className="h-full rounded-full bg-gradient-to-r from-violet-500 to-indigo-500"
-                initial={{ width: 0 }}
-                animate={{ width: `${sprint.pct}%` }}
-                transition={{ duration: 0.8, ease: "easeOut" }}
+                className={`h-full rounded-full bg-gradient-to-r ${sprint.status === "complete" ? "from-emerald-500 to-cyan-500" : "from-violet-500 to-indigo-500"}`}
+                initial={{ width: 0 }} animate={{ width: `${sprint.pct}%` }} transition={{ duration: 0.8, ease: "easeOut" }}
               />
             </div>
+            <p className="mt-1.5 text-[10px] text-muted-foreground">
+              14:00 UTC → 18:00 UTC · All metrics and charts reflect data within this window only
+            </p>
           </div>
         </motion.header>
 
         {/* ── Stat cards ── */}
-        <div className="mb-8 grid gap-4 sm:grid-cols-3">
-          {[
-            { icon: GitPullRequest, label: "PRs Reviewed Today", value: totalPRs },
-            { icon: Activity, label: "Editor Actions Today", value: totalEvents },
-            { icon: Users, label: "Active Editors", value: leaderboard.length },
-          ].map(({ icon: Icon, label, value }, i) => (
-            <motion.div
-              key={label}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 + i * 0.07 }}
-              className="rounded-xl border border-border bg-card p-4 shadow-sm"
-            >
-              <div className="mb-1.5 flex items-center gap-2 text-muted-foreground">
-                <Icon className="h-4 w-4" />
-                <span className="text-[11px] font-semibold uppercase tracking-wider">{label}</span>
-              </div>
-              {loading ? (
-                <div className="h-9 w-16 animate-pulse rounded-md bg-muted" />
-              ) : (
-                <p className="text-3xl font-bold tabular-nums text-foreground">{value}</p>
-              )}
-            </motion.div>
-          ))}
-        </div>
-
-        {/* ── Main grid ── */}
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
-
-          {/* ── Leaderboard ── */}
-          <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div className="mb-5 flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-500" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-                Editor Leaderboard
-              </h2>
-              <span className="ml-auto rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Today
-              </span>
+        <div className="mb-6 grid gap-4 sm:grid-cols-3">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}
+            className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+              <GitPullRequest className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">PRs Reviewed</span>
+              <Tip text="Distinct PRs touched by editors during the 14:00–18:00 UTC blitz window." />
             </div>
+            {loading ? <div className="h-8 w-14 animate-pulse rounded-md bg-muted" /> :
+              <p className="text-2xl font-bold tabular-nums text-foreground">{totalPRs}</p>}
+          </motion.div>
 
-            {loading ? (
-              <div className="space-y-3">
-                <div className="flex gap-3">
-                  {[1, 2, 3].map((n) => (
-                    <div key={n} className="h-44 flex-1 animate-pulse rounded-xl bg-muted" />
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.17 }}
+            className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+              <Users className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Active Editors</span>
+              <Tip text="Editors with at least one action during the blitz. Excludes bots and associate editors." />
+            </div>
+            {loading ? <div className="h-8 w-14 animate-pulse rounded-md bg-muted" /> :
+              <p className="text-2xl font-bold tabular-nums text-foreground">{leaderboard.length}</p>}
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.24 }}
+            className="rounded-xl border border-border bg-card p-4 shadow-sm">
+            <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
+              <Activity className="h-3.5 w-3.5" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider">Editor Actions</span>
+              <Tip text="Total events (reviews, comments, merges) logged by canonical editors during the blitz." />
+            </div>
+            {loading ? <div className="h-8 w-14 animate-pulse rounded-md bg-muted" /> : (
+              <>
+                <p className="text-2xl font-bold tabular-nums text-foreground">{actionBreakdown.total}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {[
+                    { icon: Eye, count: actionBreakdown.reviews, label: "reviews", tip: "PR reviews, approvals, and change requests" },
+                    { icon: MessageSquare, count: actionBreakdown.comments, label: "comments", tip: "PR comments and issue comments" },
+                    { icon: GitMerge, count: actionBreakdown.merges, label: "merges", tip: "Merged pull requests" },
+                  ].map(({ icon: Icon, count, label, tip }) => (
+                    <Tooltip key={label}>
+                      <TooltipTrigger asChild>
+                        <span className="inline-flex cursor-default items-center gap-1 rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          <Icon className="h-3 w-3" />{count} {label}
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent><p>{tip}</p></TooltipContent>
+                    </Tooltip>
                   ))}
                 </div>
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="h-10 animate-pulse rounded-lg bg-muted" />
-                ))}
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div className="flex flex-col items-center gap-3 py-12 text-center">
-                <Trophy className="h-10 w-10 text-muted-foreground/30" />
-                <p className="text-sm font-medium text-muted-foreground">No editor activity yet today.</p>
-                <p className="text-xs text-muted-foreground/60">Refreshes every 60 seconds.</p>
-              </div>
-            ) : (
-              <>
-                {/* Podium — 2nd left · 1st center · 3rd right */}
-                <div className="mb-5 grid grid-cols-3 items-end gap-3">
-                  {p2 ? <PodiumCard entry={p2} rank={2} max={maxPRs} delay={0.12} /> : <div />}
-                  {p1 && <PodiumCard entry={p1} rank={1} max={maxPRs} delay={0} />}
-                  {p3 ? <PodiumCard entry={p3} rank={3} max={maxPRs} delay={0.22} /> : <div />}
-                </div>
-
-                {/* 4th+ ranked list */}
-                {rest.length > 0 && (
-                  <div className="space-y-1.5 border-t border-border pt-3">
-                    {rest.map((entry, i) => (
-                      <motion.div
-                        key={entry.editor}
-                        initial={{ opacity: 0, x: -6 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.22, delay: 0.04 * i }}
-                        className="flex items-center gap-2.5 rounded-lg border border-border bg-background px-3 py-2"
-                      >
-                        <span className="w-5 flex-shrink-0 text-center text-xs font-bold text-muted-foreground">
-                          {i + 4}
-                        </span>
-                        <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
-                          <Image
-                            src={editorAvatar(entry.editor)}
-                            alt={entry.editor}
-                            width={24}
-                            height={24}
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
-                        <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">
-                          {entry.editor}
-                        </span>
-                        <div className="flex w-28 items-center gap-2">
-                          <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary/60"
-                              style={{ width: `${(entry.prsReviewed / maxPRs) * 100}%` }}
-                            />
-                          </div>
-                          <span className="w-8 text-right text-xs font-bold tabular-nums text-foreground">
-                            {entry.prsReviewed}
-                          </span>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
               </>
             )}
-          </section>
+          </motion.div>
+        </div>
 
-          {/* ── Charts ── */}
-          <div className="space-y-6">
+        {/* ── Main 3-column grid ── */}
+        <div className="mb-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)_minmax(0,0.85fr)]">
 
-            {/* EIP vs ERC vs RIP line chart */}
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-1 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-                  EIPs · ERCs · RIPs
-                </h2>
-              </div>
-              <p className="mb-4 text-xs text-muted-foreground">PRs checked per hour, by type</p>
+          {/* Col 1 — Leaderboard */}
+          <section className="flex flex-col rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <Trophy className="h-4 w-4 flex-shrink-0 text-amber-500" />
+              <h2 className="text-sm font-semibold text-foreground">Editor Leaderboard</h2>
+              <Tip text="Ranked by unique PRs touched. abcoathup and eip-review-bot are excluded to prevent metric skew." />
+              <span className="ml-auto rounded-md border border-border bg-muted/60 px-2 py-px text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Blitz only</span>
+            </div>
+            <div className="flex-1 p-4">
               {loading ? (
-                <div className="h-[200px] animate-pulse rounded-lg bg-muted" />
-              ) : hourlyByType.length === 0 ? (
-                <div className="flex h-[200px] items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No data yet for today.</p>
+                <div className="space-y-2">
+                  <div className="flex gap-2">{[1,2,3].map(n => <div key={n} className="h-36 flex-1 animate-pulse rounded-xl bg-muted" />)}</div>
+                  {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-9 animate-pulse rounded-lg bg-muted" />)}
                 </div>
-              ) : (
-                <ReactECharts
-                  option={lineOption}
-                  style={{ height: 200, width: "100%" }}
-                  opts={{ renderer: "svg" }}
-                  notMerge
-                />
-              )}
-            </section>
-
-            {/* Hourly activity bar chart */}
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-1 flex items-center gap-2">
-                <GitPullRequest className="h-5 w-5 text-primary" />
-                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-                  Hourly Activity
-                </h2>
-              </div>
-              <p className="mb-4 text-xs text-muted-foreground">Total PRs checked across all repos</p>
-              {loading ? (
-                <div className="h-[200px] animate-pulse rounded-lg bg-muted" />
-              ) : hourlyActivity.length === 0 ? (
-                <div className="flex h-[200px] items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No activity recorded yet today.</p>
-                </div>
-              ) : (
-                <ReactECharts
-                  option={barOption}
-                  style={{ height: 200, width: "100%" }}
-                  opts={{ renderer: "svg" }}
-                  notMerge
-                />
-              )}
-            </section>
-
-            {/* Repo distribution donut */}
-            <section className="rounded-xl border border-border bg-card p-5 shadow-sm">
-              <div className="mb-1 flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
-                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-                  Activity by Repo
-                </h2>
-              </div>
-              <p className="mb-3 text-xs text-muted-foreground">Share of PRs checked per repository today</p>
-              {loading ? (
-                <div className="h-[180px] animate-pulse rounded-lg bg-muted" />
-              ) : typeComparison.length === 0 ? (
-                <div className="flex h-[180px] items-center justify-center">
-                  <p className="text-sm text-muted-foreground">No data yet for today.</p>
+              ) : leaderboard.length === 0 ? (
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  <Trophy className="h-8 w-8 text-muted-foreground/25" />
+                  <p className="text-xs font-medium text-muted-foreground">No activity during blitz window yet.</p>
                 </div>
               ) : (
                 <>
-                  <ReactECharts
-                    option={pieOption}
-                    style={{ height: 160, width: "100%" }}
-                    opts={{ renderer: "svg" }}
-                    notMerge
-                  />
-                  <div className="mt-2 flex flex-wrap gap-2">
-                    {typeComparison.map((item) => {
-                      const { label, cls } = repoTagStyle(item.repoType);
-                      const total = typeComparison.reduce((s, i) => s + i.value, 0);
-                      const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
-                      return (
-                        <div key={item.repoType} className={`flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-medium ${cls}`}>
-                          <span className="h-2 w-2 rounded-full" style={{ background: TYPE_SERIES_COLORS[item.repoType] ?? "#94a3b8" }} />
-                          {label}
-                          <span className="font-bold tabular-nums">{item.value}</span>
-                          <span className="text-[10px] opacity-70">({pct}%)</span>
-                        </div>
-                      );
-                    })}
+                  <div className="mb-4 grid grid-cols-3 items-end gap-2">
+                    {p2 ? <PodiumCard entry={p2} rank={2} max={maxPRs} delay={0.12} /> : <div />}
+                    {p1 && <PodiumCard entry={p1} rank={1} max={maxPRs} delay={0} />}
+                    {p3 ? <PodiumCard entry={p3} rank={3} max={maxPRs} delay={0.22} /> : <div />}
                   </div>
+                  {rest.length > 0 && (
+                    <div className="space-y-1.5 border-t border-border pt-3">
+                      {rest.map((entry, i) => (
+                        <motion.div key={entry.editor} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: 0.04 * i }}
+                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
+                          <span className="w-4 flex-shrink-0 text-center text-[11px] font-bold text-muted-foreground">{i + 4}</span>
+                          <div className="h-5 w-5 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+                            <Image src={editorAvatar(entry.editor)} alt={entry.editor} width={20} height={20} className="h-full w-full object-cover" />
+                          </div>
+                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{entry.editor}</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="hidden cursor-default items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
+                                <Eye className="h-3 w-3" />{entry.reviews}
+                                <MessageSquare className="h-3 w-3 ml-1" />{entry.comments}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent><p>{entry.reviews} reviews · {entry.comments} comments · {entry.merges} merges</p></TooltipContent>
+                          </Tooltip>
+                          <div className="flex w-20 items-center gap-1.5">
+                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
+                              <div className="h-full rounded-full bg-primary/60" style={{ width: `${(entry.prsReviewed / maxPRs) * 100}%` }} />
+                            </div>
+                            <span className="w-6 text-right text-xs font-bold tabular-nums text-foreground">{entry.prsReviewed}</span>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
+            </div>
+          </section>
+
+          {/* Col 2 — Charts */}
+          <div className="flex flex-col gap-4">
+            {/* Line chart */}
+            <section className="rounded-xl border border-border bg-card shadow-sm">
+              <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+                <Activity className="h-4 w-4 flex-shrink-0 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground">EIPs · ERCs · RIPs</h2>
+                <Tip text="Distinct PRs checked per hour for each repo type during the blitz window." />
+              </div>
+              <div className="p-4">
+                {loading ? <div className="h-[180px] animate-pulse rounded-lg bg-muted" /> :
+                  blitzHourly.length === 0 ? (
+                    <div className="flex h-[180px] items-center justify-center"><p className="text-xs text-muted-foreground">No data in blitz window yet.</p></div>
+                  ) : (
+                    <ReactECharts option={lineOption} style={{ height: 180, width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+                  )}
+              </div>
             </section>
+
+            {/* Bar chart */}
+            <section className="rounded-xl border border-border bg-card shadow-sm">
+              <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+                <GitPullRequest className="h-4 w-4 flex-shrink-0 text-primary" />
+                <h2 className="text-sm font-semibold text-foreground">Hourly Activity</h2>
+                <Tip text="Total PRs checked across all repos per hour since 14:00 UTC." />
+              </div>
+              <div className="p-4">
+                {loading ? <div className="h-[180px] animate-pulse rounded-lg bg-muted" /> :
+                  blitzHourly.length === 0 ? (
+                    <div className="flex h-[180px] items-center justify-center"><p className="text-xs text-muted-foreground">No activity from 14:00 UTC yet.</p></div>
+                  ) : (
+                    <ReactECharts option={barOption} style={{ height: 180, width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+                  )}
+              </div>
+            </section>
+          </div>
+
+          {/* Col 3 — Recent Activity (scrollable) */}
+          <section className="flex flex-col rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <Activity className="h-4 w-4 flex-shrink-0 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Recent Activity</h2>
+              <Tip text="Live feed of editor PR events and status changes. Bots and associate editors excluded." />
+              <span className="ml-1 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
+                <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-500" />Live
+              </span>
+              <Link href="/analytics/prs" className="ml-auto inline-flex h-6 items-center gap-0.5 rounded-md border border-primary/30 bg-primary/10 px-2 text-[10px] font-medium text-primary transition-colors hover:bg-primary/15">
+                Analytics<ArrowRight className="h-2.5 w-2.5" />
+              </Link>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-3" style={{ maxHeight: "520px" }}>
+              {loading ? (
+                <div className="space-y-2">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-[88px] animate-pulse rounded-lg bg-muted" />)}</div>
+              ) : filteredActivity.length === 0 ? (
+                <div className="flex h-40 items-center justify-center">
+                  <p className="text-xs text-muted-foreground">No recent activity.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <AnimatePresence initial={false}>
+                    {filteredActivity.map((item, idx) => {
+                      const { label: repoLabel, cls: repoCls } = repoTagStyle(item.eipType);
+                      const isStatusChange = item.kind === "status_change";
+                      const href = isStatusChange
+                        ? `/${item.eipType === "RIP" ? "rip" : item.eipType === "ERC" ? "erc" : "eip"}/${item.eip}`
+                        : (item.eventUrl ?? `https://github.com/${item.repository}/pull/${item.prNumber}`);
+                      const actionLabel = isStatusChange ? `${item.fromStatus ?? "—"} → ${item.toStatus}` : formatEditorAction(item.eventType ?? "");
+                      const actionCls = isStatusChange ? "border-border bg-muted/60 text-muted-foreground" : "border-primary/30 bg-primary/10 text-primary";
+                      return (
+                        <motion.div key={`${item.kind}-${item.eip}-${idx}`}
+                          initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
+                          transition={{ duration: 0.15, delay: Math.min(idx * 0.02, 0.2) }}
+                          className="rounded-lg border border-border bg-background transition-colors hover:border-primary/40">
+                          <div className="flex items-center gap-2 px-2.5 pt-2.5">
+                            <div className="h-5 w-5 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
+                              <Image src={editorAvatar(item.actor)} alt={item.actor} width={20} height={20} className="h-full w-full object-cover" />
+                            </div>
+                            <span className="truncate text-[11px] font-semibold text-foreground">{item.actor}</span>
+                            <span className={`flex-shrink-0 rounded border px-1 py-px text-[9px] font-medium ${actionCls}`}>{actionLabel}</span>
+                            <span className="ml-auto flex-shrink-0 text-[9px] tabular-nums text-muted-foreground">{relativeTime(item.occurredAt)}</span>
+                          </div>
+                          <p className="line-clamp-1 px-2.5 py-1.5 text-[11px] text-muted-foreground">
+                            {item.title || (isStatusChange ? `${item.eipType}-${item.eip}` : `PR #${item.prNumber}`)}
+                          </p>
+                          <div className="flex items-center gap-1.5 border-t border-border/50 px-2.5 py-1.5">
+                            <span className={`rounded border px-1 py-px text-[9px] font-medium ${repoCls}`}>{repoLabel}</span>
+                            <span className="text-[9px] text-muted-foreground">{isStatusChange ? `${item.eipType}-${item.eip}` : `PR #${item.prNumber}`}</span>
+                            <a href={href} target={isStatusChange ? undefined : "_blank"} rel={isStatusChange ? undefined : "noopener noreferrer"}
+                              className="ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium text-primary hover:underline">
+                              View<ArrowRight className="h-2.5 w-2.5" />
+                            </a>
+                          </div>
+                        </motion.div>
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+
+        {/* ── Secondary charts row ── */}
+        <div className="mb-4 grid gap-4 lg:grid-cols-2">
+          {/* Status Changes */}
+          <section className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <Activity className="h-4 w-4 flex-shrink-0 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Status Changes Today</h2>
+              <Tip text="EIP/ERC/RIP proposals that moved between governance statuses (e.g. Draft → Review) during the blitz." />
+            </div>
+            <div className="p-4">
+              {loading ? <div className="h-[160px] animate-pulse rounded-lg bg-muted" /> :
+                statusChanges.length === 0 ? (
+                  <div className="flex h-[120px] items-center justify-center"><p className="text-xs text-muted-foreground">No status changes recorded today.</p></div>
+                ) : (
+                  <ReactECharts option={statusChangesOption}
+                    style={{ height: Math.max(120, statusChanges.length * 34), width: "100%" }}
+                    opts={{ renderer: "svg" }} notMerge />
+                )}
+            </div>
+          </section>
+
+          {/* Repo Distribution */}
+          <section className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <Activity className="h-4 w-4 flex-shrink-0 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Activity by Repo</h2>
+              <Tip text="Share of blitz-window PRs checked, broken down by ethereum/EIPs, ethereum/ERCs, and ethereum/RIPs." />
+            </div>
+            <div className="p-4">
+              {loading ? <div className="h-[180px] animate-pulse rounded-lg bg-muted" /> :
+                typeComparison.length === 0 ? (
+                  <div className="flex h-[180px] items-center justify-center"><p className="text-xs text-muted-foreground">No data in blitz window yet.</p></div>
+                ) : (
+                  <>
+                    <ReactECharts option={pieOption} style={{ height: 160, width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {typeComparison.map(item => {
+                        const { label, cls } = repoTagStyle(item.repoType);
+                        const total = typeComparison.reduce((s, i) => s + i.value, 0);
+                        const pct = total > 0 ? Math.round((item.value / total) * 100) : 0;
+                        return (
+                          <div key={item.repoType} className={`flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-medium ${cls}`}>
+                            <span className="h-1.5 w-1.5 rounded-full" style={{ background: TYPE_SERIES_COLORS[item.repoType] ?? "#94a3b8" }} />
+                            {label} <span className="font-bold tabular-nums">{item.value}</span>
+                            <span className="text-[10px] opacity-60">({pct}%)</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+            </div>
+          </section>
+        </div>
+
+        {/* ── Developer Quick Access ── */}
+        <div>
+          <div className="mb-3 flex items-center gap-1.5">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Developer Quick Access</p>
+            <Tip text="Key analytics and tooling links for developers following EIP/ERC governance." side="right" />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {([
+              { key: "prs",      href: "/analytics/prs",          icon: GitPullRequest, title: "Pull Request Insights",       cta: "Explore PRs",       blurb: "Track PR flow, reviews, and governance movement." },
+              { key: "eips",     href: "/analytics/eips",         icon: FileText,       title: "EIP Analytics",               cta: "Explore EIPs",      blurb: "Analyze proposal activity and lifecycle progress." },
+              { key: "upgrades", href: "/upgrade",                 icon: Network,        title: "Network Upgrades",            cta: "Explore Upgrades",  blurb: "Follow upgrade timelines and protocol rollout context." },
+              { key: "editors",  href: "/analytics/editors",       icon: Trophy,         title: "Editors Insights",            cta: "Explore Editors",   blurb: "View editorial workload and contribution metrics." },
+              { key: "board",    href: "/board",                   icon: LayoutDashboard, title: "PR Board",                   cta: "Open Board",        blurb: "Review queue, governance states, and PR assignments." },
+              { key: "monthly",  href: "/insights",                icon: ArrowUpDown,    title: "Monthly Insights",            cta: "Explore Monthly",   blurb: "Open month-by-month standards and governance insights." },
+            ] as const).map(({ key, href, icon: Icon, title, cta, blurb }) => (
+              <Link
+                key={key}
+                href={href}
+                className="group rounded-lg border border-border bg-card px-3 py-3 transition-all hover:border-primary/40 hover:bg-primary/[0.04] hover:shadow-sm"
+              >
+                <div className="mb-2 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{blurb}</p>
+                <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
+                  {cta}
+                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
 
-        {/* ── Recent Activity ── */}
-        <section className="mt-6 rounded-xl border border-border bg-card p-5 shadow-sm">
-          <div className="mb-4 flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-              Recent Activity
-            </h2>
-            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-px text-[10px] font-medium text-emerald-700 dark:text-emerald-400">
-              <span className="h-1 w-1 animate-pulse rounded-full bg-emerald-500" />
-              Live
-            </span>
-            <Link
-              href="/analytics/prs"
-              className="ml-auto inline-flex h-7 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              PR Analytics
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-
-          {loading ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-[100px] animate-pulse rounded-lg bg-muted" />
-              ))}
-            </div>
-          ) : recentActivity.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No recent activity.</p>
-          ) : (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <AnimatePresence initial={false}>
-                  {feedVisible.map((item, idx) => {
-                    const { label: repoLabel, cls: repoCls } = repoTagStyle(item.eipType);
-                    const isStatusChange = item.kind === "status_change";
-                    const href = isStatusChange
-                      ? `/${item.eipType === "RIP" ? "rip" : item.eipType === "ERC" ? "erc" : "eip"}/${item.eip}`
-                      : (item.eventUrl ?? `https://github.com/${item.repository}/pull/${item.prNumber}`);
-                    const actionLabel = isStatusChange
-                      ? `${item.fromStatus ?? "—"} → ${item.toStatus}`
-                      : formatEditorAction(item.eventType ?? "");
-                    const actionCls = isStatusChange
-                      ? "border-border bg-muted/60 text-muted-foreground"
-                      : "border-primary/30 bg-primary/10 text-primary";
-
-                    return (
-                      <motion.div
-                        key={`${item.kind}-${item.eip}-${idx}`}
-                        initial={{ opacity: 0, y: 6 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.18, delay: idx * 0.025 }}
-                        className="rounded-lg border border-border bg-background transition-colors hover:border-primary/40"
-                      >
-                        {/* Row 1 — actor + action badge + timestamp */}
-                        <div className="flex items-center gap-2 px-3 pt-3">
-                          <div className="h-6 w-6 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
-                            <Image
-                              src={editorAvatar(item.actor)}
-                              alt={item.actor}
-                              width={24}
-                              height={24}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                          <span className="text-xs font-semibold text-foreground truncate">{item.actor}</span>
-                          <span className={`flex-shrink-0 rounded-md border px-1.5 py-px text-[10px] font-medium ${actionCls}`}>
-                            {actionLabel}
-                          </span>
-                          <span className="ml-auto flex-shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                            {relativeTime(item.occurredAt)}
-                          </span>
-                        </div>
-
-                        {/* Row 2 — title */}
-                        <p className="line-clamp-2 px-3 py-2 text-xs leading-relaxed text-foreground">
-                          {item.title || (isStatusChange ? `${item.eipType}-${item.eip}` : `PR #${item.prNumber}`)}
-                        </p>
-
-                        {/* Row 3 — repo chip + PR/proposal number + view link */}
-                        <div className="flex items-center gap-2 border-t border-border/60 px-3 py-2">
-                          <span className={`rounded-md border px-1.5 py-px text-[10px] font-medium ${repoCls}`}>
-                            {repoLabel}
-                          </span>
-                          {isStatusChange ? (
-                            <span className="text-[10px] text-muted-foreground">
-                              {item.eipType}-{item.eip}
-                            </span>
-                          ) : (
-                            <span className="text-[10px] text-muted-foreground">
-                              PR #{item.prNumber}
-                            </span>
-                          )}
-                          <a
-                            href={href}
-                            target={isStatusChange ? undefined : "_blank"}
-                            rel={isStatusChange ? undefined : "noopener noreferrer"}
-                            className="ml-auto inline-flex items-center gap-0.5 text-[11px] font-medium text-primary hover:underline"
-                          >
-                            View
-                            <ArrowRight className="h-3 w-3" />
-                          </a>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </AnimatePresence>
-              </div>
-
-              {recentActivity.length > 6 && (
-                <button
-                  type="button"
-                  onClick={() => setExpandedFeed((v) => !v)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background py-2 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-                >
-                  {expandedFeed ? (
-                    <><ChevronUp className="h-3.5 w-3.5" /> Show less</>
-                  ) : (
-                    <><ChevronDown className="h-3.5 w-3.5" /> Show {recentActivity.length - 6} more</>
-                  )}
-                </button>
-              )}
-            </>
-          )}
-        </section>
-
       </div>
     </div>
+    </TooltipProvider>
   );
 }
