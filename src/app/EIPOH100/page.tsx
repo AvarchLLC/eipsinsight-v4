@@ -803,7 +803,7 @@ export default function EIPOH100Page() {
     };
   }, [hourlyByType, afterBlitzStart, chartColors]);
 
-  // ─── Derived: repo-type totals for donut — 14:00 UTC only ───────────────
+  // ─── Derived: repo-type totals for donut — 15:30 UTC only ───────────────
   const typeComparison = useMemo(() => {
     const totals = new Map<string, number>();
     hourlyByType
