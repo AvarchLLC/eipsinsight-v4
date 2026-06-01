@@ -109,7 +109,7 @@ type PRListItem = {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_DATE = "2025-06-02";
-const BLITZ_START_HOUR_UTC = 14;
+const BLITZ_START_HOUR_UTC = 15;   // hourly bucket filter (catches 15:30+ data)
 const BLITZ_END_HOUR_UTC   = 18;
 const EXCLUDED_ACTORS = new Set(["abcoathup", "eip-review-bot"]);
 
@@ -183,7 +183,7 @@ function repoTagStyle(eipType: string): { label: string; cls: string } {
 function sprintProgress() {
   const now = new Date();
   const startUTC = new Date(now);
-  startUTC.setUTCHours(BLITZ_START_HOUR_UTC, 0, 0, 0);
+  startUTC.setUTCHours(15, 30, 0, 0);
   const endUTC = new Date(now);
   endUTC.setUTCHours(BLITZ_END_HOUR_UTC, 0, 0, 0);
 
@@ -385,7 +385,7 @@ function BlitzStartAnimation({ label, onDismiss }: { label: string; onDismiss: (
           transition={{ delay: 0.62 }}
           className="mt-1 text-sm text-white/40"
         >
-          14:00 – 18:00 UTC · Sprint is live
+          16:00 – 18:00 UTC · Sprint is live
         </motion.p>
 
         {/* CTA */}
@@ -509,7 +509,7 @@ function BlitzCompleteAnimation({ label, summary, onDismiss }: {
             transition={{ delay: 0.5 }}
             className="mt-1 text-sm text-white/50"
           >
-            {label} · 14:00 – 18:00 UTC
+            {label} · 16:00 – 18:00 UTC
           </motion.p>
         </div>
 
@@ -633,7 +633,7 @@ export default function EIPOH100Page() {
         client.analytics.getEventDayHourlyByType({ date: displayDate }),
         client.analytics.getEventDayStatusChanges({ date: displayDate }),
         client.analytics.getAllRecentActivity({ limit: 10 }),
-        client.analytics.getEventDayProposalBreakdown({ date: displayDate, startHour: BLITZ_START_HOUR_UTC, endHour: BLITZ_END_HOUR_UTC }),
+        client.analytics.getEventDayProposalBreakdown({ date: displayDate, startHour: 15.5, endHour: BLITZ_END_HOUR_UTC }),
       ]);
       setLeaderboard(editors as EditorEntry[]);
       setHourlyActivity(hourly);
@@ -690,7 +690,7 @@ export default function EIPOH100Page() {
     return () => clearInterval(tick);
   }, [fetchData]);
 
-  // ─── 14:00 UTC predicate (used by all charts) ───────────────────────────
+  // ─── 15:30 UTC predicate (used by all charts) ───────────────────────────
   const afterBlitzStart = useCallback(
     (isoHour: string) => new Date(isoHour).getUTCHours() >= BLITZ_START_HOUR_UTC,
     []
@@ -708,7 +708,6 @@ export default function EIPOH100Page() {
     merges:   leaderboard.reduce((s, e) => s + e.merges, 0),
     total:    leaderboard.reduce((s, e) => s + e.totalEvents, 0),
   }), [leaderboard]);
-  const maxPRs = leaderboard[0]?.prsReviewed ?? 1;
 
   // ─── Blitz summary (used by complete animation) ─────────────────────────
   const blitzSummary = useMemo<BlitzSummary>(() => {
@@ -737,7 +736,7 @@ export default function EIPOH100Page() {
     [recentActivity]
   );
 
-  // ─── ECharts: hourly bar — data from 14:00 UTC only ────────────────────
+  // ─── ECharts: hourly bar — data from 16:00 UTC only ────────────────────
   const barOption = useMemo(() => {
     const hours = blitzHourly.map(h => formatHourLabel(h.hour));
     const values = blitzHourly.map(h => h.prsChecked);
@@ -772,7 +771,7 @@ export default function EIPOH100Page() {
     };
   }, [blitzHourly, chartColors]);
 
-  // ─── ECharts: line by type — data from 14:00 UTC only ─────────────────
+  // ─── ECharts: line by type — data from 16:00 UTC only ─────────────────
   const lineOption = useMemo(() => {
     const blitzByType = hourlyByType.filter(r => afterBlitzStart(r.hour));
     const allHours = Array.from(new Set(blitzByType.map(r => r.hour))).sort();
@@ -804,7 +803,7 @@ export default function EIPOH100Page() {
     };
   }, [hourlyByType, afterBlitzStart, chartColors]);
 
-  // ─── Derived: repo-type totals for donut — 14:00 UTC only ───────────────
+  // ─── Derived: repo-type totals for donut — 15:30 UTC only ───────────────
   const typeComparison = useMemo(() => {
     const totals = new Map<string, number>();
     hourlyByType
@@ -914,7 +913,6 @@ export default function EIPOH100Page() {
   }, [proposalBreakdown, chartColors]);
 
   // ─── Render ────────────────────────────────────────────────────────────
-  const [p1, p2, p3, ...rest] = leaderboard;
   const feedVisible = expandedFeed ? filteredActivity : filteredActivity.slice(0, 6);
 
   return (
@@ -999,7 +997,7 @@ export default function EIPOH100Page() {
               />
             </div>
             <p className="mt-1.5 text-[10px] text-muted-foreground">
-              14:00 UTC → 18:00 UTC · All metrics and charts reflect data within this window only
+              16:00 UTC → 18:00 UTC · All metrics and charts reflect data within this window only
             </p>
           </div>
         </motion.header>
@@ -1011,7 +1009,7 @@ export default function EIPOH100Page() {
             <div className="mb-2 flex items-center gap-1.5 text-muted-foreground">
               <GitPullRequest className="h-3.5 w-3.5" />
               <span className="text-[11px] font-semibold uppercase tracking-wider">PRs Reviewed</span>
-              <Tip text="Distinct PRs touched by editors during the 14:00–18:00 UTC blitz window." />
+              <Tip text="Distinct PRs touched by editors during the 16:00–18:00 UTC blitz window." />
             </div>
             {loading ? <div className="h-8 w-14 animate-pulse rounded-md bg-muted" /> :
               <p className="text-2xl font-bold tabular-nums text-foreground">{totalPRs}</p>}
@@ -1067,58 +1065,104 @@ export default function EIPOH100Page() {
             <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
               <Trophy className="h-4 w-4 flex-shrink-0 text-amber-500" />
               <h2 className="text-sm font-semibold text-foreground">Editor Leaderboard</h2>
-              <Tip text="Ranked by unique PRs touched. abcoathup and eip-review-bot are excluded to prevent metric skew." />
+              <Tip text="Ranked by total actions. Bars show breakdown of reviews, comments, and merges." />
               <span className="ml-auto rounded-md border border-border bg-muted/60 px-2 py-px text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Blitz only</span>
             </div>
             <div className="flex-1 p-4">
               {loading ? (
-                <div className="space-y-2">
-                  <div className="flex gap-2">{[1,2,3].map(n => <div key={n} className="h-36 flex-1 animate-pulse rounded-xl bg-muted" />)}</div>
-                  {Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-9 animate-pulse rounded-lg bg-muted" />)}
+                <div className="space-y-3">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} className="flex items-center gap-3">
+                      <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+                      <div className="flex-1 space-y-1.5">
+                        <div className="h-2 w-24 animate-pulse rounded bg-muted" />
+                        <div className="h-4 animate-pulse rounded-full bg-muted" style={{ width: `${70 - i * 10}%` }} />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : leaderboard.length === 0 ? (
                 <div className="flex flex-col items-center gap-2 py-10 text-center">
                   <Trophy className="h-8 w-8 text-muted-foreground/25" />
                   <p className="text-xs font-medium text-muted-foreground">No activity during blitz window yet.</p>
                 </div>
-              ) : (
-                <>
-                  <div className="mb-4 grid grid-cols-3 items-end gap-2">
-                    {p2 ? <PodiumCard entry={p2} rank={2} max={maxPRs} delay={0.12} /> : <div />}
-                    {p1 && <PodiumCard entry={p1} rank={1} max={maxPRs} delay={0} />}
-                    {p3 ? <PodiumCard entry={p3} rank={3} max={maxPRs} delay={0.22} /> : <div />}
-                  </div>
-                  {rest.length > 0 && (
-                    <div className="space-y-1.5 border-t border-border pt-3">
-                      {rest.map((entry, i) => (
-                        <motion.div key={entry.editor} initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.2, delay: 0.04 * i }}
-                          className="flex items-center gap-2 rounded-lg border border-border bg-background px-2.5 py-1.5">
-                          <span className="w-4 flex-shrink-0 text-center text-[11px] font-bold text-muted-foreground">{i + 4}</span>
-                          <div className="h-5 w-5 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border">
-                            <Image src={editorAvatar(entry.editor)} alt={entry.editor} width={20} height={20} className="h-full w-full object-cover" />
-                          </div>
-                          <span className="min-w-0 flex-1 truncate text-xs font-medium text-foreground">{entry.editor}</span>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="hidden cursor-default items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
-                                <Eye className="h-3 w-3" />{entry.reviews}
-                                <MessageSquare className="h-3 w-3 ml-1" />{entry.comments}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent><p>{entry.reviews} reviews · {entry.comments} comments · {entry.merges} merges</p></TooltipContent>
-                          </Tooltip>
-                          <div className="flex w-20 items-center gap-1.5">
-                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
-                              <div className="h-full rounded-full bg-primary/60" style={{ width: `${(entry.prsReviewed / maxPRs) * 100}%` }} />
+              ) : (() => {
+                const maxTotal = Math.max(...leaderboard.map(e => e.totalEvents), 1);
+                const medals: Record<number, string> = { 0: "🥇", 1: "🥈", 2: "🥉" };
+                return (
+                  <div className="space-y-3">
+                    {/* Legend */}
+                    <div className="flex items-center gap-3 pb-1 text-[10px] text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-indigo-500" />Reviews</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-violet-400" />Comments</span>
+                      <span className="flex items-center gap-1"><span className="inline-block h-2 w-3 rounded-sm bg-emerald-500" />Merges</span>
+                    </div>
+                    {leaderboard.map((entry, i) => {
+                      const barPct = (entry.totalEvents / maxTotal) * 100;
+                      const reviewPct  = entry.totalEvents > 0 ? (entry.reviews  / entry.totalEvents) * 100 : 0;
+                      const commentPct = entry.totalEvents > 0 ? (entry.comments / entry.totalEvents) * 100 : 0;
+                      const mergePct   = entry.totalEvents > 0 ? (entry.merges   / entry.totalEvents) * 100 : 0;
+                      return (
+                        <motion.div
+                          key={entry.editor}
+                          initial={{ opacity: 0, x: -8 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ duration: 0.3, delay: i * 0.06 }}
+                          className="flex items-center gap-2.5"
+                        >
+                          {/* Avatar + medal */}
+                          <div className="relative flex-shrink-0">
+                            <div className={`overflow-hidden rounded-full ring-2 ${i === 0 ? "h-9 w-9 ring-amber-400/70" : "h-8 w-8 ring-border"}`}>
+                              <Image src={editorAvatar(entry.editor)} alt={entry.editor} width={36} height={36} className="h-full w-full object-cover" />
                             </div>
-                            <span className="w-6 text-right text-xs font-bold tabular-nums text-foreground">{entry.prsReviewed}</span>
+                            {medals[i] && (
+                              <span className="absolute -bottom-1 -right-1 text-[11px] leading-none">{medals[i]}</span>
+                            )}
+                          </div>
+
+                          {/* Name + bar */}
+                          <div className="min-w-0 flex-1">
+                            <div className="mb-1 flex items-center justify-between gap-1">
+                              <span className={`truncate font-semibold text-foreground ${i === 0 ? "text-xs" : "text-[11px]"}`}>
+                                {entry.editor}
+                              </span>
+                              <span className="flex-shrink-0 text-[11px] font-bold tabular-nums text-foreground">
+                                {entry.totalEvents}
+                                <span className="ml-0.5 font-normal text-muted-foreground">acts</span>
+                              </span>
+                            </div>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="h-5 w-full overflow-hidden rounded-full bg-muted cursor-default">
+                                  <motion.div
+                                    className="flex h-full rounded-full overflow-hidden"
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${barPct}%` }}
+                                    transition={{ duration: 0.6, delay: i * 0.06 + 0.1, ease: "easeOut" }}
+                                  >
+                                    {reviewPct > 0 && (
+                                      <div className="h-full bg-indigo-500" style={{ width: `${reviewPct}%` }} />
+                                    )}
+                                    {commentPct > 0 && (
+                                      <div className="h-full bg-violet-400" style={{ width: `${commentPct}%` }} />
+                                    )}
+                                    {mergePct > 0 && (
+                                      <div className="h-full bg-emerald-500" style={{ width: `${mergePct}%` }} />
+                                    )}
+                                  </motion.div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                <p className="text-xs">{entry.reviews} reviews · {entry.comments} comments · {entry.merges} merges · {entry.prsReviewed} PRs</p>
+                              </TooltipContent>
+                            </Tooltip>
                           </div>
                         </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </>
-              )}
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </section>
 
@@ -1146,12 +1190,12 @@ export default function EIPOH100Page() {
               <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
                 <GitPullRequest className="h-4 w-4 flex-shrink-0 text-primary" />
                 <h2 className="text-sm font-semibold text-foreground">Hourly Activity</h2>
-                <Tip text="Total PRs checked across all repos per hour since 14:00 UTC." />
+                <Tip text="Total PRs checked across all repos per hour since 16:00 UTC." />
               </div>
               <div className="p-4">
                 {loading ? <div className="h-[180px] animate-pulse rounded-lg bg-muted" /> :
                   blitzHourly.length === 0 ? (
-                    <div className="flex h-[180px] items-center justify-center"><p className="text-xs text-muted-foreground">No activity from 14:00 UTC yet.</p></div>
+                    <div className="flex h-[180px] items-center justify-center"><p className="text-xs text-muted-foreground">No activity from 16:00 UTC yet.</p></div>
                   ) : (
                     <ReactECharts option={barOption} style={{ height: 180, width: "100%" }} opts={{ renderer: "svg" }} notMerge />
                   )}

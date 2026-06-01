@@ -7027,15 +7027,16 @@ export const analyticsProcedures = {
                WHEN r.name LIKE '%RIPs%' THEN 'RIP'
                ELSE 'EIP' END AS proposal_type,
           COALESCE(s.status, 'Unknown') AS status,
-          COUNT(DISTINCT pe.pr_number)::bigint AS prs_checked
+          COUNT(DISTINCT e.eip_number)::bigint AS prs_checked
         FROM pr_events pe
         JOIN repositories r ON pe.repository_id = r.id
         JOIN pull_request_eips pei ON pei.pr_number = pe.pr_number AND pei.repository_id = pe.repository_id
         JOIN eips e ON e.eip_number = pei.eip_number
-        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id AND s.repository_id = pe.repository_id
         WHERE LOWER(pe.actor) = ANY($4::text[])
           AND pe.created_at >= $1::date + ($2 || ' hours')::interval
           AND pe.created_at <  $1::date + ($3 || ' hours')::interval
+          AND s.eip_id IS NOT NULL
         GROUP BY s.category, proposal_type, s.status
         ORDER BY prs_checked DESC
         `,
