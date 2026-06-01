@@ -27,11 +27,14 @@ import {
   Network,
   ArrowUpDown,
   BookOpen,
+  X,
+  PartyPopper,
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { client } from "@/lib/orpc";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+const Confetti = dynamic(() => import("react-confetti"), { ssr: false });
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -80,12 +83,24 @@ type RecentActivity = {
   days: number;
 };
 
+type ProposalBreakdown = {
+  category: string;
+  proposalType: string;
+  status: string;
+  prsChecked: number;
+};
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const EVENT_DATE = "2025-06-02";
-const BLITZ_START_HOUR_UTC = 14;  // data window opens at 14:00 UTC
-const BLITZ_END_HOUR_UTC   = 18;  // sprint ends at 18:00 UTC
+const BLITZ_START_HOUR_UTC = 14;
+const BLITZ_END_HOUR_UTC   = 18;
 const EXCLUDED_ACTORS = new Set(["abcoathup", "eip-review-bot"]);
+
+const BLITZ_CONFETTI_COLORS = [
+  "#6366f1", "#10b981", "#f59e0b", "#8b5cf6",
+  "#06b6d4", "#ef4444", "#f97316", "#a3e635",
+];
 
 const TYPE_SERIES_COLORS: Record<string, string> = {
   eips: "#6366f1",
@@ -381,6 +396,191 @@ function BlitzStartAnimation({ label, onDismiss }: { label: string; onDismiss: (
   );
 }
 
+// ─── Window size hook (for react-confetti) ───────────────────────────────────
+
+function useWindowSize() {
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  useEffect(() => {
+    const update = () => setSize({ width: window.innerWidth, height: window.innerHeight });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, []);
+  return size;
+}
+
+// ─── Blitz Complete Animation (confetti + summary dialog) ────────────────────
+
+type BlitzSummary = {
+  totalPRs: number;
+  totalActions: number;
+  reviews: number;
+  comments: number;
+  merges: number;
+  activeEditors: number;
+  topEditors: Array<{ editor: string; prsReviewed: number }>;
+  statusChanges: number;
+  topRepo: string;
+};
+
+function BlitzCompleteAnimation({ label, summary, onDismiss }: {
+  label: string;
+  summary: BlitzSummary;
+  onDismiss: () => void;
+}) {
+  const { width, height } = useWindowSize();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+      onClick={onDismiss}
+    >
+      {/* react-confetti */}
+      {width > 0 && (
+        <Confetti
+          width={width}
+          height={height}
+          numberOfPieces={350}
+          recycle={false}
+          gravity={0.18}
+          initialVelocityY={14}
+          colors={BLITZ_CONFETTI_COLORS}
+          style={{ position: "fixed", top: 0, left: 0, pointerEvents: "none", zIndex: 101 }}
+        />
+      )}
+
+      {/* Summary dialog */}
+      <motion.div
+        initial={{ scale: 0.85, opacity: 0, y: 24 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0 }}
+        transition={{ type: "spring", stiffness: 260, damping: 22, delay: 0.1 }}
+        className="relative z-10 mx-4 w-full max-w-lg rounded-3xl border border-white/10 bg-gradient-to-b from-zinc-900/97 to-black/97 p-7 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Close */}
+        <button
+          onClick={onDismiss}
+          className="absolute right-4 top-4 rounded-full p-1 text-white/40 hover:text-white/80 transition-colors"
+        >
+          <X className="h-4 w-4" />
+        </button>
+
+        {/* Header */}
+        <div className="mb-6 text-center">
+          <motion.div
+            animate={{ rotate: [0, -15, 15, -10, 10, 0], scale: [1, 1.3, 1.3, 1.1, 1] }}
+            transition={{ duration: 1, delay: 0.3 }}
+            className="mb-3 inline-block text-6xl select-none"
+          >
+            🎉
+          </motion.div>
+          <motion.h2
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="bg-gradient-to-r from-emerald-400 via-cyan-300 to-indigo-400 bg-clip-text text-4xl font-black tracking-tight text-transparent"
+          >
+            BLITZ COMPLETE!
+          </motion.h2>
+          <motion.p
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-1 text-sm text-white/50"
+          >
+            {label} · 14:00 – 18:00 UTC
+          </motion.p>
+        </div>
+
+        {/* Stats grid */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mb-5 grid grid-cols-3 gap-3"
+        >
+          {[
+            { label: "PRs Reviewed", value: summary.totalPRs, icon: "📋" },
+            { label: "Editor Actions", value: summary.totalActions, icon: "⚡" },
+            { label: "Active Editors", value: summary.activeEditors, icon: "👤" },
+          ].map(({ label: l, value, icon }) => (
+            <div key={l} className="rounded-xl border border-white/10 bg-white/5 p-3 text-center">
+              <div className="text-2xl">{icon}</div>
+              <div className="mt-1 text-xl font-bold tabular-nums text-white">{value}</div>
+              <div className="text-[10px] text-white/40">{l}</div>
+            </div>
+          ))}
+        </motion.div>
+
+        {/* Action breakdown */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.55 }}
+          className="mb-5 flex justify-center gap-4 text-xs text-white/50"
+        >
+          <span>👁 {summary.reviews} reviews</span>
+          <span className="text-white/20">·</span>
+          <span>💬 {summary.comments} comments</span>
+          <span className="text-white/20">·</span>
+          <span>⬆ {summary.merges} merges</span>
+        </motion.div>
+
+        {/* Top editors podium */}
+        {summary.topEditors.length > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-5"
+          >
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-white/30">Top Editors</p>
+            <div className="space-y-2">
+              {summary.topEditors.slice(0, 3).map((e, i) => {
+                const medals = ["🥇", "🥈", "🥉"];
+                return (
+                  <div key={e.editor} className="flex items-center gap-2 rounded-lg border border-white/8 bg-white/5 px-3 py-2">
+                    <span className="text-base">{medals[i]}</span>
+                    <span className="flex-1 text-sm font-medium text-white">{e.editor}</span>
+                    <span className="text-xs font-bold tabular-nums text-white/60">{e.prsReviewed} PRs</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Footer stats */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.7 }}
+          className="flex items-center justify-between border-t border-white/10 pt-4 text-xs text-white/35"
+        >
+          <span>{summary.statusChanges} status change{summary.statusChanges !== 1 ? "s" : ""} today</span>
+          {summary.topRepo && <span>Most active: {summary.topRepo.toUpperCase()}</span>}
+        </motion.div>
+
+        <motion.button
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.8 }}
+          onClick={onDismiss}
+          className="mt-5 w-full rounded-xl bg-gradient-to-r from-emerald-600 to-cyan-600 py-2.5 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 hover:from-emerald-500 hover:to-cyan-500 transition-all"
+        >
+          <PartyPopper className="mr-1.5 inline h-4 w-4" />
+          Great sprint, everyone!
+        </motion.button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function EIPOH100Page() {
@@ -399,24 +599,28 @@ export default function EIPOH100Page() {
   const [expandedFeed, setExpandedFeed] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [showBlitzAnim, setShowBlitzAnim] = useState(false);
+  const [showBlitzComplete, setShowBlitzComplete] = useState(false);
+  const [proposalBreakdown, setProposalBreakdown] = useState<ProposalBreakdown[]>([]);
   const prevSprintStatus = React.useRef(sprint.status);
 
   const chartColors = useChartColors();
 
   const fetchData = useCallback(async () => {
     try {
-      const [editors, hourly, byType, changes, activity] = await Promise.all([
+      const [editors, hourly, byType, changes, activity, breakdown] = await Promise.all([
         client.analytics.getEventDayEditorLeaderboard({ date: displayDate }),
         client.analytics.getEventDayActivity({ date: displayDate }),
         client.analytics.getEventDayHourlyByType({ date: displayDate }),
         client.analytics.getEventDayStatusChanges({ date: displayDate }),
         client.analytics.getAllRecentActivity({ limit: 10 }),
+        client.analytics.getEventDayProposalBreakdown({ date: displayDate, startHour: BLITZ_START_HOUR_UTC, endHour: BLITZ_END_HOUR_UTC }),
       ]);
       setLeaderboard(editors as EditorEntry[]);
       setHourlyActivity(hourly);
       setHourlyByType(byType);
       setStatusChanges(changes);
       setRecentActivity(activity as typeof recentActivity);
+      setProposalBreakdown(breakdown);
       setLastRefreshed(new Date());
     } catch (err) {
       console.error("EIPOH100 fetch error:", err);
@@ -437,6 +641,9 @@ export default function EIPOH100Page() {
       setSprint(next);
       if (prevSprintStatus.current === "upcoming" && next.status === "active") {
         setShowBlitzAnim(true);
+      }
+      if (prevSprintStatus.current === "active" && next.status === "complete") {
+        setShowBlitzComplete(true);
       }
       prevSprintStatus.current = next.status;
       if (remaining <= 0) {
@@ -469,9 +676,30 @@ export default function EIPOH100Page() {
   }), [leaderboard]);
   const maxPRs = leaderboard[0]?.prsReviewed ?? 1;
 
+  // ─── Blitz summary (used by complete animation) ─────────────────────────
+  const blitzSummary = useMemo<BlitzSummary>(() => {
+    const typeMap = new Map<string, number>();
+    hourlyByType.filter(r => afterBlitzStart(r.hour))
+      .forEach(r => typeMap.set(r.repoType, (typeMap.get(r.repoType) ?? 0) + r.prsChecked));
+    const topRepoEntry = [...typeMap.entries()].sort((a, b) => b[1] - a[1])[0];
+    return {
+      totalPRs,
+      totalActions: actionBreakdown.total,
+      reviews: actionBreakdown.reviews,
+      comments: actionBreakdown.comments,
+      merges: actionBreakdown.merges,
+      activeEditors: leaderboard.length,
+      topEditors: leaderboard.slice(0, 3).map(e => ({ editor: e.editor, prsReviewed: e.prsReviewed })),
+      statusChanges: statusChanges.reduce((s, c) => s + c.count, 0),
+      topRepo: topRepoEntry?.[0] ?? "",
+    };
+  }, [totalPRs, actionBreakdown, leaderboard, statusChanges, hourlyByType, afterBlitzStart]);
+
   // ─── Filtered recent activity (exclude bots / associate editors) ─────────
   const filteredActivity = useMemo(
-    () => recentActivity.filter(a => !EXCLUDED_ACTORS.has(a.actor)),
+    () => recentActivity
+      .filter(a => !EXCLUDED_ACTORS.has(a.actor))
+      .sort((a, b) => new Date(b.occurredAt).getTime() - new Date(a.occurredAt).getTime()),
     [recentActivity]
   );
 
@@ -597,6 +825,60 @@ export default function EIPOH100Page() {
     };
   }, [statusChanges, chartColors]);
 
+  // ─── ECharts: proposal breakdown (category + status) ───────────────────
+  const breakdownOption = useMemo(() => {
+    const { mutedFg, border, fg, card } = chartColors;
+
+    // Group by status for the left chart
+    const byStatus = new Map<string, number>();
+    proposalBreakdown.forEach(r => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + r.prsChecked));
+    const statusEntries = [...byStatus.entries()].sort((a, b) => b[1] - a[1]);
+
+    // Group by category for the right chart
+    const byCategory = new Map<string, number>();
+    proposalBreakdown.forEach(r => {
+      const cat = r.category === "ERC" ? "ERC" : r.category || r.proposalType;
+      byCategory.set(cat, (byCategory.get(cat) ?? 0) + r.prsChecked);
+    });
+    const catEntries = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
+
+    const STATUS_COLORS_MAP: Record<string, string> = {
+      Draft: "#64748b", Review: "#f59e0b", "Last Call": "#f97316",
+      Final: "#10b981", Living: "#22d3ee", Stagnant: "#6b7280",
+      Withdrawn: "#ef4444", Unknown: "#94a3b8",
+    };
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: { trigger: "item", backgroundColor: card, borderColor: border, textStyle: { color: fg, fontSize: 12 } },
+      grid: [
+        { left: "5%", right: "55%", top: 24, bottom: 8 },
+        { left: "55%", right: "5%", top: 24, bottom: 8 },
+      ],
+      xAxis: [
+        { gridIndex: 0, type: "value", minInterval: 1, axisLabel: { color: mutedFg, fontSize: 10 }, splitLine: { lineStyle: { color: border, type: "dashed" } } },
+        { gridIndex: 1, type: "value", minInterval: 1, axisLabel: { color: mutedFg, fontSize: 10 }, splitLine: { lineStyle: { color: border, type: "dashed" } } },
+      ],
+      yAxis: [
+        { gridIndex: 0, type: "category", data: statusEntries.map(e => e[0]), axisLabel: { color: mutedFg, fontSize: 10 }, axisLine: { lineStyle: { color: border } } },
+        { gridIndex: 1, type: "category", data: catEntries.map(e => e[0]), axisLabel: { color: mutedFg, fontSize: 10 }, axisLine: { lineStyle: { color: border } } },
+      ],
+      series: [
+        {
+          type: "bar", xAxisIndex: 0, yAxisIndex: 0, barMaxWidth: 20, name: "By Status",
+          data: statusEntries.map(([s, v]) => ({ value: v, itemStyle: { color: STATUS_COLORS_MAP[s] ?? "#94a3b8", borderRadius: [0, 4, 4, 0] } })),
+        },
+        {
+          type: "bar", xAxisIndex: 1, yAxisIndex: 1, barMaxWidth: 20, name: "By Category",
+          data: catEntries.map(([, v], i) => ({
+            value: v,
+            itemStyle: { color: ["#6366f1", "#10b981", "#f59e0b", "#8b5cf6", "#06b6d4", "#f97316"][i % 6], borderRadius: [0, 4, 4, 0] },
+          })),
+        },
+      ],
+    };
+  }, [proposalBreakdown, chartColors]);
+
   // ─── Render ────────────────────────────────────────────────────────────
   const [p1, p2, p3, ...rest] = leaderboard;
   const feedVisible = expandedFeed ? filteredActivity : filteredActivity.slice(0, 6);
@@ -606,6 +888,9 @@ export default function EIPOH100Page() {
     <AnimatePresence>
       {showBlitzAnim && (
         <BlitzStartAnimation label={blitzLabel} onDismiss={() => setShowBlitzAnim(false)} />
+      )}
+      {showBlitzComplete && (
+        <BlitzCompleteAnimation label={blitzLabel} summary={blitzSummary} onDismiss={() => setShowBlitzComplete(false)} />
       )}
     </AnimatePresence>
     <div className="min-h-screen bg-background">
@@ -632,7 +917,15 @@ export default function EIPOH100Page() {
                 <Clock className="h-3.5 w-3.5" />
                 {new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
               </span>
-<button
+              <button
+                type="button"
+                onClick={() => setShowBlitzComplete(true)}
+                className="inline-flex h-8 items-center gap-1 rounded-md border border-dashed border-emerald-500/50 bg-emerald-500/10 px-2.5 text-xs font-medium text-emerald-700 transition-colors hover:bg-emerald-500/15 dark:text-emerald-400"
+                title="Dev only — simulate blitz complete animation"
+              >
+                🎉 Simulate End
+              </button>
+              <button
                 type="button"
                 onClick={() => { fetchData(); setCountdown(60); }}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-card px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
@@ -900,7 +1193,7 @@ export default function EIPOH100Page() {
         </div>
 
         {/* ── Secondary charts row ── */}
-        <div className="mb-4 grid gap-4 lg:grid-cols-2">
+        <div className="mb-4 grid gap-4 lg:grid-cols-3">
           {/* Status Changes */}
           <section className="rounded-xl border border-border bg-card shadow-sm">
             <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
@@ -949,6 +1242,28 @@ export default function EIPOH100Page() {
                       })}
                     </div>
                   </>
+                )}
+            </div>
+          </section>
+
+          {/* Proposal Breakdown — category + status */}
+          <section className="rounded-xl border border-border bg-card shadow-sm">
+            <div className="flex items-center gap-1.5 border-b border-border px-4 py-3">
+              <FileText className="h-4 w-4 flex-shrink-0 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Proposals by Status &amp; Category</h2>
+              <Tip text="For PRs reviewed during the blitz: left bars show the current status of those proposals, right bars show their category (ERC, Standards Track, Meta, etc.)." />
+            </div>
+            <div className="p-4">
+              {loading ? <div className="h-[160px] animate-pulse rounded-lg bg-muted" /> :
+                proposalBreakdown.length === 0 ? (
+                  <div className="flex h-[120px] items-center justify-center"><p className="text-xs text-muted-foreground">No linked proposal data yet.</p></div>
+                ) : (
+                  <ReactECharts option={breakdownOption}
+                    style={{ height: Math.max(140, Math.max(
+                      new Set(proposalBreakdown.map(r => r.status)).size,
+                      new Set(proposalBreakdown.map(r => r.category)).size
+                    ) * 28 + 32), width: "100%" }}
+                    opts={{ renderer: "svg" }} notMerge />
                 )}
             </div>
           </section>

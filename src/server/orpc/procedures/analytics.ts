@@ -7004,4 +7004,48 @@ export const analyticsProcedures = {
         prsChecked: Number(r.prs_checked),
       }));
     }),
+
+  getEventDayProposalBreakdown: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+      startHour: z.number().min(0).max(23).optional().default(0),
+      endHour: z.number().min(1).max(24).optional().default(24),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        category: string | null;
+        proposal_type: string;
+        status: string | null;
+        prs_checked: bigint;
+      }>>(
+        `
+        SELECT
+          COALESCE(s.category, 'Unknown') AS category,
+          CASE WHEN s.category = 'ERC' THEN 'ERC'
+               WHEN r.name LIKE '%RIPs%' THEN 'RIP'
+               ELSE 'EIP' END AS proposal_type,
+          COALESCE(s.status, 'Unknown') AS status,
+          COUNT(DISTINCT pe.pr_number)::bigint AS prs_checked
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        JOIN pull_request_eips pei ON pei.pr_number = pe.pr_number AND pei.repository_id = pe.repository_id
+        JOIN eips e ON e.eip_number = pei.eip_number
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        WHERE pe.created_at >= $1::date + ($2 || ' hours')::interval
+          AND pe.created_at <  $1::date + ($3 || ' hours')::interval
+        GROUP BY s.category, proposal_type, s.status
+        ORDER BY prs_checked DESC
+        `,
+        targetDate,
+        input.startHour,
+        input.endHour
+      );
+      return results.map(r => ({
+        category: r.category ?? 'Unknown',
+        proposalType: r.proposal_type,
+        status: r.status ?? 'Unknown',
+        prsChecked: Number(r.prs_checked),
+      }));
+    }),
 }

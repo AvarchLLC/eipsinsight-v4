@@ -141,7 +141,7 @@ const nextConfig: NextConfig = {
         destination: '/standards?repo=rips',
         permanent: true,
       },
-      {
+{
         source: '/insights/year-month-analysis',
         destination: '/insights',
         permanent: true,

@@ -53,6 +53,7 @@
     "prisma": "^7.2.0",
     "qrcode.react": "^4.2.0",
     "react": "19.2.3",
+    "react-confetti": "^6.4.0",
     "react-dom": "19.2.3",
     "react-markdown": "^10.1.0",
     "react-use-measure": "^2.1.7",
