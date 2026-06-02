@@ -192,7 +192,7 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
           <div className="flex-1">
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">EIP Composition Timeline</h3>
             <p className="text-sm text-muted-foreground leading-snug">
-              Track EIP status changes for <span className="text-foreground font-medium">{upgradeName}</span>
+              Track EIP inclusion stages for <span className="text-foreground font-medium">{upgradeName}</span>
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
@@ -435,27 +435,27 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
                 </p>
                 
                 <div className="pt-2 border-t border-border/70">
-                  <p className="text-xs font-semibold text-foreground mb-1.5">Status counts:</p>
+                  <p className="text-xs font-semibold text-foreground mb-1.5">EIP counts:</p>
                   <div className="grid grid-cols-2 gap-1 text-xs">
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Incl: {hoveredEip.statusCounts.included}</span>
+                      <span className="text-muted-foreground">Included: {hoveredEip.statusCounts.included}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Sch: {hoveredEip.statusCounts.scheduled}</span>
+                      <span className="text-muted-foreground">SFI: {hoveredEip.statusCounts.scheduled}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-amber-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Con: {hoveredEip.statusCounts.considered}</span>
+                      <span className="text-muted-foreground">CFI: {hoveredEip.statusCounts.considered}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-red-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Decl: {hoveredEip.statusCounts.declined}</span>
+                      <span className="text-muted-foreground">DFI: {hoveredEip.statusCounts.declined}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <div className="h-1.5 w-1.5 rounded-full bg-violet-500 flex-shrink-0" />
-                      <span className="text-muted-foreground">Prop: {hoveredEip.statusCounts.proposed}</span>
+                      <span className="text-muted-foreground">PFI: {hoveredEip.statusCounts.proposed}</span>
                     </div>
                   </div>
                 </div>
