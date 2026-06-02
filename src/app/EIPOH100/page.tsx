@@ -183,7 +183,7 @@ function repoTagStyle(eipType: string): { label: string; cls: string } {
 function sprintProgress() {
   const now = new Date();
   const startUTC = new Date(now);
-  startUTC.setUTCHours(15, 30, 0, 0);
+  startUTC.setUTCHours(16, 0, 0, 0);
   const endUTC = new Date(now);
   endUTC.setUTCHours(BLITZ_END_HOUR_UTC, 0, 0, 0);
 
