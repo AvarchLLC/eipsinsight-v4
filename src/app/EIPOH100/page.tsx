@@ -108,7 +108,7 @@ type PRListItem = {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const EVENT_DATE = "2025-06-02";
+const EVENT_DATE = "2026-06-02";
 const BLITZ_START_HOUR_UTC = 15;   // hourly bucket filter (catches 15:30+ data)
 const BLITZ_END_HOUR_UTC   = 18;
 const EXCLUDED_ACTORS = new Set(["abcoathup", "eip-review-bot"]);
@@ -600,8 +600,7 @@ function BlitzCompleteAnimation({ label, summary, onDismiss }: {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function EIPOH100Page() {
-  const today = new Date().toISOString().slice(0, 10);
-  const displayDate = today === EVENT_DATE ? EVENT_DATE : today;
+  const displayDate = EVENT_DATE;
   const blitzLabel = `EIP/ERC Blitz · ${new Date(displayDate + "T12:00:00Z").toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
 
   const [leaderboard, setLeaderboard] = useState<EditorEntry[]>([]);
