@@ -633,7 +633,7 @@ export default function EIPOH100Page() {
         client.analytics.getEventDayHourlyByType({ date: displayDate }),
         client.analytics.getEventDayStatusChanges({ date: displayDate }),
         client.analytics.getAllRecentActivity({ limit: 10 }),
-        client.analytics.getEventDayProposalBreakdown({ date: displayDate, startHour: 15.5, endHour: BLITZ_END_HOUR_UTC }),
+        client.analytics.getEventDayProposalBreakdown({ date: displayDate }),
       ]);
       setLeaderboard(editors as EditorEntry[]);
       setHourlyActivity(hourly);
@@ -867,10 +867,10 @@ export default function EIPOH100Page() {
     proposalBreakdown.forEach(r => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + r.prsChecked));
     const statusEntries = [...byStatus.entries()].sort((a, b) => b[1] - a[1]);
 
-    // Group by category for the right chart
+    // Group by category for the right chart (eip_snapshots.category: Core, ERC, Interface, Meta, etc.)
     const byCategory = new Map<string, number>();
     proposalBreakdown.forEach(r => {
-      const cat = r.category === "ERC" ? "ERC" : r.category || r.proposalType;
+      const cat = r.category && r.category !== 'Unknown' ? r.category : r.proposalType;
       byCategory.set(cat, (byCategory.get(cat) ?? 0) + r.prsChecked);
     });
     const catEntries = [...byCategory.entries()].sort((a, b) => b[1] - a[1]);
