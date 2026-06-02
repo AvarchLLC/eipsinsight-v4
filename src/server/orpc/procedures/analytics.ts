@@ -6943,23 +6943,18 @@ export const analyticsProcedures = {
       const results = await prisma.$queryRawUnsafe<Array<{
         from_status: string | null;
         to_status: string;
-        proposal_type: string;
         count: bigint;
       }>>(
         `
         SELECT
           se.from_status,
           se.to_status,
-          CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END AS proposal_type,
           COUNT(DISTINCT se.eip_id)::bigint AS count
         FROM eip_status_events se
-        JOIN eips e ON se.eip_id = e.id
-        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
-        LEFT JOIN repositories r ON se.repository_id = r.id
         WHERE se.changed_at >= $1::date
           AND se.changed_at < $1::date + INTERVAL '1 day'
           AND se.eip_id != 8136
-        GROUP BY se.from_status, se.to_status, proposal_type
+        GROUP BY se.from_status, se.to_status
         ORDER BY count DESC
         `,
         targetDate
@@ -6967,7 +6962,7 @@ export const analyticsProcedures = {
       return results.map((r) => ({
         fromStatus: r.from_status ?? '—',
         toStatus: r.to_status,
-        proposalType: r.proposal_type,
+        proposalType: '',
         count: Number(r.count),
         label: `${r.from_status ?? 'New'} → ${r.to_status}`,
       }));
@@ -7024,7 +7019,7 @@ export const analyticsProcedures = {
           CASE WHEN r.name ILIKE '%ERCs%' THEN 'ERC'
                WHEN r.name ILIKE '%RIPs%' THEN 'RIP'
                ELSE 'EIP' END AS proposal_type,
-          COALESCE(s.category, 'Unknown') AS category,
+          COALESCE(s.category, s.type, 'Unknown') AS category,
           se.to_status AS status,
           COUNT(DISTINCT se.eip_id)::bigint AS prs_checked
         FROM eip_status_events se
@@ -7034,7 +7029,7 @@ export const analyticsProcedures = {
         WHERE se.changed_at >= $1::date
           AND se.changed_at < $1::date + INTERVAL '18 hours'
           AND se.eip_id != 8136
-        GROUP BY proposal_type, s.category, se.to_status
+        GROUP BY proposal_type, s.category, s.type, se.to_status
         ORDER BY prs_checked DESC
         `,
         targetDate
