@@ -92,6 +92,7 @@ EIPsInsight
 | Insights | `/insights`, `/insights/hub`, `/insights/governance`, `/insights/commentary` |
 | Network Upgrades | `/upgrade`, `/upgrade/pectra`, `/upgrade/fusaka`, `/upgrade/glamsterdam`, `/upgrade/hegota` |
 | Individual EIP/ERC/RIP | `/eip/:n`, `/erc/:n`, `/rip/:n` |
+| PR / Issue Details | `/pr/:repo/:n`, `/issue/:repo/:n` |
 
 ---
 

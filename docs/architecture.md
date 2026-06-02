@@ -112,6 +112,10 @@ app/
     videos/page.tsx           → /resources/videos
     news/page.tsx             → /resources/news
     docs/page.tsx             → /resources/docs
+  pr/
+    [repo]/[number]/page.tsx  → /pr/:repo/:number
+  issue/
+    [repo]/[number]/page.tsx  → /issue/:repo/:number
   (proposal)/
     [repo]/[number]/page.tsx  → /eip/:n, /erc/:n, /rip/:n
   admin/

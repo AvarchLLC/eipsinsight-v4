@@ -1,16 +1,7 @@
 # EIPsInsight — Active Tasks
 
-> Audit baseline: routes/components/procedures in current repo state.  
-> Goal: keep only pending work here; move completed items to archive.
-
----
-
-## 0. Critical Routing & Link Hygiene
-
-| No. | Task | Priority | Est. | Where | Notes |
-|-----|------|----------|------|-------|-------|
-| 0.2 | Fix stale internal links | P0 | 1h | `src/lib/persona.ts`, `src/data/resources/featured.ts` | `"/resources/getting-started"` and `"/upgrade/cancun"` likely unresolved/stale. Replace with valid pages or add routes. |
-| 0.3 | Align docs with live routing | P1 | 1h | `docs/architecture.md`, `docs/personas.md`, `docs/sitemap.md` | Docs still mention legacy `/all` defaults. Update to current behavior. |
+> Audit baseline: June 2026.
+> Goal: Keep only pending work here; moved completed items to archive.
 
 ---
 
@@ -19,58 +10,56 @@
 | No. | Task | Priority | Est. | Where | Notes |
 |-----|------|----------|------|-------|-------|
 | 1.1 | Procedure-level auth policy audit | P0 | 3h | `src/server/orpc/procedures/*` | Confirm each procedure is intentionally `publicProcedure`, `optionalAuthProcedure`, or `protectedProcedure`. |
-| 1.2 | Enforce API token scopes | P0 | 4h | `src/server/orpc/procedures/*`, `src/server/orpc/procedures/types.ts` | `requireScope` exists but is not used. Apply per-procedure scope checks. |
-| 1.3 | Wire rate limiting consistently into oRPC | P0 | 3h | `src/server/orpc/middleware/rate-limit.ts`, procedure wrappers | Rate-limit module exists; ensure it is actually attached across target procedures. |
-| 1.4 | Add explicit API CORS policy | P1 | 1h | API/RPC route handlers | No explicit CORS headers currently configured for external token clients. |
+| 1.2 | Enforce API token scopes | P0 | 4h | `src/server/orpc/procedures/*` | `requireScope` exists but is not used. Apply per-procedure scope checks. |
+| 1.3 | Wire rate limiting consistently into oRPC | P0 | 3h | `src/server/orpc/middleware/rate-limit.ts` | Rate-limit module exists; ensure it is actually attached across target procedures. |
+| 1.4 | Add explicit API CORS policy | P1 | 1h | API/RPC route handlers | No explicit CORS headers configured for external token clients. |
 
 ---
 
-## 2. Product IA Refinements (From UX Review)
+## 2. Technical Debt & Modularization
 
 | No. | Task | Priority | Est. | Where | Notes |
 |-----|------|----------|------|-------|-------|
-| 2.1 | Decide canonical “Standards vs Explore” structure | P1 | 4h | IA + sidebar + docs | Evaluate merging discovery modes under Standards (All/Repo/Status/Year/Role/Trending). |
-| 2.2 | Re-evaluate `/explore/trending` placement | P2 | 2h | Explore IA | Consider making trending homepage/dashboard signal instead of deep nav route. |
-| 2.3 | Clarify Analytics vs Insights boundaries in-page | P1 | 2h | Page intros/microcopy | Make “metrics vs interpretation” distinction explicit on landing sections. |
-| 2.4 | Add lifecycle-first mapping doc | P1 | 2h | `docs/` | Add “Idea → Draft → Review → Merge → Upgrade → Post-upgrade” mapping to product surfaces. |
-| 2.5 | Optional: lifecycle-first sidebar experiment | P2 | 6h | Nav model + docs | Prototype alternative information spine and compare against feature-first nav. |
-| 2.6 | Re-enable `builder` and `newcomer` personas (TBD) | P2 | 4h | `src/lib/persona.ts`, `src/app/p/page.tsx`, `src/app/(public)/page.tsx` | Disabled in: `PERSONA_LIST` + `DEFAULT_PERSONA` (`src/lib/persona.ts`), onboarding skip default (`src/app/p/page.tsx`), homepage hydration fallback persona (`src/app/(public)/page.tsx`). Reintroduce after dedicated UX/content pass and re-test persona switcher/onboarding/home sections. |
+| 2.1 | Refactor `analytics.ts` procedure | P1 | 6h | `src/server/orpc/procedures/analytics.ts` | File is >250KB. Split into `contributor-analytics.ts`, `editor-analytics.ts`, etc. |
+| 2.2 | Refactor `explore.ts` procedure | P1 | 4h | `src/server/orpc/procedures/explore.ts` | Similar to analytics, needs better domain isolation. |
+| 2.3 | Fix stale internal links | P0 | 1h | `src/lib/persona.ts`, `src/data/resources/featured.ts` | `"/resources/getting-started"` and `"/upgrade/cancun"` likely unresolved/stale. |
 
 ---
 
-## 3. Upgrade Hub Depth
+## 3. Testing Infrastructure (Critical Gap)
 
 | No. | Task | Priority | Est. | Where | Notes |
 |-----|------|----------|------|-------|-------|
-| 3.1 | Add upgrade readiness panel | P1 | 4h | `/upgrade/[slug]` | Include “included EIPs, status mix, client readiness, governance threads” summary block. |
-| 3.2 | Add merge/change timeline module on upgrade pages | P1 | 4h | `/upgrade/[slug]` | Strengthen “upgrade observability hub” positioning. |
+| 3.1 | Setup Vitest for unit testing | P0 | 4h | Root | Add Vitest, configure for Next.js/Prisma, add `bun run test`. |
+| 3.2 | Setup Playwright for E2E testing | P1 | 6h | Root | Add Playwright, configure CI flow, add `bun run test:e2e`. |
+| 3.3 | Add test coverage for core oRPC procedures | P1 | 8h | `src/server/orpc/procedures` | Focus on auth, proposals, and analytics. |
 
 ---
 
-## 4. Platform / GTM Backlog
+## 4. Product IA & Content
 
 | No. | Task | Priority | Est. | Where | Notes |
 |-----|------|----------|------|-------|-------|
-| 4.1 | Public API docs route (or OpenAPI surface) | P1 | 4h | `/api-docs` or docs site | `docs/API.md` exists; expose a product-facing docs entrypoint with auth/scope/rate-limit examples. |
-| 4.2 | x402 agentic payments | P3 | 8h | API monetization layer | Keep as strategic backlog; not required for current core flows. |
+| 4.1 | Add lifecycle-first mapping doc | P1 | 2h | `docs/` | Add “Idea → Draft → Review → Merge → Upgrade → Post-upgrade” mapping to product surfaces. |
+| 4.2 | Re-enable `builder` and `newcomer` personas | P2 | 4h | `src/lib/persona.ts` | Reintroduce after dedicated UX/content pass. |
+| 4.3 | Align docs with live routing | P1 | 1h | `docs/architecture.md`, `docs/sitemap.md` | Update to current behavior (remove legacy `/all` mentions). |
 
 ---
 
 ## Archived (Completed / Implemented)
 
-| Item | Status Snapshot |
-|------|-----------------|
-| API token management UI | Implemented at `/api-tokens` with create/revoke/list/stats dialogs. |
-| Stripe payment tiers + checkout/subscription flow | Implemented (`/pricing`, billing pages, checkout/portal/cancel/resume routes, membership tier handling). |
-| Stripe webhooks | Implemented at `/api/webhooks/stripe` with subscription lifecycle handlers. |
-| News page implementation | Implemented at `/resources/news` (Ghost-backed client feed). |
-| Videos page implementation | Implemented at `/resources/videos` with listing/filter/admin flows. |
-| Social & community updates section | Implemented on homepage/public surfaces. |
-| Analytics export | Implemented (CSV/JSON hooks + multiple analytics export endpoints/UI actions). |
-| `discussions_to` in proposals | Implemented in proposals procedures/frontmatter extraction. |
-| EIP content from GitHub | Implemented via proposal content/frontmatter fetch flow. |
-| Author page navigation | Implemented (search routes to `/people/[actor]`). |
-| Core app surfaces | Dashboard, Explore, Search, Analytics, Standards, Tools, Insights, Upgrades, Resources are present. |
-| Auth/Admin | Role checks and admin pages/routes present. |
-| Persona foundation | Persona defaults/nav order/store/sync + accent token system implemented. |
-| `/all` route normalization | Completed: redirects and internal links now point to `/standards`; `/all` kept only as legacy redirect alias. |
+| Item | Status |
+|------|--------|
+| PR Detail Page (`/pr/[repo]/[number]`) | ✅ Implemented |
+| Issue Detail Page (`/issue/[repo]/[number]`) | ✅ Implemented |
+| About, Privacy, Grants, Terms pages | ✅ Implemented |
+| Feedback Operations Dashboard (`/admin/feedback`) | ✅ Implemented |
+| Contributor Activity Heatmaps | ✅ Implemented |
+| Editor Activity Heatmaps | ✅ Implemented |
+| Status Transition Stacked Charts | ✅ Implemented |
+| AI EIP Summarizer API | ✅ Implemented |
+| API token management UI | ✅ Implemented |
+| Stripe payment tiers + checkout | ✅ Implemented |
+| News & Videos page implementations | ✅ Implemented |
+| Analytics export (CSV/JSON) | ✅ Implemented |
+| Author page navigation | ✅ Implemented |
