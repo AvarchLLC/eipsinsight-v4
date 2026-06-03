@@ -13,7 +13,7 @@ async function stripeClient() {
   }
   const Stripe = (await import("stripe")).default;
   _stripe = new Stripe(env.STRIPE_SECRET_KEY as string, {
-    apiVersion: "2026-01-28.clover",
+    apiVersion: "2026-02-25.clover",
     typescript: true,
   });
   return _stripe;
@@ -83,6 +83,23 @@ export type PlanSlug = keyof typeof STRIPE_PLANS;
 /**
  * Create or retrieve a Stripe customer for a user
  */
+function isDeletedStripeCustomer(
+  customer: StripeLib.Customer | StripeLib.DeletedCustomer
+): customer is StripeLib.DeletedCustomer {
+  return "deleted" in customer && customer.deleted === true;
+}
+
+function isStripeResourceMissing(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "type" in error &&
+    (error as { type?: string }).type === "StripeInvalidRequestError" &&
+    "code" in error &&
+    (error as { code?: string }).code === "resource_missing"
+  );
+}
+
 export async function getOrCreateStripeCustomer(params: {
   userId: string;
   email: string;
@@ -90,13 +107,33 @@ export async function getOrCreateStripeCustomer(params: {
   stripeCustomerId?: string | null;
 }) {
   const { userId, email, name, stripeCustomerId } = params;
+  const stripe = await stripeClient();
 
-  // If customer already exists, return their ID
+  // Verify stored ID still exists in Stripe
   if (stripeCustomerId) {
-    return stripeCustomerId;
+    try {
+      const customer = await stripe.customers.retrieve(stripeCustomerId);
+      if (!isDeletedStripeCustomer(customer)) {
+        return stripeCustomerId;
+      }
+    } catch (error) {
+      if (!isStripeResourceMissing(error)) {
+        throw error;
+      }
+      // Stale or missing customer ID — fall through to search/create
+    }
   }
 
-  const stripe = await stripeClient();
+  // Reuse an existing Stripe customer linked via metadata (e.g. DB not yet updated)
+  const search = await stripe.customers.search({
+    query: `metadata['userId']:'${userId}'`,
+    limit: 1,
+  });
+  const existing = search.data[0];
+  if (existing && !isDeletedStripeCustomer(existing)) {
+    return existing.id;
+  }
+
   const customer = await stripe.customers.create({
     email,
     name,
