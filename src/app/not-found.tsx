@@ -7,12 +7,12 @@ import { Button } from "@/components/ui/button";
 
 export default function NotFound() {
   return (
-    <div className="relative flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center overflow-hidden px-4 py-16 sm:px-6">
+    <div className="relative flex min-h-[calc(100vh-8rem)] w-full flex-col items-center justify-center overflow-hidden bg-background px-4 py-16 sm:px-6">
       {/* Subtle background accents — matches landing page */}
       <div className="pointer-events-none absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.04),transparent_70%)]" />
-        <div className="absolute left-1/2 top-1/2 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/5 blur-3xl" />
-        <div className="absolute right-0 top-1/4 h-[300px] w-[300px] rounded-full bg-emerald-400/3 blur-3xl" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.06),transparent_70%)] dark:bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.04),transparent_70%)]" />
+        <div className="absolute left-1/2 top-1/2 h-[400px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-cyan-400/[0.04] blur-3xl dark:bg-cyan-400/5" />
+        <div className="absolute right-0 top-1/4 h-[300px] w-[300px] rounded-full bg-emerald-400/[0.04] blur-3xl dark:bg-emerald-400/3" />
       </div>
 
       <div className="relative z-10 flex max-w-2xl flex-col items-center text-center">
@@ -21,12 +21,12 @@ export default function NotFound() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="mb-6 inline-flex items-center gap-2 rounded-full border border-slate-600/60 bg-slate-800/40 px-4 py-1.5 backdrop-blur-sm dark:border-slate-600/80 dark:bg-slate-900/60"
+          className="mb-6 inline-flex items-center gap-2 rounded-full border border-cyan-300/40 bg-white/80 px-4 py-1.5 backdrop-blur-sm dark:border-cyan-300/30 dark:bg-black/70"
         >
-          <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-xs font-semibold text-amber-300">
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
             Withdrawn
           </span>
-          <span className="text-sm text-slate-400">EIP-404</span>
+          <span className="text-sm text-slate-600 dark:text-slate-400">EIP-404</span>
         </motion.div>
 
         {/* Large 404 display */}
@@ -34,7 +34,7 @@ export default function NotFound() {
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.45, delay: 0.05 }}
-          className="dec-title mb-2 bg-linear-to-br from-emerald-300 via-slate-100 to-cyan-200 bg-clip-text text-7xl font-bold tracking-tighter text-transparent sm:text-8xl md:text-9xl"
+          className="dec-title mb-2 bg-linear-to-br from-emerald-600 via-slate-700 to-cyan-600 bg-clip-text text-7xl font-bold tracking-tighter text-transparent dark:from-emerald-300 dark:via-slate-100 dark:to-cyan-200 sm:text-8xl md:text-9xl"
         >
           404
         </motion.div>
@@ -54,7 +54,7 @@ export default function NotFound() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.15 }}
-          className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-500 dark:text-slate-400"
+          className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-400"
         >
           This proposal has been withdrawn — or perhaps it never existed. Try
           searching or head back to explore standards.
@@ -70,7 +70,7 @@ export default function NotFound() {
           <Button
             asChild
             size="lg"
-            className="group h-10 rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-6 font-medium text-black shadow-[0_0_15px_rgba(34,211,238,0.1)] transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.2)]"
+            className="group h-10 rounded-lg bg-linear-to-r from-emerald-500 to-cyan-500 px-6 font-medium text-slate-900 shadow-[0_0_15px_rgba(34,211,238,0.15)] transition-all duration-300 hover:shadow-[0_0_20px_rgba(34,211,238,0.25)] dark:text-black"
           >
             <Link href="/">
               <span className="flex items-center gap-2">
@@ -84,7 +84,7 @@ export default function NotFound() {
             asChild
             variant="outline"
             size="lg"
-            className="h-10 rounded-lg border-cyan-500/40 bg-cyan-500/10 px-6 font-medium text-cyan-300 transition-all hover:border-cyan-500/60 hover:bg-cyan-500/20 hover:text-cyan-200"
+            className="h-10 rounded-lg border-cyan-300/60 bg-white/80 px-6 font-medium text-cyan-700 backdrop-blur-sm transition-all hover:border-cyan-400/70 hover:bg-cyan-400/10 hover:text-cyan-800 dark:border-cyan-500/40 dark:bg-cyan-500/10 dark:text-cyan-300 dark:hover:border-cyan-500/60 dark:hover:bg-cyan-500/20 dark:hover:text-cyan-200"
           >
             <Link href="/search">
               <span className="flex items-center gap-2">
@@ -100,37 +100,37 @@ export default function NotFound() {
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.25 }}
-          className="mt-12 w-full max-w-sm rounded-xl border border-slate-700/50 bg-slate-900/40 p-6 transition-colors hover:border-cyan-500/30"
+          className="mt-12 w-full max-w-sm rounded-xl border border-cyan-300/30 bg-white/70 p-6 backdrop-blur-sm transition-colors hover:border-cyan-400/40 dark:border-slate-700/50 dark:bg-slate-900/40 dark:hover:border-cyan-500/30"
         >
-          <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
+          <div className="flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-500">
             <FileQuestion className="h-3.5 w-3.5" />
             Quick links
           </div>
           <div className="mt-4 flex flex-wrap justify-center gap-3">
             <Link
               href="/standards"
-              className="text-sm text-slate-400 transition-colors hover:text-cyan-400"
+              className="text-sm text-slate-600 transition-colors hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-400"
             >
               Standards
             </Link>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
             <Link
               href="/dashboard"
-              className="text-sm text-slate-400 transition-colors hover:text-cyan-400"
+              className="text-sm text-slate-600 transition-colors hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-400"
             >
               Dashboard
             </Link>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
             <Link
               href="/analytics/prs"
-              className="text-sm text-slate-400 transition-colors hover:text-cyan-400"
+              className="text-sm text-slate-600 transition-colors hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-400"
             >
               Analytics
             </Link>
-            <span className="text-slate-600">·</span>
+            <span className="text-slate-300 dark:text-slate-600">·</span>
             <Link
               href="/resources"
-              className="text-sm text-slate-400 transition-colors hover:text-cyan-400"
+              className="text-sm text-slate-600 transition-colors hover:text-cyan-700 dark:text-slate-400 dark:hover:text-cyan-400"
             >
               Resources
             </Link>
