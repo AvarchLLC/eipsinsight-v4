@@ -14,6 +14,7 @@
     "@orpc/server": "^1.13.2",
     "@prisma/adapter-pg": "^7.2.0",
     "@prisma/client": "^7.2.0",
+    "@prisma/client-runtime-utils": "^7.8.0",
     "@radix-ui/react-accordion": "^1.2.12",
     "@radix-ui/react-avatar": "^1.1.11",
     "@radix-ui/react-collapsible": "^1.1.12",
@@ -44,6 +45,7 @@
     "echarts-for-react": "^3.0.5",
     "framer-motion": "^12.34.1",
     "ioredis": "^5.9.3",
+    "katex": "^0.16.47",
     "lucide-react": "^0.562.0",
     "motion": "^12.25.0",
     "next": "16.1.1",
@@ -91,5 +93,10 @@
   "trustedDependencies": [
     "sharp",
     "unrs-resolver"
-  ]
+  ],
+  "pnpm": {
+    "overrides": {
+      "kysely": "0.28.17"
+    }
+  }
 }
