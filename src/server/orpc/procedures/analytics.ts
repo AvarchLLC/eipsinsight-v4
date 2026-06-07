@@ -6855,6 +6855,26 @@ export const analyticsProcedures = {
       }));
     }),
 
+  getEventDayTotalPRs: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const [row] = await prisma.$queryRawUnsafe<Array<{ total_prs: bigint }>>(
+        `
+        SELECT COUNT(DISTINCT pe.pr_number)::bigint AS total_prs
+        FROM pr_events pe
+        WHERE LOWER(pe.actor) = ANY($2::text[])
+          AND pe.created_at >= $1::date + INTERVAL '15 hours 30 minutes'
+          AND pe.created_at < $1::date + INTERVAL '18 hours'
+        `,
+        targetDate,
+        CANONICAL_EIP_EDITOR_LOWER
+      );
+      return { totalPRs: Number(row?.total_prs ?? 0) };
+    }),
+
   getEventDayEditorLeaderboard: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),

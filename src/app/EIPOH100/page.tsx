@@ -608,6 +608,7 @@ export default function EIPOH100Page() {
   const [hourlyByType, setHourlyByType] = useState<HourlyByType[]>([]);
   const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
+  const [totalPRsDistinct, setTotalPRsDistinct] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [sprint, setSprint] = useState(sprintProgress());
@@ -626,13 +627,14 @@ export default function EIPOH100Page() {
 
   const fetchData = useCallback(async () => {
     try {
-      const [editors, hourly, byType, changes, activity, breakdown] = await Promise.all([
+      const [editors, hourly, byType, changes, activity, breakdown, totalPRs] = await Promise.all([
         client.analytics.getEventDayEditorLeaderboard({ date: displayDate }),
         client.analytics.getEventDayActivity({ date: displayDate }),
         client.analytics.getEventDayHourlyByType({ date: displayDate }),
         client.analytics.getEventDayStatusChanges({ date: displayDate }),
         client.analytics.getAllRecentActivity({ limit: 10 }),
         client.analytics.getEventDayProposalBreakdown({ date: displayDate }),
+        client.analytics.getEventDayTotalPRs({ date: displayDate }),
       ]);
       setLeaderboard(editors as EditorEntry[]);
       setHourlyActivity(hourly);
@@ -640,6 +642,7 @@ export default function EIPOH100Page() {
       setStatusChanges(changes);
       setRecentActivity(activity as typeof recentActivity);
       setProposalBreakdown(breakdown);
+      setTotalPRsDistinct(totalPRs.totalPRs);
       setLastRefreshed(new Date());
     } catch (err) {
       console.error("EIPOH100 fetch error:", err);
@@ -700,7 +703,6 @@ export default function EIPOH100Page() {
     () => hourlyActivity.filter(h => afterBlitzStart(h.hour)),
     [hourlyActivity, afterBlitzStart]
   );
-  const totalPRs = useMemo(() => blitzHourly.reduce((s, h) => s + h.prsChecked, 0), [blitzHourly]);
   const actionBreakdown = useMemo(() => ({
     reviews:  leaderboard.reduce((s, e) => s + e.reviews, 0),
     comments: leaderboard.reduce((s, e) => s + e.comments, 0),
@@ -715,7 +717,7 @@ export default function EIPOH100Page() {
       .forEach(r => typeMap.set(r.repoType, (typeMap.get(r.repoType) ?? 0) + r.prsChecked));
     const topRepoEntry = [...typeMap.entries()].sort((a, b) => b[1] - a[1])[0];
     return {
-      totalPRs,
+      totalPRs: totalPRsDistinct,
       totalActions: actionBreakdown.total,
       reviews: actionBreakdown.reviews,
       comments: actionBreakdown.comments,
@@ -725,7 +727,7 @@ export default function EIPOH100Page() {
       statusChanges: statusChanges.reduce((s, c) => s + c.count, 0),
       topRepo: topRepoEntry?.[0] ?? "",
     };
-  }, [totalPRs, actionBreakdown, leaderboard, statusChanges, hourlyByType, afterBlitzStart]);
+  }, [totalPRsDistinct, actionBreakdown, leaderboard, statusChanges, hourlyByType, afterBlitzStart]);
 
   // ─── Filtered recent activity (exclude bots / associate editors) ─────────
   const filteredActivity = useMemo(
@@ -1008,7 +1010,7 @@ export default function EIPOH100Page() {
               <Tip text="Distinct PRs touched by editors during the 16:00–18:00 UTC blitz window." />
             </div>
             {loading ? <div className="h-8 w-14 animate-pulse rounded-md bg-muted" /> :
-              <p className="text-2xl font-bold tabular-nums text-foreground">{totalPRs}</p>}
+              <p className="text-2xl font-bold tabular-nums text-foreground">{totalPRsDistinct}</p>}
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.17 }}
