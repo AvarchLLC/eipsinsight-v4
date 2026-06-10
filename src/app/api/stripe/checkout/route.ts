@@ -60,8 +60,8 @@ export async function POST(request: NextRequest) {
       stripeCustomerId: user.stripeCustomerId,
     });
 
-    // Update user with Stripe customer ID if new
-    if (!user.stripeCustomerId) {
+    // Persist customer ID when missing or out of sync with Stripe
+    if (customerId !== user.stripeCustomerId) {
       await prisma.user.update({
         where: { id: user.id },
         data: { stripeCustomerId: customerId },
