@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { motion } from 'motion/react';
-import { 
+import {
   TrendingUp,
   ExternalLink,
   AlertCircle,
@@ -18,7 +18,14 @@ import {
   RefreshCw,
   Newspaper,
   Sparkles,
-  BookOpen
+  BookOpen,
+  Building2,
+  ShieldCheck,
+  Zap,
+  Server,
+  Users,
+  Clock,
+  type LucideIcon,
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { Button } from '@/components/ui/button';
@@ -30,6 +37,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProposalSubscriptionCard } from '@/components/proposal-subscription-card';
 import { RepositorySubscriptionCard } from '@/components/repository-subscription-card';
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades';
+import { useEffectivePersona } from '@/stores/personaStore';
 
 // Status color mapping for timeline - richer colors
 const statusColors: Record<string, { 
@@ -238,6 +246,124 @@ function getHistoricalIncludedUpgrades(eipNumber: number): UpgradeInclusion[] {
 
 type ProposalRepo = 'eip' | 'erc' | 'rip';
 
+// =============================================================================
+// Enterprise Brief — pure helper functions (no hooks)
+// =============================================================================
+
+interface EnterpriseImpactCard {
+  title: string;
+  description: string;
+  Icon: LucideIcon;
+  color: 'amber' | 'blue' | 'emerald' | 'violet' | 'slate';
+}
+
+const CARD_COLORS = {
+  amber:   { border: 'border-amber-500/20',   bg: 'bg-amber-500/8',   text: 'text-amber-700 dark:text-amber-300',   icon: 'text-amber-500'  },
+  blue:    { border: 'border-blue-500/20',    bg: 'bg-blue-500/8',    text: 'text-blue-700 dark:text-blue-300',     icon: 'text-blue-500'   },
+  emerald: { border: 'border-emerald-500/20', bg: 'bg-emerald-500/8', text: 'text-emerald-700 dark:text-emerald-300', icon: 'text-emerald-500' },
+  violet:  { border: 'border-violet-500/20',  bg: 'bg-violet-500/8',  text: 'text-violet-700 dark:text-violet-300', icon: 'text-violet-500' },
+  slate:   { border: 'border-slate-500/20',   bg: 'bg-slate-500/8',   text: 'text-slate-600 dark:text-slate-300',   icon: 'text-slate-400'  },
+} as const;
+
+function computeEnterpriseImpactScore(proposal: ProposalData, upgrades: UpgradeInclusion[]): number {
+  let score = 0;
+  if (proposal.type === 'Standards Track') score += proposal.category === 'Core' ? 25 : 15;
+  else if (proposal.type === 'Meta') score += 15;
+  if (proposal.category === 'Core') score += 20;
+  if (upgrades.some(u => u.bucket.toLowerCase() === 'included')) score += 20;
+  else if (upgrades.some(u => u.bucket.toLowerCase() === 'scheduled')) score += 15;
+  else if (upgrades.some(u => u.bucket.toLowerCase() === 'considered')) score += 10;
+  if (proposal.status === 'Final') score += 15;
+  else if (proposal.status === 'Last Call') score += 10;
+  else if (proposal.status === 'Review') score += 5;
+  return Math.max(0, Math.min(100, score));
+}
+
+function getImpactScoreMeta(score: number): { label: string; textColor: string; bgColor: string; borderColor: string } {
+  if (score >= 76) return { label: 'Strategic',    textColor: 'text-violet-700 dark:text-violet-300', bgColor: 'bg-violet-500/12', borderColor: 'border-violet-500/30' };
+  if (score >= 51) return { label: 'Significant',  textColor: 'text-amber-700 dark:text-amber-300',   bgColor: 'bg-amber-500/12',  borderColor: 'border-amber-500/30'  };
+  if (score >= 21) return { label: 'Moderate',     textColor: 'text-blue-700 dark:text-blue-300',     bgColor: 'bg-blue-500/12',   borderColor: 'border-blue-500/30'   };
+  return                   { label: 'Low',          textColor: 'text-slate-600 dark:text-slate-300',   bgColor: 'bg-slate-500/12',  borderColor: 'border-slate-500/30'  };
+}
+
+function getEnterpriseRisk(proposal: ProposalData, upgrades: UpgradeInclusion[]): { level: string; color: string; note: string } {
+  const isCore = proposal.category === 'Core';
+  const hasActive = upgrades.some(u => ['included', 'scheduled'].includes(u.bucket.toLowerCase()));
+  if (isCore && hasActive) return { level: 'Medium',     color: 'text-amber-700 dark:text-amber-300',   note: 'Infrastructure updates may be required' };
+  if (isCore)              return { level: 'Low–Medium', color: 'text-blue-700 dark:text-blue-300',     note: 'Core proposal, upgrade not yet confirmed' };
+  if (proposal.status === 'Final') return { level: 'Low', color: 'text-emerald-700 dark:text-emerald-300', note: 'Stable standard, low operational risk' };
+  return { level: 'Low', color: 'text-emerald-700 dark:text-emerald-300', note: 'Limited infrastructure impact' };
+}
+
+function getEnterpriseAction(proposal: ProposalData, upgrades: UpgradeInclusion[]): string {
+  const isCore = proposal.category === 'Core';
+  const included  = upgrades.find(u => u.bucket.toLowerCase() === 'included');
+  const scheduled = upgrades.find(u => u.bucket.toLowerCase() === 'scheduled');
+  if (isCore && included)  return `Validate node compatibility for ${included.name}`;
+  if (isCore && scheduled) return `Monitor ${scheduled.name} readiness timeline`;
+  if (isCore) return 'Monitor for upgrade assignment';
+  if (proposal.status === 'Last Call') return 'Review before standard finalizes';
+  if (proposal.status === 'Final')     return 'Assess application-layer compatibility';
+  return 'Monitor for status changes';
+}
+
+function getEnterpriseImpactCards(proposal: ProposalData, upgrades: UpgradeInclusion[]): EnterpriseImpactCard[] {
+  const isCore = proposal.category === 'Core';
+  const hasUpgrade = upgrades.length > 0;
+  const isFinal = proposal.status === 'Final';
+  const firstUpgrade = upgrades[0];
+
+  if (isCore) {
+    return [
+      { title: 'Consensus Change',   description: 'Modifies core Ethereum protocol rules directly',              Icon: Zap,        color: 'amber'   },
+      { title: 'Infrastructure',     description: 'Node operators and RPC providers may need software updates',  Icon: Server,     color: 'blue'    },
+      hasUpgrade
+        ? { title: firstUpgrade.name, description: `Assigned: ${formatInclusionBucket(firstUpgrade.bucket)}`, Icon: Package, color: 'emerald' }
+        : { title: 'Upgrade Pending', description: 'Not yet assigned to a network upgrade',                    Icon: Clock,   color: 'slate'   },
+      { title: 'Multi-Client',       description: 'All Ethereum clients must adopt simultaneously',              Icon: ShieldCheck, color: 'violet'  },
+    ];
+  }
+
+  return [
+    { title: 'Application Standard', description: 'Defines a cross-app interface or behavior standard',         Icon: FileCode,    color: 'blue'    },
+    {
+      title:       isFinal ? 'Finalized' : 'In Progress',
+      description: isFinal ? 'Stable and broadly adopted'      : 'Still under development and review',
+      Icon:        ShieldCheck,
+      color:       isFinal ? 'emerald'                          : 'amber',
+    },
+    { title: 'No Node Updates',      description: 'Validators and node operators are not affected',             Icon: Server,     color: 'emerald' },
+    { title: 'Developer Facing',     description: 'Impacts wallet providers and application developers',        Icon: Users,      color: 'violet'  },
+  ];
+}
+
+function getSimplifiedTechOverview(proposal: ProposalData, upgrades: UpgradeInclusion[]): { topic: string; explanation: string }[] {
+  const isCore = proposal.category === 'Core';
+  const included = upgrades.find(u => u.bucket.toLowerCase() === 'included');
+  return [
+    {
+      topic: 'What changes?',
+      explanation: isCore
+        ? `Modifies Ethereum ${proposal.category?.toLowerCase() ?? 'protocol'} layer execution rules`
+        : `Defines a new ${proposal.type?.toLowerCase() ?? 'application'} standard`,
+    },
+    {
+      topic: 'Who is impacted?',
+      explanation: isCore
+        ? 'Client teams, validators, node operators, RPC providers'
+        : 'App developers, wallet providers, DeFi protocols',
+    },
+    { topic: 'Consensus-critical?',   explanation: isCore ? 'Yes — all clients must implement simultaneously'    : 'No — protocol rules unchanged'              },
+    { topic: 'App changes needed?',   explanation: isCore ? 'Usually no — transparent to applications'          : 'Possibly — if integrating this standard'    },
+    {
+      topic: 'Infrastructure updates?',
+      explanation: isCore
+        ? included ? `Yes — required before ${included.name} activation` : 'Possibly — monitor client updates'
+        : 'No — infrastructure unaffected',
+    },
+  ];
+}
+
 function formatInclusionBucket(bucket: string | null): string {
   if (!bucket) return 'Unknown';
   const normalized = bucket.toLowerCase();
@@ -352,6 +478,8 @@ export default function ProposalDetailPage() {
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
   const [showAi, setShowAi] = useState(false);
+  const [showEnterpriseView, setShowEnterpriseView] = useState(false);
+  const effectivePersona = useEffectivePersona();
 
   // Normalize repo name
   const normalizedRepo = repo.toLowerCase().replace(/s$/, '');
@@ -517,6 +645,11 @@ export default function ProposalDetailPage() {
     return () => { cancelled = true; };
   }, [markdownContent, number, normalizedRepo]);
 
+  // Auto-show enterprise brief when enterprise persona is active
+  useEffect(() => {
+    if (effectivePersona === 'enterprise') setShowEnterpriseView(true);
+  }, [effectivePersona]);
+
   const handleCopyLink = async () => {
     const url = window.location.href;
     try {
@@ -562,6 +695,14 @@ export default function ProposalDetailPage() {
   const proposalId = `${repoDisplayName}-${proposal.number}`;
   const githubUrl = `https://github.com/ethereum/${repoPath}/blob/master/${filePath}/${fileName}`;
 
+  // Enterprise brief computed values (safe to call — proposal is non-null here)
+  const enterpriseScore      = computeEnterpriseImpactScore(proposal, upgrades);
+  const enterpriseScoreMeta  = getImpactScoreMeta(enterpriseScore);
+  const enterpriseRisk       = getEnterpriseRisk(proposal, upgrades);
+  const enterpriseAction     = getEnterpriseAction(proposal, upgrades);
+  const enterpriseImpactCards = getEnterpriseImpactCards(proposal, upgrades);
+  const enterpriseTechRows   = getSimplifiedTechOverview(proposal, upgrades);
+
   // Determine urgency color for governance signals
   const getUrgencyColor = (days: number | null) => {
     if (!days) return 'text-muted-foreground';
@@ -588,6 +729,18 @@ export default function ProposalDetailPage() {
                     <Activity className="h-3.5 w-3.5" />
                     Timeline
                   </Link>
+                  <button
+                    onClick={() => setShowEnterpriseView(s => !s)}
+                    className={cn(
+                      "inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
+                      showEnterpriseView
+                        ? "border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20"
+                        : "border-border bg-card/70 text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Building2 className="h-3.5 w-3.5" />
+                    Enterprise
+                  </button>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -706,6 +859,89 @@ export default function ProposalDetailPage() {
                 </span>
               ))}
             </div>
+          )}
+
+          {/* Enterprise Brief Panel */}
+          {showEnterpriseView && (
+            <motion.div
+              id="enterprise-brief"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="space-y-3"
+            >
+              {/* Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-500/25 bg-gradient-to-r from-violet-500/10 to-violet-500/4 px-5 py-3">
+                <div className="flex items-center gap-2">
+                  <Building2 className="h-4 w-4 text-violet-500" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">Enterprise Brief</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Impact Score</span>
+                  <span className={cn("rounded-full border px-2.5 py-0.5 text-xs font-bold", enterpriseScoreMeta.bgColor, enterpriseScoreMeta.textColor, enterpriseScoreMeta.borderColor)}>
+                    {enterpriseScore} · {enterpriseScoreMeta.label}
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Snapshot + Impact Cards */}
+              <div className="grid gap-3 lg:grid-cols-2">
+                {/* Quick Snapshot table */}
+                <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+                  <div className="border-b border-border/60 bg-muted/30 px-5 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Quick Snapshot</p>
+                  </div>
+                  <table className="w-full border-collapse">
+                    <tbody className="divide-y divide-border/50">
+                      {([
+                        { label: 'Purpose',          value: proposal.title,           colorClass: undefined },
+                        { label: 'Status',           value: proposal.status,          colorClass: undefined },
+                        { label: 'Network Upgrade',  value: latestUpgrade?.name ?? 'Not assigned', colorClass: undefined },
+                        { label: 'Enterprise Impact',value: enterpriseScoreMeta.label, colorClass: enterpriseScoreMeta.textColor },
+                        { label: 'Risk Level',       value: `${enterpriseRisk.level} — ${enterpriseRisk.note}`, colorClass: enterpriseRisk.color },
+                        { label: 'Action Required',  value: enterpriseAction,          colorClass: undefined },
+                      ] as { label: string; value: string; colorClass?: string }[]).map(({ label, value, colorClass }) => (
+                        <tr key={label}>
+                          <td className="w-36 bg-muted/20 px-4 py-2.5 align-top text-[11px] font-medium text-muted-foreground">{label}</td>
+                          <td className={cn("px-4 py-2.5 text-sm", colorClass ?? 'text-foreground')}>{value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Impact Cards 2×2 */}
+                <div className="grid grid-cols-2 gap-2.5">
+                  {enterpriseImpactCards.map((card, i) => {
+                    const c = CARD_COLORS[card.color];
+                    return (
+                      <div key={i} className={cn("rounded-xl border p-3.5", c.border, c.bg)}>
+                        <card.Icon className={cn("h-4 w-4 mb-2", c.icon)} />
+                        <p className={cn("text-xs font-semibold leading-snug", c.text)}>{card.title}</p>
+                        <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">{card.description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Simplified Technical Overview */}
+              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+                <div className="border-b border-border/60 bg-muted/30 px-5 py-2.5">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Technical Overview</p>
+                </div>
+                <table className="w-full border-collapse">
+                  <tbody className="divide-y divide-border/50">
+                    {enterpriseTechRows.map(({ topic, explanation }) => (
+                      <tr key={topic}>
+                        <td className="w-44 bg-muted/20 px-5 py-3 align-top text-[11px] font-medium text-muted-foreground">{topic}</td>
+                        <td className="px-5 py-3 text-sm text-foreground">{explanation}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
           )}
 
           {/* 2. Preamble Table (RFC-style, flat, authoritative) */}

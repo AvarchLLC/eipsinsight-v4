@@ -69,6 +69,7 @@ const blogSchema = z.object({
   readingTimeMinutes: z.number().min(0).optional().nullable(),
   tags: z.array(z.string()).optional(),
   featured: z.boolean().optional(),
+  upgradeId: z.number().optional().nullable(),
   publicationDate: z
     .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
     .optional()
@@ -98,7 +99,15 @@ export const blogProcedures = {
       if (!input.publishedOnly) {
         await requireEditor(context)
       }
-      const where: { published?: boolean; category?: { slug: string } } = input.publishedOnly ? { published: true } : {}
+      
+      const now = new Date()
+      const where: Prisma.BlogWhereInput = input.publishedOnly 
+        ? { 
+            published: true,
+            createdAt: { lte: now }
+          } 
+        : {}
+
       if (input.categorySlug) {
         where.category = { slug: input.categorySlug }
       }
@@ -168,7 +177,7 @@ export const blogProcedures = {
         if (existing) {
           throw new ORPCError('BAD_REQUEST', { message: 'A blog post with this slug already exists' })
         }
-        const { categoryId, readingTimeMinutes, tags, featured, publicationDate: rawPublicationDate, ...rest } = input
+        const { categoryId, readingTimeMinutes, tags, featured, upgradeId, publicationDate: rawPublicationDate, ...rest } = input
         const publicationDate = rawPublicationDate
           ? new Date(`${rawPublicationDate}T12:00:00.000Z`)
           : undefined
@@ -178,6 +187,7 @@ export const blogProcedures = {
             authorId: session.user.id,
             published: input.published ?? false,
             categoryId: categoryId || null,
+            upgradeId: upgradeId || null,
             readingTimeMinutes: readingTimeMinutes ?? null,
             tags: tags ?? [],
             featured: featured ?? false,
@@ -209,6 +219,7 @@ export const blogProcedures = {
         readingTimeMinutes: z.number().min(0).optional().nullable(),
         tags: z.array(z.string()).optional(),
         featured: z.boolean().optional(),
+        upgradeId: z.number().optional().nullable(),
         publicationDate: z
           .union([z.string().regex(/^\d{4}-\d{2}-\d{2}$/), z.literal("")])
           .optional()
@@ -485,6 +496,127 @@ export const blogProcedures = {
     .handler(async ({ input, context }) => {
       await requireAdmin(context)
       await prisma.blog_comment.delete({ where: { id: input.id } })
+      return { ok: true }
+    }),
+
+  // ─── Domain Specific ───
+  getEIPSummary: os
+    .$context<Ctx>()
+    .input(z.object({ number: z.number(), type: z.enum(['EIP', 'ERC', 'RIP']).optional().default('EIP') }))
+    .handler(async ({ input }) => {
+      if (input.type === 'RIP') {
+        const rip = await prisma.$queryRawUnsafe<any[]>(
+          `SELECT rip_number as number, title, status, author FROM rips WHERE rip_number = $1 LIMIT 1`,
+          input.number
+        )
+        return rip[0] || null
+      }
+
+      // For EIP/ERC, they are in the same eips table usually, but we need the snapshot for status
+      const eip = await prisma.$queryRawUnsafe<any[]>(
+        `SELECT e.eip_number as number, e.title, s.status, e.author, r.name as repo
+         FROM eips e
+         LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+         LEFT JOIN repositories r ON s.repository_id = r.id
+         WHERE e.eip_number = $1
+         ORDER BY s.updated_at DESC
+         LIMIT 1`,
+        input.number
+      )
+      return eip[0] || null
+    }),
+
+  listUpgrades: os
+    .$context<Ctx>()
+    .handler(async () => {
+      return prisma.upgrades.findMany({
+        orderBy: { name: 'asc' },
+        select: { id: true, name: true, slug: true },
+      })
+    }),
+
+  // ─── Analytics (Admin) ───
+  getAnalytics: os
+    .$context<Ctx>()
+    .input(z.object({ blogId: z.string() }))
+    .handler(async ({ input, context }) => {
+      await requireEditor(context)
+      const events = await prisma.blog_event.findMany({
+        where: { blogId: input.blogId },
+      })
+      
+      const views = events.filter(e => e.type === 'view').length
+      const clicks = events.filter(e => e.type === 'click_eip').length
+      const conversions = events.filter(e => e.type === 'conversion').length
+      
+      return { views, clicks, conversions, events }
+    }),
+
+  trackEvent: os
+    .$context<Ctx>()
+    .input(z.object({ 
+      blogId: z.string(), 
+      type: z.string(), 
+      value: z.string().optional(),
+      sessionId: z.string().optional() 
+    }))
+    .handler(async ({ input, context }) => {
+      const session = await auth.api.getSession({ headers: context.headers })
+      await prisma.blog_event.create({
+        data: {
+          blogId: input.blogId,
+          type: input.type,
+          value: input.value,
+          userId: session?.user.id,
+          sessionId: input.sessionId,
+        }
+      })
+      return { ok: true }
+    }),
+
+  // ─── Internal Comments (Collaboration) ───
+  getInternalComments: os
+    .$context<Ctx>()
+    .input(z.object({ blogId: z.string() }))
+    .handler(async ({ input, context }) => {
+      await requireEditor(context)
+      return prisma.blog_internal_comment.findMany({
+        where: { blogId: input.blogId },
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: { select: { id: true, name: true, image: true } },
+        },
+      })
+    }),
+
+  addInternalComment: os
+    .$context<Ctx>()
+    .input(z.object({ blogId: z.string(), content: z.string().min(1) }))
+    .handler(async ({ input, context }) => {
+      const session = await requireEditor(context)
+      return prisma.blog_internal_comment.create({
+        data: {
+          blogId: input.blogId,
+          userId: session.user.id,
+          content: input.content,
+        },
+        include: {
+          user: { select: { id: true, name: true, image: true } },
+        },
+      })
+    }),
+
+  deleteInternalComment: os
+    .$context<Ctx>()
+    .input(z.object({ id: z.string() }))
+    .handler(async ({ input, context }) => {
+      const session = await requireEditor(context)
+      const comment = await prisma.blog_internal_comment.findUnique({ where: { id: input.id } })
+      if (!comment) throw new ORPCError('NOT_FOUND')
+      if (comment.userId !== session.user.id && (await prisma.user.findUnique({ where: { id: session.user.id }, select: { role: true } }))?.role !== 'admin') {
+        throw new ORPCError('FORBIDDEN')
+      }
+      await prisma.blog_internal_comment.delete({ where: { id: input.id } })
       return { ok: true }
     }),
 }

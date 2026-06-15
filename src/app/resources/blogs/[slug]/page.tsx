@@ -131,6 +131,12 @@ export default function BlogPostPage() {
 
   useEffect(() => {
     if (!post?.id || !likeKey) return;
+    
+    // Track view event once per post load
+    const sessionId = localStorage.getItem("blog-session-id") || `sess:${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem("blog-session-id", sessionId);
+    client.blog.trackEvent({ blogId: post.id, type: "view", sessionId }).catch(() => {});
+
     client.blog.getLikeCount({ blogId: post.id }).then(setLikeCount);
     client.blog.checkLiked({ blogId: post.id, likeKey }).then((res) => setLiked(res.liked));
   }, [post?.id, likeKey]);

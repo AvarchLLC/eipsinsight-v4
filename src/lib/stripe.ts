@@ -13,7 +13,7 @@ async function stripeClient() {
   }
   const Stripe = (await import("stripe")).default;
   _stripe = new Stripe(env.STRIPE_SECRET_KEY as string, {
-    apiVersion: "2026-02-25.clover",
+    apiVersion: "2026-01-28.clover",
     typescript: true,
   });
   return _stripe;

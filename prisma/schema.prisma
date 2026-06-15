@@ -29,6 +29,7 @@ model User {
   apiUsage               ApiUsage[]
   blogs                  Blog[]
   blog_comments          blog_comment[]
+  blog_internal_comments blog_internal_comment[]
   blog_editor_profile    blog_editor_profile?
   feedbacks              Feedback[]
   notification_outbox    NotificationOutbox[]
@@ -173,10 +174,15 @@ model Blog {
   category           blog_category? @relation(fields: [categoryId], references: [id])
   blog_comments      blog_comment[]
   blog_likes         blog_like[]
+  upgradeId          Int?
+  upgrade            upgrades?      @relation(fields: [upgradeId], references: [id])
+  internal_comments  blog_internal_comment[]
+  events             blog_event[]
 
   @@index([published])
   @@index([slug])
   @@index([categoryId])
+  @@index([upgradeId])
   @@map("blog")
 }
 
@@ -623,6 +629,7 @@ model upgrades {
   upgrade_composition_events upgrade_composition_events[]
   upgrade_subscriptions      UpgradeSubscription[]
   upgrade_meta_eip_events    upgrade_meta_eip_events[]
+  blogs                      Blog[]
 }
 
 model ApiUsage {
@@ -872,4 +879,33 @@ model CommentVote {
   @@unique([comment_id, user_id, user_ip])
   @@index([comment_id])
   @@map("comment_vote")
+}
+
+model blog_internal_comment {
+  id        String   @id @default(cuid())
+  blogId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([blogId])
+  @@map("blog_internal_comment")
+}
+
+model blog_event {
+  id        String   @id @default(cuid())
+  blogId    String
+  type      String   // 'view', 'scroll_depth', 'click_eip', 'conversion'
+  value     String?  // e.g., '50' for 50% scroll, 'EIP-1559' for click
+  userId    String?
+  sessionId String?
+  createdAt DateTime @default(now())
+
+  blog      Blog     @relation(fields: [blogId], references: [id], onDelete: Cascade)
+
+  @@index([blogId, type])
+  @@map("blog_event")
 }

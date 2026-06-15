@@ -185,6 +185,7 @@ export const PERSONA_NAV_ORDER: Record<Persona, string[]> = {
 export const PERSONA_LIST: Persona[] = [
   "developer",
   "editor",
+  "enterprise",
   // "builder",   // Disabled for now (TBD: re-enable when persona flow is implemented)
   // "newcomer",  // Disabled for now (TBD: re-enable when persona flow is implemented)
 ];

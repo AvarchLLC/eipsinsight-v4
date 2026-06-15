@@ -5,6 +5,8 @@ import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
+import rehypeRaw from 'rehype-raw';
+import { EIPCard } from './ui/rich-text-editor/eip-card';
 
 interface MarkdownRendererProps {
   content: string;
@@ -33,7 +35,7 @@ function parseMarkdown(markdown: string): { body: string; frontmatter: Record<st
   const frontmatter: Record<string, string> = {};
   let body = markdown;
 
-  const frontmatterMatch = markdown.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+  const frontmatterMatch = markdown.match(/^----- \n([\s\S]*?)\n---\n([\s\S]*)$/);
   if (frontmatterMatch) {
     const frontmatterText = frontmatterMatch[1];
     body = frontmatterMatch[2];
@@ -139,7 +141,18 @@ function parseHeadingTextAndId(children: ReactNode) {
 }
 
 const markdownComponents: Components = {
-  h1: ({ children, ...props }) => {
+  // @ts-ignore - rehype-raw allows custom tags
+  'div': ({ node: _node, children, ...props }: any) => {
+    if (props['data-type'] === 'eip-smart-embed' || props.dataType === 'eip-smart-embed') {
+      return (
+        <div className="not-prose my-8">
+           <EIPCard node={{ attrs: { number: props.number, type: props.type } }} />
+        </div>
+      );
+    }
+    return <div {...props}>{children}</div>;
+  },
+  h1: ({ children, node: _node, ...props }: any) => {
     const parsed = parseHeadingTextAndId(children);
     return (
       <h1 id={parsed.id} className="dec-title mt-8 mb-4 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl" {...props}>
@@ -147,7 +160,7 @@ const markdownComponents: Components = {
       </h1>
     );
   },
-  h2: ({ children, ...props }) => {
+  h2: ({ children, node: _node, ...props }: any) => {
     const parsed = parseHeadingTextAndId(children);
     return (
       <h2
@@ -159,7 +172,7 @@ const markdownComponents: Components = {
       </h2>
     );
   },
-  h3: ({ children, ...props }) => {
+  h3: ({ children, node: _node, ...props }: any) => {
     const parsed = parseHeadingTextAndId(children);
     return (
       <h3 id={parsed.id} className="mt-8 mb-2 text-lg font-semibold text-foreground" {...props}>
@@ -167,7 +180,7 @@ const markdownComponents: Components = {
       </h3>
     );
   },
-  h4: ({ children, ...props }) => {
+  h4: ({ children, node: _node, ...props }: any) => {
     const parsed = parseHeadingTextAndId(children);
     return (
       <h4 id={parsed.id} className="mt-6 mb-2 text-base font-semibold text-foreground" {...props}>
@@ -175,13 +188,30 @@ const markdownComponents: Components = {
       </h4>
     );
   },
-  p: ({ children, ...props }) => (
+  p: ({ children, node: _node, ...props }: any) => (
     <p className="mb-4 text-sm leading-relaxed text-foreground/90 sm:text-base" {...props}>
       {children}
     </p>
   ),
-  a: ({ href, children, ...props }) => {
+  a: ({ href, children, node: _node, ...props }: any) => {
     const url = href ?? '';
+    
+    // Check if it's a custom EIP link from our editor
+    if (props['data-type'] === 'eip-link' || props.dataType === 'eip-link') {
+       return (
+         <a
+           href={url}
+           className="inline-flex items-center gap-1.5 font-bold text-primary decoration-primary/30 underline-offset-4 hover:underline transition-all"
+           target="_blank"
+           rel="noopener noreferrer"
+           {...props}
+         >
+           <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wider">{props.type}-{props.number}</span>
+           {children}
+         </a>
+       );
+    }
+
     const isInternalRoute = /^\/(eip|erc|rip)\/\d+$/.test(url);
     const isExternal = /^(https?:\/\/|mailto:)/.test(url);
     const isHashLink = url.startsWith('#');
@@ -208,22 +238,22 @@ const markdownComponents: Components = {
       </a>
     );
   },
-  ul: ({ children, ...props }) => (
+  ul: ({ children, node: _node, ...props }: any) => (
     <ul className="mb-4 ml-6 list-disc space-y-1 text-sm text-foreground/90 sm:text-base" {...props}>
       {children}
     </ul>
   ),
-  ol: ({ children, ...props }) => (
+  ol: ({ children, node: _node, ...props }: any) => (
     <ol className="mb-4 ml-6 list-decimal space-y-1 text-sm text-foreground/90 sm:text-base" {...props}>
       {children}
     </ol>
   ),
-  li: ({ children, ...props }) => (
+  li: ({ children, node: _node, ...props }: any) => (
     <li className="leading-relaxed" {...props}>
       {children}
     </li>
   ),
-  blockquote: ({ children, ...props }) => (
+  blockquote: ({ children, node: _node, ...props }: any) => (
     <blockquote
       className="my-4 border-l-2 border-primary/40 pl-4 text-sm italic text-muted-foreground sm:text-base"
       {...props}
@@ -231,8 +261,8 @@ const markdownComponents: Components = {
       {children}
     </blockquote>
   ),
-  hr: (props) => <hr className="my-8 border-border" {...props} />,
-  code: ({ className, children, ...props }) => {
+  hr: ({ node: _node, ...props }: any) => <hr className="my-8 border-border" {...props} />,
+  code: ({ className, children, node: _node, ...props }: any) => {
     const language = className?.replace('language-', '');
     const value = String(children).replace(/\n$/, '');
 
@@ -255,19 +285,19 @@ const markdownComponents: Components = {
       </pre>
     );
   },
-  table: ({ children, ...props }) => (
+  table: ({ children, node: _node, ...props }: any) => (
     <div className="my-6 w-full overflow-x-auto rounded-xl border border-border bg-card/60">
       <table className="w-full border-collapse text-sm" {...props}>
         {children}
       </table>
     </div>
   ),
-  thead: ({ children, ...props }) => (
+  thead: ({ children, node: _node, ...props }: any) => (
     <thead className="bg-muted/40" {...props}>
       {children}
     </thead>
   ),
-  th: ({ children, ...props }) => (
+  th: ({ children, node: _node, ...props }: any) => (
     <th
       className="border-b border-border px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
       {...props}
@@ -275,7 +305,7 @@ const markdownComponents: Components = {
       {children}
     </th>
   ),
-  td: ({ children, ...props }) => (
+  td: ({ children, node: _node, ...props }: any) => (
     <td className="border-b border-border/60 px-4 py-2 text-sm text-foreground" {...props}>
       {children}
     </td>
@@ -388,7 +418,7 @@ export function MarkdownRenderer({
               <article className="markdown-content max-w-none border-t border-border/70 px-4 py-4" style={{ lineHeight: "1.75" }}>
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm, remarkMath]}
-                  rehypePlugins={[rehypeKatex]}
+                  rehypePlugins={[rehypeKatex, rehypeRaw]}
                   components={markdownComponents}
                 >
                   {section.body}
@@ -401,7 +431,7 @@ export function MarkdownRenderer({
         <article className="markdown-content max-w-none" style={{ lineHeight: "1.75" }}>
           <ReactMarkdown
             remarkPlugins={[remarkGfm, remarkMath]}
-            rehypePlugins={[rehypeKatex]}
+            rehypePlugins={[rehypeKatex, rehypeRaw]}
             components={markdownComponents}
           >
             {processedContent}
@@ -409,15 +439,15 @@ export function MarkdownRenderer({
         </article>
       )}
 
-      <style jsx>{`
-        .markdown-content :global(h2[id]),
-        .markdown-content :global(h3[id]),
-        .markdown-content :global(h4[id]) {
+      <style>{`
+        .markdown-content h2[id],
+        .markdown-content h3[id],
+        .markdown-content h4[id] {
           position: relative;
         }
-        .markdown-content :global(h2[id]:hover::before),
-        .markdown-content :global(h3[id]:hover::before),
-        .markdown-content :global(h4[id]:hover::before) {
+        .markdown-content h2[id]:hover::before,
+        .markdown-content h3[id]:hover::before,
+        .markdown-content h4[id]:hover::before {
           content: '#';
           position: absolute;
           left: -1.5rem;

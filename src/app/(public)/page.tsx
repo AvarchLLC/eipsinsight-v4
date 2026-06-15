@@ -165,7 +165,7 @@ type NewcomerTrendingProposal = {
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
 type DeveloperRepoFilter = '' | 'eips' | 'ercs' | 'rips';
 
-type HomePersona = 'developer' | 'editor' | 'builder' | 'newcomer';
+type HomePersona = 'developer' | 'editor' | 'builder' | 'newcomer' | 'enterprise';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-slate-500',
@@ -447,6 +447,17 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
       { key: 'faq', title: 'FAQ / Reference', href: '/resources/faq', cta: 'Explore FAQ', icon: BookOpen, blurb: 'Core terms and quick answers.' },
     ],
   },
+  enterprise: {
+    title: 'Enterprise Home',
+    description: 'Understand protocol direction, upgrade timelines, and business impact without deep dives.',
+    goal: 'Translate Ethereum governance into actionable enterprise intelligence.',
+    tools: [
+      { key: 'upgrades', title: 'Network Upgrades', href: '/upgrade', cta: 'View Upgrades', icon: Network, blurb: 'Track upcoming upgrades and their business implications.' },
+      { key: 'standards', title: 'Standards Explorer', href: '/standards', cta: 'Browse Standards', icon: FileText, blurb: 'Find EIPs and ERCs relevant to your infrastructure.' },
+      { key: 'analytics', title: 'Governance Analytics', href: '/analytics/prs', cta: 'View Analytics', icon: Activity, blurb: 'High-level governance activity and trends.' },
+      { key: 'insights', title: 'Monthly Insights', href: '/insights', cta: 'View Insights', icon: Zap, blurb: 'Month-by-month protocol roadmap summaries.' },
+    ],
+  },
 };
 
 const PERSONA_LABELS: Record<HomePersona, string> = {
@@ -454,6 +465,7 @@ const PERSONA_LABELS: Record<HomePersona, string> = {
   editor: 'Editor',
   builder: 'Builder',
   newcomer: 'Newcomer',
+  enterprise: 'Enterprise',
 };
 
 const PERSONA_SECTION_VISIBILITY: Record<
@@ -525,6 +537,20 @@ const PERSONA_SECTION_VISIBILITY: Record<
     governanceOverTime: false,
     board: true,
     monthly: false,
+    governance: false,
+    social: false,
+    reference: false,
+  },
+  enterprise: {
+    quickAccess: true,
+    upgradeWatch: true,
+    trending: false,
+    reviewQueue: false,
+    categoryBreakdown: false,
+    browse: true,
+    governanceOverTime: false,
+    board: false,
+    monthly: true,
     governance: false,
     social: false,
     reference: false,
