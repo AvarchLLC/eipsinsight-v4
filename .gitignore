@@ -46,3 +46,4 @@ next-env.d.ts
 /eipsinsight_scheduler
 
 CLAUDE.mdprisma/seed-blogs.ts
+.claude/
