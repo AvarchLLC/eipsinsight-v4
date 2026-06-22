@@ -7,6 +7,19 @@ import { API_SCOPES, type ApiScope } from '@/lib/apiScopes'
 import * as z from 'zod'
 
 export const accountProcedures = {
+  getRecentAvatars: os
+    .$context<Ctx>()
+    .input(z.object({ limit: z.number().min(1).max(20).optional().default(8) }))
+    .handler(async ({ input }) => {
+      const users = await prisma.user.findMany({
+        where: { image: { not: null } },
+        select: { id: true, name: true, image: true },
+        orderBy: { createdAt: 'desc' },
+        take: input.limit,
+      })
+      return users as Array<{ id: string; name: string; image: string }>
+    }),
+
   getMe: os
     .$context<Ctx>()
     .handler(async ({ context }) => {
