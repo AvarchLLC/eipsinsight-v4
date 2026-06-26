@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo } from "react";
+import React, { useCallback, useMemo, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 // @ts-ignore
 import { BubbleMenu, FloatingMenu } from "@tiptap/react/menus";
@@ -14,25 +14,22 @@ import CharacterCount from "@tiptap/extension-character-count";
 import { Markdown } from "tiptap-markdown";
 import { EIPSmartEmbed } from "./rich-text-editor/eip-extension";
 import { EIPLink } from "./rich-text-editor/eip-link";
+import { TweetEmbed } from "./rich-text-editor/tweet-extension";
 import {
   Bold,
   Italic,
   List,
   ListOrdered,
   Quote,
-  Heading1,
   Heading2,
   Heading3,
   Code,
   Link as LinkIcon,
   Image as ImageIcon,
-  Undo,
-  Redo,
-  Type,
-  Minus,
-  MessageSquare,
-  Highlighter,
   FileText,
+  Minus,
+  Plus,
+  AlignLeft,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -41,35 +38,29 @@ interface RichTextEditorProps {
   onChange: (markdown: string) => void;
   placeholder?: string;
   className?: string;
+  onImageUpload?: () => Promise<string | null>;
 }
 
-const MenuButton = ({
+const BubbleButton = ({
   onClick,
   isActive = false,
-  disabled = false,
   children,
   title,
-  className,
 }: {
   onClick: () => void;
   isActive?: boolean;
-  disabled?: boolean;
   children: React.ReactNode;
   title?: string;
-  className?: string;
 }) => (
   <button
     type="button"
     onClick={onClick}
-    disabled={disabled}
     title={title}
     className={cn(
-      "p-2 rounded-md transition-all duration-200",
+      "px-2 py-1.5 rounded text-sm transition-colors",
       isActive
-        ? "bg-primary text-primary-foreground shadow-sm scale-95"
-        : "text-muted-foreground hover:bg-muted hover:text-foreground",
-      disabled && "opacity-30 cursor-not-allowed",
-      className
+        ? "bg-foreground text-background"
+        : "text-foreground/70 hover:text-foreground hover:bg-muted"
     )}
   >
     {children}
@@ -79,24 +70,29 @@ const MenuButton = ({
 export function RichTextEditor({
   content,
   onChange,
-  placeholder = "Write something...",
+  placeholder = "Write your story… type / for blocks",
   className,
+  onImageUpload,
 }: RichTextEditorProps) {
+  const [blockMenuOpen, setBlockMenuOpen] = useState(false);
+
   const editor = useEditor({
+    enableInputRules: true,
+    enablePasteRules: true,
+    immediatelyRender: false,
     extensions: [
       StarterKit.configure({
-        heading: {
-          levels: [1, 2, 3],
-        },
+        heading: { levels: [1, 2, 3] },
       }),
       BubbleMenuExtension,
       FloatingMenuExtension,
       CharacterCount,
       EIPSmartEmbed,
       EIPLink,
+      TweetEmbed,
       Image.configure({
         HTMLAttributes: {
-          class: "rounded-2xl max-w-full h-auto border border-border shadow-lg my-8",
+          class: "rounded-2xl max-w-full h-auto border border-border shadow-lg my-8 mx-auto block",
         },
       }),
       Link.configure({
@@ -105,9 +101,7 @@ export function RichTextEditor({
           class: "text-primary underline font-medium decoration-primary/30 underline-offset-4 hover:decoration-primary transition-all",
         },
       }),
-      Placeholder.configure({
-        placeholder,
-      }),
+      Placeholder.configure({ placeholder }),
       Markdown.configure({
         html: true,
         tightLists: true,
@@ -125,256 +119,246 @@ export function RichTextEditor({
     editorProps: {
       attributes: {
         class: cn(
-          "prose prose-lg dark:prose-invert max-w-none focus:outline-none min-h-[500px] py-10 px-4 sm:px-0",
-          "prose-headings:font-bold prose-p:leading-relaxed prose-li:my-1",
+          "prose prose-neutral dark:prose-invert max-w-none focus:outline-none min-h-[500px] py-4",
+          "prose-headings:font-bold prose-headings:tracking-tight prose-headings:text-foreground",
+          "prose-h1:text-4xl prose-h2:text-2xl prose-h3:text-xl prose-h4:text-lg",
+          "prose-p:leading-relaxed prose-p:text-foreground/90",
+          "prose-li:my-0.5",
+          "prose-blockquote:border-l-4 prose-blockquote:border-primary/40 prose-blockquote:text-muted-foreground prose-blockquote:italic",
+          "prose-code:bg-muted prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:text-sm prose-code:before:content-none prose-code:after:content-none",
+          "prose-a:text-primary prose-a:underline prose-a:underline-offset-4",
+          "prose-hr:border-border",
           className
         ),
       },
     },
   });
 
-  const addImage = useCallback(() => {
-    const url = window.prompt("Enter image URL");
-    if (url && editor) {
-      editor.chain().focus().setImage({ src: url }).run();
+  const addImage = useCallback(async () => {
+    if (onImageUpload) {
+      const url = await onImageUpload();
+      if (url && editor) {
+        editor.chain().focus().setImage({ src: url }).run();
+      }
+    } else {
+      const url = window.prompt("Enter image URL");
+      if (url && editor) {
+        editor.chain().focus().setImage({ src: url }).run();
+      }
     }
-  }, [editor]);
+    setBlockMenuOpen(false);
+  }, [editor, onImageUpload]);
 
   const setLink = useCallback(() => {
     const previousUrl = editor?.getAttributes("link").href;
     const url = window.prompt("Enter URL", previousUrl);
-
     if (url === null) return;
     if (url === "") {
       editor?.chain().focus().extendMarkRange("link").unsetLink().run();
       return;
     }
-
     editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
   }, [editor]);
-
-  const stats = useMemo(() => {
-    if (!editor) return { words: 0, characters: 0 };
-    return {
-      words: editor.storage.characterCount.words(),
-      characters: editor.storage.characterCount.characters(),
-    };
-  }, [editor?.state.doc.textContent]);
 
   const insertEIPCard = useCallback(() => {
     const input = window.prompt("Enter standard (e.g., EIP-1559 or ERC-721)");
     if (input) {
       const match = input.match(/(EIP|ERC|RIP)-?(\d+)/i);
       if (match) {
-        const type = match[1].toUpperCase();
-        const number = match[2];
         editor?.chain().focus().insertContent({
           type: "eipSmartEmbed",
-          attrs: { type, number },
+          attrs: { type: match[1].toUpperCase(), number: match[2] },
         }).run();
       }
     }
+    setBlockMenuOpen(false);
   }, [editor]);
 
+  const insertTweet = useCallback(() => {
+    const input = window.prompt("Paste a Twitter / X post URL");
+    if (input?.trim()) {
+      editor?.chain().focus().insertContent({
+        type: "tweetEmbed",
+        attrs: { url: input.trim() },
+      }).run();
+    }
+    setBlockMenuOpen(false);
+  }, [editor]);
+
+  const stats = useMemo(() => {
+    if (!editor) return { words: 0 };
+    return { words: editor.storage.characterCount.words() };
+  }, [editor?.state.doc.textContent]);
+
   if (!editor) {
-    return (
-      <div className="border border-border rounded-2xl bg-muted/10 h-[600px] animate-pulse" />
-    );
+    return <div className="min-h-[500px] animate-pulse rounded-2xl bg-muted/10" />;
   }
 
+  const BLOCK_OPTIONS = [
+    {
+      label: "Heading",
+      icon: <span className="text-xs font-bold">H2</span>,
+      action: () => { editor.chain().focus().toggleHeading({ level: 2 }).run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Subheading",
+      icon: <span className="text-xs font-bold">H3</span>,
+      action: () => { editor.chain().focus().toggleHeading({ level: 3 }).run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Bullet list",
+      icon: <List className="h-4 w-4" />,
+      action: () => { editor.chain().focus().toggleBulletList().run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Numbered list",
+      icon: <ListOrdered className="h-4 w-4" />,
+      action: () => { editor.chain().focus().toggleOrderedList().run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Quote",
+      icon: <Quote className="h-4 w-4" />,
+      action: () => { editor.chain().focus().toggleBlockquote().run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Code block",
+      icon: <Code className="h-4 w-4" />,
+      action: () => { editor.chain().focus().toggleCodeBlock().run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Divider",
+      icon: <Minus className="h-4 w-4" />,
+      action: () => { editor.chain().focus().setHorizontalRule().run(); setBlockMenuOpen(false); },
+    },
+    {
+      label: "Image",
+      icon: <ImageIcon className="h-4 w-4" />,
+      action: addImage,
+    },
+    {
+      label: "EIP Card",
+      icon: <FileText className="h-4 w-4" />,
+      action: insertEIPCard,
+    },
+    {
+      label: "Tweet",
+      icon: <span className="text-[10px] font-bold">𝕏</span>,
+      action: insertTweet,
+    },
+  ];
+
   return (
-    <div className="group/editor flex flex-col w-full relative">
-      {/* Sticky Toolbar */}
-      <div className="sticky top-16 z-20 flex flex-wrap items-center gap-1 border border-border bg-background/90 backdrop-blur-md p-1.5 rounded-xl mb-8 shadow-sm transition-all group-focus-within/editor:border-primary/30 group-focus-within/editor:shadow-md">
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleBold().run()}
-          isActive={editor.isActive("bold")}
-          title="Bold"
-        >
-          <Bold className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleItalic().run()}
-          isActive={editor.isActive("italic")}
-          title="Italic"
-        >
-          <Italic className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleCode().run()}
-          isActive={editor.isActive("code")}
-          title="Inline Code"
-        >
-          <Code className="h-4 w-4" />
-        </MenuButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
-          isActive={editor.isActive("heading", { level: 1 })}
-          title="Heading 1"
-        >
-          <Heading1 className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-          isActive={editor.isActive("heading", { level: 2 })}
-          title="Heading 2"
-        >
-          <Heading2 className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-          isActive={editor.isActive("heading", { level: 3 })}
-          title="Heading 3"
-        >
-          <Heading3 className="h-4 w-4" />
-        </MenuButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleBulletList().run()}
-          isActive={editor.isActive("bulletList")}
-          title="Bullet List"
-        >
-          <List className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          isActive={editor.isActive("orderedList")}
-          title="Ordered List"
-        >
-          <ListOrdered className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          isActive={editor.isActive("blockquote")}
-          title="Blockquote"
-        >
-          <Quote className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton
-          onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          title="Divider"
-        >
-          <Minus className="h-4 w-4" />
-        </MenuButton>
-
-        <div className="w-px h-6 bg-border mx-1" />
-
-        <MenuButton onClick={setLink} isActive={editor.isActive("link")} title="Link">
-          <LinkIcon className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton onClick={addImage} title="Image">
-          <ImageIcon className="h-4 w-4" />
-        </MenuButton>
-        <MenuButton onClick={insertEIPCard} title="Insert EIP Card">
-          <FileText className="h-4 w-4" />
-        </MenuButton>
-
-        <div className="ml-auto flex items-center gap-1 pr-1">
-          <div className="flex items-center gap-3 px-3 mr-1 text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 border-r border-border h-6">
-            <span>{stats.words} words</span>
-          </div>
-          <MenuButton
-            onClick={() => editor.chain().focus().undo().run()}
-            disabled={!editor.can().undo()}
-            title="Undo"
-          >
-            <Undo className="h-4 w-4" />
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().redo().run()}
-            disabled={!editor.can().redo()}
-            title="Redo"
-          >
-            <Redo className="h-4 w-4" />
-          </MenuButton>
-        </div>
-      </div>
-
-      {/* Bubble Menu (Inline Formatting) */}
+    <div className="relative w-full">
+      {/* Bubble Menu — appears on text selection */}
       <BubbleMenu editor={editor}>
-        <div className="flex items-center gap-0.5 border border-border bg-background rounded-xl shadow-2xl p-1 animate-in fade-in zoom-in duration-200">
-          <MenuButton
+        <div className="flex items-center gap-0.5 rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-150">
+          <BubbleButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive("bold")}
+            title="Bold"
           >
             <Bold className="h-3.5 w-3.5" />
-          </MenuButton>
-          <MenuButton
+          </BubbleButton>
+          <BubbleButton
             onClick={() => editor.chain().focus().toggleItalic().run()}
             isActive={editor.isActive("italic")}
+            title="Italic"
           >
             <Italic className="h-3.5 w-3.5" />
-          </MenuButton>
-          <MenuButton onClick={setLink} isActive={editor.isActive("link")}>
-            <LinkIcon className="h-3.5 w-3.5" />
-          </MenuButton>
-          <div className="w-px h-4 bg-border mx-1" />
-          <MenuButton
-             onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-             isActive={editor.isActive("heading", { level: 2 })}
+          </BubbleButton>
+          <BubbleButton
+            onClick={() => editor.chain().focus().toggleCode().run()}
+            isActive={editor.isActive("code")}
+            title="Code"
           >
-            <Type className="h-3.5 w-3.5" />
-          </MenuButton>
+            <Code className="h-3.5 w-3.5" />
+          </BubbleButton>
+          <BubbleButton
+            onClick={setLink}
+            isActive={editor.isActive("link")}
+            title="Link"
+          >
+            <LinkIcon className="h-3.5 w-3.5" />
+          </BubbleButton>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <BubbleButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+            isActive={editor.isActive("heading", { level: 2 })}
+            title="Heading 2"
+          >
+            <Heading2 className="h-3.5 w-3.5" />
+          </BubbleButton>
+          <BubbleButton
+            onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+            isActive={editor.isActive("heading", { level: 3 })}
+            title="Heading 3"
+          >
+            <Heading3 className="h-3.5 w-3.5" />
+          </BubbleButton>
+          <div className="w-px h-4 bg-border mx-0.5" />
+          <BubbleButton
+            onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            isActive={editor.isActive("blockquote")}
+            title="Quote"
+          >
+            <Quote className="h-3.5 w-3.5" />
+          </BubbleButton>
         </div>
       </BubbleMenu>
 
-      {/* Floating Menu (Block selection on empty lines) */}
+      {/* Floating Menu — appears on empty paragraphs */}
       <FloatingMenu editor={editor}>
-        <div className="flex items-center gap-1 border border-border bg-background/80 backdrop-blur-md rounded-2xl shadow-xl p-1.5 animate-in slide-in-from-left-2 duration-300">
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-            className="rounded-xl px-3 hover:bg-primary/10 hover:text-primary"
-          >
-            <div className="flex items-center gap-2">
-              <Heading2 className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Heading</span>
+        <div className="flex items-center -ml-10">
+          {!blockMenuOpen ? (
+            <button
+              type="button"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                setBlockMenuOpen(true);
+              }}
+              className="h-7 w-7 rounded-full border border-border bg-background text-muted-foreground shadow-sm hover:border-primary/40 hover:text-primary flex items-center justify-center transition-all"
+              title="Insert block"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          ) : (
+            <div className="flex items-center gap-0.5 rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-xl p-1 animate-in slide-in-from-left-2 duration-150">
+              {BLOCK_OPTIONS.map((opt) => (
+                <button
+                  key={opt.label}
+                  type="button"
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    opt.action();
+                  }}
+                  title={opt.label}
+                  className="flex flex-col items-center gap-0.5 px-2.5 py-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors min-w-[40px]"
+                >
+                  {opt.icon}
+                  <span className="text-[9px] font-medium leading-none truncate max-w-[36px]">{opt.label}</span>
+                </button>
+              ))}
+              <button
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  setBlockMenuOpen(false);
+                }}
+                className="ml-1 px-1.5 py-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <AlignLeft className="h-3.5 w-3.5" />
+              </button>
             </div>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-            className="rounded-xl px-3 hover:bg-primary/10 hover:text-primary"
-          >
-            <div className="flex items-center gap-2">
-              <List className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">List</span>
-            </div>
-          </MenuButton>
-          <MenuButton
-            onClick={addImage}
-            className="rounded-xl px-3 hover:bg-primary/10 hover:text-primary"
-          >
-            <div className="flex items-center gap-2">
-              <ImageIcon className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Image</span>
-            </div>
-          </MenuButton>
-          <MenuButton
-            onClick={insertEIPCard}
-            className="rounded-xl px-3 hover:bg-primary/10 hover:text-primary"
-          >
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">EIP Card</span>
-            </div>
-          </MenuButton>
-          <MenuButton
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            className="rounded-xl px-3 hover:bg-primary/10 hover:text-primary"
-          >
-            <div className="flex items-center gap-2">
-              <Quote className="h-4 w-4" />
-              <span className="text-[10px] font-bold uppercase tracking-wider">Quote</span>
-            </div>
-          </MenuButton>
+          )}
         </div>
       </FloatingMenu>
 
       <EditorContent editor={editor} />
+
+      {/* Word count — subtle bottom right */}
+      <div className="mt-4 text-right text-[11px] text-muted-foreground/50 select-none">
+        {stats.words} words
+      </div>
     </div>
   );
 }
