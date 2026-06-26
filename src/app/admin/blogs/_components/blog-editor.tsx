@@ -1,34 +1,38 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   ArrowLeft,
   Loader2,
-  Save,
   Upload,
-  User,
-  Tag,
+  X,
+  Eye,
+  Settings,
+  Globe,
   Clock,
   Calendar,
   Star,
-  Settings,
-  ChevronRight,
-  ChevronLeft,
-  X,
-  Globe,
-  FileText,
-  Eye,
-  Image as ImageIcon,
   Send,
   MessageSquare,
   TrendingUp,
+  User,
+  ImageIcon,
+  CheckCircle2,
+  Circle,
+  ChevronDown,
 } from "lucide-react";
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { toast } from "sonner";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 interface BlogEditorProps {
   mode: "create" | "edit";
@@ -57,6 +61,11 @@ type AuthorProfile = {
   bio: string | null;
 };
 
+const fieldClass =
+  "w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all outline-none";
+const labelClass =
+  "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
+
 export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
   const formatDateInput = (value?: string) => {
     if (!value) return new Date().toISOString().slice(0, 10);
@@ -72,32 +81,37 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
   const [coverImage, setCoverImage] = useState<string | null>(initialData.coverImage);
   const [published, setPublished] = useState(initialData.published);
   const [categoryId, setCategoryId] = useState<string | null>(initialData.categoryId ?? null);
-  const [readingTimeMinutes, setReadingTimeMinutes] = useState<number | null>(initialData.readingTimeMinutes ?? null);
+  const [readingTimeMinutes, setReadingTimeMinutes] = useState<number | null>(
+    initialData.readingTimeMinutes ?? null
+  );
   const [tags, setTags] = useState<string[]>(initialData.tags ?? []);
   const [tagInput, setTagInput] = useState("");
   const [featured, setFeatured] = useState(initialData.featured ?? false);
-  const [publicationDate, setPublicationDate] = useState<string>(formatDateInput(initialData.publicationDate));
-  
+  const [publicationDate, setPublicationDate] = useState<string>(
+    formatDateInput(initialData.publicationDate)
+  );
+  const [upgradeId, setUpgradeId] = useState<number | null>(initialData.upgradeId ?? null);
+
   const [saving, setSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(mode === "edit" ? new Date() : null);
   const [uploading, setUploading] = useState(false);
   const [generatingMeta, setGeneratingMeta] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
   const [categories, setCategories] = useState<Array<{ id: string; slug: string; name: string }>>([]);
+  const [upgrades, setUpgrades] = useState<Array<{ id: number; name: string | null; slug: string }>>([]);
   const [authorProfile, setAuthorProfile] = useState<AuthorProfile | null>(null);
   const [profileForm, setProfileForm] = useState<Partial<AuthorProfile>>({});
-  
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<"settings" | "collaboration" | "analytics">("settings");
-  const [upgrades, setUpgrades] = useState<Array<{ id: number; name: string | null; slug: string }>>([]);
-  const [upgradeId, setUpgradeId] = useState<number | null>(initialData.upgradeId ?? null);
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"post" | "collaboration" | "analytics">("post");
   const [internalComments, setInternalComments] = useState<any[]>([]);
   const [commentInput, setInternalCommentInput] = useState("");
   const [analytics, setAnalytics] = useState<any>(null);
 
-  const fieldClass =
-    "w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all";
-  const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
+  const titleRef = useRef<HTMLTextAreaElement>(null);
+  const inlineImageInputRef = useRef<HTMLInputElement>(null);
+  const inlineImageResolveRef = useRef<((url: string | null) => void) | null>(null);
 
   useEffect(() => {
     client.blog.listCategories().then(setCategories).catch(() => setCategories([]));
@@ -118,22 +132,9 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
     }
   }, [postId, activeTab]);
 
-  const handleAddInternalComment = async () => {
-    if (!postId || !commentInput.trim()) return;
-    try {
-      const res = await client.blog.addInternalComment({ blogId: postId, content: commentInput });
-      setInternalComments([res, ...internalComments]);
-      setInternalCommentInput("");
-      toast.success("Comment added");
-    } catch {
-      toast.error("Failed to add comment");
-    }
-  };
-
-  // Auto-save logic
+  // Auto-save every 15s of inactivity
   useEffect(() => {
     if (mode !== "edit" || !postId || saving) return;
-
     const timer = setTimeout(async () => {
       try {
         await client.blog.update({
@@ -152,26 +153,22 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           upgradeId: upgradeId || undefined,
         });
         setLastSaved(new Date());
-      } catch (err) {
-        console.warn("Auto-save failed", err);
+      } catch {
+        // silent auto-save failure
       }
-    }, 15000); // Auto-save every 15s of inactivity
-
+    }, 15000);
     return () => clearTimeout(timer);
-  }, [postId, slug, title, excerpt, content, coverImage, published, categoryId, readingTimeMinutes, tags, featured, publicationDate, mode, upgradeId]);
-
-  const missingProfileFields = authorProfile
-    ? (["linkedin", "x", "facebook", "telegram"] as const).filter((k) => !authorProfile[k] || authorProfile[k] === "")
-    : [];
+  }, [postId, slug, title, excerpt, content, coverImage, published, categoryId, readingTimeMinutes, tags, featured, publicationDate, mode, upgradeId, saving]);
 
   const handleSlugFromTitle = () => {
-    const s = title
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-    setSlug(s);
+    setSlug(
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim()
+    );
   };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -182,10 +179,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
     try {
       const formData = new FormData();
       formData.append("file", file, file.name);
-      const response = await fetch("/api/blog/upload-cover", {
-        method: "POST",
-        body: formData,
-      });
+      const response = await fetch("/api/blog/upload-cover", { method: "POST", body: formData });
       if (!response.ok) throw new Error("Upload failed");
       const data = (await response.json()) as { url?: string };
       if (!data.url) throw new Error("Missing URL");
@@ -196,6 +190,38 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
       toast.error("Upload failed");
     } finally {
       setUploading(false);
+    }
+  };
+
+  // Opens the hidden file input and returns a promise that resolves with the uploaded URL
+  const handleInlineImageUpload = useCallback((): Promise<string | null> => {
+    return new Promise((resolve) => {
+      inlineImageResolveRef.current = resolve;
+      inlineImageInputRef.current?.click();
+    });
+  }, []);
+
+  const handleInlineImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      inlineImageResolveRef.current?.(null);
+      inlineImageResolveRef.current = null;
+      return;
+    }
+    try {
+      const formData = new FormData();
+      formData.append("file", file, file.name);
+      const response = await fetch("/api/blog/upload-cover", { method: "POST", body: formData });
+      if (!response.ok) throw new Error("Upload failed");
+      const data = (await response.json()) as { url?: string };
+      inlineImageResolveRef.current?.(data.url ?? null);
+      if (data.url) toast.success("Image uploaded");
+    } catch {
+      inlineImageResolveRef.current?.(null);
+      toast.error("Image upload failed");
+    } finally {
+      inlineImageResolveRef.current = null;
+      if (inlineImageInputRef.current) inlineImageInputRef.current.value = "";
     }
   };
 
@@ -228,6 +254,18 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
     }
   };
 
+  const handleAddInternalComment = async () => {
+    if (!postId || !commentInput.trim()) return;
+    try {
+      const res = await client.blog.addInternalComment({ blogId: postId, content: commentInput });
+      setInternalComments([res, ...internalComments]);
+      setInternalCommentInput("");
+      toast.success("Comment added");
+    } catch {
+      toast.error("Failed to add comment");
+    }
+  };
+
   const handleSave = async () => {
     setSaving(true);
     setError(null);
@@ -256,7 +294,6 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
         publicationDate: publicationDate || undefined,
         upgradeId: upgradeId || undefined,
       };
-
       if (mode === "create") {
         const res = await client.blog.create(data);
         toast.success("Post created!");
@@ -264,7 +301,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
       } else if (postId) {
         await client.blog.update({ id: postId, ...data });
         setLastSaved(new Date());
-        toast.success("Changes saved");
+        toast.success("Saved");
       }
     } catch (err: any) {
       setError(err?.message || "Failed to save");
@@ -274,200 +311,254 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
     }
   };
 
+  const handlePublishToggle = async () => {
+    const next = !published;
+    setPublished(next);
+    if (mode === "edit" && postId) {
+      try {
+        await client.blog.update({ id: postId, published: next });
+        setLastSaved(new Date());
+        toast.success(next ? "Published" : "Moved to draft");
+      } catch {
+        setPublished(!next);
+        toast.error("Failed to update status");
+      }
+    }
+  };
+
+  const missingProfileFields = authorProfile
+    ? (["linkedin", "x", "facebook", "telegram"] as const).filter(
+        (k) => !authorProfile[k] || authorProfile[k] === ""
+      )
+    : [];
+
   return (
-    <div className="flex h-screen overflow-hidden bg-background font-space-grotesk">
-      {/* Main Content Area */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-border bg-background/80 px-6 backdrop-blur-sm">
-          <div className="flex items-center gap-4">
+    /* Ghost-style fullscreen overlay — above navbar (z-50), Sheet/dialogs raised to z-[200] */
+    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-background">
+
+      {/* ── Ghost minimal header ── */}
+      <header className="flex h-12 shrink-0 items-center justify-between border-b border-border/60 bg-background px-5">
+        {/* Left */}
+        <div className="flex items-center gap-3">
+          <Link
+            href="/admin?tab=blogs"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+
+          <div className="flex items-center gap-2 text-sm">
+            <button
+              type="button"
+              onClick={handlePublishToggle}
+              disabled={saving || (!slug && !title)}
+              className={cn(
+                "flex items-center gap-1.5 text-xs font-semibold transition-colors",
+                published
+                  ? "text-emerald-500 hover:text-emerald-400"
+                  : "text-amber-500 hover:text-amber-400"
+              )}
+            >
+              {published ? (
+                <CheckCircle2 className="h-3.5 w-3.5" />
+              ) : (
+                <Circle className="h-3.5 w-3.5" />
+              )}
+              {published ? "Published" : "Draft"}
+            </button>
+
+            {lastSaved && (
+              <span className="text-[11px] text-muted-foreground/60">
+                · Saved {lastSaved.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Right */}
+        <div className="flex items-center gap-1.5">
+          {mode === "edit" && slug && (
             <Link
-              href="/admin?tab=blogs"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              href={`/resources/blogs/${slug}`}
+              target="_blank"
+              className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <Eye className="h-3.5 w-3.5" />
+              Preview
             </Link>
-            <div className="flex flex-col">
-              <div className="flex items-center gap-2">
-                <span className={cn(
-                  "text-[10px] font-bold uppercase tracking-widest",
-                  published ? "text-emerald-500" : "text-amber-500"
-                )}>
-                  {published ? "Published" : "Draft"}
-                </span>
-                {lastSaved && (
-                  <span className="text-[10px] text-muted-foreground">
-                    • Saved {lastSaved.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                )}
-              </div>
-              <h1 className="text-sm font-semibold truncate max-w-[200px] sm:max-w-md">
-                {title || "Untitled Post"}
-              </h1>
-            </div>
-          </div>
+          )}
 
-          <div className="flex items-center gap-2">
-             {mode === "edit" && (
-                <Link
-                  href={`/resources/blogs/${slug}`}
-                  target="_blank"
-                  className="inline-flex h-9 items-center gap-2 px-3 rounded-lg text-xs font-bold border border-border text-muted-foreground hover:bg-muted hover:text-foreground transition-all"
-                >
-                  <Eye className="h-4 w-4" />
-                  Preview
-                </Link>
-             )}
-            <button
-              onClick={handleSave}
-              disabled={saving || !slug || !title || !content}
-              className={cn(
-                "inline-flex h-9 items-center gap-2 px-4 rounded-lg text-sm font-bold transition-all shadow-sm",
-                "bg-foreground text-background hover:bg-foreground/90",
-                "disabled:opacity-50 disabled:cursor-not-allowed"
-              )}
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {saving ? "Saving..." : mode === "create" ? "Create Post" : "Save Changes"}
-            </button>
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className={cn(
-                "inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border transition-colors hover:bg-muted",
-                sidebarOpen ? "bg-muted text-foreground" : "text-muted-foreground"
-              )}
-            >
-              <Settings className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !slug || !title || !content}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-lg px-4 text-xs font-bold transition-all",
+              "bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed"
+            )}
+          >
+            {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            {saving ? "Saving…" : mode === "create" ? "Create" : "Save"}
+          </button>
 
-        <main className="mx-auto w-full max-w-4xl flex-1 p-6 md:p-12">
+          <button
+            type="button"
+            onClick={() => setSettingsOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            title="Post settings"
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Writing canvas ── */}
+      <main className="flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-[740px] px-6 py-10 md:py-16">
+
           {error && (
-            <div className="mb-8 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
-              <X className="h-4 w-4 shrink-0" onClick={() => setError(null)} />
+            <div className="mb-8 flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-400">
+              <X className="h-4 w-4 shrink-0 cursor-pointer" onClick={() => setError(null)} />
               {error}
             </div>
           )}
 
-          <div className="space-y-8">
-            <textarea
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Post Title"
-              rows={1}
-              className="w-full resize-none border-none bg-transparent text-4xl font-bold tracking-tight text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-0 sm:text-5xl"
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = "auto";
-                target.style.height = `${target.scrollHeight}px`;
-              }}
-            />
-
-            <RichTextEditor
-              content={content}
-              onChange={setContent}
-              placeholder="Tell your story... (Type / for commands)"
-              className="text-lg leading-relaxed"
-            />
+          {/* Feature image — Ghost puts it above the title */}
+          <div className="mb-10">
+            {coverImage ? (
+              <div className="group relative aspect-[2/1] w-full overflow-hidden rounded-2xl border border-border">
+                <Image src={coverImage} alt="Feature" fill className="object-cover" />
+                <div className="absolute inset-0 flex items-center justify-center gap-3 bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
+                  <label className="cursor-pointer rounded-lg bg-background/90 px-3 py-1.5 text-xs font-semibold text-foreground transition hover:bg-background">
+                    {uploading ? "Uploading…" : "Change image"}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCoverUpload}
+                      disabled={uploading}
+                      className="sr-only"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setCoverImage(null)}
+                    className="rounded-lg bg-red-500/90 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-500"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <label className="group flex cursor-pointer items-center gap-3 text-muted-foreground/40 hover:text-muted-foreground/70 transition-colors">
+                <ImageIcon className="h-5 w-5" />
+                <span className="text-sm">
+                  {uploading ? "Uploading…" : "Add feature image"}
+                </span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverUpload}
+                  disabled={uploading}
+                  className="sr-only"
+                />
+              </label>
+            )}
           </div>
-        </main>
-      </div>
 
-      {/* Sidebar Settings */}
-      <aside
-        className={cn(
-          "z-30 h-screen border-l border-border bg-card/40 backdrop-blur-md transition-all duration-300",
-          sidebarOpen ? "w-[360px]" : "w-0"
-        )}
-      >
-        <div className={cn("flex h-full flex-col overflow-hidden", !sidebarOpen && "hidden")}>
-          <div className="flex h-16 items-center justify-between border-b border-border px-6">
-            <h2 className="text-xs font-bold uppercase tracking-widest text-foreground">Post Editor</h2>
-            <button onClick={() => setSidebarOpen(false)} className="text-muted-foreground hover:text-foreground">
-              <ChevronRight className="h-5 w-5" />
-            </button>
-          </div>
+          {/* Title */}
+          <textarea
+            ref={titleRef}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Post Title"
+            rows={1}
+            className="mb-2 w-full resize-none border-none bg-transparent text-[2.5rem] font-bold leading-tight tracking-tight text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:ring-0"
+            onInput={(e) => {
+              const el = e.target as HTMLTextAreaElement;
+              el.style.height = "auto";
+              el.style.height = `${el.scrollHeight}px`;
+            }}
+          />
 
-          {/* Tab Switcher */}
-          <div className="flex border-b border-border p-1 mx-4 mt-4 bg-muted/40 rounded-xl">
-            {(["settings", "collaboration", "analytics"] as const).map((t) => (
+          {/* Divider */}
+          <div className="mb-10 h-px bg-border/50" />
+
+          {/* Hidden input for inline image uploads */}
+          <input
+            ref={inlineImageInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleInlineImageChange}
+            className="sr-only"
+          />
+
+          {/* Body */}
+          <RichTextEditor
+            content={content}
+            onChange={setContent}
+            placeholder="Begin writing… type / to insert a block"
+            onImageUpload={handleInlineImageUpload}
+          />
+        </div>
+      </main>
+
+      {/* ── Settings Sheet (Ghost-style right panel) ── */}
+      <Sheet open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <SheetContent
+          side="right"
+          className="w-[420px] max-w-full overflow-y-auto bg-background p-0 sm:max-w-[420px]"
+        >
+          <SheetHeader className="border-b border-border px-6 py-4">
+            <SheetTitle className="text-sm font-semibold">Post Settings</SheetTitle>
+          </SheetHeader>
+
+          {/* Tab nav */}
+          <div className="flex border-b border-border">
+            {(["post", "collaboration", "analytics"] as const).map((tab) => (
               <button
-                key={t}
-                onClick={() => setActiveTab(t)}
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
                 className={cn(
-                  "flex-1 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-lg transition-all",
-                  activeTab === t ? "bg-background text-primary shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  "flex-1 py-2.5 text-[11px] font-bold uppercase tracking-wider transition-colors border-b-2",
+                  activeTab === tab
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                {t}
+                {tab}
               </button>
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-            {activeTab === "settings" && (
-              <div className="space-y-6">
-                {/* SEO Preview */}
+          <div className="space-y-6 p-6">
+            {/* POST TAB */}
+            {activeTab === "post" && (
+              <>
+                {/* SEO preview card */}
                 <div className="rounded-xl border border-border bg-muted/20 p-4">
-                  <label className={labelClass}>SEO Preview</label>
-                  <div className="mt-2 space-y-3">
-                    {/* Google Preview */}
-                    <div className="space-y-1">
-                      <div className="text-[10px] text-[#202124]">eipsinsight.com › resources › blogs › {slug || "..."}</div>
-                      <div className="text-sm text-[#1a0dab] hover:underline cursor-pointer font-medium line-clamp-1">{title || "Post Title"}</div>
-                      <div className="text-[11px] text-[#4d5156] line-clamp-2 leading-relaxed">
-                        {excerpt || "Add an excerpt to see how this post will look in search results..."}
-                      </div>
+                  <p className={labelClass}>SEO Preview</p>
+                  <div className="mt-3 space-y-1">
+                    <div className="text-[10px] text-[#202124] dark:text-muted-foreground">
+                      eipsinsight.com › resources › blogs › {slug || "…"}
                     </div>
-                    {/* Social Preview */}
-                    <div className="mt-4 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
-                      {coverImage ? (
-                        <div className="relative aspect-[1.91/1] w-full">
-                          <Image src={coverImage} alt="SEO" fill className="object-cover" />
-                        </div>
-                      ) : (
-                        <div className="aspect-[1.91/1] w-full bg-muted flex items-center justify-center">
-                          <ImageIcon className="h-8 w-8 text-muted-foreground/20" />
-                        </div>
-                      )}
-                      <div className="p-3">
-                        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">EIPSINSIGHT.COM</div>
-                        <div className="mt-0.5 text-xs font-bold line-clamp-1">{title || "Post Title"}</div>
-                        <div className="mt-0.5 text-[10px] text-muted-foreground line-clamp-1">{excerpt}</div>
-                      </div>
+                    <div className="text-sm text-[#1a0dab] dark:text-blue-400 font-medium line-clamp-1">
+                      {title || "Post Title"}
+                    </div>
+                    <div className="text-[11px] text-[#4d5156] dark:text-muted-foreground line-clamp-2 leading-relaxed">
+                      {excerpt || "Add an excerpt to see how it appears in search results…"}
                     </div>
                   </div>
+                  {coverImage && (
+                    <div className="mt-3 overflow-hidden rounded-lg border border-border">
+                      <div className="relative aspect-[1.91/1]">
+                        <Image src={coverImage} alt="Social" fill className="object-cover" />
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Cover Image */}
-                <div>
-                  <label className={labelClass}>Cover Image</label>
-                  <div className="group relative aspect-[16/9] w-full overflow-hidden rounded-xl border border-dashed border-border bg-muted/20 transition-all hover:border-primary/50">
-                    {coverImage ? (
-                      <>
-                        <Image src={coverImage} alt="Cover" fill className="object-cover" />
-                        <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity group-hover:opacity-100">
-                          <button
-                            onClick={() => setCoverImage(null)}
-                            className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-lg hover:bg-red-600"
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <label className="flex h-full w-full cursor-pointer flex-col items-center justify-center gap-2 p-4 text-center">
-                        <Upload className="h-6 w-6 text-muted-foreground group-hover:text-primary" />
-                        <span className="text-[11px] font-medium text-muted-foreground group-hover:text-foreground">
-                          {uploading ? "Uploading..." : "Upload Cover Image"}
-                        </span>
-                        <input type="file" accept="image/*" onChange={handleCoverUpload} disabled={uploading} className="sr-only" />
-                      </label>
-                    )}
-                  </div>
-                </div>
-
-                {/* Slug */}
+                {/* URL Slug */}
                 <div>
                   <label className={labelClass}>URL Slug</label>
                   <div className="flex gap-2">
@@ -479,6 +570,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                       className={fieldClass}
                     />
                     <button
+                      type="button"
                       onClick={handleSlugFromTitle}
                       title="Generate from title"
                       className="rounded-lg border border-border bg-muted/40 px-2.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
@@ -486,9 +578,8 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                       <Globe className="h-4 w-4" />
                     </button>
                   </div>
-                  <p className="mt-1.5 flex items-center gap-1.5 text-[10px] text-muted-foreground truncate">
-                    <Globe className="h-3 w-3" />
-                    /resources/blogs/{slug || "..." }
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    /resources/blogs/{slug || "…"}
                   </p>
                 </div>
 
@@ -497,24 +588,25 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                   <div className="flex items-center justify-between">
                     <label className={labelClass}>Excerpt</label>
                     <button
+                      type="button"
                       onClick={handleGenerateMeta}
                       disabled={generatingMeta || (!title.trim() && !content.trim())}
-                      className="text-[10px] font-medium text-primary hover:underline disabled:opacity-50"
+                      className="text-[10px] font-semibold text-primary hover:underline disabled:opacity-40"
                     >
-                      Auto-gen
+                      {generatingMeta ? "Generating…" : "Auto-generate"}
                     </button>
                   </div>
                   <textarea
                     value={excerpt}
                     onChange={(e) => setExcerpt(e.target.value)}
-                    placeholder="Brief summary..."
+                    placeholder="Brief summary for search & social…"
                     rows={3}
                     className={cn(fieldClass, "resize-none")}
                   />
                 </div>
 
                 {/* Publication details */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className={labelClass}>Category</label>
                     <select
@@ -524,40 +616,51 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                     >
                       <option value="">None</option>
                       {categories.map((c) => (
-                        <option key={c.id} value={c.id}>{c.name}</option>
+                        <option key={c.id} value={c.id}>
+                          {c.name}
+                        </option>
                       ))}
                     </select>
                   </div>
                   <div>
-                    <label className={labelClass}>Upgrade Sync</label>
+                    <label className={labelClass}>Upgrade</label>
                     <select
                       value={upgradeId ?? ""}
-                      onChange={(e) => setUpgradeId(e.target.value ? parseInt(e.target.value, 10) : null)}
+                      onChange={(e) =>
+                        setUpgradeId(e.target.value ? parseInt(e.target.value, 10) : null)
+                      }
                       className={fieldClass}
                     >
                       <option value="">None</option>
                       {upgrades.map((u) => (
-                        <option key={u.id} value={u.id}>{u.name || u.slug}</option>
+                        <option key={u.id} value={u.id}>
+                          {u.name || u.slug}
+                        </option>
                       ))}
                     </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className={labelClass}>Reading Time</label>
+                    <label className={labelClass}>Reading time</label>
                     <div className="relative">
                       <Clock className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                       <input
                         type="number"
                         value={readingTimeMinutes ?? ""}
-                        onChange={(e) => setReadingTimeMinutes(e.target.value ? parseInt(e.target.value, 10) : null)}
+                        onChange={(e) =>
+                          setReadingTimeMinutes(
+                            e.target.value ? parseInt(e.target.value, 10) : null
+                          )
+                        }
+                        placeholder="mins"
                         className={cn(fieldClass, "pl-8")}
                       />
                     </div>
                   </div>
                   <div>
-                    <label className={labelClass}>Publish Date</label>
+                    <label className={labelClass}>Publish date</label>
                     <div className="relative">
                       <Calendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
                       <input
@@ -573,196 +676,249 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                 {/* Tags */}
                 <div>
                   <label className={labelClass}>Tags</label>
-                  <div className="flex flex-wrap gap-1.5 mb-2">
+                  <div className="mb-2 flex flex-wrap gap-1.5">
                     {tags.map((t) => (
-                      <span key={t} className="inline-flex items-center gap-1 rounded-md bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-foreground border border-border">
+                      <span
+                        key={t}
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-foreground"
+                      >
                         {t}
-                        <button onClick={() => removeTag(t)} className="text-muted-foreground hover:text-red-500">
+                        <button
+                          type="button"
+                          onClick={() => removeTag(t)}
+                          className="text-muted-foreground hover:text-red-500"
+                        >
                           <X className="h-2.5 w-2.5" />
                         </button>
                       </span>
                     ))}
                   </div>
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={tagInput}
-                      onChange={(e) => setTagInput(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                      placeholder="Add tag..."
-                      className={fieldClass}
-                    />
-                  </div>
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
+                    placeholder="Type tag and press Enter"
+                    className={fieldClass}
+                  />
                 </div>
 
-                {/* Options */}
-                <div className="space-y-3 pt-2 border-t border-border">
-                  <label className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">Featured Post</span>
+                {/* Toggles */}
+                <div className="space-y-3 border-t border-border pt-4">
+                  <label className="flex cursor-pointer items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Featured post</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Pin to top of the blog listing
+                      </p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={featured}
                       onChange={(e) => setFeatured(e.target.checked)}
-                      className="rounded border-border bg-muted/40 text-primary focus:ring-primary/30 h-4 w-4"
+                      className="h-4 w-4 rounded border-border bg-muted/40 text-primary accent-primary"
                     />
                   </label>
-                  <label className="flex items-center justify-between group cursor-pointer">
-                    <span className="text-xs font-medium text-foreground group-hover:text-primary transition-colors">Publish Locally</span>
+                  <label className="flex cursor-pointer items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-foreground">Publish locally</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Make visible on the site
+                      </p>
+                    </div>
                     <input
                       type="checkbox"
                       checked={published}
                       onChange={(e) => setPublished(e.target.checked)}
-                      className="rounded border-border bg-muted/40 text-primary focus:ring-primary/30 h-4 w-4"
+                      className="h-4 w-4 rounded border-border bg-muted/40 text-primary accent-primary"
                     />
                   </label>
                 </div>
 
-                {/* Author Profile Quick-Link */}
+                {/* Incomplete profile warning */}
                 {missingProfileFields.length > 0 && (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 mt-8">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-amber-500 mb-1">
+                  <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-4">
+                    <div className="mb-1 flex items-center gap-2 text-xs font-semibold text-amber-500">
                       <User className="h-3.5 w-3.5" />
-                      Profile Incomplete
+                      Profile incomplete
                     </div>
-                    <p className="text-[10px] text-muted-foreground mb-3 leading-relaxed">
-                      Your author profile is missing {missingProfileFields.length} social links. Complete it to show social buttons on your posts.
+                    <p className="mb-3 text-[10px] leading-relaxed text-muted-foreground">
+                      Missing {missingProfileFields.length} social link
+                      {missingProfileFields.length > 1 ? "s" : ""}. Complete your profile to
+                      show social buttons on your posts.
                     </p>
                     <div className="space-y-2">
-                       {missingProfileFields.includes("x") && (
-                         <input
-                           type="url"
-                           placeholder="X (Twitter) URL"
-                           className="w-full bg-background/50 border border-border rounded-md px-2 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500/30"
-                           value={profileForm.x || ""}
-                           onChange={(e) => setProfileForm(p => ({ ...p, x: e.target.value }))}
-                         />
-                       )}
-                       {missingProfileFields.includes("linkedin") && (
-                         <input
-                           type="url"
-                           placeholder="LinkedIn URL"
-                           className="w-full bg-background/50 border border-border rounded-md px-2 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500/30"
-                           value={profileForm.linkedin || ""}
-                           onChange={(e) => setProfileForm(p => ({ ...p, linkedin: e.target.value }))}
-                         />
-                       )}
-                       <textarea
-                         placeholder="Your Author Bio..."
-                         rows={2}
-                         className="w-full bg-background/50 border border-border rounded-md px-2 py-1.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-amber-500/30 resize-none"
-                         value={profileForm.bio || ""}
-                         onChange={(e) => setProfileForm(p => ({ ...p, bio: e.target.value }))}
-                       />
+                      {missingProfileFields.includes("x") && (
+                        <input
+                          type="url"
+                          placeholder="X (Twitter) URL"
+                          className="w-full rounded-md border border-border bg-background/50 px-2 py-1.5 text-[10px] outline-none focus:ring-1 focus:ring-amber-500/30"
+                          value={profileForm.x || ""}
+                          onChange={(e) => setProfileForm((p) => ({ ...p, x: e.target.value }))}
+                        />
+                      )}
+                      {missingProfileFields.includes("linkedin") && (
+                        <input
+                          type="url"
+                          placeholder="LinkedIn URL"
+                          className="w-full rounded-md border border-border bg-background/50 px-2 py-1.5 text-[10px] outline-none focus:ring-1 focus:ring-amber-500/30"
+                          value={profileForm.linkedin || ""}
+                          onChange={(e) =>
+                            setProfileForm((p) => ({ ...p, linkedin: e.target.value }))
+                          }
+                        />
+                      )}
+                      <textarea
+                        placeholder="Your author bio…"
+                        rows={2}
+                        className="w-full resize-none rounded-md border border-border bg-background/50 px-2 py-1.5 text-[10px] outline-none focus:ring-1 focus:ring-amber-500/30"
+                        value={profileForm.bio || ""}
+                        onChange={(e) => setProfileForm((p) => ({ ...p, bio: e.target.value }))}
+                      />
                     </div>
                   </div>
                 )}
-              </div>
+              </>
             )}
 
+            {/* COLLABORATION TAB */}
             {activeTab === "collaboration" && (
               <div className="space-y-6">
                 <div>
-                  <label className={labelClass}>Editor Comments</label>
-                  <p className="text-[10px] text-muted-foreground mb-4">Internal notes for other editors and contributors.</p>
-                  <div className="space-y-4">
-                    <div className="relative">
-                      <textarea
-                        value={commentInput}
-                        onChange={(e) => setInternalCommentInput(e.target.value)}
-                        placeholder="Leave a note..."
-                        rows={3}
-                        className={cn(fieldClass, "pr-12 resize-none")}
-                      />
-                      <button
-                        onClick={handleAddInternalComment}
-                        disabled={!commentInput.trim()}
-                        className="absolute bottom-2 right-2 p-2 rounded-lg bg-primary text-primary-foreground disabled:opacity-50 transition-all hover:scale-105"
-                      >
-                        <Send className="h-4 w-4" />
-                      </button>
-                    </div>
+                  <label className={labelClass}>Editor comments</label>
+                  <p className="mb-4 text-[10px] text-muted-foreground">
+                    Internal notes for other editors and contributors.
+                  </p>
+                  <div className="relative">
+                    <textarea
+                      value={commentInput}
+                      onChange={(e) => setInternalCommentInput(e.target.value)}
+                      placeholder="Leave a note…"
+                      rows={3}
+                      className={cn(fieldClass, "resize-none pr-12")}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddInternalComment}
+                      disabled={!commentInput.trim()}
+                      className="absolute bottom-2 right-2 rounded-lg bg-primary p-2 text-primary-foreground disabled:opacity-40 transition-all hover:scale-105"
+                    >
+                      <Send className="h-4 w-4" />
+                    </button>
+                  </div>
 
-                    <div className="space-y-4 pt-4 border-t border-border">
-                      {internalComments.map((c) => (
-                        <div key={c.id} className="flex gap-3">
-                          <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border">
-                             {c.user.image ? (
-                               <Image src={c.user.image} alt={c.user.name} fill className="object-cover" />
-                             ) : (
-                               <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] font-bold">
-                                 {c.user.name.charAt(0)}
-                               </div>
-                             )}
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold">{c.user.name}</span>
-                              <span className="text-[8px] text-muted-foreground">{new Date(c.createdAt).toLocaleDateString()}</span>
+                  <div className="mt-4 space-y-4 border-t border-border pt-4">
+                    {internalComments.map((c) => (
+                      <div key={c.id} className="flex gap-3">
+                        <div className="relative h-6 w-6 shrink-0 overflow-hidden rounded-full border border-border">
+                          {c.user.image ? (
+                            <Image src={c.user.image} alt={c.user.name} fill className="object-cover" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-muted text-[8px] font-bold">
+                              {c.user.name.charAt(0)}
                             </div>
-                            <p className="text-[11px] leading-relaxed text-muted-foreground bg-muted/20 p-2 rounded-lg border border-border/50">
-                              {c.content}
-                            </p>
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold">{c.user.name}</span>
+                            <span className="text-[8px] text-muted-foreground">
+                              {new Date(c.createdAt).toLocaleDateString()}
+                            </span>
                           </div>
+                          <p className="mt-1 rounded-lg border border-border/50 bg-muted/20 p-2 text-[11px] leading-relaxed text-muted-foreground">
+                            {c.content}
+                          </p>
                         </div>
-                      ))}
-                      {internalComments.length === 0 && (
-                        <div className="py-12 text-center">
-                          <MessageSquare className="mx-auto h-8 w-8 text-muted-foreground/20 mb-3" />
-                          <p className="text-[10px] text-muted-foreground">No comments yet. Start a discussion!</p>
-                        </div>
-                      )}
-                    </div>
+                      </div>
+                    ))}
+                    {internalComments.length === 0 && (
+                      <div className="py-10 text-center">
+                        <MessageSquare className="mx-auto mb-3 h-8 w-8 text-muted-foreground/20" />
+                        <p className="text-[10px] text-muted-foreground">
+                          No comments yet. Start a discussion!
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
 
+            {/* ANALYTICS TAB */}
             {activeTab === "analytics" && (
-               <div className="space-y-6">
-                 <div>
-                   <label className={labelClass}>Engagement Overview</label>
-                   <div className="grid grid-cols-2 gap-4 mt-4">
-                     <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                       <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Views</div>
-                       <div className="mt-1 text-2xl font-bold">{analytics?.views ?? 0}</div>
-                     </div>
-                     <div className="rounded-2xl border border-border bg-muted/20 p-4">
-                       <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">EIP Clicks</div>
-                       <div className="mt-1 text-2xl font-bold text-primary">{analytics?.clicks ?? 0}</div>
-                     </div>
-                   </div>
-                 </div>
-                 
-                 <div className="rounded-2xl border border-border bg-primary/5 p-4 border-dashed">
-                   <div className="flex items-center gap-2 text-xs font-bold text-primary mb-2">
-                     <TrendingUp className="h-3.5 w-3.5" />
-                     Persona Insights
-                   </div>
-                   <p className="text-[10px] text-muted-foreground leading-relaxed">
-                     Currently most popular among <b>Protocol Researchers</b> and <b>Core Devs</b>. Average reading time: 4.2 mins.
-                   </p>
-                 </div>
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-2xl border border-border bg-muted/20 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      Views
+                    </div>
+                    <div className="mt-1 text-2xl font-bold">{analytics?.views ?? 0}</div>
+                  </div>
+                  <div className="rounded-2xl border border-border bg-muted/20 p-4">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                      EIP Clicks
+                    </div>
+                    <div className="mt-1 text-2xl font-bold text-primary">
+                      {analytics?.clicks ?? 0}
+                    </div>
+                  </div>
+                </div>
 
-                 <div>
-                   <label className={labelClass}>Conversion Rate</label>
-                   <div className="mt-4 flex items-end gap-4">
-                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-primary" 
-                          style={{ width: `${(analytics?.conversions ?? 0) / (analytics?.views || 1) * 100}%` }} 
-                        />
-                      </div>
-                      <span className="text-xs font-bold">{analytics?.conversions ?? 0} signups</span>
-                   </div>
-                   <p className="mt-2 text-[10px] text-muted-foreground italic">
-                     Readers who joined the newsletter after this post.
-                   </p>
-                 </div>
-               </div>
+                <div className="rounded-2xl border border-dashed border-primary/30 bg-primary/5 p-4">
+                  <div className="mb-2 flex items-center gap-2 text-xs font-bold text-primary">
+                    <TrendingUp className="h-3.5 w-3.5" />
+                    Persona Insights
+                  </div>
+                  <p className="text-[10px] leading-relaxed text-muted-foreground">
+                    Most popular among{" "}
+                    <strong className="text-foreground">Protocol Researchers</strong> and{" "}
+                    <strong className="text-foreground">Core Devs</strong>. Average reading
+                    time: 4.2 mins.
+                  </p>
+                </div>
+
+                <div>
+                  <label className={labelClass}>Conversion rate</label>
+                  <div className="mt-3 flex items-center gap-4">
+                    <div className="flex-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-primary transition-all"
+                        style={{
+                          width: `${
+                            ((analytics?.conversions ?? 0) / (analytics?.views || 1)) * 100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                    <span className="text-xs font-bold">
+                      {analytics?.conversions ?? 0} signups
+                    </span>
+                  </div>
+                  <p className="mt-2 text-[10px] italic text-muted-foreground">
+                    Readers who joined the newsletter after this post.
+                  </p>
+                </div>
+              </div>
             )}
           </div>
-        </div>
-      </aside>
+
+          {/* Sheet footer — save button */}
+          <div className="sticky bottom-0 border-t border-border bg-background p-4">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saving || !slug || !title || !content}
+              className={cn(
+                "w-full rounded-xl py-2.5 text-sm font-bold transition-all",
+                "bg-foreground text-background hover:bg-foreground/90 disabled:opacity-40 disabled:cursor-not-allowed"
+              )}
+            >
+              {saving ? "Saving…" : mode === "create" ? "Create post" : "Save changes"}
+            </button>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
