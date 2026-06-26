@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 // @ts-ignore
 import { BubbleMenu, FloatingMenu } from "@tiptap/react/menus";
@@ -30,6 +30,7 @@ import {
   Minus,
   Plus,
   AlignLeft,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -38,7 +39,8 @@ interface RichTextEditorProps {
   onChange: (markdown: string) => void;
   placeholder?: string;
   className?: string;
-  onImageUpload?: () => Promise<string | null>;
+  /** REST endpoint that accepts multipart/form-data with field "file" and returns { url: string } */
+  imageUploadEndpoint?: string;
 }
 
 const BubbleButton = ({
@@ -72,9 +74,11 @@ export function RichTextEditor({
   onChange,
   placeholder = "Write your story… type / for blocks",
   className,
-  onImageUpload,
+  imageUploadEndpoint,
 }: RichTextEditorProps) {
   const [blockMenuOpen, setBlockMenuOpen] = useState(false);
+  const [imgUploading, setImgUploading] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const editor = useEditor({
     enableInputRules: true,
@@ -108,6 +112,8 @@ export function RichTextEditor({
         bulletListMarker: "-",
         linkify: true,
         breaks: true,
+        transformPastedText: true,   // parse markdown when pasting plain text
+        transformCopiedText: false,  // don't mangle copied rich text back to md
       }),
     ],
     content,
@@ -134,12 +140,10 @@ export function RichTextEditor({
     },
   });
 
-  const addImage = useCallback(async () => {
-    if (onImageUpload) {
-      const url = await onImageUpload();
-      if (url && editor) {
-        editor.chain().focus().setImage({ src: url }).run();
-      }
+  const addImage = useCallback(() => {
+    if (imageUploadEndpoint) {
+      // trigger the hidden file input — upload happens in handleImageFile
+      imageInputRef.current?.click();
     } else {
       const url = window.prompt("Enter image URL");
       if (url && editor) {
@@ -147,7 +151,35 @@ export function RichTextEditor({
       }
     }
     setBlockMenuOpen(false);
-  }, [editor, onImageUpload]);
+  }, [editor, imageUploadEndpoint]);
+
+  const handleImageFile = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // reset so the same file can be re-selected later
+    if (e.target) e.target.value = "";
+    if (!file || !imageUploadEndpoint) return;
+
+    setImgUploading(true);
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const res = await fetch(imageUploadEndpoint, { method: "POST", body: form });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = (await res.json()) as { url?: string };
+      if (data.url && editor) {
+        editor.chain().focus().setImage({ src: data.url }).run();
+      } else {
+        throw new Error("No URL returned");
+      }
+    } catch (err) {
+      console.error("[image-upload]", err);
+      // fallback: ask for URL manually
+      const url = window.prompt("Upload failed. Enter image URL instead:");
+      if (url && editor) editor.chain().focus().setImage({ src: url }).run();
+    } finally {
+      setImgUploading(false);
+    }
+  }, [editor, imageUploadEndpoint]);
 
   const setLink = useCallback(() => {
     const previousUrl = editor?.getAttributes("link").href;
@@ -249,6 +281,25 @@ export function RichTextEditor({
 
   return (
     <div className="relative w-full">
+      {/* Hidden file input for image uploads */}
+      {imageUploadEndpoint && (
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageFile}
+          className="sr-only"
+        />
+      )}
+
+      {/* Upload progress indicator */}
+      {imgUploading && (
+        <div className="mb-4 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground animate-in fade-in">
+          <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+          Uploading image…
+        </div>
+      )}
+
       {/* Bubble Menu — appears on text selection */}
       <BubbleMenu editor={editor}>
         <div className="flex items-center gap-0.5 rounded-xl border border-border bg-background/95 backdrop-blur-md shadow-2xl p-1 animate-in fade-in zoom-in-95 duration-150">

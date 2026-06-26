@@ -110,8 +110,6 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
   const [analytics, setAnalytics] = useState<any>(null);
 
   const titleRef = useRef<HTMLTextAreaElement>(null);
-  const inlineImageInputRef = useRef<HTMLInputElement>(null);
-  const inlineImageResolveRef = useRef<((url: string | null) => void) | null>(null);
 
   useEffect(() => {
     client.blog.listCategories().then(setCategories).catch(() => setCategories([]));
@@ -190,38 +188,6 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
       toast.error("Upload failed");
     } finally {
       setUploading(false);
-    }
-  };
-
-  // Opens the hidden file input and returns a promise that resolves with the uploaded URL
-  const handleInlineImageUpload = useCallback((): Promise<string | null> => {
-    return new Promise((resolve) => {
-      inlineImageResolveRef.current = resolve;
-      inlineImageInputRef.current?.click();
-    });
-  }, []);
-
-  const handleInlineImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) {
-      inlineImageResolveRef.current?.(null);
-      inlineImageResolveRef.current = null;
-      return;
-    }
-    try {
-      const formData = new FormData();
-      formData.append("file", file, file.name);
-      const response = await fetch("/api/blog/upload-cover", { method: "POST", body: formData });
-      if (!response.ok) throw new Error("Upload failed");
-      const data = (await response.json()) as { url?: string };
-      inlineImageResolveRef.current?.(data.url ?? null);
-      if (data.url) toast.success("Image uploaded");
-    } catch {
-      inlineImageResolveRef.current?.(null);
-      toast.error("Image upload failed");
-    } finally {
-      inlineImageResolveRef.current = null;
-      if (inlineImageInputRef.current) inlineImageInputRef.current.value = "";
     }
   };
 
@@ -483,21 +449,12 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
           {/* Divider */}
           <div className="mb-10 h-px bg-border/50" />
 
-          {/* Hidden input for inline image uploads */}
-          <input
-            ref={inlineImageInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleInlineImageChange}
-            className="sr-only"
-          />
-
           {/* Body */}
           <RichTextEditor
             content={content}
             onChange={setContent}
             placeholder="Begin writing… type / to insert a block"
-            onImageUpload={handleInlineImageUpload}
+            imageUploadEndpoint="/api/blog/upload-cover"
           />
         </div>
       </main>
