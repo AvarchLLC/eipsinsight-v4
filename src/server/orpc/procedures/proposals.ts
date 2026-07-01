@@ -96,10 +96,11 @@ function getHistoricalIncludedUpgrades(eipNumber: number): Array<{
   slug: string;
   bucket: string;
   commit_date: string;
+  layer: string | null;
 }> {
   const normalized = String(eipNumber);
   const mergeTimestamp = new Date('2022-09-15').getTime();
-  const entries = new Map<string, { name: string; slug: string; bucket: string; commit_date: string }>();
+  const entries = new Map<string, { name: string; slug: string; bucket: string; commit_date: string; layer: string | null }>();
 
   rawData.forEach((item) => {
     const includesEip = item.eips.some((value) => value.replace('EIP-', '').replace('-removed', '') === normalized);
@@ -118,6 +119,7 @@ function getHistoricalIncludedUpgrades(eipNumber: number): Array<{
         slug,
         bucket: 'included',
         commit_date: new Date(item.date).toISOString(),
+        layer: item.layer || null,
       });
     }
   });
@@ -489,6 +491,11 @@ export const proposalsProcedures = {
       const combined = Array.from(upgradeMap.entries())
         .map(([upgradeId, eventData]) => {
         const upgrade = upgradesData.find(u => u.id === upgradeId);
+        const rawUpgrade = rawData.find(
+          (u) =>
+            u.upgrade.toLowerCase() === upgrade?.name?.toLowerCase() ||
+            u.upgrade.toLowerCase() === upgrade?.slug?.toLowerCase()
+        );
         
         return {
           upgrade_id: upgradeId,
@@ -496,6 +503,7 @@ export const proposalsProcedures = {
           slug: upgrade?.slug || '',
           bucket: eventData.bucket,
           commit_date: eventData.commit_date?.toISOString() || null,
+          layer: rawUpgrade?.layer || null,
         };
       });
 
@@ -506,6 +514,7 @@ export const proposalsProcedures = {
         slug: string;
         bucket: string;
         commit_date: string | null;
+        layer: string | null;
       }>();
       combined.forEach((item) => bySlug.set(item.slug || item.name.toLowerCase(), item));
       historicalIncluded.forEach((item, index) => {
@@ -517,6 +526,7 @@ export const proposalsProcedures = {
           slug: item.slug,
           bucket: item.bucket,
           commit_date: item.commit_date,
+          layer: item.layer,
         });
       });
 

@@ -147,6 +147,7 @@ interface UpgradeInclusion {
   slug: string;
   bucket: string;
   commit_date: string | null;
+  layer?: string | null;
 }
 
 interface ResourceArticle {
@@ -238,6 +239,7 @@ function getHistoricalIncludedUpgrades(eipNumber: number): UpgradeInclusion[] {
         slug,
         bucket: 'included',
         commit_date: new Date(item.date).toISOString(),
+        layer: item.layer || null,
       });
     }
   });
@@ -272,6 +274,19 @@ function getBucketBadgeClass(bucket: string | null): string {
   if (normalized === 'declined') return 'border-red-500/25 bg-red-500/12 text-red-700 dark:text-red-300';
   if (normalized === 'proposed') return 'border-blue-500/25 bg-blue-500/12 text-blue-700 dark:text-blue-300';
   return 'border-border bg-muted/60 text-muted-foreground';
+}
+
+function getStatusBadgeClass(status: string | null): string {
+  if (!status) return 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300';
+  const norm = status.toLowerCase();
+  if (norm === 'draft') return 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300';
+  if (norm === 'review') return 'border-amber-500/25 bg-amber-500/12 text-amber-700 dark:text-amber-300';
+  if (norm === 'last call') return 'border-orange-500/25 bg-orange-500/12 text-orange-700 dark:text-orange-300';
+  if (norm === 'final') return 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300';
+  if (norm === 'living') return 'border-cyan-500/25 bg-cyan-500/12 text-cyan-700 dark:text-cyan-300';
+  if (norm === 'stagnant') return 'border-gray-500/25 bg-gray-500/12 text-gray-700 dark:text-gray-400';
+  if (norm === 'withdrawn') return 'border-red-500/25 bg-red-500/12 text-red-700 dark:text-red-300';
+  return 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300';
 }
 
 // Helper to format waiting_on state
@@ -365,8 +380,13 @@ export default function ProposalDetailPage() {
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
   const [showAi, setShowAi] = useState(false);
-  const [showEnterpriseView, setShowEnterpriseView] = useState(false);
   const effectivePersona = useEffectivePersona();
+  const [showEnterpriseView, setShowEnterpriseView] = useState(effectivePersona === 'enterprise');
+  const [prevPersona, setPrevPersona] = useState(effectivePersona);
+  if (effectivePersona !== prevPersona) {
+    setPrevPersona(effectivePersona);
+    setShowEnterpriseView(effectivePersona === 'enterprise');
+  }
 
   // Normalize repo name
   const normalizedRepo = repo.toLowerCase().replace(/s$/, '');
@@ -505,37 +525,41 @@ export default function ProposalDetailPage() {
     if (!markdownContent || !number) return;
 
     let cancelled = false;
-    setAiSummaryLoading(true);
-    setAiSummaryError(null);
 
-    fetch('/api/eip-summary', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ eipNo: number, content: markdownContent, proposalType: repoDisplayName }),
-    })
-      .then(async (res) => {
+    const fetchAiSummary = async () => {
+      try {
+        setAiSummaryLoading(true);
+        setAiSummaryError(null);
+
+        const res = await fetch('/api/eip-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ eipNo: number, content: markdownContent, proposalType: repoDisplayName }),
+        });
+
         const data = await res.json();
         if (cancelled) return;
+
         if (res.ok) {
           setAiSummary(data.summary);
         } else {
           setAiSummaryError(data.error || 'Failed to generate summary');
         }
-      })
-      .catch(() => {
+      } catch {
         if (!cancelled) setAiSummaryError('Failed to generate summary');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setAiSummaryLoading(false);
-      });
+      }
+    };
 
-    return () => { cancelled = true; };
-  }, [markdownContent, number, normalizedRepo]);
+    fetchAiSummary();
 
-  // Auto-show enterprise brief when enterprise persona is active
-  useEffect(() => {
-    if (effectivePersona === 'enterprise') setShowEnterpriseView(true);
-  }, [effectivePersona]);
+    return () => {
+      cancelled = true;
+    };
+  }, [markdownContent, number, repoDisplayName]);
+
+
 
   const handleCopyLink = async () => {
     const url = window.location.href;
@@ -721,24 +745,58 @@ export default function ProposalDetailPage() {
 
         <div className="mx-auto mt-6 w-full px-3 pb-10 sm:px-4 lg:px-5 xl:px-6">
           <div className="space-y-4">
-          {/* Network upgrade chip — shown before the preamble when upgrades exist */}
-          {upgrades.length > 0 && latestUpgrade && (
-            <div className="flex flex-wrap gap-2">
-              {upgrades.map((upgrade) => (
-                <span
-                  key={upgrade.slug ?? upgrade.name}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium',
-                    getBucketBadgeClass(upgrade.bucket)
-                  )}
-                >
-                  <span className="font-semibold">{upgrade.name}</span>
-                  <span className="opacity-50">·</span>
-                  <span>{formatInclusionBucket(upgrade.bucket)}</span>
-                </span>
-              ))}
-            </div>
-          )}
+          {/* EIP Metadata Chips */}
+          <div className="flex flex-wrap gap-2">
+            {/* Status Chip */}
+            <span className={cn(
+              'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+              getStatusBadgeClass(proposal.status)
+            )}>
+              Status: {proposal.status}
+            </span>
+
+            {/* Type/Category Chip */}
+            {(proposal.type || proposal.category) && (
+              <span className="inline-flex items-center rounded-full border border-border bg-muted/60 text-muted-foreground px-3 py-1 text-xs font-medium">
+                {proposal.type && proposal.category
+                  ? `${proposal.type}: ${proposal.category}`
+                  : proposal.type || proposal.category}
+              </span>
+            )}
+
+            {/* Layer Chip (EL/CL) */}
+            {proposal.category === 'Core' && (
+              <span className={cn(
+                'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+                latestUpgrade?.layer === 'consensus'
+                  ? 'border-violet-500/25 bg-violet-500/12 text-violet-700 dark:text-violet-300'
+                  : latestUpgrade?.layer === 'execution'
+                    ? 'border-cyan-500/25 bg-cyan-500/12 text-cyan-700 dark:text-cyan-300'
+                    : 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300'
+              )}>
+                {latestUpgrade?.layer === 'consensus'
+                  ? 'Consensus Layer (CL)'
+                  : latestUpgrade?.layer === 'execution'
+                    ? 'Execution Layer (EL)'
+                    : 'Protocol Layer (Core)'}
+              </span>
+            )}
+
+            {/* Network upgrade chips */}
+            {upgrades.length > 0 && upgrades.map((upgrade) => (
+              <span
+                key={upgrade.slug ?? upgrade.name}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium',
+                  getBucketBadgeClass(upgrade.bucket)
+                )}
+              >
+                <span className="font-semibold">{upgrade.name}</span>
+                <span className="opacity-50">·</span>
+                <span>{formatInclusionBucket(upgrade.bucket)}</span>
+              </span>
+            ))}
+          </div>
 
           {/* Enterprise Brief Panel */}
           {showEnterpriseView && (
@@ -778,6 +836,18 @@ export default function ProposalDetailPage() {
                     <tr>
                       <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</td>
                       <td className="px-6 py-4 text-sm text-foreground">{proposal.category}</td>
+                    </tr>
+                  )}
+                  {proposal.category === 'Core' && (
+                    <tr>
+                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Layer</td>
+                      <td className="px-6 py-4 text-sm text-foreground">
+                        {latestUpgrade?.layer
+                          ? latestUpgrade.layer === 'consensus'
+                            ? 'Consensus Layer (CL)'
+                            : 'Execution Layer (EL)'
+                          : 'Protocol Layer (Pending Assignment)'}
+                      </td>
                     </tr>
                   )}
                   {proposal.authors.length > 0 && (

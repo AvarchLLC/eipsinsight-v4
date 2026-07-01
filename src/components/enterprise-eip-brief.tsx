@@ -39,6 +39,7 @@ interface UpgradeInclusion {
   slug: string;
   bucket: string;
   commit_date: string | null;
+  layer?: string | null;
 }
 
 interface StatusEvent {
@@ -364,6 +365,17 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
                   { label: 'Purpose', value: proposal.title, colorClass: undefined },
                   { label: 'Status', value: proposal.status, colorClass: undefined },
                   { label: 'Network Upgrade', value: latestUpgrade?.name ?? 'Not assigned', colorClass: undefined },
+                  {
+                    label: 'Layer',
+                    value: isCore
+                      ? latestUpgrade?.layer
+                        ? latestUpgrade.layer === 'consensus'
+                          ? 'Consensus Layer (CL)'
+                          : 'Execution Layer (EL)'
+                        : 'Protocol Layer (Pending Assignment)'
+                      : 'Application Layer',
+                    colorClass: undefined
+                  },
                   { label: 'Risk Level', value: `${enterpriseRisk.level} — ${enterpriseRisk.note}`, colorClass: enterpriseRisk.color },
                   { label: 'Action Required', value: enterpriseAction, colorClass: undefined },
                 ] as { label: string; value: string; colorClass?: string }[]).map(({ label, value, colorClass }) => (
