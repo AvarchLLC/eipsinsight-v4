@@ -143,6 +143,9 @@ Editor identification:
 - pr_events.actor_role = 'EDITOR'
 - contributor_activity.role = 'EDITOR'
 - For leaderboard: contributor_scores (pre-aggregated, fast)
+- To identify which editor merged (or approved) a specific EIP:
+  Since merges are often automated by bots (like 'eth-bot'), look for the editor who approved the pull request linked to that EIP.
+  To find approvals: join pull_request_eips to pull_requests and left join to pr_reviews (where review_state = 'approved') and pr_events (where event_type = 'reviewed' and metadata->>'review_state' = 'approved') and ensure the reviewer/actor is an editor (role = 'EDITOR' or actor_role = 'EDITOR').
 
 Timestamps:
 - All timestamps are TIMESTAMPTZ (UTC)
@@ -641,6 +644,9 @@ A: {"title":"EIPs reaching Final status by year","description":"Count of proposa
 Q: Show open PRs waiting on editor review for more than 30 days
 A: {"title":"Open PRs waiting on editor 30+ days","description":"Pull requests in WAITING_EDITOR state for over 30 days, ordered by wait time.","sql":"SELECT pr.pr_number, r.name AS repo, pr.title, pr.author, EXTRACT(DAY FROM (NOW() - pgs.waiting_since))::int AS waiting_days FROM pr_governance_state pgs JOIN pull_requests pr ON pr.pr_number = pgs.pr_number AND pr.repository_id = pgs.repository_id JOIN repositories r ON r.id = pr.repository_id WHERE pgs.current_state IN ('WAITING_EDITOR','WAITING_ON_EDITOR') AND pr.state = 'open' AND pgs.waiting_since < NOW() - INTERVAL '30 days' ORDER BY waiting_days DESC LIMIT 50"}
 
+Q: Which editor merged EIP-7212?
+A: {"title":"Merging editor for EIP-7212","description":"Finds the editor who approved or merged the PR associated with EIP-7212.","sql":"SELECT DISTINCT COALESCE(pr.reviewer, pe.actor) AS editor FROM pull_request_eips pre JOIN pull_requests p ON p.pr_number = pre.pr_number AND p.repository_id = pre.repository_id LEFT JOIN pr_reviews pr ON pr.pr_number = p.pr_number AND pr.repository_id = p.repository_id AND LOWER(pr.review_state) = 'approved' AND pr.reviewer IN (SELECT DISTINCT actor FROM contributor_activity WHERE role = 'EDITOR') LEFT JOIN pr_events pe ON pe.pr_number = p.pr_number AND pe.repository_id = p.repository_id AND pe.actor_role = 'EDITOR' AND pe.event_type = 'reviewed' AND LOWER(pe.metadata->>'review_state') = 'approved' WHERE pre.eip_number = 7212 AND p.merged_at IS NOT NULL AND (pr.reviewer IS NOT NULL OR pe.actor IS NOT NULL)"}
+
 ${prior ? `== CONVERSATION CONTEXT ==\n${prior}\n\n` : ''}Now answer the user's question with the JSON return shape only.`
 
   const parseResult = (text: string) => {
@@ -770,6 +776,57 @@ function detectRepoScopeFromQuestion(query: string): 'eips' | 'ercs' | 'rips' | 
 
 async function runDeterministicAnalyticsQuery(question: string): Promise<AssistantDataQuery | null> {
   const q = question.toLowerCase()
+  
+  // Pattern 1: Who merged/approved EIP-XXXX?
+  const asksWhoMerged = /\b(who|which editor|which editors)\b.*\b(merge|merged|approve|approved)\b/i.test(q)
+  const proposalRef = parseProposalReference(question)
+  
+  if (asksWhoMerged && proposalRef.number) {
+    const sql = `
+      SELECT DISTINCT COALESCE(pr.reviewer, pe.actor) AS editor
+      FROM pull_request_eips pre
+      JOIN pull_requests p 
+        ON p.pr_number = pre.pr_number 
+        AND p.repository_id = pre.repository_id
+      LEFT JOIN pr_reviews pr 
+        ON pr.pr_number = p.pr_number 
+        AND pr.repository_id = p.repository_id 
+        AND LOWER(pr.review_state) = 'approved' 
+        AND pr.reviewer IN (SELECT DISTINCT actor FROM contributor_activity WHERE role = 'EDITOR')
+      LEFT JOIN pr_events pe 
+        ON pe.pr_number = p.pr_number 
+        AND pe.repository_id = p.repository_id 
+        AND pe.actor_role = 'EDITOR' 
+        AND pe.event_type = 'reviewed' 
+        AND LOWER(pe.metadata->>'review_state') = 'approved'
+      WHERE pre.eip_number = $1 
+        AND p.merged_at IS NOT NULL 
+        AND (pr.reviewer IS NOT NULL OR pe.actor IS NOT NULL)
+      LIMIT 100
+    `
+    try {
+      const rawRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(sql, proposalRef.number)
+      const safeRows = rawRows.map((row) =>
+        Object.fromEntries(
+          Object.entries(row).map(([key, value]) => [key, normalizeCellValue(value)])
+        ) as Record<string, string | number | boolean | null>
+      )
+      const columns = safeRows.length > 0 ? Object.keys(safeRows[0]) : []
+      const prefix = proposalRef.repo ? proposalRef.repo.toUpperCase() : 'Proposal'
+      
+      return {
+        title: `Merging editor for ${prefix}-${proposalRef.number}`,
+        description: `The editor who approved or merged the PR associated with ${prefix}-${proposalRef.number}.`,
+        sql,
+        columns,
+        rows: safeRows,
+        rowCount: safeRows.length,
+      }
+    } catch {
+      // Fall through to other handlers if query fails
+    }
+  }
+
   const asksWaitingEditor =
     /(waiting|awaiting).*(editor|review)/.test(q) || /(editor|review).*(waiting|awaiting)/.test(q)
   const statusChangeOnly =
