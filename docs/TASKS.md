@@ -63,5 +63,3 @@
 | News & Videos page implementations | ✅ Implemented |
 | Analytics export (CSV/JSON) | ✅ Implemented |
 | Author page navigation | ✅ Implemented |
-| Year in Review Infographic Page (`/insights/review/[year]`) | ✅ Implemented |
-| User Watchlist Dashboard (`/dashboard/watchlist`) | ✅ Implemented |
