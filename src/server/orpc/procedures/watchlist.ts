@@ -79,7 +79,7 @@ export const watchlistProcedures = {
             repo,
             label: repo === "erc" ? "All ERCs" : repo === "rip" ? "All RIPs" : "All EIPs",
             createdAt: sub.created_at.toISOString(),
-            path: getRepositoryPath(repo as any),
+            path: getRepositoryPath(repo as "eip" | "erc" | "rip"),
           };
         }),
         upgrades: upgradeSubscriptions.map((sub) => ({
