@@ -484,10 +484,8 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
       {/* Main Content Layout */}
       <main className="flex-1 animate-in fade-in slide-in-from-bottom-1 duration-300">
         {children}
-        <section className="mx-auto w-full max-w-6xl px-4 pb-6 sm:px-6">
-          <GlobalPageFeedback />
-        </section>
       </main>
+      <GlobalPageFeedback />
 
       <footer className="relative border-t border-border/60 bg-muted/10">
         {/* Subtle top accent gradient */}
