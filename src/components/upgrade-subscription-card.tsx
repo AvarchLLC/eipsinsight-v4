@@ -12,6 +12,8 @@ import { client } from "@/lib/orpc";
 type UpgradeSubscriptionCardProps = {
   slug: string;
   name: string;
+  /** Stacked layout for narrow containers (e.g. the upgrade page sidebar). */
+  compact?: boolean;
 };
 
 const FILTER_OPTIONS = [
@@ -29,7 +31,7 @@ const FILTER_OPTIONS = [
 
 type FilterId = (typeof FILTER_OPTIONS)[number]["id"];
 
-export function UpgradeSubscriptionCard({ slug, name }: UpgradeSubscriptionCardProps) {
+export function UpgradeSubscriptionCard({ slug, name, compact = false }: UpgradeSubscriptionCardProps) {
   const router = useRouter();
   const { data: session, loading: sessionLoading } = useSession();
   const [selectedFilter, setSelectedFilter] = useState<FilterId>("stage");
@@ -114,14 +116,21 @@ export function UpgradeSubscriptionCard({ slug, name }: UpgradeSubscriptionCardP
   };
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-4 shadow-sm">
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className={cn("rounded-2xl border border-border bg-card/60 shadow-sm", compact ? "rounded-xl p-3" : "p-4")}>
+      <div
+        className={cn(
+          "flex flex-col gap-3",
+          !compact && "md:flex-row md:items-center md:justify-between"
+        )}
+      >
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <Package className="h-4 w-4 text-primary" />
-            <h3 className="text-sm font-semibold text-foreground">Email updates for {name}</h3>
+            <Package className="h-4 w-4 shrink-0 text-primary" />
+            <h3 className="text-sm font-semibold text-foreground">
+              {compact ? "Email updates" : `Email updates for ${name}`}
+            </h3>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className={cn("mt-1 text-muted-foreground", compact ? "text-xs" : "text-sm")}>
             Follow inclusion and bucket changes for this upgrade.
           </p>
         </div>
@@ -129,10 +138,12 @@ export function UpgradeSubscriptionCard({ slug, name }: UpgradeSubscriptionCardP
         <Button
           type="button"
           variant={isSubscribed ? "outline" : "default"}
+          size={compact ? "sm" : "default"}
           onClick={handleToggle}
           disabled={sessionLoading || isLoadingSubscription || isUpdating}
           className={cn(
-            "min-w-[170px] rounded-full",
+            "rounded-full",
+            compact ? "w-full" : "min-w-[170px]",
             isSubscribed && "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/15 dark:text-emerald-300"
           )}
         >

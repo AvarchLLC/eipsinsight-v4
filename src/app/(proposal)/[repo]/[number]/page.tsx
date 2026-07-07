@@ -37,6 +37,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProposalSubscriptionCard } from '@/components/proposal-subscription-card';
 import { RepositorySubscriptionCard } from '@/components/repository-subscription-card';
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades';
+import { normalizeUpgradeBucket, stageAbbreviation, stageBadgeClass } from '@/lib/upgrade-stages';
+import { UpgradeStageSplitBadge } from '@/components/upgrade/stage-badge';
 import { useEffectivePersona } from '@/stores/personaStore';
 import { EnterpriseEIPBrief } from '@/components/enterprise-eip-brief';
 
@@ -254,26 +256,12 @@ type ProposalRepo = 'eip' | 'erc' | 'rip';
 // =============================================================================
 
 function formatInclusionBucket(bucket: string | null): string {
-  if (!bucket) return 'Unknown';
-  const normalized = bucket.toLowerCase();
-  const labels: Record<string, string> = {
-    included: 'Included',
-    scheduled: 'SFI',
-    considered: 'CFI',
-    declined: 'DFI',
-    proposed: 'PFI',
-  };
-  return labels[normalized] || bucket.charAt(0).toUpperCase() + bucket.slice(1);
+  const normalized = normalizeUpgradeBucket(bucket);
+  return normalized ? stageAbbreviation(normalized) : 'Unknown';
 }
 
 function getBucketBadgeClass(bucket: string | null): string {
-  const normalized = bucket?.toLowerCase();
-  if (normalized === 'included') return 'border-emerald-500/25 bg-emerald-500/12 text-emerald-700 dark:text-emerald-300';
-  if (normalized === 'scheduled') return 'border-cyan-500/25 bg-cyan-500/12 text-cyan-700 dark:text-cyan-300';
-  if (normalized === 'considered') return 'border-amber-500/25 bg-amber-500/12 text-amber-700 dark:text-amber-300';
-  if (normalized === 'declined') return 'border-red-500/25 bg-red-500/12 text-red-700 dark:text-red-300';
-  if (normalized === 'proposed') return 'border-blue-500/25 bg-blue-500/12 text-blue-700 dark:text-blue-300';
-  return 'border-border bg-muted/60 text-muted-foreground';
+  return stageBadgeClass(normalizeUpgradeBucket(bucket));
 }
 
 function getStatusBadgeClass(status: string | null): string {
@@ -784,17 +772,12 @@ export default function ProposalDetailPage() {
 
             {/* Network upgrade chips */}
             {upgrades.length > 0 && upgrades.map((upgrade) => (
-              <span
+              <UpgradeStageSplitBadge
                 key={upgrade.slug ?? upgrade.name}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium',
-                  getBucketBadgeClass(upgrade.bucket)
-                )}
-              >
-                <span className="font-semibold">{upgrade.name}</span>
-                <span className="opacity-50">·</span>
-                <span>{formatInclusionBucket(upgrade.bucket)}</span>
-              </span>
+                upgradeName={upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
+                bucket={upgrade.bucket}
+                className="text-xs"
+              />
             ))}
           </div>
 

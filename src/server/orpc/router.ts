@@ -7,6 +7,9 @@ import { historicalProcedures } from './procedures/historical'
 import { accountProcedures } from './procedures/account'
 import { proposalsProcedures } from './procedures/proposals'
 import { upgradesProcedures } from './procedures/upgrades'
+import { curationsProcedures } from './procedures/curations'
+import { callsProcedures } from './procedures/calls'
+import { devnetsProcedures } from './procedures/devnets'
 import { searchProcedures } from './procedures/search'
 import { preferencesProcedures } from './procedures/preferences'
 import { exploreProcedures } from './procedures/explore'
@@ -31,6 +34,9 @@ export const router = {
   account: accountProcedures,
   proposals: proposalsProcedures,
   upgrades: upgradesProcedures,
+  curations: curationsProcedures,
+  calls: callsProcedures,
+  devnets: devnetsProcedures,
   search: searchProcedures,
   preferences: preferencesProcedures,
   explore: exploreProcedures,

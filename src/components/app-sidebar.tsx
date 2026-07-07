@@ -140,6 +140,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Overview", href: "/upgrade" },
           { title: "Previous Upgrades", href: "/upgrade/archive" },
+          { title: "Analytics", href: "/upgrade/analytics" },
           { title: "Pectra", href: "/upgrade/pectra" },
           { title: "Fusaka", href: "/upgrade/fusaka" },
           { title: "Glamsterdam", href: "/upgrade/glamsterdam" },

@@ -223,7 +223,7 @@ export default function PreviousUpgradesPage() {
   );
 
   return (
-    <div className="bg-background min-h-screen w-full">
+    <div className="bg-background mx-auto min-h-screen w-full max-w-6xl">
       <PageHeader
         eyebrow="Archive"
         indicator={{ icon: 'chart', label: 'History', pulse: false }}
