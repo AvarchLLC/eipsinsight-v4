@@ -21,6 +21,9 @@ import {
   Linkedin,
   Globe,
   Heart,
+  Bug,
+  MessageSquare,
+  Key,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
@@ -486,81 +489,175 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
         </section>
       </main>
 
-      <footer className="border-t border-border/60 bg-muted/20">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-6 text-xs text-muted-foreground sm:px-6 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span>© 2026</span>
-            <Link href="/" className="font-medium text-foreground hover:text-primary">
-              EIPsInsight
-            </Link>
-            <span className="text-muted-foreground/60">·</span>
-            <span>tracking data refreshes every 5 minutes</span>
+      <footer className="relative border-t border-border/60 bg-muted/10">
+        {/* Subtle top accent gradient */}
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
+
+        <div className="mx-auto w-full max-w-6xl px-4 py-12 sm:px-6">
+          <div className="grid gap-8 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12">
+            {/* Column 1: Brand & Description */}
+            <div className="sm:col-span-2 lg:col-span-4 space-y-4">
+              <Link href="/" className="group inline-flex items-center gap-2.5">
+                <ThemedLogoGif
+                  alt="EIPsInsight"
+                  width={32}
+                  height={32}
+                  unoptimized
+                  className="transition-transform duration-300 group-hover:scale-105"
+                />
+                <span className="dec-title text-lg font-semibold tracking-tight text-foreground">
+                  EIPsInsight
+                </span>
+              </Link>
+              <p className="max-w-xs text-xs leading-relaxed text-muted-foreground">
+                Ethereum hard fork coordination, testnet metrics, and standards tracking hub. Observability for protocol upgrades.
+              </p>
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>Built with</span>
+                <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
+                <span>by Avarch</span>
+              </div>
+            </div>
+
+            {/* Column 2: Upgrade Roadmaps */}
+            <div className="lg:col-span-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Upgrade Roadmaps
+              </h3>
+              <ul className="mt-3 space-y-2 text-xs">
+                {upgradeLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-muted-foreground hover:text-primary transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+                <li>
+                  <Link href="/upgrade/archive" className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1">
+                    <History className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>Past Upgrades</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
+
+            {/* Column 3: Coordination & Metrics */}
+            <div className="lg:col-span-3">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Coordination
+              </h3>
+              <ul className="mt-3 space-y-2 text-xs">
+                {trackLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                      <link.icon className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <span>{link.label}</span>
+                    </Link>
+                  </li>
+                ))}
+                {exploreLinks.map((link) => (
+                  <li key={link.href}>
+                    <Link href={link.href} className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                      <link.icon className="h-3.5 w-3.5 text-muted-foreground/60" />
+                      <span>{link.label}</span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Column 4: Support Portal */}
+            <div className="lg:col-span-2">
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                Support
+              </h3>
+              <ul className="mt-3 space-y-2 text-xs">
+                <li>
+                  <a
+                    href="https://github.com/AvarchLLC/eipsinsight-v4/issues/new"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5"
+                  >
+                    <Bug className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>Report a bug</span>
+                  </a>
+                </li>
+                <li>
+                  <Link href="/feedback" className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                    <MessageSquare className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>Feedback</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/api-tokens" className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                    <Key className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>API Data</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/donate" className="text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5">
+                    <Heart className="h-3.5 w-3.5 text-muted-foreground/60" />
+                    <span>Donate</span>
+                  </Link>
+                </li>
+              </ul>
+            </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <a
-              href="https://x.com/EIPsInsight"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="X (Twitter)"
-            >
-              <Twitter className="h-4 w-4 text-sky-400" />
-              <span className="hidden sm:inline">X</span>
-            </a>
-            <span className="h-3 w-px bg-border/80 hidden sm:inline" />
-            <a
-              href="https://github.com/AvarchLLC/eipsinsight-v4"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="GitHub"
-            >
-              <Github className="h-4 w-4 text-foreground/80 dark:text-foreground/60" />
-              <span className="hidden sm:inline">GitHub</span>
-            </a>
-            <span className="h-3 w-px bg-border/80 hidden sm:inline" />
-            <a
-              href="https://www.youtube.com/@etherworldco"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="YouTube"
-            >
-              <Youtube className="h-4 w-4 text-red-500" />
-              <span className="hidden sm:inline">YouTube</span>
-            </a>
-            <span className="h-3 w-px bg-border/80 hidden sm:inline" />
-            <a
-              href="https://www.linkedin.com/company/eipsinsight/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="LinkedIn"
-            >
-              <Linkedin className="h-4 w-4 text-blue-500" />
-              <span className="hidden sm:inline">LinkedIn</span>
-            </a>
-            <span className="h-3 w-px bg-border/80 hidden sm:inline" />
-            <a
-              href="https://etherworld.co/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="EtherWorld Website"
-            >
-              <Globe className="h-4 w-4 text-emerald-500" />
-              <span className="hidden sm:inline">EtherWorld</span>
-            </a>
-            <span className="h-3 w-px bg-border/80 hidden sm:inline" />
-            <Link
-              href="/donate"
-              className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
-              title="Donate to support EIPsInsight"
-            >
-              <Heart className="h-4 w-4 text-rose-500 fill-rose-500" />
-              <span>Donate</span>
-            </Link>
+          {/* Bottom Bar: Copyright & Socials */}
+          <div className="mt-10 pt-6 border-t border-border/40 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between text-[11px] text-muted-foreground">
+            <div>
+              <span>© 2026 EIPsInsight. tracking data refreshes every 5 minutes.</span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3">
+              <a
+                href="https://x.com/EIPsInsight"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+                title="X (Twitter)"
+              >
+                <Twitter className="h-4 w-4 text-sky-400 hover:scale-110 transition-transform duration-150" />
+              </a>
+              <a
+                href="https://github.com/AvarchLLC/eipsinsight-v4"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+                title="GitHub"
+              >
+                <Github className="h-4 w-4 text-foreground/80 dark:text-foreground/60 hover:scale-110 transition-transform duration-150" />
+              </a>
+              <a
+                href="https://www.youtube.com/@etherworldco"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+                title="YouTube"
+              >
+                <Youtube className="h-4 w-4 text-red-500 hover:scale-110 transition-transform duration-150" />
+              </a>
+              <a
+                href="https://www.linkedin.com/company/eipsinsight/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+                title="LinkedIn"
+              >
+                <Linkedin className="h-4 w-4 text-blue-500 hover:scale-110 transition-transform duration-150" />
+              </a>
+              <a
+                href="https://etherworld.co/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-foreground transition-colors"
+                title="EtherWorld Website"
+              >
+                <Globe className="h-4 w-4 text-emerald-500 hover:scale-110 transition-transform duration-150" />
+              </a>
+            </div>
           </div>
         </div>
       </footer>
