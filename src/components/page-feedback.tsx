@@ -129,7 +129,7 @@ export function PageFeedback() {
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "fixed bottom-4 right-16 z-40 inline-flex h-10 w-10 items-center justify-center rounded-lg border shadow-lg backdrop-blur-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-95",
+          "fixed bottom-4 right-16 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-lg backdrop-blur-xl transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 active:scale-95",
           isOpen
             ? "border-primary/50 bg-primary/20 text-primary scale-105"
             : "border-border bg-card/85 text-foreground hover:border-primary/45 hover:bg-primary/10 hover:text-primary"
