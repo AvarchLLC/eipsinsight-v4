@@ -168,18 +168,7 @@ function getMonthWindow(year: number, month: number): { from: string; to: string
   };
 }
 
-function normalizeTrendSpikes(data: MonthlyTrendPoint[]): MonthlyTrendPoint[] {
-  return data.map((point) => {
-    if (point.month !== "2022-08") return point;
-    const normalized: MonthlyTrendPoint = { month: point.month };
-    for (const key of Object.keys(point)) {
-      if (key === "month") continue;
-      const val = Number(point[key] || 0);
-      normalized[key] = val > 65 ? 65 : val;
-    }
-    return normalized;
-  });
-}
+// Spikes normalization helper removed to ensure raw database values are loaded in graphs
 
 function downloadCsv(filename: string, headers: string[], rows: Array<Array<string | number>>) {
   const escape = (value: string | number) => `"${String(value).replace(/"/g, '""')}"`;
@@ -218,7 +207,7 @@ export default function EditorsAnalyticsPage() {
   const [visibleActivityCount, setVisibleActivityCount] = useState<number>(20);
   const [expandedActivityKeys, setExpandedActivityKeys] = useState<Record<string, boolean>>({});
   const [leaderboardHeroView, setLeaderboardHeroView] = useState<"chart" | "list">("chart");
-  const [trendPrimaryMetric, setTrendPrimaryMetric] = useState<"actions" | "reviews">("actions");
+  const [trendPrimaryMetric, setTrendPrimaryMetric] = useState<"actions" | "reviews" | "other">("reviews");
   
   // Sorted metric filters
   const [selectedMetric, setSelectedMetric] = useState<"reviews" | "prs" | "actions">("reviews");
@@ -426,13 +415,11 @@ export default function EditorsAnalyticsPage() {
         ]);
 
         setLeaderboard(leaderboardData.rows);
-        setMonthlyTrend(normalizeTrendSpikes(trendData));
-        setMonthlyReviewedTrend(normalizeTrendSpikes(reviewedTrendData));
+        setMonthlyTrend(trendData);
+        setMonthlyReviewedTrend(reviewedTrendData);
         setCategoryCoverage(categoryData);
         setRepoDistribution(repoData);
-        setDailyActivityStacked(dailyStackedData.map((row) =>
-          row.date === "2022-08-18" ? { ...row, count: Math.min(row.count, 15) } : row
-        ));
+        setDailyActivityStacked(dailyStackedData);
         setEditorActionDetails(actionDetails);
         
         if (leaderboardData.updatedAt) {
@@ -1016,7 +1003,133 @@ export default function EditorsAnalyticsPage() {
     })),
   }), [monthlyReviewedTrend, reviewedTrendActors]);
 
-  const trendMetricMeta = useCallback((metric: "actions" | "reviews") => {
+  const otherTrendOption = useMemo(() => {
+    const otherTrend = monthlyTrend.map((point) => {
+      const reviewedPoint = monthlyReviewedTrend.find((r) => r.month === point.month);
+      const normalized: MonthlyTrendPoint = { month: point.month };
+      for (const key of Object.keys(point)) {
+        if (key === "month") continue;
+        const totalVal = Number(point[key] || 0);
+        const reviewedVal = reviewedPoint ? Number(reviewedPoint[key] || 0) : 0;
+        normalized[key] = Math.max(0, totalVal - reviewedVal);
+      }
+      return normalized;
+    });
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        formatter: (params: Array<any>) => {
+          if (!Array.isArray(params)) return "";
+          const title = params[0]?.axisValue || "";
+          const items = params
+            .map(
+              (p) =>
+                `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${p.value.toLocaleString()}</div>`
+            )
+            .join("");
+          return `<div style="padding: 6px;"><div style="margin-bottom: 4px; font-weight: 600;">${title}</div>${items}</div>`;
+        },
+      },
+      legend: {
+        top: 0,
+        textStyle: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
+        type: "scroll",
+      },
+      grid: { top: 40, left: 32, right: 20, bottom: 50 },
+      xAxis: {
+        type: "category",
+        data: otherTrend.map((m) => m.month),
+        axisLabel: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
+        axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+        splitLine: { show: true, lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
+        splitLine: { lineStyle: { color: "rgba(148,163,184,0.2)", type: "dashed" } },
+      },
+      dataZoom: [
+        {
+          type: "slider",
+          show: true,
+          realtime: true,
+          height: 24,
+          bottom: 4,
+          borderColor: "rgba(148,163,184,0.15)",
+          backgroundColor: "rgba(148,163,184,0.03)",
+          fillerColor: "rgba(34,211,238,0.12)",
+          handleIcon: "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+          handleSize: "110%",
+          handleStyle: {
+            color: "var(--background)",
+            borderColor: "rgba(34,211,238,0.5)",
+            borderWidth: 1.5,
+            shadowBlur: 3,
+            shadowColor: "rgba(0, 0, 0, 0.2)",
+            shadowOffsetX: 1,
+            shadowOffsetY: 1
+          },
+          showDetail: true,
+          start: 40,
+          end: 100,
+          textStyle: { 
+            color: "var(--muted-foreground)", 
+            fontSize: 10,
+            fontFamily: "inherit",
+            fontWeight: 505
+          },
+          dataBackground: {
+            areaStyle: { color: "rgba(34,211,238,0.03)" },
+            lineStyle: { color: "rgba(34,211,238,0.1)" }
+          },
+          selectedDataBackground: {
+            areaStyle: { color: "rgba(34,211,238,0.08)" },
+            lineStyle: { color: "rgba(34,211,238,0.3)" }
+          }
+        },
+        {
+          type: "inside",
+          realtime: true,
+          start: 40,
+          end: 100
+        }
+      ],
+      series: trendActors.map((actor, idx) => ({
+        name: actor,
+        type: "line",
+        smooth: false,
+        symbol: "circle",
+        symbolSize: 4,
+        lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
+        itemStyle: { color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
+        areaStyle: {
+          color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%, 0.08)`,
+        },
+        data: otherTrend.map((p) => Number(p[actor] || 0)),
+      })),
+    };
+  }, [monthlyTrend, monthlyReviewedTrend, trendActors]);
+
+  const downloadOtherTrendReport = useCallback(() => {
+    const otherTrend = monthlyTrend.map((point) => {
+      const reviewedPoint = monthlyReviewedTrend.find((r) => r.month === point.month);
+      const normalized: MonthlyTrendPoint = { month: point.month };
+      for (const key of Object.keys(point)) {
+        if (key === "month") continue;
+        const totalVal = Number(point[key] || 0);
+        const reviewedVal = reviewedPoint ? Number(reviewedPoint[key] || 0) : 0;
+        normalized[key] = Math.max(0, totalVal - reviewedVal);
+      }
+      return normalized;
+    });
+    const headers = ["Month", ...trendActors];
+    const rows = otherTrend.map((row) => [row.month, ...trendActors.map((actor) => Number(row[actor] || 0))]);
+    downloadCsv(`editors-other-actions-monthly-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }, [monthlyTrend, monthlyReviewedTrend, trendActors]);
+
+  const trendMetricMeta = useCallback((metric: "actions" | "reviews" | "other") => {
     if (metric === "reviews") {
       return {
         title: "PRs Reviewed (Monthly)",
@@ -1025,13 +1138,21 @@ export default function EditorsAnalyticsPage() {
         option: reviewedTrendOption,
       };
     }
+    if (metric === "other") {
+      return {
+        title: "Other Actions (Monthly)",
+        subtitle: "Monthly count of non-review actions (comments, commits, label updates).",
+        footer: "Calculated as total monthly actions minus PR reviews.",
+        option: otherTrendOption,
+      };
+    }
     return {
       title: "Editor Actions Over Time",
       subtitle: "Monthly count of all editor actions (reviews, comments, labels, updates).",
       footer: "Shows monthly total editor actions, not cumulative totals.",
       option: trendOption,
     };
-  }, [reviewedTrendOption, trendOption]);
+  }, [reviewedTrendOption, trendOption, otherTrendOption]);
 
   const repoOption = useMemo(() => ({
     backgroundColor: "transparent",
@@ -1626,16 +1747,25 @@ export default function EditorsAnalyticsPage() {
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={trendPrimaryMetric}
-              onChange={(e) => setTrendPrimaryMetric(e.target.value as "actions" | "reviews")}
+              onChange={(e) => setTrendPrimaryMetric(e.target.value as "actions" | "reviews" | "other")}
               className="h-8 rounded-md border border-border bg-background px-3 text-xs text-foreground font-semibold transition-all hover:border-primary/45 focus:outline-none focus:ring-1 focus:ring-primary/20 cursor-pointer"
               aria-label="Select trend metric"
             >
-              <option value="actions">All Editor Actions</option>
               <option value="reviews">PRs Reviewed (Monthly)</option>
+              <option value="actions">All Editor Actions</option>
+              <option value="other">Other Actions (Monthly)</option>
             </select>
 
             <button
-              onClick={trendPrimaryMetric === "actions" ? downloadTrendReport : downloadReviewedMonthlyReport}
+              onClick={() => {
+                if (trendPrimaryMetric === "actions") {
+                  downloadTrendReport();
+                } else if (trendPrimaryMetric === "reviews") {
+                  downloadReviewedMonthlyReport();
+                } else {
+                  downloadOtherTrendReport();
+                }
+              }}
               className="flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/15"
             >
               <Download className="h-3.5 w-3.5" />
