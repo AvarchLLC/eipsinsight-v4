@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { CalendarClock, ExternalLink, Github, Video } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
@@ -132,9 +133,12 @@ export default async function ProtocolCallsPage() {
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   <SeriesBadge series={call.series} />
-                  <span className="min-w-0 flex-1 text-sm font-medium text-foreground">
+                  <Link
+                    href={`/upgrade/calls/${call.series}/${call.call_number ?? call.call_id}`}
+                    className="min-w-0 flex-1 text-sm font-medium text-foreground hover:text-primary transition-colors hover:underline"
+                  >
                     {callDisplayName(call)}
-                  </span>
+                  </Link>
                   <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-4">

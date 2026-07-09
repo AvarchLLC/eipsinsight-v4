@@ -128,6 +128,30 @@ export const getCachedUpcomingCalls = unstable_cache(
   { revalidate: REVALIDATE_SECONDS }
 );
 
+export const getCachedCall = unstable_cache(
+  async (series: string, number: string) => {
+    try {
+      return await publicClient.calls.getCall({ series, number });
+    } catch {
+      return null;
+    }
+  },
+  ['protocol-call-detail', CACHE_VERSION],
+  { revalidate: REVALIDATE_SECONDS }
+);
+
+export const getCachedCallNeighbors = unstable_cache(
+  async (series: string, occurredOn: string) => {
+    try {
+      return await publicClient.calls.getCallNeighbors({ series, occurredOn });
+    } catch {
+      return { prev: null, next: null };
+    }
+  },
+  ['protocol-call-neighbors', CACHE_VERSION],
+  { revalidate: REVALIDATE_SECONDS }
+);
+
 export const getCachedDevnetList = unstable_cache(
   async () => {
     try {

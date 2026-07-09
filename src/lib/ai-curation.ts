@@ -16,7 +16,7 @@ const ANTHROPIC_MODEL = 'claude-sonnet-5';
 export const MACHINE_ACTORS = new Set([
   'dataset-import',
   'snapshot-import',
-  'forkcast-import',
+  'legacy-import',
   'upstream-import',
   'ai:groq',
   'ai:anthropic',

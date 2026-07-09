@@ -1,6 +1,6 @@
 /**
  * Regenerate EIP curation content with AI from each EIP's own spec, replacing
- * the imported (Forkcast-seeded) text. Never overwrites admin-edited rows.
+ * the imported (legacy-seeded) text. Never overwrites admin-edited rows.
  *
  * Usage:
  *   bun run scripts/generate-eip-curations.ts                # in-progress upgrades
