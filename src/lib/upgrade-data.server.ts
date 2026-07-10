@@ -16,7 +16,7 @@ const publicClient = createRouterClient(router, {
 
 const REVALIDATE_SECONDS = 300;
 // Bump to invalidate all upgrade-surface caches when payload shapes change.
-const CACHE_VERSION = 'v3';
+const CACHE_VERSION = 'v4';
 
 export const getCachedUpgrade = unstable_cache(
   async (slug: string) => {

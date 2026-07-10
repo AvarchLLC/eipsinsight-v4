@@ -95,6 +95,8 @@ interface OpenPRRow {
   linkedEIPs: string | null;
   labels: string[];
   processType: string;
+  lastReviewAt: string | null;
+  lastActivityAt: string | null;
 }
 
 interface ProcessCategory {
@@ -763,49 +765,24 @@ export default function PRsAnalyticsPage() {
 
   const downloadCategoryBreakdownDetailedCSV = useCallback(() => {
     const generatedAt = new Date().toISOString();
-    const summaryProcessRows: Array<Record<string, string | number | null>> = processCategories.map((row) => ({
-      report_section: "category_breakdown_process_summary",
-      generated_at: generatedAt,
-      repo_filter: repoFilter,
-      time_range: timeRange,
+    const rows = openPRs.map((pr) => ({
+      process_category: pr.processType,
+      waiting_state: pr.governanceState,
+      pr_number: pr.prNumber,
+      pr_link: `https://github.com/${pr.repo}/pull/${pr.prNumber}`,
+      title: pr.title,
+      author: pr.author,
+      open_date: pr.createdAt,
+      last_review_date: pr.lastReviewAt ?? "Never",
+      last_activity_date: pr.lastActivityAt ?? pr.createdAt,
       month_context: monthContext,
-      process_category: row.category,
-      count: row.count,
-      metric_definition: "Open PR count by process category for selected context month",
-    }));
-    const summaryStateRows: Array<Record<string, string | number | null>> = govWaitStates.map((row) => ({
-      report_section: "category_breakdown_participant_summary",
       generated_at: generatedAt,
-      repo_filter: repoFilter,
-      time_range: timeRange,
-      month_context: monthContext,
-      participant_state: row.state,
-      participant_label: row.label,
-      count: row.count,
-      median_wait_days: row.medianWaitDays,
-      oldest_pr_number: row.oldestPRNumber,
-      oldest_wait_days: row.oldestWaitDays,
-      metric_definition: "Open PR count by participant/governance waiting state for selected context month",
     }));
-    const matrixRows: Array<Record<string, string | number | null>> = crossTabData.flatMap((row) =>
-      govWaitStates.map((state) => ({
-        report_section: "category_breakdown_estimated_matrix",
-        generated_at: generatedAt,
-        repo_filter: repoFilter,
-        time_range: timeRange,
-        month_context: monthContext,
-        process_category: String(row.process),
-        participant_state: state.state,
-        participant_label: state.label,
-        estimated_count: Number(row[state.state] || 0),
-        metric_definition: "Estimated cross-tab cell derived from process and participant totals (backend exact cross-tab pending)",
-      })),
-    );
     downloadObjectRowsCsv(
-      [...summaryProcessRows, ...summaryStateRows, ...matrixRows],
-      `category-breakdown-detailed-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows,
+      `pr-category-breakdown-prs-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
     );
-  }, [crossTabData, downloadObjectRowsCsv, govWaitStates, monthContext, processCategories, repoFilter, timeRange]);
+  }, [downloadObjectRowsCsv, monthContext, openPRs, repoFilter]);
 
   const downloadReports = async () => {
     try {
