@@ -149,9 +149,8 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
   const onUpgradePage = upgradeLinks.some((link) => pathname.startsWith(link.href));
 
   const trackLinks = [
-    { href: '/upgrade/calls', label: 'All-Hands Calls', icon: PhoneCall },
+    { href: '/upgrade/calls', label: 'AllCoreDevs Calls', icon: PhoneCall },
     { href: '/upgrade/decisions', label: 'Consensus Decisions', icon: CheckSquare },
-    { href: '/upgrade/devnets', label: 'Testnets & Devnets', icon: Server },
   ];
   const exploreLinks = [
     { href: '/upgrade/analytics', label: 'Readiness Analytics', icon: Activity },
@@ -196,8 +195,9 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
           {/* Desktop nav */}
           <nav className="ml-4 hidden items-center gap-1.5 lg:flex">
             <NavPill href="/upgrade" label="Overview" active={pathname === '/upgrade'} />
+            <NavPill href="/upgrade/eips" label="EIPs" active={pathname === '/upgrade/eips'} />
 
-            {/* Roadmaps Dropdown */}
+            {/* Upgrades Dropdown */}
             <div className="group relative">
               <button
                 className={cn(
@@ -207,7 +207,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
               >
-                Roadmaps
+                Upgrades
                 <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180" />
               </button>
               <div className="invisible absolute left-0 top-full z-50 pt-1.5 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
@@ -244,7 +244,9 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            {/* Coordination Dropdown */}
+            <NavPill href="/upgrade/devnets" label="Devnets" active={pathname.startsWith('/upgrade/devnets')} />
+
+            {/* Meetings Dropdown */}
             <div className="group relative">
               <button
                 className={cn(
@@ -254,7 +256,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
               >
-                Coordination
+                Meetings & Decisions
                 <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180" />
               </button>
               <div className="invisible absolute left-0 top-full z-50 pt-1.5 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
@@ -288,7 +290,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
                     : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
                 )}
               >
-                Readiness & Timeline
+                Readiness & Timelines
                 <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-hover:rotate-180" />
               </button>
               <div className="invisible absolute left-0 top-full z-50 pt-1.5 opacity-0 transition-all duration-200 group-focus-within:visible group-focus-within:opacity-100 group-hover:visible group-hover:opacity-100">
@@ -428,8 +430,14 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
                 active={pathname === '/upgrade'}
                 onClick={closeMenus}
               />
+              <NavPill
+                href="/upgrade/eips"
+                label="EIPs"
+                active={pathname === '/upgrade/eips'}
+                onClick={closeMenus}
+              />
               <p className="px-2.5 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Upgrade Roadmaps
+                Upgrades
               </p>
               {upgradeLinks.map((link) => (
                 <NavPill
@@ -449,8 +457,15 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
                 className="pl-5 text-xs text-muted-foreground"
               />
 
+              <NavPill
+                href="/upgrade/devnets"
+                label="Devnets"
+                active={pathname === '/upgrade/devnets'}
+                onClick={closeMenus}
+              />
+
               <p className="px-2.5 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Coordination
+                Meetings & Decisions
               </p>
               {trackLinks.map((link) => (
                 <NavPill
@@ -464,7 +479,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
               ))}
 
               <p className="px-2.5 pb-0.5 pt-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Readiness & Timeline
+                Readiness & Timelines
               </p>
               {exploreLinks.map((link) => (
                 <NavPill
