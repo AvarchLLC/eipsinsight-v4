@@ -7,11 +7,13 @@ import {
   ExternalLink,
   Megaphone,
   Radio,
+  Wrench,
 } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
-import { getCachedDevnet } from '@/lib/upgrade-data.server';
+import { getCachedDevnet, getCachedEipMeta } from '@/lib/upgrade-data.server';
+import { devnetResourceLinks } from '@/lib/devnet-resources';
 
 export const revalidate = 300;
 
@@ -33,6 +35,17 @@ const EIP_STATUS_CHIP: Record<string, string> = {
   updated: 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300',
   required: 'border-red-500/30 bg-red-500/15 text-red-700 dark:text-red-300',
   optional: 'border-border bg-muted text-muted-foreground',
+};
+
+/** EIP lifecycle status (Draft/Review/Final/…) chip colors. */
+const LIFECYCLE_CHIP: Record<string, string> = {
+  Draft: 'border-slate-500/30 bg-slate-500/10 text-slate-600 dark:text-slate-300',
+  Review: 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  'Last Call': 'border-orange-500/30 bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  Final: 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  Stagnant: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300',
+  Withdrawn: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-300',
+  Living: 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300',
 };
 
 const SUPPORT_CELL: Record<string, { label: string; className: string }> = {
@@ -112,10 +125,17 @@ export default async function DevnetDetailPage({ params }: Props) {
   const devnet = await getCachedDevnet(id);
   if (!devnet) notFound();
 
+  // Enrich the "EIPs in scope" list with lifecycle status, layer, and category.
+  const eipMeta = await getCachedEipMeta(devnet.eips.map((eip) => eip.number));
+  const metaByEip = new Map(eipMeta.map((m) => [m.eip_number, m]));
+
   const genesis = devnet.genesis_time
     ? new Date(devnet.genesis_time * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
     : null;
   const specRefs = devnet.spec_references;
+  // ethpandaops hosts these only while the devnet is running; hide for
+  // torn-down/canceled ones to avoid dead links.
+  const resources = devnet.active && !devnet.canceled ? devnetResourceLinks(devnet.id) : [];
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 pb-12 pt-8 sm:px-6">
@@ -214,6 +234,37 @@ export default async function DevnetDetailPage({ params }: Props) {
         </div>
       )}
 
+      {resources.length > 0 && (
+        <section>
+          <h2 className="dec-title mb-3 flex items-center gap-2 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            <Wrench className="h-4 w-4 text-primary" />
+            Resources
+          </h2>
+          <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+            {resources.map((res) => (
+              <a
+                key={res.key}
+                href={res.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-start justify-between gap-2 rounded-xl border border-border bg-card/60 px-4 py-3 transition-colors hover:border-primary/40 hover:bg-card"
+              >
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-foreground transition-colors group-hover:text-primary">
+                    {res.label}
+                  </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{res.description}</div>
+                </div>
+                <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+              </a>
+            ))}
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Hosted by ethpandaops at <code className="text-muted-foreground/80">&lt;service&gt;.{devnet.id}.ethpandaops.io</code> — available while the devnet is live.
+          </p>
+        </section>
+      )}
+
       {devnet.eips.length > 0 && (
         <section>
           <h2 className="dec-title mb-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
@@ -223,32 +274,87 @@ export default async function DevnetDetailPage({ params }: Props) {
             </span>
           </h2>
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-            <table className="w-full text-sm">
-              <tbody>
-                {devnet.eips.map((eip) => (
-                  <tr key={`${eip.number}-${eip.title}`} className="border-b border-border/60 last:border-0">
-                    <td className="w-28 px-4 py-2.5 font-mono text-xs font-semibold">
-                      <Link href={`/eip/${eip.number}`} className="text-primary hover:underline">
-                        EIP-{eip.number}
-                      </Link>
-                    </td>
-                    <td className="px-4 py-2.5 text-sm text-foreground">{eip.title}</td>
-                    <td className="w-28 px-4 py-2.5 text-right">
-                      {eip.status && (
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                            EIP_STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
-                          )}
-                        >
-                          {eip.status.replace('_', ' ')}
-                        </span>
-                      )}
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border/70 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                    <th className="px-4 py-2.5">EIP</th>
+                    <th className="px-4 py-2.5">Title</th>
+                    <th className="px-4 py-2.5 text-center">Layer</th>
+                    <th className="px-4 py-2.5 text-center">Status</th>
+                    <th className="px-4 py-2.5 text-right">In devnet</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {devnet.eips.map((eip) => {
+                    const meta = metaByEip.get(eip.number);
+                    const title = meta?.title || eip.title;
+                    const subtitle = [meta?.type, meta?.category].filter(Boolean).join(' · ');
+                    return (
+                      <tr key={`${eip.number}-${eip.title}`} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
+                        <td className="whitespace-nowrap px-4 py-2.5 align-top font-mono text-xs font-semibold">
+                          <Link href={`/eip/${eip.number}`} className="text-primary hover:underline">
+                            EIP-{eip.number}
+                          </Link>
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <div className="text-sm text-foreground">{title}</div>
+                          {(subtitle || meta?.layman_title) && (
+                            <div className="mt-0.5 text-[11px] text-muted-foreground">
+                              {subtitle}
+                              {subtitle && meta?.layman_title ? ' — ' : ''}
+                              {meta?.layman_title && meta.layman_title !== title ? meta.layman_title : ''}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {meta?.layer ? (
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold',
+                                meta.layer === 'EL'
+                                  ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300'
+                                  : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'
+                              )}
+                            >
+                              {meta.layer}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-center">
+                          {meta?.status ? (
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                                LIFECYCLE_CHIP[meta.status] ?? 'border-border bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {meta.status}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground/40">—</span>
+                          )}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                          {eip.status && (
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                                EIP_STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
+                              )}
+                            >
+                              {eip.status.replace('_', ' ')}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </section>
       )}

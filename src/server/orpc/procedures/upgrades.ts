@@ -1,8 +1,44 @@
 import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
-import { rawData, pairedUpgradeNames } from '@/data/network-upgrades'
+import { rawData, pairedUpgradeNames, eipTitles } from '@/data/network-upgrades'
 import { normalizeUpgradeBucket } from '@/lib/upgrade-stages'
+
+/**
+ * Maps the fork names used in the static historical record (rawData) onto the
+ * canonical upgrade slugs in the `upgrades` table, so shipped EIPs slot under
+ * the right upgrade in the directory. CL-only forks (Altair, Capella, Deneb…)
+ * only carry CONSENSUS/NO-EIP markers, so their mapping is a harmless fallback.
+ */
+const HISTORICAL_UPGRADE_SLUG: Record<string, string> = {
+  Frontier: 'frontier',
+  'Frontier Thawing': 'frontier',
+  Homestead: 'homestead',
+  'DAO Fork': 'dao-fork',
+  'Tangerine Whistle': 'tangerine-whistle',
+  'Spurious Dragon': 'spurious-dragon',
+  Byzantium: 'byzantium',
+  Constantinople: 'constantinople',
+  Petersburg: 'constantinople',
+  Istanbul: 'istanbul',
+  'Muir Glacier': 'istanbul',
+  Berlin: 'berlin',
+  'Arrow Glacier': 'london',
+  London: 'london',
+  'Gray Glacier': 'paris',
+  'Phase 0 (Genesis)': 'paris',
+  Altair: 'paris',
+  Bellatrix: 'paris',
+  Paris: 'paris',
+  Shanghai: 'shanghai',
+  Capella: 'shanghai',
+  Cancun: 'cancun',
+  Deneb: 'cancun',
+  Prague: 'pectra',
+  Electra: 'pectra',
+  Osaka: 'fusaka',
+  Fulu: 'fusaka',
+}
 
 const AUTHOR_CANONICAL_OVERRIDES: Record<string, string> = {
   vitalikbuterin: 'vbuterin',
@@ -659,5 +695,92 @@ export const upgradesProcedures = {
       });
 
       return result;
+    }),
+
+  listUpgradeEips: optionalAuthProcedure
+    .input(z.object({
+      slug: z.string().nullish(),
+    }))
+    .handler(async ({ input }) => {
+      // Every EIP × upgrade pairing comes from two places:
+      //  1. Live composition (upgrade_composition_current) — the scheduler only
+      //     tracks in-progress upgrades, so this is Glamsterdam/Hegotá/etc.
+      //  2. Static historical record (src/data/network-upgrades.ts rawData) —
+      //     everything that already shipped (Frontier → Pectra/Fusaka), all
+      //     "included". Without this the directory only shows ~86 recent EIPs.
+      const upgrades = await prisma.upgrades.findMany({
+        select: { id: true, name: true, slug: true },
+      });
+      const upgradeById = new Map(upgrades.map((u) => [u.id, u]));
+      const upgradeBySlug = new Map(upgrades.map((u) => [u.slug, u]));
+
+      type Pairing = { eip_number: number; slug: string; bucket: string };
+      const pairings: Pairing[] = [];
+      const seen = new Set<string>(); // `${eip}:${slug}` dedupe
+
+      // 1. Live composition
+      const composition = await prisma.upgrade_composition_current.findMany();
+      for (const c of composition) {
+        const upgrade = upgradeById.get(c.upgrade_id);
+        if (!upgrade) continue;
+        const key = `${c.eip_number}:${upgrade.slug}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairings.push({ eip_number: c.eip_number, slug: upgrade.slug, bucket: c.bucket ?? 'proposed' });
+      }
+
+      // 2. Static historical (shipped ⇒ included)
+      for (const item of rawData) {
+        const slug = HISTORICAL_UPGRADE_SLUG[item.upgrade];
+        if (!slug) continue;
+        for (const raw of item.eips) {
+          const match = raw.match(/^EIP-(\d+)/);
+          if (!match) continue; // skip NO-EIP / CONSENSUS
+          const eip_number = Number(match[1]);
+          const key = `${eip_number}:${slug}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          pairings.push({ eip_number, slug, bucket: 'included' });
+        }
+      }
+
+      const filtered = input.slug ? pairings.filter((p) => p.slug === input.slug) : pairings;
+      if (filtered.length === 0) return [];
+
+      const eipNumbers = Array.from(new Set(filtered.map((p) => p.eip_number)));
+      const [eips, curations] = await Promise.all([
+        prisma.eips.findMany({
+          where: { eip_number: { in: eipNumbers } },
+          include: { eip_snapshots: true },
+        }),
+        prisma.eip_curations.findMany({
+          where: { eip_number: { in: eipNumbers } },
+          select: { eip_number: true, layer: true, headliner_of: true },
+        }),
+      ]);
+      const eipMap = new Map(eips.map((e) => [e.eip_number, e]));
+      const curationMap = new Map(curations.map((c) => [c.eip_number, c]));
+
+      return filtered.map((p) => {
+        const eip = eipMap.get(p.eip_number);
+        const curation = curationMap.get(p.eip_number);
+        const snapshot = eip?.eip_snapshots;
+        const upgrade = upgradeBySlug.get(p.slug);
+        // Historical EIPs are final; live ones keep their real snapshot status.
+        const status = snapshot?.status ?? (p.bucket === 'included' ? 'Final' : 'Draft');
+
+        return {
+          eip_number: p.eip_number,
+          title: eip?.title ?? eipTitles[String(p.eip_number)]?.title ?? `EIP-${p.eip_number}`,
+          bucket: p.bucket,
+          status,
+          type: snapshot?.type ?? 'Standards Track',
+          category: snapshot?.category ?? eipTitles[String(p.eip_number)]?.category ?? 'Core',
+          layer: curation?.layer ?? null,
+          is_headliner: curation?.headliner_of === p.slug,
+          upgrade_name: upgrade?.name ?? p.slug,
+          upgrade_slug: p.slug,
+        };
+      });
     }),
 }

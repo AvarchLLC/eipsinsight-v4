@@ -2457,6 +2457,8 @@ export const analyticsProcedures = {
         linked_eips: string | null;
         labels: string[];
         process_type: string;
+        last_review_date: string | null;
+        last_activity_date: string | null;
       }>>(`
         WITH month_ctx AS (
           SELECT
@@ -2495,7 +2497,20 @@ export const analyticsProcedures = {
                  WHEN pr.labels @> ARRAY['c-status']::text[] THEN 'Status Change'
                  WHEN pr.labels @> ARRAY['c-update']::text[] THEN 'Content Edit'
                  ELSE 'Other'
-               END AS process_type
+               END AS process_type,
+               (SELECT TO_CHAR(MAX(pe.created_at), 'YYYY-MM-DD') 
+                FROM pr_events pe 
+                WHERE pe.pr_number = pr.pr_number 
+                  AND pe.repository_id = pr.repository_id 
+                  AND pe.event_type = 'reviewed'
+                  AND pe.created_at <= sc.snapshot_ts) AS last_review_date,
+               TO_CHAR(
+                 GREATEST(
+                   COALESCE(pr.created_at, NOW()),
+                   COALESCE((SELECT MAX(pe.created_at) FROM pr_events pe WHERE pe.pr_number = pr.pr_number AND pe.repository_id = pr.repository_id AND pe.created_at <= sc.snapshot_ts), pr.created_at)
+                 ),
+                 'YYYY-MM-DD'
+               ) AS last_activity_date
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
         LEFT JOIN pr_governance_state gs ON pr.pr_number = gs.pr_number AND pr.repository_id = gs.repository_id
@@ -2520,6 +2535,8 @@ export const analyticsProcedures = {
         linkedEIPs: r.linked_eips ?? null,
         labels: Array.isArray(r.labels) ? r.labels : [],
         processType: r.process_type,
+        lastReviewAt: r.last_review_date ?? null,
+        lastActivityAt: r.last_activity_date ?? null,
       }));
     }),
 
@@ -2541,6 +2558,8 @@ export const analyticsProcedures = {
         linked_eips: string | null;
         labels: string[];
         process_type: string;
+        last_review_date: string | null;
+        last_activity_date: string | null;
       }>>(`
         WITH month_ctx AS (
           SELECT
@@ -2579,7 +2598,20 @@ export const analyticsProcedures = {
                  WHEN pr.labels @> ARRAY['c-status']::text[] THEN 'Status Change'
                  WHEN pr.labels @> ARRAY['c-update']::text[] THEN 'Content Edit'
                  ELSE 'Other'
-               END AS process_type
+               END AS process_type,
+               (SELECT TO_CHAR(MAX(pe.created_at), 'YYYY-MM-DD') 
+                FROM pr_events pe 
+                WHERE pe.pr_number = pr.pr_number 
+                  AND pe.repository_id = pr.repository_id 
+                  AND pe.event_type = 'reviewed'
+                  AND pe.created_at <= sc.snapshot_ts) AS last_review_date,
+               TO_CHAR(
+                 GREATEST(
+                   COALESCE(pr.created_at, NOW()),
+                   COALESCE((SELECT MAX(pe.created_at) FROM pr_events pe WHERE pe.pr_number = pr.pr_number AND pe.repository_id = pr.repository_id AND pe.created_at <= sc.snapshot_ts), pr.created_at)
+                 ),
+                 'YYYY-MM-DD'
+               ) AS last_activity_date
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
         LEFT JOIN pr_governance_state gs ON pr.pr_number = gs.pr_number AND pr.repository_id = gs.repository_id
@@ -2605,6 +2637,8 @@ export const analyticsProcedures = {
         linkedEIPs: r.linked_eips ?? null,
         labels: Array.isArray(r.labels) ? r.labels : [],
         processType: r.process_type,
+        lastReviewAt: r.last_review_date ?? null,
+        lastActivityAt: r.last_activity_date ?? null,
       }));
     }),
 
@@ -2626,6 +2660,8 @@ export const analyticsProcedures = {
         linked_eips: string | null;
         labels: string[];
         process_type: string;
+        last_review_date: string | null;
+        last_activity_date: string | null;
       }>>(`
         WITH month_ctx AS (
           SELECT
@@ -2664,7 +2700,20 @@ export const analyticsProcedures = {
                  WHEN pr.labels @> ARRAY['c-status']::text[] THEN 'Status Change'
                  WHEN pr.labels @> ARRAY['c-update']::text[] THEN 'Content Edit'
                  ELSE 'Other'
-               END AS process_type
+               END AS process_type,
+               (SELECT TO_CHAR(MAX(pe.created_at), 'YYYY-MM-DD') 
+                FROM pr_events pe 
+                WHERE pe.pr_number = pr.pr_number 
+                  AND pe.repository_id = pr.repository_id 
+                  AND pe.event_type = 'reviewed'
+                  AND pe.created_at <= sc.snapshot_ts) AS last_review_date,
+               TO_CHAR(
+                 GREATEST(
+                   COALESCE(pr.created_at, NOW()),
+                   COALESCE((SELECT MAX(pe.created_at) FROM pr_events pe WHERE pe.pr_number = pr.pr_number AND pe.repository_id = pr.repository_id AND pe.created_at <= sc.snapshot_ts), pr.created_at)
+                 ),
+                 'YYYY-MM-DD'
+               ) AS last_activity_date
         FROM pull_requests pr
         JOIN repositories r ON pr.repository_id = r.id
         LEFT JOIN pr_governance_state gs ON pr.pr_number = gs.pr_number AND pr.repository_id = gs.repository_id
@@ -2691,6 +2740,8 @@ export const analyticsProcedures = {
         linkedEIPs: r.linked_eips ?? null,
         labels: Array.isArray(r.labels) ? r.labels : [],
         processType: r.process_type,
+        lastReviewAt: r.last_review_date ?? null,
+        lastActivityAt: r.last_activity_date ?? null,
       }));
     }),
 

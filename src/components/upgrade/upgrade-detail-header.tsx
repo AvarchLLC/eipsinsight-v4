@@ -131,26 +131,29 @@ export function UpgradeDetailHeader({
           <UpgradeTimelineStrip currentSlug={slug} />
         </div>
 
-        {/* Subtab bar */}
+        {/* Subtab bar — segmented pill control so the sections read clearly as tabs */}
         {subtabs.length > 0 && (
-          <nav className="-mb-px mt-4 flex gap-1 overflow-x-auto">
-            {[{ id: 'overview' as const, label: 'Overview', href: `/upgrade/${slug}` }, ...subtabs].map(
-              (tab) => (
-                <Link
-                  key={tab.id}
-                  href={tab.href}
-                  className={cn(
-                    'whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors',
-                    activeTab === tab.id
-                      ? 'border-primary text-primary'
-                      : 'border-transparent text-muted-foreground hover:border-border hover:text-foreground'
-                  )}
-                >
-                  {tab.label}
-                </Link>
-              )
-            )}
-          </nav>
+          <div className="mt-5 pb-4">
+            <nav className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-muted/50 p-1">
+              {[{ id: 'overview' as const, label: 'Overview', href: `/upgrade/${slug}` }, ...subtabs].map(
+                (tab) => (
+                  <Link
+                    key={tab.id}
+                    href={tab.href}
+                    aria-current={activeTab === tab.id ? 'page' : undefined}
+                    className={cn(
+                      'whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-150',
+                      activeTab === tab.id
+                        ? 'bg-background text-primary shadow-sm ring-1 ring-border'
+                        : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
+                    )}
+                  >
+                    {tab.label}
+                  </Link>
+                )
+              )}
+            </nav>
+          </div>
         )}
         {subtabs.length === 0 && <div className="pb-5" />}
       </div>

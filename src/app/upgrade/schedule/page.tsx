@@ -28,6 +28,7 @@ import {
 } from '@/lib/upgrade-stages';
 import { getCachedUpgradeComposition } from '@/lib/upgrade-data.server';
 import { UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
+import { SchedulePlanner } from '@/components/upgrade/schedule-planner';
 
 export const revalidate = 3600;
 
@@ -296,7 +297,18 @@ export default async function UpgradeSchedulePage() {
         </p>
       </header>
 
+      {/* Interactive planning sandbox + Gantt timeline (client) */}
+      <SchedulePlanner />
+
       <section className="space-y-4">
+        <div>
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Per-fork detail
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Live scope, progress, and phase breakdown for each in-progress upgrade.
+          </p>
+        </div>
         {FORK_SCHEDULE_CONFIGS.map((config) => (
           <ForkScheduleCard key={config.slug} slug={config.slug} today={today} />
         ))}

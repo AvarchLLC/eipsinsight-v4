@@ -95,6 +95,8 @@ interface OpenPRRow {
   linkedEIPs: string | null;
   labels: string[];
   processType: string;
+  lastReviewAt: string | null;
+  lastActivityAt: string | null;
 }
 
 interface ProcessCategory {
@@ -504,7 +506,7 @@ export default function PRsAnalyticsPage() {
           top: 0,
           textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
         },
-        grid: { top: 38, left: 38, right: 18, bottom: 46 },
+        grid: { top: 38, left: 38, right: 18, bottom: 52 },
         xAxis: {
           type: "category",
           data: months,
@@ -516,20 +518,50 @@ export default function PRsAnalyticsPage() {
           splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } },
         },
         dataZoom: [
-          { type: "inside", xAxisIndex: 0, start: 0, end: 100 },
           {
             type: "slider",
-            xAxisIndex: 0,
-            bottom: 6,
-            height: 16,
-            borderColor: "rgba(148,163,184,0.22)",
-            backgroundColor: "rgba(148,163,184,0.08)",
-            fillerColor: "rgba(34,211,238,0.22)",
-            handleSize: 9,
-            showDetail: false,
-            start: 0,
+            show: true,
+            realtime: true,
+            height: 22,
+            bottom: 4,
+            borderColor: "rgba(148,163,184,0.15)",
+            backgroundColor: "rgba(148,163,184,0.03)",
+            fillerColor: "rgba(34,211,238,0.12)",
+            handleIcon: "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+            handleSize: "110%",
+            handleStyle: {
+              color: "var(--background)",
+              borderColor: "rgba(34,211,238,0.5)",
+              borderWidth: 1.5,
+              shadowBlur: 3,
+              shadowColor: "rgba(0, 0, 0, 0.2)",
+              shadowOffsetX: 1,
+              shadowOffsetY: 1
+            },
+            showDetail: true,
+            start: 40,
             end: 100,
+            textStyle: { 
+              color: "var(--muted-foreground)", 
+              fontSize: 10,
+              fontFamily: "inherit",
+              fontWeight: 505
+            },
+            dataBackground: {
+              areaStyle: { color: "rgba(34,211,238,0.03)" },
+              lineStyle: { color: "rgba(34,211,238,0.1)" }
+            },
+            selectedDataBackground: {
+              areaStyle: { color: "rgba(34,211,238,0.08)" },
+              lineStyle: { color: "rgba(34,211,238,0.3)" }
+            }
           },
+          {
+            type: "inside",
+            realtime: true,
+            start: 40,
+            end: 100
+          }
         ],
         series: categories.map((category) => ({
           name: category,
@@ -580,7 +612,7 @@ export default function PRsAnalyticsPage() {
         textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
         data: validSeries.map(s => s.name),
       },
-      grid: { top: 38, left: 38, right: 18, bottom: 46 },
+      grid: { top: 38, left: 38, right: 18, bottom: 52 },
       xAxis: {
         type: "category",
         data: months,
@@ -592,20 +624,50 @@ export default function PRsAnalyticsPage() {
         splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } },
       },
       dataZoom: [
-        { type: "inside", xAxisIndex: 0, start: 0, end: 100 },
         {
           type: "slider",
-          xAxisIndex: 0,
-          bottom: 6,
-          height: 16,
-          borderColor: "rgba(148,163,184,0.22)",
-          backgroundColor: "rgba(148,163,184,0.08)",
-          fillerColor: "rgba(34,211,238,0.22)",
-          handleSize: 9,
-          showDetail: false,
-          start: 0,
+          show: true,
+          realtime: true,
+          height: 22,
+          bottom: 4,
+          borderColor: "rgba(148,163,184,0.15)",
+          backgroundColor: "rgba(148,163,184,0.03)",
+          fillerColor: "rgba(34,211,238,0.12)",
+          handleIcon: "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+          handleSize: "110%",
+          handleStyle: {
+            color: "var(--background)",
+            borderColor: "rgba(34,211,238,0.5)",
+            borderWidth: 1.5,
+            shadowBlur: 3,
+            shadowColor: "rgba(0, 0, 0, 0.2)",
+            shadowOffsetX: 1,
+            shadowOffsetY: 1
+          },
+          showDetail: true,
+          start: 40,
           end: 100,
+          textStyle: { 
+            color: "var(--muted-foreground)", 
+            fontSize: 10,
+            fontFamily: "inherit",
+            fontWeight: 505
+          },
+          dataBackground: {
+            areaStyle: { color: "rgba(34,211,238,0.03)" },
+            lineStyle: { color: "rgba(34,211,238,0.1)" }
+          },
+          selectedDataBackground: {
+            areaStyle: { color: "rgba(34,211,238,0.08)" },
+            lineStyle: { color: "rgba(34,211,238,0.3)" }
+          }
         },
+        {
+          type: "inside",
+          realtime: true,
+          start: 40,
+          end: 100
+        }
       ],
       series: validSeries.map(({ show, ...s }) => s),
     };
@@ -718,6 +780,7 @@ export default function PRsAnalyticsPage() {
     const generatedAt = new Date().toISOString();
     const rows: Array<Record<string, string | number | null>> = openPRs.map((pr) => ({
       pr_number: pr.prNumber,
+      pr_link: `https://github.com/${pr.repo}/pull/${pr.prNumber}`,
       repo: pr.repo,
       title: pr.title,
       author: pr.author,
@@ -726,6 +789,8 @@ export default function PRsAnalyticsPage() {
       labels: pr.labels.join("; "),
       linked_eips: pr.linkedEIPs,
       created_at: pr.createdAt,
+      last_review_date: pr.lastReviewAt ?? "Never",
+      last_activity_date: pr.lastActivityAt ?? pr.createdAt,
       waiting_since: pr.waitingSince,
       last_event_type: pr.lastEventType,
       month_context: monthContext,
@@ -763,49 +828,25 @@ export default function PRsAnalyticsPage() {
 
   const downloadCategoryBreakdownDetailedCSV = useCallback(() => {
     const generatedAt = new Date().toISOString();
-    const summaryProcessRows: Array<Record<string, string | number | null>> = processCategories.map((row) => ({
-      report_section: "category_breakdown_process_summary",
-      generated_at: generatedAt,
-      repo_filter: repoFilter,
-      time_range: timeRange,
+    const rows = openPRs.map((pr) => ({
+      process_category: pr.processType,
+      waiting_state: pr.governanceState,
+      pr_number: pr.prNumber,
+      pr_link: `https://github.com/${pr.repo}/pull/${pr.prNumber}`,
+      title: pr.title,
+      author: pr.author,
+      open_date: pr.createdAt,
+      last_review_date: pr.lastReviewAt ?? "Never",
+      last_activity_date: pr.lastActivityAt ?? pr.createdAt,
+      labels: pr.labels.join("; "),
       month_context: monthContext,
-      process_category: row.category,
-      count: row.count,
-      metric_definition: "Open PR count by process category for selected context month",
-    }));
-    const summaryStateRows: Array<Record<string, string | number | null>> = govWaitStates.map((row) => ({
-      report_section: "category_breakdown_participant_summary",
       generated_at: generatedAt,
-      repo_filter: repoFilter,
-      time_range: timeRange,
-      month_context: monthContext,
-      participant_state: row.state,
-      participant_label: row.label,
-      count: row.count,
-      median_wait_days: row.medianWaitDays,
-      oldest_pr_number: row.oldestPRNumber,
-      oldest_wait_days: row.oldestWaitDays,
-      metric_definition: "Open PR count by participant/governance waiting state for selected context month",
     }));
-    const matrixRows: Array<Record<string, string | number | null>> = crossTabData.flatMap((row) =>
-      govWaitStates.map((state) => ({
-        report_section: "category_breakdown_estimated_matrix",
-        generated_at: generatedAt,
-        repo_filter: repoFilter,
-        time_range: timeRange,
-        month_context: monthContext,
-        process_category: String(row.process),
-        participant_state: state.state,
-        participant_label: state.label,
-        estimated_count: Number(row[state.state] || 0),
-        metric_definition: "Estimated cross-tab cell derived from process and participant totals (backend exact cross-tab pending)",
-      })),
-    );
     downloadObjectRowsCsv(
-      [...summaryProcessRows, ...summaryStateRows, ...matrixRows],
-      `category-breakdown-detailed-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
+      rows,
+      `pr-category-breakdown-prs-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
     );
-  }, [crossTabData, downloadObjectRowsCsv, govWaitStates, monthContext, processCategories, repoFilter, timeRange]);
+  }, [downloadObjectRowsCsv, monthContext, openPRs, repoFilter]);
 
   const downloadReports = async () => {
     try {
@@ -1065,7 +1106,20 @@ export default function PRsAnalyticsPage() {
         <GraphFooter nextUpdateAt={nextUpdateAt} />
       </Section>
 
-      <Section id="pr-eip-open" title="EIP Open PRs" icon={<Layers className="h-4 w-4" />}>
+      <Section
+        id="pr-eip-open"
+        title="EIP Open PRs"
+        icon={<Layers className="h-4 w-4" />}
+        action={
+          <button
+            onClick={downloadOpenPRsDetailedCSV}
+            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Download CSV
+          </button>
+        }
+      >
         <p className="mb-3 text-xs text-muted-foreground">
           Open PRs by Process type (Typo, NEW EIP, PR DRAFT) or by Participants status (Waiting on Editor, Awaited). Sum of bars = total open PRs for that month.
         </p>
@@ -1106,8 +1160,13 @@ export default function PRsAnalyticsPage() {
           {!backlogOption ? (
             <p className="text-sm text-muted-foreground">No backlog state data available.</p>
           ) : (
-            <div className="h-[320px] w-full">
+            <div className="relative h-[320px] w-full">
               <ReactECharts option={backlogOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="select-none text-sm font-medium tracking-[0.06em] text-foreground/12 dark:text-foreground/16 sm:text-base">
+                  EIPsInsight.com
+                </span>
+              </div>
             </div>
           )}
         <p className="mt-2 text-[10px] text-muted-foreground">Each column is one month; stacked segments sum to the total open PR backlog in that month.</p>

@@ -16,10 +16,10 @@ export type UpgradeBucket =
   | 'declined';
 
 export const STAGE_ORDER: UpgradeBucket[] = [
-  'included',
-  'scheduled',
-  'considered',
   'proposed',
+  'considered',
+  'scheduled',
+  'included',
   'declined',
 ];
 

@@ -1,9 +1,6 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Check } from 'lucide-react';
 import '@/lib/orpc.server';
-import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
 import { getUpgradeRegistryEntry } from '@/data/upgrade-registry';
 import {
@@ -12,6 +9,11 @@ import {
   getCachedUpgradeComposition,
 } from '@/lib/upgrade-data.server';
 import { UpgradeDetailHeader } from '@/components/upgrade/upgrade-detail-header';
+import {
+  DevnetInclusionMatrix,
+  type DevnetColumn,
+  type DevnetEipRow,
+} from '@/components/upgrade/devnet-inclusion-matrix';
 
 export const revalidate = 300;
 
@@ -27,13 +29,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   });
 }
 
-const CELL_STATUS_CLASS: Record<string, string> = {
-  new: 'text-blue-500',
-  new_optional: 'text-blue-400',
-  updated: 'text-amber-500',
-  required: 'text-red-400',
-  optional: 'text-muted-foreground',
-};
+/** "bal" -> "BAL", "fusaka" -> "Fusaka" — a readable devnet-series label. */
+function seriesLabel(series: string): string {
+  return series.length <= 3 ? series.toUpperCase() : series.charAt(0).toUpperCase() + series.slice(1);
+}
 
 export default async function DevnetInclusionPage({ params }: Props) {
   const { slug } = await params;
@@ -56,20 +55,41 @@ export default async function DevnetInclusionPage({ params }: Props) {
     )
     .slice(0, 12);
 
-  // Rows: every EIP seen in any devnet, plus title/layman info if in composition.
-  const titleByEip = new Map(
-    composition.map((eip) => [eip.eip_number, eip.curation?.layman_title || eip.title])
-  );
+  const columns: DevnetColumn[] = devnets.map((devnet) => ({
+    id: devnet.id,
+    series: devnet.series,
+    devnet_number: devnet.devnet_number,
+    active: devnet.active,
+    label:
+      devnet.series === slug
+        ? `Devnet ${devnet.devnet_number}`
+        : `${seriesLabel(devnet.series)} ${devnet.devnet_number}`,
+  }));
+
+  // Rows: every EIP seen in any devnet, enriched with composition metadata
+  // (stage, layer, status, title) where available.
+  const metaByEip = new Map(composition.map((eip) => [eip.eip_number, eip]));
   const allEipNumbers = Array.from(
     new Set(devnets.flatMap((devnet) => devnet.eips.map((eip) => eip.number)))
   ).sort((a, b) => a - b);
 
-  const inclusionByDevnet = new Map(
-    devnets.map((devnet) => [
-      devnet.id,
-      new Map(devnet.eips.map((eip) => [eip.number, eip.status ?? 'included'])),
-    ])
-  );
+  const rows: DevnetEipRow[] = allEipNumbers.map((eipNumber) => {
+    const meta = metaByEip.get(eipNumber);
+    const inclusion: Record<string, string> = {};
+    for (const devnet of devnets) {
+      const hit = devnet.eips.find((e) => e.number === eipNumber);
+      if (hit) inclusion[devnet.id] = hit.status ?? 'included';
+    }
+    return {
+      eip_number: eipNumber,
+      title: meta?.title ?? '',
+      layman_title: meta?.curation?.layman_title ?? null,
+      bucket: meta?.bucket ?? null,
+      layer: meta?.curation?.layer ?? null,
+      status: meta?.status ?? null,
+      inclusion,
+    };
+  });
 
   return (
     <div className="bg-background relative min-h-screen w-full">
@@ -83,89 +103,18 @@ export default async function DevnetInclusionPage({ params }: Props) {
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-12 pt-6 sm:px-6">
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Which EIPs each devnet actually ships — scraped from the ethpandaops spec pages.
-          Colored marks show the EIP&apos;s status in that devnet (new, updated, required,
-          optional).
+          Which EIPs each devnet actually ships — scraped from the ethpandaops spec pages. Each
+          column is a devnet (newest first); colored marks show how the EIP appears in that
+          devnet. Filter by layer, inclusion stage, or narrow to live devnets.
         </p>
 
-        {devnets.length === 0 ? (
+        {columns.length === 0 ? (
           <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
             No devnet specs with EIP data synced yet for this upgrade.
           </p>
         ) : (
-          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border/70 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="sticky left-0 bg-card px-3 py-2">EIP</th>
-                    {devnets.map((devnet) => (
-                      <th key={devnet.id} className="px-2 py-2 text-center">
-                        <Link
-                          href={`/upgrade/devnets/${devnet.id}`}
-                          className={cn(
-                            'whitespace-nowrap hover:text-primary',
-                            devnet.active && 'text-emerald-500'
-                          )}
-                          title={devnet.active ? `${devnet.id} (live)` : devnet.id}
-                        >
-                          {devnet.series === slug
-                            ? `D${devnet.devnet_number}`
-                            : `${devnet.series}-${devnet.devnet_number}`}
-                        </Link>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {allEipNumbers.map((eipNumber) => (
-                    <tr key={eipNumber} className="border-b border-border/60 last:border-0 hover:bg-muted/30">
-                      <td className="sticky left-0 max-w-64 bg-card px-3 py-2">
-                        <Link
-                          href={`/eip/${eipNumber}`}
-                          className="font-mono text-xs font-semibold text-primary hover:underline"
-                        >
-                          EIP-{eipNumber}
-                        </Link>
-                        {titleByEip.get(eipNumber) && (
-                          <span className="ml-2 hidden truncate text-xs text-muted-foreground lg:inline">
-                            {titleByEip.get(eipNumber)}
-                          </span>
-                        )}
-                      </td>
-                      {devnets.map((devnet) => {
-                        const status = inclusionByDevnet.get(devnet.id)?.get(eipNumber);
-                        return (
-                          <td key={devnet.id} className="px-2 py-2 text-center">
-                            {status ? (
-                              <Check
-                                className={cn(
-                                  'mx-auto h-3.5 w-3.5',
-                                  CELL_STATUS_CLASS[status] ?? 'text-emerald-500'
-                                )}
-                                aria-label={status}
-                              />
-                            ) : (
-                              <span className="text-muted-foreground/30">·</span>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <DevnetInclusionMatrix columns={columns} rows={rows} />
         )}
-
-        <p className="text-[11px] text-muted-foreground">
-          Legend: <Check className="inline h-3 w-3 text-emerald-500" /> included ·{' '}
-          <Check className="inline h-3 w-3 text-blue-500" /> new ·{' '}
-          <Check className="inline h-3 w-3 text-amber-500" /> updated ·{' '}
-          <Check className="inline h-3 w-3 text-red-400" /> required · green column header =
-          live devnet.
-        </p>
       </div>
     </div>
   );
