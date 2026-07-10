@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useMemo, useCallback, Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { Calendar, Database } from "lucide-react";
+import { Calendar, Database, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
@@ -164,6 +164,42 @@ function AnalyticsLayoutInner({
     searchParams.get("toMonth") || ""
   );
 
+  const [localFromMonth, setLocalFromMonth] = useState<string>(
+    searchParams.get("fromMonth") || ""
+  );
+  const [localToMonth, setLocalToMonth] = useState<string>(
+    searchParams.get("toMonth") || ""
+  );
+
+  React.useEffect(() => {
+    setLocalFromMonth(customFromMonth);
+  }, [customFromMonth]);
+
+  React.useEffect(() => {
+    setLocalToMonth(customToMonth);
+  }, [customToMonth]);
+
+  const handleApplyCustomRange = useCallback(() => {
+    if (!localFromMonth || !localToMonth) {
+      toast.error("Please select both start and end months");
+      return;
+    }
+    if (localFromMonth > localToMonth) {
+      toast.error("Start month cannot be after end month");
+      return;
+    }
+    
+    setCustomFromMonthState(localFromMonth);
+    setCustomToMonthState(localToMonth);
+    
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("fromMonth", localFromMonth);
+    params.set("toMonth", localToMonth);
+    router.replace(`${pathname}?${params.toString()}`);
+    
+    toast.success("Date range applied");
+  }, [localFromMonth, localToMonth, searchParams, router, pathname]);
+
   const setTimeRange = useCallback((range: TimeRange) => {
     setTimeRangeState(range);
     const params = new URLSearchParams(searchParams.toString());
@@ -296,56 +332,65 @@ function AnalyticsLayoutInner({
               {/* Controls */}
               <div className="flex flex-wrap items-center gap-3">
                 {/* Time Range */}
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
+                  <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
                   <select
                     value={timeRange}
                     onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                    className="bg-transparent text-sm text-foreground/90 border-none outline-none cursor-pointer"
+                    className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
                   >
                     {timeRangeOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
+                      <option key={opt.value} value={opt.value} className="bg-card text-foreground">
                         {opt.label}
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
                 </div>
 
                 {timeRange === "custom" && (
-                  <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-border bg-muted/65 p-1.5 shadow-sm">
                     <input
                       type="month"
-                      value={customFromMonth}
-                      onChange={(e) => setCustomFromMonth(e.target.value)}
-                      className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none"
+                      value={localFromMonth}
+                      onChange={(e) => setLocalFromMonth(e.target.value)}
+                      className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
                       aria-label="Custom range start month"
                     />
                     <span className="text-xs text-muted-foreground">to</span>
                     <input
                       type="month"
-                      value={customToMonth}
-                      min={customFromMonth || undefined}
-                      onChange={(e) => setCustomToMonth(e.target.value)}
-                      className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none"
+                      value={localToMonth}
+                      min={localFromMonth || undefined}
+                      onChange={(e) => setLocalToMonth(e.target.value)}
+                      className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
                       aria-label="Custom range end month"
                     />
+                    <button
+                      type="button"
+                      onClick={handleApplyCustomRange}
+                      className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    >
+                      Apply
+                    </button>
                   </div>
                 )}
 
                 {/* Repo Filter */}
-                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 p-1.5">
-                  <Database className="h-4 w-4 text-muted-foreground" />
+                <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
+                  <Database className="h-4 w-4 text-muted-foreground shrink-0" />
                   <select
                     value={repoFilter}
                     onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-                    className="bg-transparent text-sm text-foreground/90 border-none outline-none cursor-pointer"
+                    className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
                   >
                     {repoOptions.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
+                      <option key={opt.value} value={opt.value} className="bg-card text-foreground">
                         {opt.label}
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
                 </div>
 
               </div>

@@ -1,0 +1,10 @@
+import 'dotenv/config';
+import { fetchSourceText, extractStances } from '../src/lib/client-priority-scrape';
+const src = { url: 'https://notes.ethereum.org/@fjl/geth-glamsterdam-eip-ranking', fetch: 'markdown' as const, clients: ['Geth'] };
+const text = await fetchSourceText(src);
+console.log('fetched chars:', text?.length);
+console.log('--- doc sample (1000-2000) ---\n', text?.slice(1000, 2000));
+const stances = await extractStances(src, text!);
+console.log('--- stances:', stances.length, '---');
+console.log(JSON.stringify(stances.slice(0, 8), null, 1));
+process.exit(0);

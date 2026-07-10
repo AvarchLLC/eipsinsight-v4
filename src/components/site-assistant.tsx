@@ -296,11 +296,11 @@ export function SiteAssistant() {
       <SheetTrigger asChild>
         <button
           type="button"
-          className="fixed bottom-4 right-4 z-40 inline-flex h-10 items-center gap-2 rounded-lg border border-border bg-card/80 px-3.5 text-sm font-semibold text-foreground shadow-[0_8px_20px_rgb(var(--persona-accent-rgb)/0.18)] backdrop-blur-xl transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+          className="fixed bottom-4 right-4 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-[0_8px_20px_rgb(var(--persona-accent-rgb)/0.18)] backdrop-blur-xl transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
           aria-label="Open AI assistant"
+          title="Ask AI Assistant"
         >
-          <Sparkles className="h-4 w-4 text-primary" />
-          Ask AI
+          <Sparkles className="h-4.5 w-4.5 text-primary" />
         </button>
       </SheetTrigger>
 

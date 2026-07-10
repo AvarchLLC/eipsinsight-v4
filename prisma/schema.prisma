@@ -341,6 +341,110 @@ model eips {
   @@index([created_at], map: "idx_eips_created_at")
 }
 
+/// Curated plain-language content per EIP (layman summary, benefits,
+/// tradeoffs), edited by admins at /admin/curations. Seeded initially from
+/// public curation datasets. Keyed by EIP number; independent of the
+/// scheduler-owned tables so ingestion never touches it.
+model eip_curations {
+  eip_number          Int      @id
+  layman_title        String?
+  layman_summary      String?
+  /// string[] — plain-language benefit bullets
+  benefits            Json?
+  /// string[] — plain-language tradeoff bullets
+  tradeoffs           Json?
+  /// Record<stakeholder, { description: string }>
+  stakeholder_impacts Json?
+  /// Record<goal, { description: string }> — North Star goal alignment
+  north_star          Json?
+  /// Upgrade slug this EIP headlines (e.g. "glamsterdam"), if any
+  headliner_of        String?
+  headliner_note      String?
+  /// "EL" | "CL" — which layer the EIP primarily impacts (curated)
+  layer               String?
+  updated_by          String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @default(now()) @updatedAt
+}
+
+/// Past protocol calls (ACDE/ACDC/ACDT/breakouts), synced by the scheduler
+/// from the ACDbot manifest in ethereum/pm. Scheduler-owned table.
+model protocol_calls {
+  id                Int       @id @default(autoincrement())
+  series            String
+  call_id           String
+  call_number       String?
+  occurred_on       DateTime  @db.Date
+  issue_number      Int?
+  video_url         String?
+  has_tldr          Boolean   @default(false)
+  has_transcript    Boolean   @default(false)
+  has_chat          Boolean   @default(false)
+  tldr              Json?
+  key_decisions     Json?
+  display_name      String?
+  source_updated_at DateTime? @db.Timestamptz(6)
+  created_at        DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@unique([series, call_id])
+  @@index([occurred_on])
+  @@index([series])
+}
+
+/// Upcoming protocol calls parsed from open ethereum/pm agenda issues.
+/// Fully replaced on each scheduler cycle. Scheduler-owned table.
+model protocol_calls_upcoming {
+  id           Int       @id @default(autoincrement())
+  series       String?
+  title        String
+  occurs_at    DateTime? @db.Timestamptz(6)
+  occurs_on    DateTime? @db.Date
+  call_number  String?
+  issue_number Int       @unique
+  issue_url    String?
+  youtube_url  String?
+  updated_at   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([occurs_on])
+}
+
+/// Devnet specs scraped by the scheduler from ethpandaops HackMD notes
+/// (+ live status from cartographoor). Scheduler-owned; no app migrations.
+model devnet_specs {
+  id                String    @id
+  series            String
+  devnet_number     Int?
+  title             String?
+  source_url        String?
+  genesis_time      BigInt?
+  active            Boolean   @default(false)
+  canceled          Boolean   @default(false)
+  same_spec_as      String?
+  announcements     Json?
+  eips              Json?
+  el_client_support Json?
+  cl_client_support Json?
+  spec_references   Json?
+  scraped_at        DateTime? @db.Timestamptz(6)
+  updated_at        DateTime  @db.Timestamptz(6)
+
+  @@index([series])
+  @@index([active])
+}
+
+/// Per-upgrade client-team prioritization (EL/CL stances on candidate EIPs).
+/// Seeded from a public snapshot, then owned + edited via /admin/client-priority.
+/// One row per fork; `eips` holds [{ eipId, stances: [...] }].
+model upgrade_client_priority {
+  fork_slug    String   @id
+  last_updated String?
+  eips         Json?
+  updated_by   String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @default(now()) @updatedAt
+}
+
 model pgmigrations {
   id     Int      @id @default(autoincrement())
   name   String   @unique @db.VarChar(255)

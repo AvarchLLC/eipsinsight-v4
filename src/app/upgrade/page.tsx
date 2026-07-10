@@ -1,862 +1,470 @@
-'use client';
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { motion } from 'motion/react';
-import { PageHeader, CopyLinkButton } from '@/components/header';
-import { ZoomableTimeline } from '@/app/upgrade/_components/zoomable-timeline';
-import { UpgradeStatsCards } from '@/app/upgrade/_components/upgrade-stats-cards';
-import { CollapsibleHeader } from '@/app/upgrade/_components/collapsible-header';
-import { NetworkUpgradesChart } from '@/app/upgrade/_components/network-upgrades-chart';
-import { HorizontalUpgradeTimeline } from '@/app/upgrade/_components/horizontal-upgrade-timeline';
-import { UpgradeTimelineChart } from '@/app/upgrade/_components/upgrade-timeline-chart';
-import { EipInclusionProcessGraph } from '@/app/upgrade/_components/eip-inclusion-process-graph';
-
-import { client } from '@/lib/orpc';
-import { cn } from '@/lib/utils';
-import { Loader2, Calendar, BarChart2, Users, Package } from 'lucide-react';
 import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { eipTitles, rawData, upgradeMetaEIPs, pairedUpgradeNames } from '@/data/network-upgrades';
+import { ArrowRight, Archive, BarChart2, GitCommit, Star } from 'lucide-react';
+import '@/lib/orpc.server';
+import { cn } from '@/lib/utils';
+import {
+  getInProgressUpgrades,
+  getLiveUpgrades,
+  type UpgradeRegistryEntry,
+} from '@/data/upgrade-registry';
+import {
+  STAGE_ORDER,
+  stageAbbreviation,
+  stageBadgeClass,
+  stageDefinition,
+  stageLabel,
+  type UpgradeBucket,
+} from '@/lib/upgrade-stages';
+import { getCurrentPhase } from '@/data/fork-schedule';
+import {
+  getCachedRecentActivity,
+  getCachedRecentCalls,
+  getCachedUpcomingCalls,
+  getCachedUpgradeComposition,
+  getCachedUpgradeList,
+  getCachedUpgradeStats,
+} from '@/lib/upgrade-data.server';
+import {
+  callDisplayName,
+  callSeriesBadgeClass,
+  callSeriesShort,
+} from '@/data/call-series';
+import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
+import { PhaseBadge, StageBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
+import { EipInclusionProcessGraph } from '@/components/upgrade/eip-inclusion-process-graph';
 
-export default function UpgradePage() {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [activeTable, setActiveTable] = useState<'core' | 'meta' | 'execution' | 'consensus' | 'authors' | null>(null);
-  const [page, setPage] = useState(1);
-  const [columnSearch, setColumnSearch] = useState({
-    author: '',
-    eip: '',
-    title: '',
-    upgrade: '',
-    layer: '',
-    date: '',
-  });
-  const [glamsterdamTimeline, setGlamsterdamTimeline] = useState<Array<{
-    date: string;
-    included: string[];
-    scheduled: string[];
-    declined: string[];
-    considered: string[];
-    proposed: string[];
-  }>>([]);
-  const [independentIncludedAuthors, setIndependentIncludedAuthors] = useState<number>(0);
-  const [independentAuthorRows, setIndependentAuthorRows] = useState<Array<{
-    id: string;
-    author: string;
-    displayName: string;
-    githubHandle: string | null;
-    totalEips: number;
-    eipNumbers: number[];
-    sampleEip: number | null;
-    sampleTitle: string;
-    upgrades: string[];
-  }>>([]);
-  const [authorFilters, setAuthorFilters] = useState({
-    author: '',
-    eip: '',
-    upgrade: '',
-  });
-  const [authorPage, setAuthorPage] = useState(1);
-  const detailsSectionRef = useRef<HTMLDivElement>(null);
-  const authorsSectionRef = useRef<HTMLDivElement>(null);
-  const sectionHeaderPaddingClass =
-    '[&>div:last-child]:px-3 [&>div:last-child]:sm:px-4 [&>div:last-child]:lg:px-5 [&>div:last-child]:xl:px-6';
-  const totalUpgradeCount = useMemo(
-    () => new Set(rawData.map((item) => getDisplayUpgradeName(item.upgrade, item.date))).size,
-    []
-  );
-  const coreEipRows = useMemo(() => {
-    return rawData
-      .flatMap((item) =>
-        item.eips
-          .filter((eip) => eip !== 'NO-EIP' && eip !== 'CONSENSUS')
-          .map((eip) => {
-            const eipNumber = eip.replace('EIP-', '').replace('-removed', '');
-            const eipInfo = eipTitles[eipNumber];
+export const revalidate = 300;
 
-            return {
-              id: `${item.upgrade}-${eip}`,
-              eipNumber,
-              title: eipInfo?.title ?? `EIP-${eipNumber}`,
-              upgrade: getDisplayUpgradeName(item.upgrade, item.date),
-              upgradeHref: getUpgradeHref(item.upgrade, item.date),
-              layer: item.layer === 'consensus' ? 'Consensus' : 'Execution',
-              date: item.date,
-            };
-          })
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, []);
+function timeAgo(iso: string): string {
+  const diffMs = Date.now() - new Date(iso).getTime();
+  const hours = Math.floor(diffMs / 3_600_000);
+  if (hours < 1) return 'just now';
+  if (hours < 48) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
 
-  const metaEipRows = useMemo(() => {
-    return rawData
-      .filter((item) => upgradeMetaEIPs[item.upgrade])
-      .map((item) => {
-        const metaEip = upgradeMetaEIPs[item.upgrade];
-        const eipNumber = metaEip.replace('EIP-', '');
-        const eipInfo = eipTitles[eipNumber];
-
-        return {
-          id: `${item.upgrade}-${metaEip}`,
-          eipNumber,
-          title: eipInfo?.title ?? `Meta EIP for ${item.upgrade}`,
-          upgrade: getDisplayUpgradeName(item.upgrade, item.date),
-          upgradeHref: getUpgradeHref(item.upgrade, item.date),
-          layer: item.layer === 'consensus' ? 'Consensus' : 'Execution',
-          date: item.date,
-        };
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, []);
-
-  const activeRows = useMemo(() => {
-    if (activeTable === 'authors') return [];
-    if (activeTable === 'meta') return metaEipRows;
-    if (activeTable === 'execution') return coreEipRows.filter((row) => row.layer === 'Execution');
-    if (activeTable === 'consensus') return coreEipRows.filter((row) => row.layer === 'Consensus');
-    return coreEipRows;
-  }, [activeTable, coreEipRows, metaEipRows]);
-  const filteredRows = useMemo(() => {
-    if (activeTable === 'authors') return [];
-    return activeRows.filter((row) =>
-      Object.entries(columnSearch).every(([key, search]) => {
-        if (key === 'author') return true;
-        const normalizedSearch = search.trim().toLowerCase();
-        if (!normalizedSearch) return true;
-
-        if (key === 'eip') {
-          return `eip-${row.eipNumber}`.toLowerCase().includes(normalizedSearch) || row.eipNumber.toLowerCase().includes(normalizedSearch);
-        }
-
-        return String(row[key as keyof typeof row] ?? '')
-          .toLowerCase()
-          .includes(normalizedSearch);
-      })
-    );
-  }, [activeRows, columnSearch, activeTable]);
-  const filteredAuthorRows = useMemo(() => {
-    return independentAuthorRows.filter((row) => {
-      const authorSearch = authorFilters.author.trim().toLowerCase();
-      const eipSearch = authorFilters.eip.trim().toLowerCase();
-      const upgradeSearch = authorFilters.upgrade.trim().toLowerCase();
-
-      const matchesAuthor =
-        !authorSearch ||
-        row.displayName.toLowerCase().includes(authorSearch) ||
-        row.author.toLowerCase().includes(authorSearch) ||
-        row.githubHandle?.toLowerCase().includes(authorSearch);
-      const matchesEip =
-        !eipSearch ||
-        row.eipNumbers.some((eipNumber) => `eip-${eipNumber}`.toLowerCase().includes(eipSearch) || String(eipNumber).includes(eipSearch));
-      const matchesUpgrade = !upgradeSearch || row.upgrades.join(', ').toLowerCase().includes(upgradeSearch);
-
-      return matchesAuthor && matchesEip && matchesUpgrade;
-    });
-  }, [independentAuthorRows, authorFilters]);
-  const pageSize = 10;
-  const resultCount = filteredRows.length;
-  const totalPages = Math.max(1, Math.ceil(resultCount / pageSize));
-  const paginatedRows = useMemo(() => {
-    const start = (page - 1) * pageSize;
-    if (activeTable === 'authors') return [];
-    return filteredRows.slice(start, start + pageSize);
-  }, [filteredRows, page, activeTable]);
-  const paginatedAuthorRows = useMemo(() => {
-    const start = (authorPage - 1) * pageSize;
-    return filteredAuthorRows.slice(start, start + pageSize);
-  }, [filteredAuthorRows, authorPage]);
-  const isTableFiltered = Object.entries(columnSearch).some(([key, value]) => key !== 'author' && value.trim().length > 0);
-  const authorTotalPages = Math.max(1, Math.ceil(filteredAuthorRows.length / pageSize));
-
-  const handleSelectTable = (mode: 'core' | 'meta' | 'execution' | 'consensus' | 'authors') => {
-    setActiveTable(mode);
-    if (mode === 'authors') {
-      requestAnimationFrame(() => {
-        authorsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      });
-      return;
-    }
-
-    setPage(1);
-    requestAnimationFrame(() => {
-      detailsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
-
-  const handleColumnSearch = (key: keyof typeof columnSearch, value: string) => {
-    setColumnSearch((current) => ({ ...current, [key]: value }));
-    setPage(1);
-  };
-
-  const clearFilters = () => {
-    setColumnSearch({
-      author: '',
-      eip: '',
-      title: '',
-      upgrade: '',
-      layer: '',
-      date: '',
-    });
-    setPage(1);
-  };
-
-  const clearAuthorFilters = () => {
-    setAuthorFilters({
-      author: '',
-      eip: '',
-      upgrade: '',
-    });
-    setAuthorPage(1);
-  };
-
-  const downloadReport = () => {
-    if (!activeTable || activeTable === 'authors') return;
-
-    const csvEscape = (value: string | number | null | undefined) => {
-      const text = String(value ?? '');
-      if (text.includes('"') || text.includes(',') || text.includes('\n')) {
-        return `"${text.replace(/"/g, '""')}"`;
-      }
-      return text;
-    };
-
-    const header = ['EIP', 'Title', 'Upgrade', 'Layer', 'Date'];
-
-    const rows = filteredRows.map((row) =>
-      [ `EIP-${row.eipNumber}`, row.title, row.upgrade, row.layer, row.date ]
-        .map(csvEscape)
-        .join(',')
-    );
-
-    const csv = [header.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'upgrade-eips-report.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const downloadAuthorReport = () => {
-    const csvEscape = (value: string | number | null | undefined) => {
-      const text = String(value ?? '');
-      if (text.includes('"') || text.includes(',') || text.includes('\n')) {
-        return `"${text.replace(/"/g, '""')}"`;
-      }
-      return text;
-    };
-
-    const header = ['Author Name', 'GitHub Handle', 'Included EIPs', 'EIP List', 'Upgrades', 'Profile Link'];
-    const rows = filteredAuthorRows.map((row) =>
-      [
-        row.displayName,
-        row.githubHandle ?? '',
-        row.totalEips,
-        row.eipNumbers.map((eipNumber) => `EIP-${eipNumber}`).join(' | '),
-        row.upgrades.join(' | '),
-        `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}${row.githubHandle ? `/people/${encodeURIComponent(row.githubHandle)}` : `/search?q=${encodeURIComponent(row.author)}`}`,
-      ]
-        .map(csvEscape)
-        .join(',')
-    );
-
-    const csv = [header.join(','), ...rows].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'included-eip-authors-report.csv';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  useEffect(() => {
-    if (page > totalPages) {
-      setPage(totalPages);
-    }
-  }, [page, totalPages]);
-
-  useEffect(() => {
-    if (authorPage > authorTotalPages) {
-      setAuthorPage(authorTotalPages);
-    }
-  }, [authorPage, authorTotalPages]);
-
-  useEffect(() => {
-    if (!activeTable) {
-      clearFilters();
-    }
-  }, [activeTable]);
-
-  useEffect(() => {
-    async function fetchData() {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const [timelineData, upgradeStats, independentAuthors] = await Promise.all([
-          client.upgrades.getUpgradeTimeline({ slug: 'glamsterdam' }).catch(() => []),
-          client.upgrades.getUpgradeStats({}).catch(() => null),
-          client.upgrades.getIndependentIncludedAuthors({}).catch(() => []),
-        ]);
-
-        setGlamsterdamTimeline(timelineData);
-        setIndependentIncludedAuthors(upgradeStats?.independentIncludedAuthors ?? 0);
-        setIndependentAuthorRows(
-          independentAuthors.map((row) => ({
-            id: `${row.authorKey}-${row.sampleEip ?? 'none'}`,
-            author: row.authorKey,
-            displayName: row.displayName ?? row.authorKey,
-            githubHandle: row.githubHandle ?? null,
-            totalEips: row.totalEips,
-            eipNumbers: row.eipNumbers,
-            sampleEip: row.sampleEip,
-            sampleTitle: row.sampleTitle,
-            upgrades: row.upgrades,
-          }))
-        );
-      } catch (err) {
-        console.error('Failed to fetch upgrade data:', err);
-        setError('Failed to load upgrade data');
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="mx-auto w-full px-3 py-16 sm:px-4 lg:px-5 xl:px-6">
-          <div className="flex items-center justify-center min-h-100">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        </div>
-      </div>
-    );
+function stageCounts(composition: Awaited<ReturnType<typeof getCachedUpgradeComposition>>) {
+  const counts = new Map<UpgradeBucket, number>();
+  for (const eip of composition) {
+    if (eip.bucket) counts.set(eip.bucket, (counts.get(eip.bucket) ?? 0) + 1);
   }
+  return counts;
+}
+
+function formatDate(iso: string): string {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function UpgradeCard({
+  entry,
+  counts,
+  today,
+}: {
+  entry: UpgradeRegistryEntry;
+  counts: Map<UpgradeBucket, number>;
+  today: string;
+}) {
+  const totalEips = Array.from(counts.values()).reduce((sum, count) => sum + count, 0);
+  const isLive = entry.status === 'Live';
+  const phase = isLive ? null : getCurrentPhase(entry.slug, today);
 
   return (
-    <div className="bg-background relative w-full overflow-hidden">
-      {/* Background gradient */}
-      <div className="absolute inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(52,211,153,0.18),transparent_60%)]" />
-        <div className="absolute top-0 left-1/2 -z-10 h-225 w-225 -translate-x-1/2 rounded-full bg-cyan-300/10 blur-3xl" />
-      </div>
-
-      {/* Collapsible Header */}
-      <CollapsibleHeader />
-
-      {/* Stats & Flowchart Section */}
-      <section id="stats" className="relative w-full bg-background">
-        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 pt-6 pb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left: Stats Cards */}
-            <div className="flex h-full">
-              <div className="w-full h-full min-h-65 sm:min-h-70 lg:min-h-75 flex items-stretch">
-                <UpgradeStatsCards
-                  totalUpgrades={totalUpgradeCount}
-                  independentIncludedAuthors={independentIncludedAuthors}
-                  activeTable={activeTable}
-                  onSelectTable={handleSelectTable}
-                />
-              </div>
-            </div>
-
-            {/* Right: EIP Inclusion Flowchart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className={cn(
-                "relative rounded-xl border border-border",
-                "bg-card/60 backdrop-blur-sm overflow-hidden",
-                "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/15",
-                "transition-all duration-200",
-                "h-full min-h-65 sm:min-h-70 lg:min-h-75"
-              )}
-            >
-              <EipInclusionProcessGraph />
-            </motion.div>
-          </div>
-        </div>
-      </section>
-
-      {/* Upgrades List / Roadmap Section */}
-      <section id="upgrades" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Package className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Network Upgrade Roadmap</h2>
-            <CopyLinkButton sectionId="upgrades" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">High‑level view of recent and upcoming coordinated Ethereum network upgrades.</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          <div className="mb-6">
-            <HorizontalUpgradeTimeline />
-          </div>
-
-          {/* Glamsterdam Timeline Chart */}
-          {glamsterdamTimeline.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mt-6"
-            >
-              <UpgradeTimelineChart data={glamsterdamTimeline} upgradeName="Glamsterdam" />
-            </motion.div>
-          )}
-        </div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      {/* Timeline Section */}
-      <section id="timeline" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Ethereum Upgrade Timeline (by timeline)</h2>
-            <CopyLinkButton sectionId="timeline" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">Visual timeline of all network upgrades from Frontier to present</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          <ZoomableTimeline
-            imagePath="/upgrade/ethupgradetimeline.png"
-            alt="Ethereum Network Upgrade Timeline"
-          />
-        </div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      {/* Network Upgrades Chart Section */}
-      <section id="network-upgrades-chart" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <BarChart2 className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Network Upgrade Timeline (by distribution of EIPs)</h2>
-            <CopyLinkButton sectionId="network-upgrades-chart" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">Interactive timeline showing all Ethereum network upgrades and their EIP implementations</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          <NetworkUpgradesChart />
-        </div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      <section ref={authorsSectionRef} className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6" id="included-authors">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Included EIP Authors</h2>
-            <CopyLinkButton sectionId="included-authors" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">Authors whose EIPs are included across Ethereum network upgrades.</p>
-        </div>
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm"
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-245 table-fixed text-sm">
-                <colgroup>
-                  <col className="w-[24%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[34%]" />
-                  <col className="w-[30%]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2">Author</th>
-                    <th className="px-3 py-2">EIPs</th>
-                    <th className="px-3 py-2">Included EIP List</th>
-                    <th className="px-3 py-2">Upgrades</th>
-                  </tr>
-                  <tr className="border-b border-border/60 bg-muted/40">
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.author}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, author: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="Author name or handle"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                    <th className="px-3 py-2">
-                      <span className="inline-flex h-8 w-full items-center rounded-md border border-border bg-muted/50 px-2 text-[11px] text-muted-foreground">
-                        Count
-                      </span>
-                    </th>
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.eip}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, eip: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="EIP-1559 / 1559"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.upgrade}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, upgrade: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="Upgrade"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAuthorRows.map((row) => {
-                    return (
-                      <tr key={row.id} className="border-b border-border/60 text-foreground hover:bg-muted/40">
-                        <td className="px-3 py-2 font-medium text-foreground">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7 border border-border/70">
-                              {row.githubHandle ? (
-                                <AvatarImage src={`https://github.com/${row.githubHandle}.png?size=64`} alt={row.displayName} />
-                              ) : null}
-                              <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                {getInitials(row.displayName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span>{row.displayName}</span>
-                              {row.githubHandle && <span className="text-[11px] font-normal text-muted-foreground">@{row.githubHandle}</span>}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">{row.totalEips}</td>
-                        <td className="px-3 py-2 text-primary">
-                          <div className="flex flex-wrap gap-x-2 gap-y-1">
-                            {row.eipNumbers.map((eipNumber) => (
-                              <Link key={`${row.id}-eip-${eipNumber}`} href={`/eip/${eipNumber}`} className="hover:underline">
-                                EIP-{eipNumber}
-                              </Link>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">{row.upgrades.join(', ') || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                  {paginatedAuthorRows.length === 0 && (
-                    <tr className="border-b border-border/60">
-                      <td colSpan={4} className="px-4 py-8 text-sm text-muted-foreground">
-                        No matching rows found for the current filters.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              <span>{Object.values(authorFilters).some((value) => value.trim().length > 0) ? 'Filtered results' : 'Results'}: {filteredAuthorRows.length.toLocaleString()}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={clearAuthorFilters}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                >
-                  Reset Filters
-                </button>
-                <button
-                  onClick={downloadAuthorReport}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                >
-                  Download Reports
-                </button>
-                <button
-                  onClick={() => setAuthorPage((current) => Math.max(1, current - 1))}
-                  disabled={authorPage <= 1}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <span>Page {authorPage} / {authorTotalPages}</span>
-                <button
-                  onClick={() => setAuthorPage((current) => Math.min(authorTotalPages, current + 1))}
-                  disabled={authorPage >= authorTotalPages}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </motion.div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      <section ref={detailsSectionRef} className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6" id="upgrade-eip-details">
-        {activeTable && (
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2 mb-2">
-              <BarChart2 className="h-5 w-5 text-primary" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                {activeTable === 'meta'
-                  ? 'Hard Fork Meta EIPs'
-                  : activeTable === 'execution'
-                    ? 'Execution Layer EIPs'
-                    : activeTable === 'consensus'
-                      ? 'Consensus Layer EIPs'
-                  : activeTable === 'core'
-                    ? 'EIPs Deployed'
-                    : 'Included EIP Authors'}
-              </h2>
-              <CopyLinkButton sectionId="upgrade-eip-details" tooltipLabel="Copy link" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {activeTable === 'meta'
-                ? 'Meta EIPs associated with upgrades in the distribution chart.'
-                : activeTable === 'execution'
-                  ? 'Core EIPs deployed through execution-layer upgrades.'
-                  : activeTable === 'consensus'
-                    ? 'Core EIPs deployed through consensus-layer upgrades.'
-                : activeTable === 'core'
-                  ? 'Core EIPs deployed in upgrades from the distribution chart.'
-                  : 'Authors whose EIPs are included across Ethereum network upgrades.'}
-            </p>
-            {activeTable === 'meta' && (
-              <p className="mt-1 text-xs text-muted-foreground">
-                Data source: Meta-EIP mappings are curated from Ethereum upgrade references and EIP metadata in the network upgrades dataset.
-              </p>
-            )}
-          </div>
+    <Link
+      href={`/upgrade/${entry.slug}`}
+      className="group flex h-full flex-col rounded-xl border border-border bg-card/60 p-5 transition-colors hover:border-primary/40"
+    >
+      <div className="flex items-start justify-between gap-2">
+        <h3 className="dec-title text-xl font-semibold tracking-tight text-foreground">
+          {entry.name}
+        </h3>
+        {phase ? (
+          <PhaseBadge phaseId={phase.id} label={phase.label} />
+        ) : (
+          <UpgradeStatusBadge status={entry.status} />
         )}
-        <div className="mx-auto w-full">
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm"
-          >
-            {!activeTable ? (
-              <div className="flex flex-col gap-4 px-6 py-8 text-center">
-                <div>
-                  <h3 className="text-lg font-semibold text-foreground mb-2">EIP Details</h3>
-                  <p className="text-sm text-muted-foreground">Select a stats card above to view detailed EIP information from the distribution chart.</p>
-                </div>
-                <CopyLinkButton sectionId="upgrade-eip-details" tooltipLabel="Copy link" />
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-              {activeTable && activeTable !== 'authors' ? (
-                  <table className="w-full min-w-full table-fixed text-sm">
-                    <colgroup>
-                      <col className="w-[14%]" />
-                      <col className="w-[34%]" />
-                      <col className="w-[16%]" />
-                      <col className="w-[14%]" />
-                      <col className="w-[22%]" />
-                    </colgroup>
-                    <thead>
-                      <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                        <th className="px-2 py-2">EIP</th>
-                        <th className="px-2 py-2">Title</th>
-                        <th className="px-2 py-2">Upgrade</th>
-                        <th className="px-2 py-2">Layer</th>
-                        <th className="px-2 py-2">Date</th>
-                      </tr>
-                      <tr className="border-b border-border/60 bg-muted/40">
-                        <th className="px-2 py-2">
-                          <input
-                            value={columnSearch.eip}
-                            onChange={(e) => handleColumnSearch('eip', e.target.value)}
-                            placeholder="EIP-1559 / 1559"
-                            className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                          />
-                        </th>
-                        <th className="px-2 py-2">
-                          <input
-                            value={columnSearch.title}
-                            onChange={(e) => handleColumnSearch('title', e.target.value)}
-                            placeholder="Title"
-                            className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                          />
-                        </th>
-                        <th className="px-2 py-2">
-                          <input
-                            value={columnSearch.upgrade}
-                            onChange={(e) => handleColumnSearch('upgrade', e.target.value)}
-                            placeholder="Upgrade"
-                            className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                          />
-                        </th>
-                        <th className="px-2 py-2">
-                          <input
-                            value={columnSearch.layer}
-                            onChange={(e) => handleColumnSearch('layer', e.target.value)}
-                            placeholder="Layer"
-                            className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                          />
-                        </th>
-                        <th className="px-2 py-2">
-                          <input
-                            value={columnSearch.date}
-                            onChange={(e) => handleColumnSearch('date', e.target.value)}
-                            placeholder="YYYY-MM-DD"
-                            className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                          />
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedRows.map((row) => (
-                        <tr key={row.id} className="border-b border-border/60 text-foreground hover:bg-muted/40">
-                          <td className="px-2 py-2 font-medium text-primary">
-                            <Link href={`/eip/${row.eipNumber}`} className="hover:underline">
-                              EIP-{row.eipNumber}
-                            </Link>
-                          </td>
-                          <td className="px-2 py-2 text-foreground">{row.title}</td>
-                          <td className="px-2 py-2 text-muted-foreground">
-                            {row.upgradeHref ? (
-                              <Link href={row.upgradeHref} className="text-primary hover:underline">
-                                {row.upgrade}
-                              </Link>
-                            ) : (
-                              row.upgrade
-                            )}
-                          </td>
-                          <td className="px-2 py-2 text-muted-foreground">{row.layer}</td>
-                          <td className="px-2 py-2 text-muted-foreground">{row.date}</td>
-                        </tr>
-                      ))}
-                      {paginatedRows.length === 0 && (
-                        <tr className="border-b border-border/60">
-                          <td colSpan={5} className="px-4 py-8 text-sm text-muted-foreground">
-                            No matching rows found for the current filters.
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-              ) : (
-                <div className="px-4 py-10 text-sm text-muted-foreground">
-                  Choose <span className="text-foreground">EIPs Deployed</span> or <span className="text-foreground">Hard Fork Meta EIPs</span> above to load the table.
-                </div>
-              )}
+      </div>
+      <p className="mt-0.5 text-xs font-medium text-muted-foreground">
+        {isLive && entry.activationDate
+          ? `Activated: ${formatDate(entry.activationDate)}`
+          : phase
+            ? `Target: ${phase.targetYear}`
+            : null}
+      </p>
+      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
+        {entry.statusNote ?? entry.tagline}
+      </p>
+
+      {entry.headliners && entry.headliners.length > 0 && (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <Star className="mt-0.5 h-3 w-3 shrink-0 fill-current text-primary" />
+          <span>
+            {entry.headliners
+              .map((headliner) => `EIP-${headliner.eip}`)
+              .join(' · ')}{' '}
+            headline this upgrade
+          </span>
+        </p>
+      )}
+
+      {totalEips > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {STAGE_ORDER.map((bucket) => {
+            const count = counts.get(bucket);
+            if (!count) return null;
+            return (
+              <span
+                key={bucket}
+                title={stageLabel(bucket)}
+                className={cn(
+                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                  stageBadgeClass(bucket)
+                )}
+              >
+                {count} {stageAbbreviation(bucket)}
+              </span>
+            );
+          })}
+        </div>
+      )}
+
+      <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
+        View upgrade
+        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
+  );
+}
+
+export default async function UpgradeIndexPage() {
+  const today = new Date().toISOString().slice(0, 10);
+  const inProgress = getInProgressUpgrades();
+  const live = getLiveUpgrades();
+  // Featured cards: newest live fork + everything in progress.
+  const featured = [live[0], ...inProgress].filter(Boolean);
+
+  const [list, stats, activity, recentCalls, upcomingCalls, ...compositions] = await Promise.all([
+    getCachedUpgradeList(),
+    getCachedUpgradeStats(),
+    getCachedRecentActivity(10),
+    getCachedRecentCalls(5),
+    getCachedUpcomingCalls(),
+    ...featured.map((entry) => getCachedUpgradeComposition(entry.slug)),
+  ]);
+
+  const eipCountBySlug = new Map(list.map((upgrade) => [upgrade.slug, upgrade.stats.totalEIPs]));
+
+  return (
+    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-12 pt-8 sm:px-6">
+      {/* Hero */}
+      <header>
+        <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+          Ethereum upgrades, tracked live
+        </h1>
+        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
+          there — parsed automatically from meta-EIP commits.
+        </p>
+      </header>
+
+      {/* Roadmap strip */}
+      <section aria-label="Upgrade roadmap">
+        <UpgradeTimelineStrip />
+      </section>
+
+      {/* Network upgrades */}
+      <section id="network-upgrades">
+        <div className="mb-4">
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            Network upgrades
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Where each upgrade stands right now.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {featured.map((entry, index) => (
+            <UpgradeCard
+              key={entry.slug}
+              entry={entry}
+              counts={stageCounts(compositions[index] ?? [])}
+              today={today}
+            />
+          ))}
+        </div>
+      </section>
+
+      {/* Latest changes */}
+      {activity.length > 0 && (
+        <section id="latest-changes">
+          <div className="mb-4">
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Latest changes
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Every EIP movement across all upgrades, straight from the meta-EIP commit history.
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+            <ul className="divide-y divide-border/60">
+              {activity.map((event, index) => (
+                <li
+                  key={`${event.commit_date}-${event.eip_number}-${index}`}
+                  className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2.5 text-sm"
+                >
+                  <GitCommit className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                  {event.eip_number && (
+                    <Link
+                      href={`/eip/${event.eip_number}`}
+                      className="font-mono text-xs font-semibold text-primary hover:underline"
+                    >
+                      EIP-{event.eip_number}
+                    </Link>
+                  )}
+                  <span className="hidden max-w-56 truncate text-xs text-muted-foreground md:inline">
+                    {event.title}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {event.event_type === 'removed' ? 'removed from' : `${event.event_type} to`}
+                  </span>
+                  <StageBadge bucket={event.bucket} abbreviated />
+                  {event.upgrade_slug && (
+                    <>
+                      <span className="text-xs text-muted-foreground">in</span>
+                      <Link
+                        href={`/upgrade/${event.upgrade_slug}`}
+                        className="text-xs font-medium text-foreground hover:text-primary"
+                      >
+                        {event.upgrade_name ?? event.upgrade_slug}
+                      </Link>
+                    </>
+                  )}
+                  <span className="ml-auto shrink-0 text-[11px] text-muted-foreground">
+                    {event.commit_date ? timeAgo(event.commit_date) : ''}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
+      {/* Protocol calls */}
+      {(recentCalls.length > 0 || upcomingCalls.length > 0) && (
+        <section id="protocol-calls">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+            <div>
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                Protocol calls
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                Where upgrade decisions happen — agendas, recordings, and summaries.
+              </p>
             </div>
-            )}
-            {activeTable && activeTable !== 'authors' && (
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-                <span>{isTableFiltered ? 'Filtered results' : 'Results'}: {resultCount.toLocaleString()}</span>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={clearFilters}
-                    className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                  >
-                    Reset Filters
-                  </button>
-                  <button
-                    onClick={downloadReport}
-                    className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                  >
-                    Download Reports
-                  </button>
-                  <button
-                    onClick={() => setPage((current) => Math.max(1, current - 1))}
-                    disabled={page <= 1}
-                    className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                  >
-                    Prev
-                  </button>
-                  <span>Page {page} / {totalPages}</span>
-                  <button
-                    onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
-                    disabled={page >= totalPages}
-                    className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                  >
-                    Next
-                  </button>
-                </div>
+            <Link
+              href="/upgrade/calls"
+              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+            >
+              All calls
+              <ArrowRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="grid gap-4 lg:grid-cols-2">
+            {upcomingCalls.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+                <h3 className="border-b border-border/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Upcoming
+                </h3>
+                <ul className="divide-y divide-border/60">
+                  {upcomingCalls.slice(0, 4).map((call) => (
+                    <li key={call.issue_number} className="flex items-center gap-3 px-4 py-2.5">
+                      <span
+                        className={cn(
+                          'inline-flex w-14 shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
+                          call.series
+                            ? callSeriesBadgeClass(call.series)
+                            : 'border-border bg-muted text-muted-foreground'
+                        )}
+                      >
+                        {call.series ? callSeriesShort(call.series) : '—'}
+                      </span>
+                      <a
+                        href={call.issue_url ?? '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-w-0 flex-1 truncate text-sm text-foreground transition-colors hover:text-primary"
+                      >
+                        {call.title}
+                      </a>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {call.occurs_on ?? 'TBD'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             )}
-          </motion.div>
+            {recentCalls.length > 0 && (
+              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+                <h3 className="border-b border-border/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Recent
+                </h3>
+                <ul className="divide-y divide-border/60">
+                  {recentCalls.slice(0, 4).map((call) => (
+                    <li
+                      key={`${call.series}-${call.call_id}`}
+                      className="flex items-center gap-3 px-4 py-2.5"
+                    >
+                      <span
+                        className={cn(
+                          'inline-flex w-14 shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
+                          callSeriesBadgeClass(call.series)
+                        )}
+                      >
+                        {callSeriesShort(call.series)}
+                      </span>
+                      <Link
+                        href="/upgrade/calls"
+                        className="min-w-0 flex-1 truncate text-sm text-foreground transition-colors hover:text-primary"
+                      >
+                        {callDisplayName(call)}
+                      </Link>
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {call.occurred_on}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* How inclusion works */}
+      <section id="how-inclusion-works">
+        <div className="mb-4">
+          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+            How EIPs get into an upgrade
+          </h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">
+            Proposals move through inclusion stages as client teams evaluate them.
+          </p>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+            <EipInclusionProcessGraph />
+          </div>
+          <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+            <ul className="space-y-3">
+              {STAGE_ORDER.map((bucket) => (
+                <li key={bucket} className="flex items-start gap-3">
+                  <StageBadge bucket={bucket} abbreviated className="mt-0.5 w-16 shrink-0 justify-center" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground">{stageLabel(bucket)}</p>
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {stageDefinition(bucket)}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* Live upgrades */}
+      <section id="live">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Live on mainnet
+            </h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Activated network upgrades, newest first.
+            </p>
+          </div>
+          <Link
+            href="/upgrade/archive"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            Full archive
+          </Link>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/70 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-4 py-3">Upgrade</th>
+                  <th className="px-4 py-3">Activated</th>
+                  <th className="hidden px-4 py-3 sm:table-cell">EIPs</th>
+                  <th className="hidden px-4 py-3 md:table-cell">Highlights</th>
+                  <th className="px-4 py-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {live.map((entry) => (
+                  <tr
+                    key={entry.slug}
+                    className="border-b border-border/60 last:border-0 hover:bg-muted/40"
+                  >
+                    <td className="px-4 py-3 font-medium text-foreground">
+                      <Link href={`/upgrade/${entry.slug}`} className="text-primary hover:underline">
+                        {entry.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground">{entry.activationDate}</td>
+                    <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
+                      {eipCountBySlug.get(entry.slug) || '—'}
+                    </td>
+                    <td className="hidden max-w-md px-4 py-3 text-muted-foreground md:table-cell">
+                      {entry.tagline}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      {/* Stats + deep-dive link */}
+      <section aria-label="Statistics">
+        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-x-8 gap-y-3">
+            <div>
+              <p className="text-2xl font-semibold text-foreground">{stats?.totalUpgrades ?? '—'}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Tracked upgrades</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-foreground">{stats?.totalCoreEIPs ?? '—'}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Core EIPs deployed</p>
+            </div>
+            <div>
+              <p className="text-2xl font-semibold text-foreground">
+                {stats?.independentIncludedAuthors ?? '—'}
+              </p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Included EIP authors</p>
+            </div>
+          </div>
+          <Link
+            href="/upgrade/analytics"
+            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
+          >
+            <BarChart2 className="h-4 w-4" />
+            Upgrade analytics
+          </Link>
         </div>
       </section>
     </div>
   );
-}
-
-function getUpgradeHref(upgrade: string, date: string): string | null {
-  const pairedUpgradeName = pairedUpgradeNames[date];
-  if (pairedUpgradeName === 'Shapella') return '/upgrade/shanghai';
-  if (pairedUpgradeName === 'Dencun') return '/upgrade/cancun';
-  if (pairedUpgradeName === 'Pectra') return '/upgrade/pectra';
-  if (pairedUpgradeName === 'Fusaka') return '/upgrade/fusaka';
-
-  const directMap: Record<string, string> = {
-    Frontier: '/upgrade/frontier',
-    Homestead: '/upgrade/homestead',
-    'DAO Fork': '/upgrade/dao-fork',
-    'Tangerine Whistle': '/upgrade/tangerine-whistle',
-    'Spurious Dragon': '/upgrade/spurious-dragon',
-    Byzantium: '/upgrade/byzantium',
-    Constantinople: '/upgrade/constantinople',
-    Istanbul: '/upgrade/istanbul',
-    Berlin: '/upgrade/berlin',
-    London: '/upgrade/london',
-    Paris: '/upgrade/paris',
-    Shanghai: '/upgrade/shanghai',
-    Cancun: '/upgrade/cancun',
-    Prague: '/upgrade/pectra',
-    Electra: '/upgrade/pectra',
-    Osaka: '/upgrade/fusaka',
-    Fulu: '/upgrade/fusaka',
-  };
-
-  if (directMap[upgrade]) return directMap[upgrade];
-  if (date === '2024-03-13') return '/upgrade/cancun';
-  if (date === '2025-05-07') return '/upgrade/pectra';
-  if (date === '2025-12-03') return '/upgrade/fusaka';
-  return null;
-}
-
-function getDisplayUpgradeName(upgrade: string, date: string): string {
-  const mergeTimestamp = new Date('2022-09-15').getTime();
-  const upgradeTimestamp = new Date(date).getTime();
-  if (upgradeTimestamp > mergeTimestamp && pairedUpgradeNames[date]) {
-    return pairedUpgradeNames[date];
-  }
-  return upgrade;
-}
-
-function getInitials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('') || '?';
 }

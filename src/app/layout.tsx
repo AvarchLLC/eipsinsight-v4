@@ -3,11 +3,7 @@ import { Libre_Baskerville as LibreBaskervilleFont, Space_Grotesk as SpaceGrotes
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import "@/lib/orpc.server";
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar";
-import { AppSidebar } from "@/components/app-sidebar";
-import Navbar from "@/components/navbar";
-import Footer from "@/components/footer";
-import { GlobalPageFeedback } from "@/components/global-page-feedback";
+import { ShellSwitcher } from "@/components/shell-switcher";
 import { SiteAssistant } from "@/components/site-assistant";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsNewV4Dialog } from "@/components/whats-new-v4-dialog";
@@ -76,23 +72,7 @@ export default function RootLayout({
         className={`${Libre_Baskerville.variable} ${Space_Grotesk.variable} antialiased`}
       >
         <Providers>
-          <SidebarProvider>
-            <AppSidebar />
-            <SidebarInset className="flex h-screen flex-col overflow-hidden">
-              <div className="shrink-0">
-                <Navbar />
-              </div>
-              <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
-                <main className="min-h-full w-full">
-                  {children}
-                  <section className="mx-auto w-full px-3 pb-6 sm:px-4 lg:px-5 xl:px-6">
-                    <GlobalPageFeedback />
-                  </section>
-                </main>
-                <Footer />
-              </div>
-            </SidebarInset>
-          </SidebarProvider>
+          <ShellSwitcher>{children}</ShellSwitcher>
           <SiteAssistant />
           <WhatsNewV4Dialog />
           <Toaster />

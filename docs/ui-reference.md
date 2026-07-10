@@ -155,7 +155,8 @@ Primary utility classes for persona-aware styling:
 | Icon default | `h-4 w-4`, `h-5 w-5` | 16px, 20px icons |
 | Container | `max-w-7xl`, `px-4 sm:px-6` | Main content |
 | Shared shell | `.page-shell` | Use for centered page bodies that should stay within `max-w-7xl` |
-| Full-width page padding | `mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6` | Use for full-width page sections such as `/upgrade`, `/search`, and the global page feedback wrapper |
+| Full-width page padding | `mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6` | Use for full-width page sections such as `/search` and the global page feedback wrapper |
+| Upgrade shell column | `mx-auto w-full max-w-6xl px-4 sm:px-6` | All `/upgrade/*` pages (dedicated shell — see Upgrade Shell section) |
 
 ### Border Radius
 
@@ -216,6 +217,18 @@ Primary utility classes for persona-aware styling:
 - Use that full-width wrapper for `/upgrade`, `/search`, and the global page feedback section
 - Do not add another outer `max-w-*` wrapper around page feedback when it is already inside the full-width wrapper
 
+### Upgrade Shell (`/upgrade/*`)
+
+The `/upgrade` tree renders inside its own minimal chrome (`src/components/upgrade/upgrade-shell.tsx`), selected by `src/components/shell-switcher.tsx` — no main sidebar or main navbar. `/oldupgrade` keeps the standard shell.
+
+- Navbar: sticky `h-14`, `border-b border-border bg-background/80 backdrop-blur-xl`; brand → `/`, "Upgrades" wordmark → `/upgrade`, nav links (Overview · forks · Analytics · Archive), freshness dot, avatar only when signed in
+- Nav link active state: `text-primary underline decoration-primary/50 underline-offset-8`; inactive: `text-muted-foreground hover:text-foreground`
+- Content column: `mx-auto w-full max-w-6xl px-4 sm:px-6` on every page — never full-bleed
+- Vertical rhythm: `space-y-10` between page sections
+- Calmer-card rules for this surface: `rounded-xl border-border bg-card/60`; hover = `hover:border-primary/40` only (no glow shadows); no radial-gradient/blur-orb backdrops; no motion section entrances (only accordion grid-rows transitions and the timeline "we are here" pulse)
+- Accents: persona primary + the five inclusion-stage colors only
+- Footer: single line ("Powered by EIPsInsight · composition parsed from meta-EIPs every 5 minutes · GitHub")
+
 ### Collapsible Page Header
 
 For pages with an expandable info panel (e.g. `/`, `/upgrade`):
@@ -272,3 +285,62 @@ Theme tokens in `:root` and `.dark`:
 - `--sidebar-*`, `--chart-1`–`--chart-5`
 - `--persona-primary`, `--persona-accent`, `--persona-ring`
 - `--persona-accent-rgb`, `--persona-secondary-rgb`
+
+---
+
+## ECharts Visual Patterns
+
+### Standard DataZoom Slider
+
+Use the following configuration pattern to create beautiful, unified, and highly detailed `dataZoom` components with thumbnail previews and custom handles:
+
+```typescript
+dataZoom: [
+  {
+    type: "slider",
+    show: true,
+    realtime: true,
+    height: 22,
+    bottom: 4,
+    borderColor: "rgba(148,163,184,0.15)",
+    backgroundColor: "rgba(148,163,184,0.03)",
+    fillerColor: "rgba(34,211,238,0.12)",
+    handleIcon: "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
+    handleSize: "110%",
+    handleStyle: {
+      color: "var(--background)",
+      borderColor: "rgba(34,211,238,0.5)",
+      borderWidth: 1.5,
+      shadowBlur: 3,
+      shadowColor: "rgba(0, 0, 0, 0.2)",
+      shadowOffsetX: 1,
+      shadowOffsetY: 1
+    },
+    showDetail: true,
+    start: 40,
+    end: 100,
+    textStyle: { 
+      color: "var(--muted-foreground)", 
+      fontSize: 10,
+      fontFamily: "inherit",
+      fontWeight: 505
+    },
+    dataBackground: {
+      areaStyle: { color: "rgba(34,211,238,0.03)" },
+      lineStyle: { color: "rgba(34,211,238,0.1)" }
+    },
+    selectedDataBackground: {
+      areaStyle: { color: "rgba(34,211,238,0.08)" },
+      lineStyle: { color: "rgba(34,211,238,0.3)" }
+    }
+  },
+  {
+    type: "inside",
+    realtime: true,
+    start: 40,
+    end: 100
+  }
+]
+```
+
+To accommodate this dataZoom component, ensure that your ECharts options have a layout `grid` bottom set to at least `50` or `52`.

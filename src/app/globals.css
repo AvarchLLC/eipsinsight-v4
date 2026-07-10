@@ -267,7 +267,10 @@ html.persona-theme-transition *::after {
   body {
     @apply bg-background text-foreground;
   }
-  html, body {
+  html {
+    /* Horizontal clamp lives on html ONLY. Putting overflow-x on body turns
+       body into a scroll container, which silently breaks position:sticky
+       for anything that should stick to the page. */
     @apply overflow-x-hidden;
   }
 }

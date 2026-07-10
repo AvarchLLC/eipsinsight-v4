@@ -2,6 +2,7 @@ import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades'
+import { normalizeUpgradeBucket } from '@/lib/upgrade-stages'
 
 const AUTHOR_CANONICAL_OVERRIDES: Record<string, string> = {
   vitalikbuterin: 'vbuterin',
@@ -113,41 +114,6 @@ function getCanonicalUpgradeName(upgrade: string, date: string): string {
     return pairedUpgradeNames[date];
   }
   return upgrade;
-}
-
-function normalizeUpgradeBucket(bucket: string | null | undefined): 'included' | 'scheduled' | 'considered' | 'proposed' | 'declined' | null {
-  if (!bucket) return null;
-  const normalized = bucket.toLowerCase().replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
-  if (normalized === 'included' || normalized.includes('included')) return 'included';
-  if (
-    normalized === 'scheduled' ||
-    normalized === 'sfi' ||
-    normalized.includes('scheduled for inclusion')
-  ) {
-    return 'scheduled';
-  }
-  if (
-    normalized === 'considered' ||
-    normalized === 'cfi' ||
-    normalized.includes('considered for inclusion')
-  ) {
-    return 'considered';
-  }
-  if (
-    normalized === 'proposed' ||
-    normalized === 'pfi' ||
-    normalized.includes('proposed for inclusion')
-  ) {
-    return 'proposed';
-  }
-  if (
-    normalized === 'declined' ||
-    normalized === 'dfi' ||
-    normalized.includes('declined')
-  ) {
-    return 'declined';
-  }
-  return null;
 }
 
 async function computeIndependentIncludedAuthorRows() {
@@ -416,31 +382,102 @@ export const upgradesProcedures = {
         ],
       });
 
-      // Get EIP details for each composition entry
+      // Get EIP details + curated layman content for each composition entry
       const eipNumbers = composition.map(c => c.eip_number);
-      const eips = await prisma.eips.findMany({
-        where: { eip_number: { in: eipNumbers } },
-        include: {
-          eip_snapshots: {
-            select: {
-              status: true,
-              updated_at: true,
+      const [eips, curations] = await Promise.all([
+        prisma.eips.findMany({
+          where: { eip_number: { in: eipNumbers } },
+          include: {
+            eip_snapshots: {
+              select: {
+                status: true,
+                category: true,
+                updated_at: true,
+              },
             },
           },
-        },
-      });
+        }),
+        prisma.eip_curations.findMany({
+          where: { eip_number: { in: eipNumbers } },
+        }),
+      ]);
+
+      const curationMap = new Map(curations.map(c => [c.eip_number, c]));
 
       // Combine data
       return composition.map(comp => {
         const eip = eips.find(e => e.eip_number === comp.eip_number);
+        const curation = curationMap.get(comp.eip_number);
         return {
           eip_number: comp.eip_number,
           bucket: normalizeUpgradeBucket(comp.bucket),
           title: eip?.title || '',
           status: eip?.eip_snapshots?.status || null,
+          category: eip?.eip_snapshots?.category || null,
+          author: eip?.author || null,
+          created_at: eip?.created_at?.toISOString() || null,
           updated_at: comp.updated_at?.toISOString() || null,
+          curation: curation
+            ? {
+                layman_title: curation.layman_title,
+                layman_summary: curation.layman_summary,
+                benefits: Array.isArray(curation.benefits) ? (curation.benefits as string[]) : [],
+                tradeoffs: Array.isArray(curation.tradeoffs) ? (curation.tradeoffs as string[]) : [],
+                stakeholder_impacts:
+                  curation.stakeholder_impacts && typeof curation.stakeholder_impacts === 'object'
+                    ? (curation.stakeholder_impacts as Record<string, { description?: string }>)
+                    : null,
+                north_star:
+                  curation.north_star && typeof curation.north_star === 'object'
+                    ? (curation.north_star as Record<string, { description?: string }>)
+                    : null,
+                headliner_of: curation.headliner_of,
+                headliner_note: curation.headliner_note,
+                layer: curation.layer === 'EL' || curation.layer === 'CL' ? curation.layer : null,
+              }
+            : null,
         };
       });
+    }),
+
+  // Latest composition events across ALL upgrades (overview feed + freshness)
+  getRecentCompositionActivity: optionalAuthProcedure
+    .input(z.object({
+      limit: z.number().int().min(1).max(100).optional().default(15),
+    }))
+    .handler(async ({ input }) => {
+      const events = await prisma.upgrade_composition_events.findMany({
+        orderBy: { commit_date: 'desc' },
+        take: input.limit,
+        select: {
+          commit_date: true,
+          eip_number: true,
+          event_type: true,
+          bucket: true,
+          upgrades: { select: { slug: true, name: true } },
+        },
+      });
+
+      const eipNumbers = Array.from(
+        new Set(events.map(e => e.eip_number).filter((n): n is number => n != null))
+      );
+      const eips = eipNumbers.length > 0
+        ? await prisma.eips.findMany({
+            where: { eip_number: { in: eipNumbers } },
+            select: { eip_number: true, title: true },
+          })
+        : [];
+      const titleMap = new Map(eips.map(e => [e.eip_number, e.title]));
+
+      return events.map(event => ({
+        commit_date: event.commit_date?.toISOString() || null,
+        eip_number: event.eip_number,
+        title: event.eip_number ? (titleMap.get(event.eip_number) ?? null) : null,
+        event_type: event.event_type || null,
+        bucket: normalizeUpgradeBucket(event.bucket),
+        upgrade_slug: event.upgrades?.slug ?? null,
+        upgrade_name: event.upgrades?.name ?? null,
+      }));
     }),
 
   // Get upgrade composition events (activity feed)

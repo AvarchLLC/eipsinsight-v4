@@ -32,6 +32,27 @@ const nextConfig: NextConfig = {
         destination: '/upgrade',
         permanent: true,
       },
+      // Upgrade dashboard shortcuts (Root path redirects)
+      {
+        source: '/schedule',
+        destination: '/upgrade/schedule',
+        permanent: false,
+      },
+      {
+        source: '/calls',
+        destination: '/upgrade/calls',
+        permanent: false,
+      },
+      {
+        source: '/devnets',
+        destination: '/upgrade/devnets',
+        permanent: false,
+      },
+      {
+        source: '/upgrades',
+        destination: '/upgrade',
+        permanent: false,
+      },
       // Explore drilldown shortcuts
       {
         source: '/draft',

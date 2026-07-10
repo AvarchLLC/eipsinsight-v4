@@ -368,6 +368,20 @@ export default function AdminPage() {
                 </button>
               );
             })}
+            <Link
+              href="/admin/curations"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              <FileText className="h-4 w-4" />
+              EIP Curations
+            </Link>
+            <Link
+              href="/admin/client-priority"
+              className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            >
+              <Users className="h-4 w-4" />
+              Client Priority
+            </Link>
           </div>
         </div>
       </section>

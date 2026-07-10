@@ -45,14 +45,31 @@ interface TopAuthorRow {
   topRepo: string | null;
 }
 
-function getTimeWindow(timeRange: string): { from: string | undefined; to: string | undefined } {
-  const now = new Date();
-  const to = now.toISOString().split("T")[0];
-
+function getTimeWindow(
+  timeRange: string,
+  customFromMonth?: string,
+  customToMonth?: string,
+): { from: string | undefined; to: string | undefined } {
   if (timeRange === "all") {
     return { from: undefined, to: undefined };
   }
+  if (timeRange === "custom") {
+    const from = customFromMonth ? `${customFromMonth}-01` : undefined;
+    
+    let to: string | undefined = undefined;
+    if (customToMonth) {
+      const [yearStr, monthStr] = customToMonth.split("-");
+      const year = parseInt(yearStr, 10);
+      const month = parseInt(monthStr, 10);
+      const date = new Date(year, month, 0); // Last day of month
+      to = date.toISOString().split("T")[0];
+    }
+    
+    return { from, to };
+  }
 
+  const now = new Date();
+  const to = now.toISOString().split("T")[0];
   let from: Date;
   switch (timeRange) {
     case "this_month":
@@ -103,7 +120,7 @@ function downloadCsv(filename: string, headers: string[], rows: Array<Array<stri
 }
 
 export default function AuthorsAnalyticsPage() {
-  const { timeRange, repoFilter } = useAnalytics();
+  const { timeRange, repoFilter, customFromMonth, customToMonth } = useAnalytics();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
@@ -114,7 +131,7 @@ export default function AuthorsAnalyticsPage() {
   const [topAuthors, setTopAuthors] = useState<TopAuthorRow[]>([]);
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
-  const { from, to } = getTimeWindow(timeRange);
+  const { from, to } = getTimeWindow(timeRange, customFromMonth, customToMonth);
 
   useEffect(() => {
     const fetchData = async () => {
