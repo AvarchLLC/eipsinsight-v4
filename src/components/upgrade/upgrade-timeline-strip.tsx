@@ -38,17 +38,17 @@ export function UpgradeTimelineStrip({
                 <div
                   className={cn(
                     'relative flex items-center',
-                    showHereMarker ? 'w-24' : 'w-10 sm:w-14'
+                    showHereMarker ? 'w-28' : 'w-12 sm:w-16'
                   )}
                 >
-                  <div className="h-px w-full bg-border" />
+                  <div className="h-0.5 w-full bg-border" />
                   {showHereMarker && (
                     <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-[3px] flex-col items-center">
-                      <span className="relative flex h-2.5 w-2.5">
+                      <span className="relative flex h-3 w-3">
                         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60" />
-                        <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-primary" />
+                        <span className="relative inline-flex h-3 w-3 rounded-full bg-primary" />
                       </span>
-                      <span className="mt-1.5 whitespace-nowrap text-[10px] font-medium text-primary">
+                      <span className="mt-1.5 whitespace-nowrap rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
                         we are here
                       </span>
                     </div>
@@ -58,15 +58,15 @@ export function UpgradeTimelineStrip({
               <Link
                 href={`/upgrade/${entry.slug}`}
                 className={cn(
-                  'flex min-w-32 flex-col gap-1 rounded-lg border px-3 py-2 transition-all',
+                  'flex min-w-40 flex-col gap-1.5 rounded-xl border px-4 py-3 transition-all',
                   isCurrent
                     ? 'border-primary/50 bg-primary/10 shadow-lg shadow-primary/15'
-                    : 'border-border bg-card/60 hover:border-primary/40 hover:bg-primary/5'
+                    : 'border-border bg-card/60 shadow-sm hover:border-primary/40 hover:bg-primary/5'
                 )}
               >
                 <span
                   className={cn(
-                    'text-sm font-semibold',
+                    'text-base font-semibold leading-tight',
                     isCurrent ? 'text-primary' : 'text-foreground'
                   )}
                 >

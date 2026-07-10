@@ -80,6 +80,31 @@ export const getCachedUpgradeList = unstable_cache(
   { revalidate: REVALIDATE_SECONDS }
 );
 
+export const getCachedUpgradeEips = unstable_cache(
+  async (slug?: string) => {
+    try {
+      return await publicClient.upgrades.listUpgradeEips({ slug: slug ?? null });
+    } catch {
+      return [];
+    }
+  },
+  ['upgrade-eips', CACHE_VERSION],
+  { revalidate: REVALIDATE_SECONDS }
+);
+
+export const getCachedEipMeta = unstable_cache(
+  async (eipNumbers: number[]) => {
+    if (eipNumbers.length === 0) return [];
+    try {
+      return await publicClient.curations.getEipMeta({ eipNumbers });
+    } catch {
+      return [];
+    }
+  },
+  ['eip-meta', CACHE_VERSION],
+  { revalidate: REVALIDATE_SECONDS }
+);
+
 export const getCachedRecentActivity = unstable_cache(
   async (limit = 15) => {
     try {
@@ -262,6 +287,70 @@ export const getCachedSteelComplexity = unstable_cache(
     }
   },
   ['steel-complexity', CACHE_VERSION],
+  { revalidate: 3600 }
+);
+
+export interface ExecSpecTestCount {
+  eip: number;
+  /** Number of `test_*.py` modules under the EIP's test directory. */
+  files: number;
+  /** Link to the EIP's test directory on GitHub. */
+  url: string;
+}
+
+/**
+ * Per-EIP test coverage from `ethereum/execution-spec-tests`. Tests live under
+ * `tests/<fork>/eip<N>_<slug>/…`; we pull the whole tree in a single recursive
+ * call and count `test_*.py` modules per EIP. Cached for an hour; empty on any
+ * failure. (Counts test modules, not individual cases — cheap and honest.)
+ */
+export const getCachedExecSpecTestCounts = unstable_cache(
+  async (): Promise<ExecSpecTestCount[]> => {
+    try {
+      const res = await fetch(
+        'https://api.github.com/repos/ethereum/execution-spec-tests/git/trees/main?recursive=1',
+        {
+          headers: { Accept: 'application/vnd.github+json' },
+          signal: AbortSignal.timeout(20_000),
+        }
+      );
+      if (!res.ok) return [];
+      const data = (await res.json()) as {
+        tree?: Array<{ path: string; type: string }>;
+      };
+      if (!data.tree) return [];
+
+      const counts = new Map<number, { files: number; dir: string }>();
+      for (const entry of data.tree) {
+        if (entry.type !== 'blob') continue;
+        const p = entry.path;
+        if (!p.startsWith('tests/') || !p.endsWith('.py')) continue;
+        const base = p.slice(p.lastIndexOf('/') + 1);
+        if (!base.startsWith('test_')) continue; // only test modules
+        const m = /\/eip(\d+)/i.exec(p);
+        if (!m) continue;
+        const eip = Number.parseInt(m[1], 10);
+        const existing = counts.get(eip);
+        if (existing) {
+          existing.files += 1;
+        } else {
+          // Capture the path up to and including the `eip<N>_<slug>` segment.
+          const segEnd = p.indexOf('/', m.index + 1);
+          const dir = segEnd === -1 ? p : p.slice(0, segEnd);
+          counts.set(eip, { files: 1, dir });
+        }
+      }
+
+      return Array.from(counts.entries()).map(([eip, { files, dir }]) => ({
+        eip,
+        files,
+        url: `https://github.com/ethereum/execution-spec-tests/tree/main/${dir}`,
+      }));
+    } catch {
+      return [];
+    }
+  },
+  ['exec-spec-test-counts', CACHE_VERSION],
   { revalidate: 3600 }
 );
 

@@ -28,6 +28,17 @@ interface UpgradeEipDirectoryProps {
 type SortField = 'eip_number' | 'status' | 'bucket' | 'layer' | 'is_headliner';
 type SortOrder = 'asc' | 'desc';
 
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-2.5">
+      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+        {title}
+      </h3>
+      {children}
+    </div>
+  );
+}
+
 export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirectoryProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -199,19 +210,14 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       result = result.filter((e) => !e.is_headliner);
     }
 
-    // Sort
+    // Sort — coerce each field to a comparable primitive (booleans → 1/0,
+    // null/undefined → '').
+    const toComparable = (value: string | number | boolean | null | undefined): string | number =>
+      typeof value === 'boolean' ? (value ? 1 : 0) : (value ?? '');
+
     result.sort((a, b) => {
-      let aVal: any = a[sortField];
-      let bVal: any = b[sortField];
-
-      // Handle nulls
-      if (aVal === null || aVal === undefined) aVal = '';
-      if (bVal === null || bVal === undefined) bVal = '';
-
-      if (sortField === 'is_headliner') {
-        aVal = a.is_headliner ? 1 : 0;
-        bVal = b.is_headliner ? 1 : 0;
-      }
+      const aVal = toComparable(a[sortField]);
+      const bVal = toComparable(b[sortField]);
 
       if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1;
       if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1;
@@ -265,15 +271,6 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
         }]
       : []),
   ];
-
-  const FilterSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
-    <div className="space-y-2.5">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
 
   const pillClass = (isSelected: boolean) =>
     cn(

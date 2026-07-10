@@ -81,6 +81,44 @@ export const curationsProcedures = {
       return rows.map(serializeCuration)
     }),
 
+  /**
+   * Lightweight per-EIP metadata (lifecycle status, type/category, layer,
+   * layman title) for a set of EIP numbers — used to enrich lists like the
+   * devnet "EIPs in scope" table.
+   */
+  getEipMeta: optionalAuthProcedure
+    .input(z.object({ eipNumbers: z.array(z.number().int().positive()).max(500) }))
+    .handler(async ({ input }) => {
+      if (input.eipNumbers.length === 0) return []
+      const [eips, curations] = await Promise.all([
+        prisma.eips.findMany({
+          where: { eip_number: { in: input.eipNumbers } },
+          select: {
+            eip_number: true,
+            title: true,
+            eip_snapshots: { select: { status: true, type: true, category: true } },
+          },
+        }),
+        prisma.eip_curations.findMany({
+          where: { eip_number: { in: input.eipNumbers } },
+          select: { eip_number: true, layer: true, layman_title: true },
+        }),
+      ])
+      const curationByEip = new Map(curations.map((c) => [c.eip_number, c]))
+      return eips.map((e) => {
+        const c = curationByEip.get(e.eip_number)
+        return {
+          eip_number: e.eip_number,
+          title: e.title ?? null,
+          status: e.eip_snapshots?.status ?? null,
+          type: e.eip_snapshots?.type ?? null,
+          category: e.eip_snapshots?.category ?? null,
+          layer: c?.layer === 'EL' || c?.layer === 'CL' ? c.layer : null,
+          layman_title: c?.layman_title ?? null,
+        }
+      })
+    }),
+
   /** Admin: full list for the curation editor. */
   listEipCurations: optionalAuthProcedure
     .input(z.object({}))

@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import { CalendarClock, ExternalLink, Github, Video } from 'lucide-react';
+import { CalendarClock } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
@@ -8,12 +7,8 @@ import {
   getCachedRecentCalls,
   getCachedUpcomingCalls,
 } from '@/lib/upgrade-data.server';
-import {
-  callDisplayName,
-  callSeriesBadgeClass,
-  callSeriesShort,
-} from '@/data/call-series';
-import { CallTldr } from '@/components/upgrade/call-tldr';
+import { callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
+import { CallsBrowser } from '@/components/upgrade/calls-browser';
 
 export const revalidate = 300;
 
@@ -116,7 +111,8 @@ export default async function ProtocolCallsPage() {
             Recent calls
           </h2>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Latest calls with recordings and summaries from the ACDbot pipeline.
+            Latest calls with recordings and summaries from the ACDbot pipeline — filter by
+            series below.
           </p>
         </div>
         {recent.length === 0 ? (
@@ -125,61 +121,7 @@ export default async function ProtocolCallsPage() {
             first run.
           </p>
         ) : (
-          <div className="space-y-3">
-            {recent.map((call) => (
-              <div
-                key={`${call.series}-${call.call_id}`}
-                className="rounded-xl border border-border bg-card/60 p-4 transition-colors hover:border-primary/40"
-              >
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                  <SeriesBadge series={call.series} />
-                  <Link
-                    href={`/upgrade/calls/${call.series}/${call.call_number ?? call.call_id}`}
-                    className="min-w-0 flex-1 text-sm font-medium text-foreground hover:text-primary transition-colors hover:underline"
-                  >
-                    {callDisplayName(call)}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-4">
-                  {call.video_url && (
-                    <a
-                      href={call.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      <Video className="h-3.5 w-3.5" />
-                      Recording
-                    </a>
-                  )}
-                  {call.issue_number && (
-                    <a
-                      href={`https://github.com/ethereum/pm/issues/${call.issue_number}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      Agenda
-                    </a>
-                  )}
-                  {call.has_transcript && call.issue_number && (
-                    <a
-                      href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      Transcript
-                    </a>
-                  )}
-                </div>
-                {call.tldr != null && <CallTldr tldr={call.tldr} />}
-              </div>
-            ))}
-          </div>
+          <CallsBrowser calls={recent} />
         )}
       </section>
     </div>
