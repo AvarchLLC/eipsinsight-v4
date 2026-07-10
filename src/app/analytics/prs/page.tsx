@@ -780,6 +780,7 @@ export default function PRsAnalyticsPage() {
     const generatedAt = new Date().toISOString();
     const rows: Array<Record<string, string | number | null>> = openPRs.map((pr) => ({
       pr_number: pr.prNumber,
+      pr_link: `https://github.com/${pr.repo}/pull/${pr.prNumber}`,
       repo: pr.repo,
       title: pr.title,
       author: pr.author,
@@ -788,6 +789,8 @@ export default function PRsAnalyticsPage() {
       labels: pr.labels.join("; "),
       linked_eips: pr.linkedEIPs,
       created_at: pr.createdAt,
+      last_review_date: pr.lastReviewAt ?? "Never",
+      last_activity_date: pr.lastActivityAt ?? pr.createdAt,
       waiting_since: pr.waitingSince,
       last_event_type: pr.lastEventType,
       month_context: monthContext,
@@ -835,6 +838,7 @@ export default function PRsAnalyticsPage() {
       open_date: pr.createdAt,
       last_review_date: pr.lastReviewAt ?? "Never",
       last_activity_date: pr.lastActivityAt ?? pr.createdAt,
+      labels: pr.labels.join("; "),
       month_context: monthContext,
       generated_at: generatedAt,
     }));
