@@ -2,15 +2,16 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Github, Video } from 'lucide-react';
+import { ExternalLink, Github, Video, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  callDisplayName,
-  callSeriesBadgeClass,
-  callSeriesLabel,
-  callSeriesShort,
-} from '@/data/call-series';
+import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
+import {
+  SeriesFilter,
+  matchesSeries,
+  DEFAULT_SERIES_FILTER,
+  type SeriesFilterValue,
+} from '@/components/upgrade/series-filter';
 
 export interface RecentCall {
   series: string;
@@ -42,56 +43,38 @@ function SeriesBadge({ series }: { series: string }) {
  * over a compact card list (summaries stay collapsed to keep it scannable).
  */
 export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
-  const [active, setActive] = useState<string>('all');
+  const [series, setSeries] = useState<SeriesFilterValue>(DEFAULT_SERIES_FILTER);
+  const [search, setSearch] = useState('');
 
-  // Distinct series present, ordered by how many calls each has.
-  const seriesTabs = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const call of calls) counts.set(call.series, (counts.get(call.series) ?? 0) + 1);
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([series, count]) => ({ series, count }));
+  const counts = useMemo(() => {
+    const c: Record<string, number> = {};
+    for (const call of calls) c[call.series] = (c[call.series] ?? 0) + 1;
+    return c;
   }, [calls]);
 
-  const filtered = useMemo(
-    () => (active === 'all' ? calls : calls.filter((c) => c.series === active)),
-    [calls, active]
-  );
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return calls.filter((c) => {
+      if (!matchesSeries(c.series, series)) return false;
+      if (!q) return true;
+      return `${callDisplayName(c)} ${c.series} #${c.call_number ?? ''}`.toLowerCase().includes(q);
+    });
+  }, [calls, series, search]);
 
   return (
     <div className="space-y-4">
-      {/* Series filter tabs */}
-      <div className="flex flex-wrap items-center gap-1.5">
-        <button
-          type="button"
-          onClick={() => setActive('all')}
-          className={cn(
-            'inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-colors',
-            active === 'all'
-              ? 'border-primary/50 bg-primary/10 text-primary'
-              : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
-          )}
-        >
-          All
-          <span className="text-[10px] opacity-70">{calls.length}</span>
-        </button>
-        {seriesTabs.map(({ series, count }) => (
-          <button
-            key={series}
-            type="button"
-            onClick={() => setActive(series)}
-            title={callSeriesLabel(series)}
-            className={cn(
-              'inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-all',
-              active === series
-                ? cn(callSeriesBadgeClass(series), 'ring-2 ring-primary/30')
-                : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
-            )}
-          >
-            {callSeriesShort(series)}
-            <span className="text-[10px] opacity-70">{count}</span>
-          </button>
-        ))}
+      {/* Search + grouped series filter */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <SeriesFilter value={series} onChange={setSeries} counts={counts} />
+        <div className="relative w-full sm:max-w-xs">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search calls…"
+            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
       </div>
 
       {/* Call list */}

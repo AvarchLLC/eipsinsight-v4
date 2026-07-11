@@ -15,7 +15,8 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default async function DecisionsPage() {
-  const calls = await getCachedRecentDecisions(12);
+  // Fetch the full decision history (client-side filters handle navigation).
+  const calls = await getCachedRecentDecisions(300);
 
   return (
     <div className="mx-auto w-full max-w-4xl space-y-8 px-4 pb-12 pt-8 sm:px-6">

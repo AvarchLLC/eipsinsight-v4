@@ -5,7 +5,36 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Search, SlidersHorizontal, ArrowUpDown, Star, Layers, RefreshCw, X } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { STAGE_ORDER, stageLabel, stageBadgeClass, type UpgradeBucket } from '@/lib/upgrade-stages';
+import {
+  STAGE_ORDER,
+  stageLabel,
+  stageAbbreviation,
+  stageBadgeClass,
+  type UpgradeBucket,
+} from '@/lib/upgrade-stages';
+
+/** EIP lifecycle status colors — from docs/ui-reference.md (Status / Semantic Colors). */
+const STATUS_CHIP: Record<string, string> = {
+  Draft: 'border-slate-500/20 bg-slate-500/15 text-slate-600 dark:text-slate-300',
+  Review: 'border-amber-500/20 bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  'Last Call': 'border-orange-500/20 bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  Final: 'border-emerald-500/20 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  Living: 'border-cyan-500/20 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
+  Stagnant: 'border-gray-500/20 bg-gray-500/15 text-gray-600 dark:text-gray-400',
+  Withdrawn: 'border-red-500/20 bg-red-500/15 text-red-600 dark:text-red-300',
+};
+
+/** Chronological fork order (oldest → newest); used to sort the upgrade filter newest-first. */
+const UPGRADE_CHRONOLOGY = [
+  'frontier', 'homestead', 'dao-fork', 'tangerine-whistle', 'spurious-dragon',
+  'byzantium', 'constantinople', 'istanbul', 'muir-glacier', 'berlin', 'london',
+  'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'prague',
+  'pectra', 'fusaka', 'glamsterdam', 'hegota',
+];
+const upgradeRank = (slug: string) => {
+  const i = UPGRADE_CHRONOLOGY.indexOf(slug);
+  return i === -1 ? -1 : i; // unknown slugs sort last when descending
+};
 
 interface EipRow {
   eip_number: number;
@@ -227,6 +256,15 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     return result;
   }, [initialEips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, sortField, sortOrder]);
 
+  // Upgrade filter options: only upgrades that actually have EIPs here,
+  // ordered newest-first (chronological, descending).
+  const upgradeOptions = useMemo(() => {
+    const present = new Set(initialEips.map((e) => e.upgrade_slug));
+    return upgrades
+      .filter((u) => present.has(u.slug))
+      .sort((a, b) => upgradeRank(b.slug) - upgradeRank(a.slug));
+  }, [upgrades, initialEips]);
+
   const activeFilterCount =
     selectedUpgrades.length +
     selectedStages.length +
@@ -304,7 +342,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
           <FilterSection title="Network upgrade">
             <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {upgrades.map((up) => (
+              {upgradeOptions.map((up) => (
                 <button
                   key={up.slug}
                   type="button"
@@ -451,12 +489,12 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
               <thead>
                 <tr className="border-b border-border bg-muted/30 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground select-none">
                   {([
-                    { field: 'eip_number', label: 'Proposal', align: 'left', width: '' },
-                    { field: null, label: 'Title', align: 'left', width: 'w-full' },
-                    { field: 'bucket', label: 'Stage', align: 'left', width: '' },
-                    { field: 'status', label: 'Status', align: 'left', width: '' },
-                    { field: 'layer', label: 'Layer', align: 'left', width: '' },
-                    { field: 'is_headliner', label: 'Tier', align: 'center', width: '' },
+                    { field: 'eip_number', label: 'Proposal', width: '' },
+                    { field: null, label: 'Title', width: 'w-full' },
+                    { field: null, label: 'Upgrade', width: '' },
+                    { field: 'bucket', label: 'Stage', width: '' },
+                    { field: 'status', label: 'Status', width: '' },
+                    { field: 'layer', label: 'Layer', width: '' },
                   ] as const).map((col) => (
                     <th
                       key={col.label}
@@ -464,11 +502,10 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                       className={cn(
                         'px-4 py-3',
                         col.width,
-                        col.align === 'center' && 'text-center',
                         col.field && 'cursor-pointer transition-colors hover:text-foreground'
                       )}
                     >
-                      <div className={cn('flex items-center gap-1.5', col.align === 'center' && 'justify-center')}>
+                      <div className="flex items-center gap-1.5">
                         {col.label}
                         {col.field && (
                           <ArrowUpDown
@@ -512,41 +549,60 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                         </Link>
                       </td>
 
-                      {/* Title + target */}
+                      {/* Title */}
                       <td className="w-full px-4 py-3.5 align-middle">
-                        <div className="space-y-1">
+                        <div className="flex items-center gap-1.5">
                           <Link
                             href={`/${routeSegment}/${eip.eip_number}`}
-                            className="line-clamp-1 text-xs font-medium text-foreground transition-colors hover:text-primary sm:text-sm"
+                            className="line-clamp-1 min-w-0 text-xs font-medium text-foreground transition-colors hover:text-primary sm:text-sm"
                           >
                             {eip.title}
                           </Link>
-                          <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[10px] text-muted-foreground">
-                            <Link
-                              href={`/upgrade/${eip.upgrade_slug}`}
-                              className="rounded bg-muted/60 px-1.5 py-0.5 font-medium text-muted-foreground transition-colors hover:text-primary"
-                            >
-                              {eip.upgrade_name}
-                            </Link>
-                            <span className="opacity-50">·</span>
-                            <span>{eip.category}</span>
-                          </div>
+                          {eip.is_headliner && (
+                            <Star
+                              className="h-3 w-3 shrink-0 fill-primary text-primary"
+                              aria-label="Headliner"
+                            />
+                          )}
                         </div>
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">{eip.category}</div>
+                      </td>
+
+                      {/* Upgrade */}
+                      <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                        <Link
+                          href={`/upgrade/${eip.upgrade_slug}`}
+                          className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                        >
+                          {eip.upgrade_name}
+                        </Link>
                       </td>
 
                       {/* Stage */}
                       <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-xs font-medium capitalize text-foreground">
+                        <span
+                          title={stageLabel(eip.bucket)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-xs font-semibold text-foreground"
+                        >
                           <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', stageBadgeClass(eip.bucket))} />
-                          {stageLabel(eip.bucket)}
+                          {stageAbbreviation(eip.bucket)}
                         </span>
                       </td>
 
                       {/* Status */}
                       <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                        <span className="rounded bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {eip.status}
-                        </span>
+                        {eip.status ? (
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                              STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
+                            )}
+                          >
+                            {eip.status}
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground/40">—</span>
+                        )}
                       </td>
 
                       {/* Layer */}
@@ -568,20 +624,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                         )}
                       </td>
 
-                      {/* Tier */}
-                      <td className="whitespace-nowrap px-4 py-3.5 text-center align-middle">
-                        {eip.is_headliner ? (
-                          <span
-                            title="Headliner proposal"
-                            className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary"
-                          >
-                            <Star className="h-3 w-3 fill-primary text-primary shrink-0" />
-                            Headliner
-                          </span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground/30">—</span>
-                        )}
-                      </td>
+                      {/* headliner tier column removed — headliners are marked by the ★ next to the title */}
                     </tr>
                   );
                 })}

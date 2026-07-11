@@ -53,6 +53,37 @@ const nextConfig: NextConfig = {
         destination: '/upgrade',
         permanent: false,
       },
+      {
+        source: '/eips',
+        destination: '/upgrade/eips',
+        permanent: false,
+      },
+      {
+        source: '/decisions',
+        destination: '/upgrade/decisions',
+        permanent: false,
+      },
+      // Per-upgrade shortcuts (current/in-progress forks only)
+      {
+        source: '/glamsterdam',
+        destination: '/upgrade/glamsterdam',
+        permanent: false,
+      },
+      {
+        source: '/hegota',
+        destination: '/upgrade/hegota',
+        permanent: false,
+      },
+      {
+        source: '/fusaka',
+        destination: '/upgrade/fusaka',
+        permanent: false,
+      },
+      {
+        source: '/pectra',
+        destination: '/upgrade/pectra',
+        permanent: false,
+      },
       // Explore drilldown shortcuts
       {
         source: '/draft',

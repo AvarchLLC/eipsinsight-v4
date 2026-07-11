@@ -45,7 +45,8 @@ function formatUpcoming(call: { occurs_at: string | null; occurs_on: string | nu
 export default async function ProtocolCallsPage() {
   const [upcoming, recent] = await Promise.all([
     getCachedUpcomingCalls(),
-    getCachedRecentCalls(25),
+    // Full history so past calls show (client-side series filter handles navigation).
+    getCachedRecentCalls(300),
   ]);
 
   return (

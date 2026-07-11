@@ -1,10 +1,16 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { Github, Video, ArrowRightLeft, Server, Star, Circle } from 'lucide-react';
+import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { callDisplayName, callSeriesBadgeClass, callSeriesShort, callSeriesLabel } from '@/data/call-series';
+import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { EipLinkedText, DecisionTypeMarker, type KeyDecision } from '@/components/upgrade/key-decisions';
+import {
+  SeriesFilter,
+  matchesSeries,
+  DEFAULT_SERIES_FILTER,
+  type SeriesFilterValue,
+} from '@/components/upgrade/series-filter';
 
 export interface DecisionCall {
   series: string;
@@ -40,8 +46,9 @@ const TYPE_FILTERS: Array<{ key: DecisionType; label: string; icon: typeof Circl
  * decision-type filters over the per-call decision groups.
  */
 export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
-  const [series, setSeries] = useState<string>('all');
+  const [series, setSeries] = useState<SeriesFilterValue>(DEFAULT_SERIES_FILTER);
   const [type, setType] = useState<DecisionType | 'all'>('all');
+  const [search, setSearch] = useState('');
 
   // Pre-parse decisions once per call.
   const parsed = useMemo(
@@ -49,25 +56,35 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
     [calls]
   );
 
-  const seriesTabs = useMemo(() => {
-    const counts = new Map<string, number>();
+  // Series counts (only calls that actually have decisions).
+  const seriesCounts = useMemo(() => {
+    const c: Record<string, number> = {};
     for (const { call, decisions } of parsed) {
-      if (decisions.length) counts.set(call.series, (counts.get(call.series) ?? 0) + 1);
+      if (decisions.length) c[call.series] = (c[call.series] ?? 0) + 1;
     }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([s, count]) => ({ series: s, count }));
+    return c;
   }, [parsed]);
 
   const groups = useMemo(() => {
+    const q = search.trim().toLowerCase();
     return parsed
-      .filter(({ call }) => series === 'all' || call.series === series)
-      .map(({ call, decisions }) => ({
-        call,
-        decisions: type === 'all' ? decisions : decisions.filter((d) => (d.type ?? 'other') === type),
-      }))
+      .filter(({ call }) => matchesSeries(call.series, series))
+      .map(({ call, decisions }) => {
+        let ds = type === 'all' ? decisions : decisions.filter((d) => (d.type ?? 'other') === type);
+        if (q) {
+          const callMatches = `${callDisplayName(call)} ${call.series}`.toLowerCase().includes(q);
+          if (!callMatches) {
+            ds = ds.filter(
+              (d) =>
+                (d.original_text ?? '').toLowerCase().includes(q) ||
+                (d.eips ?? []).some((e) => String(e).includes(q) || `eip-${e}`.includes(q))
+            );
+          }
+        }
+        return { call, decisions: ds };
+      })
       .filter(({ decisions }) => decisions.length > 0);
-  }, [parsed, series, type]);
+  }, [parsed, series, type, search]);
 
   const totalDecisions = useMemo(
     () => groups.reduce((sum, g) => sum + g.decisions.length, 0),
@@ -86,23 +103,18 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
     <div className="space-y-5">
       {/* Filters */}
       <div className="space-y-2.5">
+        <div className="relative w-full sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search decisions, EIP #, or call…"
+            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+          />
+        </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Series</span>
-          <button type="button" onClick={() => setSeries('all')} className={chip(series === 'all')}>
-            All
-          </button>
-          {seriesTabs.map(({ series: s, count }) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSeries(s)}
-              title={callSeriesLabel(s)}
-              className={chip(series === s, cn(callSeriesBadgeClass(s), 'ring-2 ring-primary/30'))}
-            >
-              {callSeriesShort(s)}
-              <span className="text-[10px] opacity-70">{count}</span>
-            </button>
-          ))}
+          <SeriesFilter value={series} onChange={setSeries} counts={seriesCounts} />
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Type</span>
