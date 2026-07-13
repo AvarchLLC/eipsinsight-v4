@@ -28,20 +28,21 @@ const COLOR_SCHEME: Record<StatusType, string> = {
   included: '#10B981', // emerald-500
   scheduled: '#06B6D4', // cyan-500
   considered: '#F59E0B', // amber-500
-  declined: '#EF4444', // red-500
   proposed: '#8B5CF6', // violet-500
+  declined: '#EF4444', // red-500
 };
 
 const LEGEND_LABELS: Record<StatusType, string> = {
   included: 'INCLUDED',
   scheduled: 'SFI',
   considered: 'CFI',
-  declined: 'DFI',
   proposed: 'PFI',
+  declined: 'DFI',
 };
 
 export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChartProps) {
   const router = useRouter();
+  const [includeDfi, setIncludeDfi] = useState(false);
   const [scrollIndex, setScrollIndex] = useState(0);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -74,8 +75,8 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
         (d.included?.length || 0) +
         (d.scheduled?.length || 0) +
         (d.considered?.length || 0) +
-        (d.declined?.length || 0) +
-        (d.proposed?.length || 0)
+        (d.proposed?.length || 0) +
+        (includeDfi ? (d.declined?.length || 0) : 0)
     )
   );
 
@@ -196,6 +197,16 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Include DFI Checkbox */}
+            <label className="mr-1 inline-flex items-center gap-1.5 cursor-pointer rounded-lg bg-card/90 backdrop-blur-sm border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              <input
+                type="checkbox"
+                checked={includeDfi}
+                onChange={(e) => setIncludeDfi(e.target.checked)}
+                className="h-3.5 w-3.5 rounded border-border text-primary focus:ring-primary/40 bg-muted/60"
+              />
+              <span>Include DFI</span>
+            </label>
             {/* Zoom Controls */}
             <div className="flex gap-0.5 rounded-lg bg-card/90 backdrop-blur-sm border border-border p-1">
               <button
@@ -248,15 +259,19 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
 
         {/* Legend */}
         <div className="mt-2.5 pt-2.5 border-t border-border/70 flex flex-wrap gap-2 justify-center items-center">
-          {(Object.entries(COLOR_SCHEME) as [StatusType, string][]).map(([status, color]) => (
-            <div key={status} className="flex items-center gap-1">
-              <div
-                className="h-1.5 w-1.5 rounded-full border border-white/10"
-                style={{ backgroundColor: color }}
-              />
-              <span className="text-xs font-medium text-muted-foreground">{LEGEND_LABELS[status]}</span>
-            </div>
-          ))}
+          {(Object.entries(COLOR_SCHEME) as [StatusType, string][]).map(([status, color]) => {
+            const isDfi = status === 'declined';
+            const isActive = !isDfi || includeDfi;
+            return (
+              <div key={status} className={cn("flex items-center gap-1 transition-opacity duration-200", !isActive && "opacity-30")}>
+                <div
+                  className="h-1.5 w-1.5 rounded-full border border-white/10"
+                  style={{ backgroundColor: color }}
+                />
+                <span className="text-xs font-medium text-muted-foreground">{LEGEND_LABELS[status]}</span>
+              </div>
+            );
+          })}
         </div>
       </div>
 
@@ -296,8 +311,8 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
                 ...(item.included ?? []).map((eip) => ({ eip, type: 'included' as const })),
                 ...(item.scheduled ?? []).map((eip) => ({ eip, type: 'scheduled' as const })),
                 ...(item.considered ?? []).map((eip) => ({ eip, type: 'considered' as const })),
-                ...(item.declined ?? []).map((eip) => ({ eip, type: 'declined' as const })),
                 ...(item.proposed ?? []).map((eip) => ({ eip, type: 'proposed' as const })),
+                ...(includeDfi ? (item.declined ?? []) : []).map((eip) => ({ eip, type: 'declined' as const })),
               ];
 
               return (

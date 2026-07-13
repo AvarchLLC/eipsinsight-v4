@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Check, Search, Radio, Filter } from 'lucide-react';
+import { Check, Search, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StageBadge } from '@/components/upgrade/stage-badge';
 import { STAGE_ORDER, stageLabel, type UpgradeBucket } from '@/lib/upgrade-stages';
@@ -27,14 +27,17 @@ export interface DevnetEipRow {
   inclusion: Record<string, string>;
 }
 
-const CELL_STATUS: Record<string, { className: string; label: string }> = {
-  new: { className: 'text-blue-500', label: 'new' },
-  new_optional: { className: 'text-blue-400', label: 'new (optional)' },
-  updated: { className: 'text-amber-500', label: 'updated' },
-  required: { className: 'text-red-400', label: 'required' },
-  optional: { className: 'text-muted-foreground', label: 'optional' },
-  included: { className: 'text-emerald-500', label: 'included' },
+const STATUS_META: Record<string, { className: string; label: string }> = {
+  included: { className: 'text-emerald-500', label: 'Included' },
+  new: { className: 'text-blue-500', label: 'New' },
+  new_optional: { className: 'text-blue-400', label: 'New (optional)' },
+  updated: { className: 'text-amber-500', label: 'Updated' },
+  required: { className: 'text-red-500', label: 'Required' },
+  optional: { className: 'text-muted-foreground/60', label: 'Optional' },
 };
+
+/** Legend order shown at the top (the change-types a ✓ can represent). */
+const LEGEND_KEYS = ['included', 'new', 'updated', 'required', 'optional'] as const;
 
 function LayerChip({ layer }: { layer: 'EL' | 'CL' | null }) {
   if (!layer) return <span className="text-xs text-muted-foreground/40">—</span>;
@@ -102,8 +105,34 @@ export function DevnetInclusionMatrix({
 
   return (
     <div className="space-y-4">
-      {/* Filter bar */}
-      <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/40 p-3 sm:flex-row sm:flex-wrap sm:items-center">
+      {/* How to read this — plain-English guide + legend, up front */}
+      <div className="rounded-xl border border-border bg-muted/20 p-4">
+        <p className="text-sm leading-relaxed text-foreground">
+          <span className="font-semibold">How to read this:</span> every{' '}
+          <span className="font-medium">row is an EIP</span>, every{' '}
+          <span className="font-medium">column is a devnet</span> (newest on the left). A{' '}
+          <span className="font-medium">✓ means the EIP ships in that devnet</span> — its color
+          tells you how it appears there:
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+          {LEGEND_KEYS.map((k) => (
+            <span key={k} className="inline-flex items-center gap-1.5">
+              <Check className={cn('h-4 w-4', STATUS_META[k].className)} />
+              <span className="text-foreground">{STATUS_META[k].label}</span>
+            </span>
+          ))}
+          <span className="h-3.5 w-px bg-border" aria-hidden />
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <span className="w-4 text-center text-muted-foreground/40">·</span> not in that devnet
+          </span>
+          <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> a live devnet
+          </span>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
         <div className="relative w-full sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -117,7 +146,7 @@ export function DevnetInclusionMatrix({
         {hasLiveDevnet && (
           <button type="button" onClick={() => setActiveOnly((v) => !v)} className={chip(activeOnly)}>
             <Radio className="h-3.5 w-3.5" />
-            Live devnets only
+            Live only
           </button>
         )}
 
@@ -130,19 +159,21 @@ export function DevnetInclusionMatrix({
           ))}
         </div>
 
-        {/* Stage filter */}
+        {/* Stage filter — a compact dropdown instead of a row of buttons */}
         {availableStages.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1">
-            <button type="button" onClick={() => setStage('all')} className={chip(stage === 'all')}>
-              <Filter className="h-3.5 w-3.5" />
-              All stages
-            </button>
+          <select
+            value={stage}
+            onChange={(e) => setStage(e.target.value as 'all' | UpgradeBucket)}
+            aria-label="Filter by inclusion stage"
+            className="h-7 rounded-full border border-border bg-background px-2.5 text-xs font-medium text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+          >
+            <option value="all">All stages</option>
             {availableStages.map((b) => (
-              <button key={b} type="button" onClick={() => setStage(b)} className={chip(stage === b)}>
+              <option key={b} value={b}>
                 {stageLabel(b)}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         )}
 
         <span className="text-xs text-muted-foreground sm:ml-auto">
@@ -204,13 +235,17 @@ export function DevnetInclusionMatrix({
                     </td>
                     {visibleColumns.map((devnet) => {
                       const status = row.inclusion[devnet.id];
-                      const meta = status ? CELL_STATUS[status] ?? CELL_STATUS.included : null;
+                      const meta = status ? STATUS_META[status] ?? STATUS_META.included : null;
                       return (
                         <td key={devnet.id} className="px-2 py-2.5 text-center">
                           {meta ? (
-                            <Check className={cn('mx-auto h-4 w-4', meta.className)} aria-label={meta.label} />
+                            <span title={`${meta.label} — ${devnet.label}`}>
+                              <Check className={cn('mx-auto h-4 w-4', meta.className)} />
+                            </span>
                           ) : (
-                            <span className="text-muted-foreground/25">·</span>
+                            <span className="text-muted-foreground/25" title={`Not in ${devnet.label}`}>
+                              ·
+                            </span>
                           )}
                         </td>
                       );
@@ -222,17 +257,6 @@ export function DevnetInclusionMatrix({
           </div>
         </div>
       )}
-
-      {/* Legend */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-[11px] text-muted-foreground">
-        <span className="font-medium text-foreground">Inclusion status:</span>
-        <span className="inline-flex items-center gap-1"><Check className="h-3 w-3 text-blue-500" /> new</span>
-        <span className="inline-flex items-center gap-1"><Check className="h-3 w-3 text-amber-500" /> updated</span>
-        <span className="inline-flex items-center gap-1"><Check className="h-3 w-3 text-red-400" /> required</span>
-        <span className="inline-flex items-center gap-1"><Check className="h-3 w-3 text-emerald-500" /> included</span>
-        <span className="inline-flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" /> live devnet</span>
-        <span className="text-muted-foreground/70">· columns are devnets, newest first — click a header for its full spec, or an EIP for details.</span>
-      </div>
     </div>
   );
 }
