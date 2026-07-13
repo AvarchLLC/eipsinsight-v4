@@ -381,16 +381,16 @@ export default function AssetsPage() {
         <SectionHead
           label="05 — Typography"
           title="Type Scale"
-          description="Two font families: Space Grotesk for UI and body copy, Libre Baskerville for decorative headings (.dec-title)."
+          description="Two font families: Inter for UI and body copy, Libre Baskerville for decorative headings (.dec-title)."
         />
 
         {/* Font families */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-card/60 p-5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Primary — Space Grotesk</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Primary — Inter</p>
             <p className="mt-3 font-sans text-2xl font-semibold text-foreground">Aa Bb Cc 0–9</p>
             <p className="mt-2 font-sans text-sm text-muted-foreground">Used for all UI text, navigation, body copy, and labels.</p>
-            <code className="mt-3 block text-[10px] text-muted-foreground">--font-space-grotesk · var(--font-sans)</code>
+            <code className="mt-3 block text-[10px] text-muted-foreground">--font-inter · var(--font-sans)</code>
           </div>
           <div className="rounded-xl border border-border bg-card/60 p-5">
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Decorative — Libre Baskerville</p>

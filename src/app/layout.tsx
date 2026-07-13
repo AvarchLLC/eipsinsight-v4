@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Libre_Baskerville as LibreBaskervilleFont, Space_Grotesk as SpaceGroteskFont } from "next/font/google";
+import { Libre_Baskerville as LibreBaskervilleFont, Inter as InterFont } from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import "@/lib/orpc.server";
@@ -17,10 +17,10 @@ const Libre_Baskerville = LibreBaskervilleFont({
   weight: ["400", "700"],
 });
 
-const Space_Grotesk = SpaceGroteskFont({
-  variable: "--font-space-grotesk",
+// Body font: Inter — high legibility for UI/body text at small sizes.
+const Inter = InterFont({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
 });
 
 
@@ -69,7 +69,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${Libre_Baskerville.variable} ${Space_Grotesk.variable} antialiased`}
+        className={`${Libre_Baskerville.variable} ${Inter.variable} antialiased`}
       >
         <Providers>
           <ShellSwitcher>{children}</ShellSwitcher>
