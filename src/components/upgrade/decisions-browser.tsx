@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search } from 'lucide-react';
+import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { EipLinkedText, DecisionTypeMarker, type KeyDecision } from '@/components/upgrade/key-decisions';
@@ -203,20 +204,20 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
                 >
                   {callSeriesShort(call.series)}
                 </span>
-                <h2 className="text-sm font-semibold text-foreground">{callDisplayName(call)}</h2>
+                <h2 className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
+                  <Link href={`/upgrade/calls/${call.series}/${call.call_number ?? call.call_id}`} className="hover:underline">
+                    {callDisplayName(call)}
+                  </Link>
+                </h2>
                 <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
                 <span className="ml-auto flex items-center gap-3">
-                  {call.video_url && (
-                    <a
-                      href={call.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                    >
-                      <Video className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Recording</span>
-                    </a>
-                  )}
+                  <Link
+                    href={`/upgrade/calls/${call.series}/${call.call_number ?? call.call_id}`}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                  >
+                    <FileText className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Details</span>
+                  </Link>
                   {call.issue_number && (
                     <a
                       href={`https://github.com/ethereum/pm/issues/${call.issue_number}`}
