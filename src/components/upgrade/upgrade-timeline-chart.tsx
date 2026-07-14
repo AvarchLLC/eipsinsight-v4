@@ -7,6 +7,7 @@ import { scaleLinear } from '@visx/scale';
 import { Plus, Minus, RotateCcw, Download } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
+import { CopyLinkButton } from '@/components/header';
 
 type StatusType = 'included' | 'scheduled' | 'declined' | 'considered' | 'proposed';
 
@@ -197,6 +198,12 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
             </p>
           </div>
           <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Copy Chart Link */}
+            <CopyLinkButton
+              sectionId="timeline-chart"
+              className="h-8 w-8 rounded-lg bg-card/90 backdrop-blur-sm border border-border"
+              tooltipLabel="Copy chart link"
+            />
             {/* Include DFI Checkbox */}
             <label className="mr-1 inline-flex items-center gap-1.5 cursor-pointer rounded-lg bg-card/90 backdrop-blur-sm border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
               <input

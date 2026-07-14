@@ -68,6 +68,51 @@ export function UpgradeDetailBody({
     };
   }, [slug]);
 
+  useEffect(() => {
+    const handleHashScroll = () => {
+      const hash = window.location.hash.toUpperCase();
+      if (!hash) return;
+
+      const mapping: Record<string, string> = {
+        '#DFI': 'stage-declined',
+        '#PFI': 'stage-proposed',
+        '#CFI': 'stage-considered',
+        '#SFI': 'stage-scheduled',
+        '#INCLUDED': 'stage-included',
+        '#DECLINED': 'stage-declined',
+        '#PROPOSED': 'stage-proposed',
+        '#CONSIDERED': 'stage-considered',
+        '#SCHEDULED': 'stage-scheduled',
+        '#CHART': 'timeline-chart',
+        '#TIMELINE': 'timeline-chart',
+        '#ACTIVITY': 'activity',
+        '#CHANGES': 'activity',
+        '#ARTICLES': 'related-articles',
+      };
+
+      const targetId = mapping[hash] || hash.slice(1).toLowerCase();
+
+      if (targetId === 'stage-declined') {
+        setIsDeclinedExpanded(true);
+      }
+
+      setTimeout(() => {
+        const element = document.getElementById(targetId) || document.getElementById(hash.slice(1));
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 100);
+    };
+
+    const initialTimeout = setTimeout(handleHashScroll, 300);
+
+    window.addEventListener('hashchange', handleHashScroll);
+    return () => {
+      clearTimeout(initialTimeout);
+      window.removeEventListener('hashchange', handleHashScroll);
+    };
+  }, []);
+
   const normalizedQuery = searchQuery.trim().toLowerCase();
   const hasLayerData = composition.some((eip) => eip.curation?.layer);
   const isFiltering = Boolean(normalizedQuery) || layerFilter !== 'all';

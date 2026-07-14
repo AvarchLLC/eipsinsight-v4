@@ -44,6 +44,11 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: '/calls/:series/:number',
+        destination: '/upgrade/calls/:series/:number',
+        permanent: false,
+      },
+      {
         source: '/devnets',
         destination: '/upgrade/devnets',
         permanent: false,
