@@ -38,6 +38,7 @@ model User {
   repository_subscriptions RepositorySubscription[]
   sessions               Session[]
   upgrade_subscriptions  UpgradeSubscription[]
+  author_subscriptions   AuthorSubscription[]
   preferences            user_preferences?
 
   @@map("user")
@@ -580,12 +581,28 @@ model UpgradeSubscription {
   @@map("upgrade_subscription")
 }
 
+model AuthorSubscription {
+  id                   String                @id @default(cuid())
+  user_id              String
+  author_name          String
+  created_at           DateTime              @default(now())
+  updated_at           DateTime              @updatedAt
+  notification_outbox  NotificationOutbox[]
+  user                 User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, author_name], map: "author_subscription_unique")
+  @@index([user_id], map: "idx_author_subscription_user")
+  @@index([author_name], map: "idx_author_subscription_author")
+  @@map("author_subscription")
+}
+
 model NotificationOutbox {
   id                  String                @id @default(cuid())
   user_id             String
   proposal_subscription_id String?
   repository_subscription_id String?
   upgrade_subscription_id String?
+  author_subscription_id String?
   dedupe_key          String                @unique
   channel             String                @default("email")
   template            String
@@ -602,6 +619,7 @@ model NotificationOutbox {
   proposal_subscription ProposalSubscription? @relation(fields: [proposal_subscription_id], references: [id], onDelete: SetNull)
   repository_subscription RepositorySubscription? @relation(fields: [repository_subscription_id], references: [id], onDelete: SetNull)
   upgrade_subscription UpgradeSubscription? @relation(fields: [upgrade_subscription_id], references: [id], onDelete: SetNull)
+  author_subscription AuthorSubscription? @relation(fields: [author_subscription_id], references: [id], onDelete: SetNull)
   user                User                  @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@index([status, created_at], map: "idx_notification_outbox_status_created")

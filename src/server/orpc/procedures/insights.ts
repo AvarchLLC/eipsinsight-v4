@@ -24,6 +24,80 @@ async function getRepoIds(repo?: string): Promise<number[] | null> {
 }
 
 export const insightsProcedures = {
+  getYearInReview: optionalAuthProcedure
+    .input(z.object({ year: z.number().int().min(2015).max(new Date().getFullYear()) }))
+    .handler(async ({ input }) => {
+      const startDate = new Date(Date.UTC(input.year, 0, 1));
+      const endDate = new Date(Date.UTC(input.year + 1, 0, 1));
+
+      // 1. Total EIPs proposed
+      const proposedCount = await prisma.eips.count({
+        where: { created_at: { gte: startDate, lt: endDate } },
+      });
+
+      // 2. Total finalized/accepted
+      const finalizedRows = await prisma.$queryRaw<Array<{ count: bigint }>>`
+        SELECT COUNT(DISTINCT eip_id) as count
+        FROM eip_status_events
+        WHERE to_status = 'Final'
+          AND changed_at >= ${startDate}::date
+          AND changed_at < ${endDate}::date
+      `;
+      const finalizedCount = Number(finalizedRows[0]?.count || 0);
+
+      // 3. Month-by-month activity (proposals created)
+      const activityRows = await prisma.$queryRaw<Array<{ month: number, count: bigint }>>`
+        SELECT EXTRACT(MONTH FROM created_at) as month, COUNT(*) as count
+        FROM eips
+        WHERE created_at >= ${startDate}::date AND created_at < ${endDate}::date
+        GROUP BY 1
+      `;
+      
+      const activityMap = new Map(activityRows.map(r => [Number(r.month), Number(r.count)]));
+      const monthlyActivity = Array.from({ length: 12 }, (_, i) => ({
+        month: new Date(Date.UTC(2000, i, 1)).toLocaleString('default', { month: 'short' }),
+        count: activityMap.get(i + 1) || 0,
+      }));
+
+      // 4. Category breakdown
+      const categoryRows = await prisma.$queryRaw<Array<{ category: string, count: bigint }>>`
+        SELECT COALESCE(NULLIF(s.category, ''), NULLIF(s.type, ''), 'Other') as category, COUNT(*) as count
+        FROM eips e
+        JOIN eip_snapshots s ON s.eip_id = e.id
+        WHERE e.created_at >= ${startDate}::date AND e.created_at < ${endDate}::date
+        GROUP BY 1
+      `;
+      
+      const categoryBreakdown = categoryRows.map(r => ({
+        category: r.category,
+        count: Number(r.count),
+      }));
+
+      // 5. Top 5 most active authors (by activity in that year)
+      const topAuthorsRows = await prisma.$queryRaw<Array<{ actor: string, count: bigint }>>`
+        SELECT actor, COUNT(*) as count
+        FROM contributor_activity
+        WHERE occurred_at >= ${startDate}::date AND occurred_at < ${endDate}::date
+          AND action_type IN ('pr_created', 'pr_merged', 'review_submitted', 'issue_opened')
+        GROUP BY actor
+        ORDER BY count DESC
+        LIMIT 5
+      `;
+      
+      const topAuthors = topAuthorsRows.map(r => ({
+        actor: r.actor,
+        activity: Number(r.count),
+      }));
+
+      return {
+        proposedCount,
+        finalizedCount,
+        monthlyActivity,
+        categoryBreakdown,
+        topAuthors,
+      };
+    }),
+
   getDraftVsFinalHistory: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
