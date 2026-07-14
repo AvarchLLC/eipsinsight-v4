@@ -113,7 +113,7 @@ export default async function UpgradeDetailPage({ params }: Props) {
     const staticData = compositionFromStaticTimeline(slug);
     if (staticData) {
       composition = staticData.composition;
-      if (timeline.length <= 1) timeline = staticData.timeline;
+      timeline = staticData.timeline;
     }
   }
 
