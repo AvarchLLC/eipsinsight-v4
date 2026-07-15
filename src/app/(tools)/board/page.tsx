@@ -9,16 +9,20 @@ import {
   ArrowLeft,
   ArrowUp,
   ArrowUpDown,
+  Bell,
+  CalendarClock,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
   ExternalLink,
   Flame,
+  GitMerge,
   Info,
   Minus,
   RotateCcw,
   Search,
+  Users,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -36,6 +40,13 @@ type PRRow = {
   govState: string;
   waitDays: number;
   processType: string;
+  needsAttention: boolean;
+  attentionReason: string | null;
+  hasConflicts: boolean;
+  stagnantPreamble: boolean;
+  ethbotReview: boolean;
+  authorIsPreambleAuthor: boolean;
+  hasParticipants: boolean;
 };
 
 type BoardData = {
@@ -50,6 +61,8 @@ type StatsData = {
   processTypes: { type: string; count: number }[];
   govStates: { state: string; label: string; count: number }[];
   totalOpen: number;
+  needsAttention: number;
+  hasConflicts: number;
 };
 
 type RepoKey = "" | "eips" | "ercs" | "rips";
@@ -184,6 +197,8 @@ function BoardBrowser() {
     return s === "pr" || s === "created" || s === "wait" ? s : DEFAULT_SORT;
   });
   const [sortDir, setSortDir] = useState<SortDir>(() => (searchParams.get("dir") === "asc" ? "asc" : "desc"));
+  const [needsAttention, setNeedsAttention] = useState(() => searchParams.get("attn") === "1");
+  const [hasConflicts, setHasConflicts] = useState(() => searchParams.get("conflict") === "1");
 
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -207,6 +222,8 @@ function BoardBrowser() {
   const govFilter = selectedGovStates.length ? selectedGovStates : undefined;
   const processFilter = selectedProcessTypes.length ? selectedProcessTypes : undefined;
   const searchFilter = debouncedSearch || undefined;
+  const attnFilter = needsAttention || undefined;
+  const conflictFilter = hasConflicts || undefined;
 
   // Mirror state into the URL so "Copy link" (and browser back/refresh) actually work.
   useEffect(() => {
@@ -220,9 +237,11 @@ function BoardBrowser() {
     if (pageSize !== DEFAULT_PAGE_SIZE) p.set("size", String(pageSize));
     if (sortBy !== DEFAULT_SORT) p.set("sort", sortBy);
     if (sortDir !== DEFAULT_DIR) p.set("dir", sortDir);
+    if (needsAttention) p.set("attn", "1");
+    if (hasConflicts) p.set("conflict", "1");
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, pathname, router]);
+  }, [repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router]);
 
   useEffect(() => {
     let cancelled = false;
@@ -258,6 +277,8 @@ function BoardBrowser() {
           pageSize,
           sortBy,
           sortDir,
+          needsAttention: attnFilter,
+          hasConflicts: conflictFilter,
         });
         if (!cancelled) setData(d);
       } catch (err) {
@@ -270,7 +291,7 @@ function BoardBrowser() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [typedRepo, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir]);
+  }, [typedRepo, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir, attnFilter, conflictFilter]);
 
   const totalMatching = data?.total ?? 0;
   const rows = data?.rows ?? [];
@@ -283,7 +304,9 @@ function BoardBrowser() {
     selectedProcessTypes.length > 0 ||
     Boolean(search) ||
     sortBy !== DEFAULT_SORT ||
-    sortDir !== DEFAULT_DIR;
+    sortDir !== DEFAULT_DIR ||
+    needsAttention ||
+    hasConflicts;
 
   const toggleGovState = (state: string) => {
     setPage(1);
@@ -312,7 +335,18 @@ function BoardBrowser() {
     setSearch("");
     setSortBy(DEFAULT_SORT);
     setSortDir(DEFAULT_DIR);
+    setNeedsAttention(false);
+    setHasConflicts(false);
     setPage(1);
+  };
+
+  const toggleAttention = () => {
+    setPage(1);
+    setNeedsAttention((v) => !v);
+  };
+  const toggleConflicts = () => {
+    setPage(1);
+    setHasConflicts((v) => !v);
   };
 
   const orderedProcessTypes = useMemo(() => {
@@ -333,6 +367,8 @@ function BoardBrowser() {
       search: searchFilter,
       sortBy,
       sortDir,
+      needsAttention: attnFilter,
+      hasConflicts: conflictFilter,
     };
     const firstPage = await client.tools.getOpenPRBoard({ ...query, page: 1, pageSize: exportPageSize });
 
@@ -455,14 +491,23 @@ function BoardBrowser() {
                 oldest at the top.
               </p>
             </div>
-            <button
-              onClick={() => setShowInfo((v) => !v)}
-              className="inline-flex h-9 shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
-            >
-              <Info className="h-3.5 w-3.5" />
-              Info
-              {showInfo ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            </button>
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href="/board/agenda"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
+              >
+                <CalendarClock className="h-3.5 w-3.5" />
+                Agenda maker
+              </Link>
+              <button
+                onClick={() => setShowInfo((v) => !v)}
+                className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
+              >
+                <Info className="h-3.5 w-3.5" />
+                Info
+                {showInfo ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+              </button>
+            </div>
           </div>
 
           {showInfo && (
@@ -619,6 +664,46 @@ function BoardBrowser() {
             </div>
           </div>
 
+          <div className="mt-3 border-t border-border pt-3">
+            <p className="mb-2 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+              Editor signals
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={toggleAttention}
+                aria-pressed={needsAttention}
+                title="PRs the scheduler flagged as needing an editor's attention"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                  needsAttention
+                    ? "border-rose-500/40 bg-rose-500/10 text-rose-700 dark:text-rose-300"
+                    : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <Bell className="h-3.5 w-3.5" /> Needs attention{" "}
+                <span className={cn("opacity-70 transition-opacity", statsLoading && "animate-pulse opacity-40")}>
+                  ({stats?.needsAttention ?? 0})
+                </span>
+              </button>
+              <button
+                onClick={toggleConflicts}
+                aria-pressed={hasConflicts}
+                title="PRs with merge conflicts — the author must resolve before review"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                  hasConflicts
+                    ? "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300"
+                    : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <GitMerge className="h-3.5 w-3.5" /> Merge conflicts{" "}
+                <span className={cn("opacity-70 transition-opacity", statsLoading && "animate-pulse opacity-40")}>
+                  ({stats?.hasConflicts ?? 0})
+                </span>
+              </button>
+            </div>
+          </div>
+
           {hasActiveFilters && (
             <div className="mt-3 border-t border-border pt-3">
               <div className="flex flex-wrap gap-2 text-[11px]">
@@ -633,6 +718,8 @@ function BoardBrowser() {
                 {selectedProcessTypes.map((p) => (
                   <ActiveFilter key={p} label={`Process: ${p}`} onClear={() => toggleProcessType(p)} />
                 ))}
+                {needsAttention && <ActiveFilter label="Needs attention" onClear={() => setNeedsAttention(false)} />}
+                {hasConflicts && <ActiveFilter label="Merge conflicts" onClear={() => setHasConflicts(false)} />}
                 {search && <ActiveFilter label={`Search: ${search}`} onClear={() => setSearch("")} />}
               </div>
             </div>
@@ -751,6 +838,12 @@ function BoardBrowser() {
                             <span className="truncate leading-snug">{row.title || "Untitled"}</span>
                             <ExternalLink className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-60" />
                           </a>
+                          <SignalBadges row={row} />
+                          {row.attentionReason && (
+                            <p className="mt-1 truncate text-[10px] text-rose-600 dark:text-rose-400" title={row.attentionReason}>
+                              {row.attentionReason}
+                            </p>
+                          )}
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">
                           {row.author ? (
@@ -865,6 +958,64 @@ function BoardBrowser() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Compact editorial-signal pills, shown under a PR's title. */
+function SignalBadges({ row }: { row: PRRow }) {
+  const badges: { key: string; label: string; title: string; cls: string; Icon?: typeof GitMerge }[] = [];
+  if (row.hasConflicts)
+    badges.push({
+      key: "conflict",
+      label: "Conflicts",
+      title: "Merge conflicts — author must resolve before this can be reviewed",
+      cls: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+      Icon: GitMerge,
+    });
+  if (row.stagnantPreamble)
+    badges.push({
+      key: "stagnant",
+      label: "Stale preamble",
+      title: "Preamble status has gone stale",
+      cls: "border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    });
+  if (row.ethbotReview)
+    badges.push({
+      key: "ethbot",
+      label: "Bot escalated",
+      title: "The eth-bot flagged this for editor review",
+      cls: "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    });
+  if (row.authorIsPreambleAuthor)
+    badges.push({
+      key: "author",
+      label: "By EIP author",
+      title: "Opened by the EIP's own preamble author",
+      cls: "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+    });
+  if (row.hasParticipants)
+    badges.push({
+      key: "participants",
+      label: "Discussed",
+      title: "Other people are already participating on this PR",
+      cls: "border-border bg-muted text-muted-foreground",
+      Icon: Users,
+    });
+
+  if (badges.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {badges.map((b) => (
+        <span
+          key={b.key}
+          title={b.title}
+          className={cn("inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] font-medium", b.cls)}
+        >
+          {b.Icon && <b.Icon className="h-2.5 w-2.5" />}
+          {b.label}
+        </span>
+      ))}
     </div>
   );
 }
