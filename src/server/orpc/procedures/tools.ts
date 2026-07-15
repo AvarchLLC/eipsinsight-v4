@@ -17,7 +17,11 @@ const PROCESS_TYPE_SQL = `CASE
   WHEN p.labels @> ARRAY['c-new']::text[] THEN 'New EIP'
   WHEN LOWER(COALESCE(p.title, '')) ~ 'website|jekyll|_config' THEN 'Website'
   WHEN LOWER(COALESCE(p.title, '')) ~ 'update eip-1[: ]' OR LOWER(COALESCE(p.title, '')) = 'update eip-1' THEN 'EIP-1'
-  WHEN p.labels && ARRAY['c-status', 'c-update']::text[] THEN 'Status Change'
+  -- Only c-status is a real status change (the eth-bot sets it when the preamble status: line
+  -- changes). c-update just means "edits an existing proposal" = a Content Edit, NOT a Status
+  -- Change. We can't diff-check (PR file contents aren't stored) and title matching is too noisy
+  -- ("remove ... -> ..." etc.), so the label is the reliable signal.
+  WHEN p.labels @> ARRAY['c-status']::text[] THEN 'Status Change'
   ELSE 'Content Edit'
 END`;
 
@@ -365,9 +369,12 @@ const repoIds = await getRepoIds(input.repo);
       pageSize: z.number().default(10),
       sortBy: z.enum(['wait', 'pr', 'created']).default('wait'),
       sortDir: z.enum(['asc', 'desc']).default('desc'),
+      // Editorial signals the scheduler computes in pr_governance_state.
+      needsAttention: z.boolean().optional(),
+      hasConflicts: z.boolean().optional(),
     }))
     .handler(async ({ context, input }) => {
-const { repo, govState, processType, search, page, pageSize, sortBy, sortDir } = input;
+const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts } = input;
       const offset = (page - 1) * pageSize;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
       const processTypes = typeof processType === 'string' ? [processType] : (processType ?? []);
@@ -388,6 +395,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir } =
         gov_state: string;
         wait_days: number;
         process_type: string;
+        needs_attention: boolean;
+        attention_reason: string | null;
+        has_conflicts: boolean;
+        stagnant_preamble: boolean;
+        ethbot_review: boolean;
+        author_is_preamble_author: boolean;
+        has_participants: boolean;
         total_count: bigint;
       }>>(`
         WITH base AS (
@@ -411,7 +425,14 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir } =
             GREATEST(EXTRACT(DAY FROM (NOW() - COALESCE(gs.waiting_since, p.created_at, NOW())))::int, 0) AS wait_days,
             CASE WHEN COALESCE(gs.category, '') = 'Tooling' THEN 'Content Edit'
               ELSE COALESCE(gs.category, ${PROCESS_TYPE_SQL})
-            END AS process_type
+            END AS process_type,
+            COALESCE(gs.needs_editor_attention, false) AS needs_attention,
+            gs.reason AS attention_reason,
+            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts,
+            COALESCE(gs.has_stagnant_preamble_status, false) AS stagnant_preamble,
+            COALESCE(gs.ethbot_needs_editor_review, false) AS ethbot_review,
+            COALESCE(gs.opened_by_preamble_author, false) AS author_is_preamble_author,
+            COALESCE(gs.has_other_participants, false) AS has_participants
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
@@ -429,12 +450,14 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir } =
               OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($4) || '%'
               OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($4) || '%'
             ))
+            AND ($7::boolean IS NULL OR needs_attention = $7)
+            AND ($8::boolean IS NULL OR has_conflicts = $8)
         )
         SELECT f.*, (SELECT COUNT(*) FROM filtered)::bigint AS total_count
         FROM filtered f
         ORDER BY ${orderColumn} ${orderDirection}, f.pr_number DESC
         LIMIT $5 OFFSET $6
-      `, repo || null, govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset);
+      `, repo || null, govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null);
 
       const total = results.length > 0 ? Number(results[0].total_count) : 0;
 
@@ -454,6 +477,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir } =
           govState: r.gov_state,
           waitDays: r.wait_days,
           processType: r.process_type,
+          needsAttention: r.needs_attention,
+          attentionReason: r.attention_reason,
+          hasConflicts: r.has_conflicts,
+          stagnantPreamble: r.stagnant_preamble,
+          ethbotReview: r.ethbot_review,
+          authorIsPreambleAuthor: r.author_is_preamble_author,
+          hasParticipants: r.has_participants,
         })),
       };
     }),
@@ -547,10 +577,121 @@ const { repo, govState, search } = input;
         ORDER BY count DESC
       `, repo || null, search || null);
 
+      // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
+      const signalResults = await prisma.$queryRawUnsafe<Array<{
+        needs_attention: bigint; has_conflicts: bigint;
+      }>>(`
+        WITH base AS (
+          SELECT
+            p.pr_number, p.title, p.author,
+            COALESCE(
+              gs.subcategory,
+              CASE COALESCE(gs.current_state, 'NO_STATE')
+                WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
+                WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
+                WHEN 'DRAFT' THEN 'AWAITED'
+                ELSE 'Uncategorized'
+              END
+            ) AS gov_state,
+            COALESCE(gs.needs_editor_attention, false) AS needs_attention,
+            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts
+          FROM pull_requests p
+          JOIN repositories r ON p.repository_id = r.id
+          LEFT JOIN pr_governance_state gs
+            ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
+          WHERE p.state = 'open'
+            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND COALESCE(gs.category, '') != 'Tooling'
+        )
+        SELECT
+          COUNT(*) FILTER (WHERE needs_attention)::bigint AS needs_attention,
+          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts
+        FROM base
+        WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
+          AND ($3::text IS NULL OR (
+            pr_number::text LIKE '%' || $3 || '%'
+            OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
+            OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
+          ))
+      `, repo || null, govStates.length ? govStates : null, search || null);
+
       return {
         processTypes: ptResults.map(r => ({ type: r.process_type, count: Number(r.count) })),
         govStates: gsResults.map(r => ({ state: r.state, label: r.label, count: Number(r.count) })),
         totalOpen: gsResults.reduce((sum, r) => sum + Number(r.count), 0),
+        needsAttention: Number(signalResults[0]?.needs_attention ?? 0),
+        hasConflicts: Number(signalResults[0]?.has_conflicts ?? 0),
       };
+    }),
+
+  // ──── Agenda candidates: open PRs pre-bucketed for the EIP Editing Office Hour agenda ────
+  // Status-change moves (To Final / Last Call / Review) come from `c-status` titles ("Move to X")
+  // — there is no s-lastcall label, so the title is the only signal that covers Last Call. The
+  // Draft pool is the s-draft label (new proposals + move-to-draft), excluding the multi-status
+  // meta doc (EIP-1) via the single-status-label guard.
+  getAgendaCandidates: optionalAuthProcedure
+    .input(z.object({}))
+    .handler(async () => {
+      const rows = await prisma.$queryRawUnsafe<Array<{
+        pr_number: number;
+        title: string | null;
+        author: string | null;
+        repo_name: string;
+        repo_short: string;
+        is_new: boolean;
+        wait_days: number;
+        bucket: string;
+      }>>(`
+        WITH glam AS (
+          SELECT c.eip_number
+          FROM upgrade_composition_current c
+          JOIN upgrades u ON c.upgrade_id = u.id
+          WHERE u.slug = 'glamsterdam'
+        ),
+        base AS (
+          SELECT
+            p.pr_number,
+            p.title,
+            p.author,
+            r.name AS repo_name,
+            LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
+            p.labels @> ARRAY['c-new']::text[] AS is_new,
+            p.labels @> ARRAY['c-status']::text[] AS is_status_change,
+            p.labels @> ARRAY['s-draft']::text[] AS is_s_draft,
+            (SELECT COUNT(*) FROM unnest(p.labels) l WHERE l LIKE 's-%') AS status_label_count,
+            GREATEST(EXTRACT(DAY FROM (NOW() - COALESCE(gs.waiting_since, p.created_at, NOW())))::int, 0) AS wait_days,
+            LOWER(COALESCE(p.title, '')) AS lt,
+            NULLIF((regexp_match(p.title, '(?:EIP|ERC)-(\\d+)'))[1], '')::int AS eip_num
+          FROM pull_requests p
+          JOIN repositories r ON p.repository_id = r.id
+          LEFT JOIN pr_governance_state gs
+            ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
+          WHERE p.state = 'open'
+        )
+        SELECT pr_number, title, author, repo_name, repo_short, is_new, wait_days,
+          CASE
+            WHEN is_status_change AND lt ~ 'move to final' THEN 'final'
+            WHEN is_status_change AND lt ~ 'move to last call' THEN 'lastcall'
+            WHEN is_status_change AND lt ~ 'move to review' AND eip_num IN (SELECT eip_number FROM glam) THEN 'glamsterdam'
+            WHEN is_status_change AND lt ~ 'move to review' THEN 'review'
+            ELSE 'draft'
+          END AS bucket
+        FROM base
+        WHERE (is_status_change AND lt ~ 'move to (final|last call|review)')
+           OR (is_s_draft AND status_label_count = 1 AND (is_new OR is_status_change))
+        ORDER BY repo_short, pr_number DESC
+      `);
+
+      return rows.map(r => ({
+        prNumber: r.pr_number,
+        title: r.title,
+        author: r.author,
+        repo: r.repo_name,
+        repoShort: r.repo_short,
+        url: `https://github.com/${r.repo_name}/pull/${r.pr_number}`,
+        isNew: r.is_new,
+        waitDays: r.wait_days,
+        bucket: r.bucket as 'final' | 'lastcall' | 'review' | 'glamsterdam' | 'draft',
+      }));
     }),
 };
