@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { ArrowRight, ExternalLink, MessageSquare, Clock, Eye, Heart, Tag } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, ExternalLink, MessageSquare, Clock, Eye, Heart, Tag } from 'lucide-react';
+import Link from 'next/link';
 import { client } from '@/lib/orpc';
 import { CopyLinkButton } from '@/components/header';
 import { InfiniteSlider } from '@/components/ui/infinite-slider';
@@ -195,7 +196,7 @@ function SkeletonCard() {
   );
 }
 
-export default function TrendingProposals() {
+export default function TrendingProposals({ hideHeader = false }: { hideHeader?: boolean } = {}) {
   const [proposals, setProposals] = useState<TrendingProposal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -216,17 +217,23 @@ export default function TrendingProposals() {
 
   return (
     <section id="trending-proposals" className="relative w-full pt-2 pb-4">
-      <header className="mb-4 flex items-start justify-between gap-3">
-        <div>
-          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            Trending Proposals
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Most impactful proposals shaping Ethereum today
-          </p>
-        </div>
-        <CopyLinkButton sectionId="trending-proposals" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
-      </header>
+      {!hideHeader && (
+        <header className="mb-4 flex items-start justify-between gap-3">
+          <div>
+            <Link
+              href="/explore/trending"
+              className="dec-title group inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
+            >
+              Trending Proposals
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+            </Link>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Most impactful proposals shaping Ethereum today
+            </p>
+          </div>
+          <CopyLinkButton sectionId="trending-proposals" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+        </header>
+      )}
 
       <div className="relative w-full">
         {loading ? (
@@ -253,7 +260,7 @@ export default function TrendingProposals() {
              * The section itself must NOT have overflow:hidden for this to work.
              * Any ancestor with overflow:hidden will re-clip — check your layout.
              */}
-            <div className="-my-8 py-8">
+            <div className="py-6">
               <InfiniteSlider speed={40} speedOnHover={15} gap={12} className="w-full">
                 {proposals.map((proposal) => (
                   <ProposalCard

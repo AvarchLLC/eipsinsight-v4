@@ -13,6 +13,7 @@ import {
   ChevronUp,
   ArrowUp,
   ArrowUpDown,
+  ArrowUpRight,
   Bell,
   BookOpen,
   Boxes,
@@ -26,6 +27,7 @@ import {
   ExternalLink,
   FileText,
   Filter,
+  Gavel,
   GitBranch,
   GitPullRequest,
   Layers,
@@ -41,6 +43,7 @@ import {
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import ReactECharts from 'echarts-for-react';
+import { ChartWatermark } from '@/components/chart-watermark';
 import { CopyLinkButton } from '@/components/header';
 import { LastUpdated } from '@/components/analytics/LastUpdated';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
@@ -398,6 +401,8 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     cta: string;
     icon: React.ComponentType<{ className?: string }>;
     blurb: string;
+    /** Optional card illustration in /public; falls back to the icon tile when absent. */
+    image?: string;
   }>;
 }> = {
   developer: {
@@ -405,12 +410,12 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'See what is changing, what is active, and where to dive deeper next.',
     goal: 'Quickly understand ongoing protocol changes and identify actionable items.',
     tools: [
-      { key: 'pull-requests', title: 'Pull Requests Insights', href: '/analytics/prs', cta: 'Explore Pull Requests', icon: GitPullRequest, blurb: 'Track PR flow, reviews, and governance movement.' },
-      { key: 'eips', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore EIPs', icon: FileText, blurb: 'Analyze proposal activity and lifecycle progress.' },
-      { key: 'network-upgrades', title: 'Network Upgrades Insights', href: '/upgrade', cta: 'Explore Upgrades', icon: Network, blurb: 'Follow upgrade timelines and protocol rollout context.' },
-      { key: 'editors', title: 'Editors Insights', href: '/analytics/editors', cta: 'Explore Editors', icon: Trophy, blurb: 'View editorial workload and contribution metrics.' },
-      { key: 'authors', title: 'Authors Insights', href: '/analytics/authors', cta: 'Explore Authors', icon: Activity, blurb: 'See authorship trends and contribution momentum.' },
-      { key: 'monthly', title: 'Monthly Insights', href: '/insights', cta: 'Explore Monthly', icon: ArrowUpDown, blurb: 'Open month-by-month standards and governance insights.' },
+      { key: 'upgrade-hub', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upgrade timelines, headliner EIPs, and what ships next.', image: '/quick-access/upgrade-hub.png' },
+      { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/upgrade/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Key outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
+      { key: 'editor-insights', title: 'Editor Insights', href: '/analytics/editors', cta: 'View insights', icon: Trophy, blurb: 'Editorial workload, coverage, and the leaderboard.', image: '/quick-access/editor-insights.png' },
+      { key: 'eip-analytics', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore analytics', icon: FileText, blurb: 'Proposal activity and lifecycle, Draft to Final.', image: '/quick-access/eip-analytics.png' },
+      { key: 'pr-board', title: 'Open PR Board', href: '/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
+      { key: 'monthly-insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: ArrowUpDown, blurb: 'A month-by-month standards & governance recap.', image: '/quick-access/monthly-insights.png' },
     ],
   },
   editor: {
@@ -418,9 +423,10 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Stay on top of review queue, editorial workload, and proposal progression.',
     goal: 'Efficiently manage review workload and track proposal progression.',
     tools: [
-      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Explore PR Analytics', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.' },
-      { key: 'editing-board', title: 'Editing Board', href: '/board?status=Waiting+on+Editor&page=1', cta: 'Explore Board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.' },
-      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'Explore Leaderboard', icon: Trophy, blurb: 'Monthly editorial activity snapshot.' },
+      { key: 'editing-board', title: 'Editing Board', href: '/board?status=Waiting+on+Editor&page=1', cta: 'Open the board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.', image: '/quick-access/pr-board.png' },
+      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'View leaderboard', icon: Trophy, blurb: 'Monthly editorial activity snapshot.', image: '/quick-access/editor-insights.png' },
+      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Explore analytics', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.', image: '/quick-access/eip-analytics.png' },
+      { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/upgrade/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
     ],
   },
   builder: {
@@ -428,11 +434,11 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Discover active standards quickly and jump into contribution workflows.',
     goal: 'Discover active standards and contribute quickly.',
     tools: [
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Find active standards quickly.' },
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore trending', icon: Activity, blurb: 'Find active standards quickly.', image: '/quick-access/eip-analytics.png' },
+      { key: 'eip-builder', title: 'EIP Builder', href: '/eip-builder', cta: 'Open the builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
       { key: 'erc-focus', title: 'ERC-focused Browse', href: '/explore?repo=ercs', cta: 'Explore ERCs', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
-      { key: 'eip-builder', title: 'EIP Builder', href: '/eip-builder', cta: 'Explore EIP Builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
-      { key: 'resources', title: 'Practical Docs/Resources', href: '/resources/docs', cta: 'Explore Resources', icon: BookOpen, blurb: 'Guides, references, and examples.' },
-      { key: 'contributors', title: 'Recent Activity Snapshot', href: '/analytics/contributors', cta: 'Explore Contributors', icon: Activity, blurb: 'Latest contributor movement and momentum.' },
+      { key: 'contributors', title: 'Recent Activity Snapshot', href: '/analytics/contributors', cta: 'View contributors', icon: Activity, blurb: 'Latest contributor movement and momentum.', image: '/quick-access/editor-insights.png' },
+      { key: 'resources', title: 'Practical Docs/Resources', href: '/resources/docs', cta: 'Explore resources', icon: BookOpen, blurb: 'Guides, references, and examples.' },
     ],
   },
   newcomer: {
@@ -440,11 +446,11 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Start with clear context, then explore proposals and tools at your pace.',
     goal: 'Make Ethereum standards approachable and easy to get started with.',
     tools: [
-      { key: 'learn', title: 'Learning Resources First', href: '/resources', cta: 'Explore Resources', icon: BookOpen, blurb: 'Primary entry point for beginners.' },
-      { key: 'trending', title: 'Simple Trending Proposals', href: '/explore/trending', cta: 'Explore Trending', icon: Activity, blurb: 'Simple view of current activity.' },
-      { key: 'upgrade', title: 'Simplified Upgrade Watch', href: '/upgrade', cta: 'Explore Upgrades', icon: Zap, blurb: 'Simplified network-upgrade summary.' },
-      { key: 'tools', title: 'Beginner Tool Access', href: '/tools', cta: 'Explore Tools', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
-      { key: 'faq', title: 'FAQ / Reference', href: '/resources/faq', cta: 'Explore FAQ', icon: BookOpen, blurb: 'Core terms and quick answers.' },
+      { key: 'upgrade', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Zap, blurb: 'Simplified network-upgrade summary.', image: '/quick-access/upgrade-hub.png' },
+      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore trending', icon: Activity, blurb: 'A simple view of current activity.', image: '/quick-access/eip-analytics.png' },
+      { key: 'learn', title: 'Learning Resources', href: '/resources', cta: 'Start learning', icon: BookOpen, blurb: 'The primary entry point for beginners.' },
+      { key: 'tools', title: 'Beginner Tool Access', href: '/tools', cta: 'Browse tools', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
+      { key: 'faq', title: 'FAQ / Reference', href: '/resources/faq', cta: 'Read the FAQ', icon: BookOpen, blurb: 'Core terms and quick answers.' },
     ],
   },
   enterprise: {
@@ -452,13 +458,24 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     description: 'Understand protocol direction, upgrade timelines, and business impact without deep dives.',
     goal: 'Translate Ethereum governance into actionable enterprise intelligence.',
     tools: [
-      { key: 'upgrades', title: 'Network Upgrades', href: '/upgrade', cta: 'View Upgrades', icon: Network, blurb: 'Track upcoming upgrades and their business implications.' },
-      { key: 'standards', title: 'Standards Explorer', href: '/standards', cta: 'Browse Standards', icon: FileText, blurb: 'Find EIPs and ERCs relevant to your infrastructure.' },
-      { key: 'analytics', title: 'Governance Analytics', href: '/analytics/prs', cta: 'View Analytics', icon: Activity, blurb: 'High-level governance activity and trends.' },
-      { key: 'insights', title: 'Monthly Insights', href: '/insights', cta: 'View Insights', icon: Zap, blurb: 'Month-by-month protocol roadmap summaries.' },
+      { key: 'upgrades', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upcoming upgrades and their business implications.', image: '/quick-access/upgrade-hub.png' },
+      { key: 'standards', title: 'Standards Explorer', href: '/standards', cta: 'Browse standards', icon: FileText, blurb: 'EIPs and ERCs relevant to your infrastructure.', image: '/quick-access/eip-analytics.png' },
+      { key: 'analytics', title: 'Governance Analytics', href: '/analytics/prs', cta: 'View analytics', icon: Activity, blurb: 'High-level governance activity and trends.', image: '/quick-access/pr-board.png' },
+      { key: 'insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: Zap, blurb: 'Month-by-month protocol roadmap summaries.', image: '/quick-access/monthly-insights.png' },
     ],
   },
 };
+
+/** Section title that links to its full page, with a hover arrow. Replaces the old
+ *  "Explore X" footer buttons — the header itself is now the way in. */
+function SectionTitleLink({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
+  return (
+    <Link href={href} className={cn(className, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
+      {children}
+      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+    </Link>
+  );
+}
 
 const PERSONA_LABELS: Record<HomePersona, string> = {
   developer: 'Developer',
@@ -2286,24 +2303,45 @@ export default function EIPsHomePage() {
               </div>
             </div>
             {showPersonaWorkspace && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
                   {personaPlan.tools.map((tool) => {
                     const Icon = tool.icon;
                     return (
                       <Link
                         key={tool.key}
                         href={tool.href}
-                        className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
+                        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card/90 via-card/70 to-card/45 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 sm:p-5"
                       >
-                        <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                          <Icon className="h-3.5 w-3.5" />
+                        {/* Bigger, frame-less illustration — a soft glow gives depth without a hard box. */}
+                        <div className="relative h-[92px] w-[92px] shrink-0">
+                          {tool.image ? (
+                            <>
+                              <div
+                                aria-hidden
+                                className="absolute inset-3 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
+                              />
+                              <div
+                                className="absolute inset-0 bg-contain bg-center bg-no-repeat transition-transform duration-300 group-hover:scale-110"
+                                style={{ backgroundImage: `url(${tool.image})` }}
+                              />
+                            </>
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-br from-primary/12 to-primary/5 text-primary">
+                              <Icon className="h-10 w-10" />
+                            </div>
+                          )}
                         </div>
-                        <p className="text-sm font-semibold text-foreground">{tool.title}</p>
-                        <p className="mt-1 text-xs text-muted-foreground">{tool.blurb}</p>
-                        <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-primary">
-                          {tool.cta}
-                          <ArrowRight className="h-3 w-3 transition group-hover:translate-x-0.5" />
+
+                        <div className="min-w-0 flex-1">
+                          <p className="dec-title text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-lg">
+                            {tool.title}
+                          </p>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
+                            {tool.blurb}
+                          </p>
                         </div>
+
+                        <ArrowRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/25 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
                       </Link>
                     );
                   })}
@@ -2319,7 +2357,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</h2>
+                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</SectionTitleLink>
                 <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
@@ -2358,13 +2396,6 @@ export default function EIPsHomePage() {
               >
                 <Download className="h-3.5 w-3.5" />
               </button>
-              <Link
-                href="/analytics/editors"
-                className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-              >
-                Explore Editor Analytics
-                <ArrowRight className="h-3 w-3" />
-              </Link>
             </div>
           </div>
 
@@ -2394,8 +2425,9 @@ export default function EIPsHomePage() {
                 No editor contribution data for this range.
               </div>
             ) : (
-              <div className="h-[300px]">
+              <div className="relative h-[300px]">
                 <ReactECharts option={editorRepoBreakdownOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
+                <ChartWatermark />
               </div>
             )}
           </div>
@@ -2433,7 +2465,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Learning Resources</h2>
+                <SectionTitleLink href="/resources" className={sectionTitleClass}>Learning Resources</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-learning-resources" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
@@ -2461,15 +2493,6 @@ export default function EIPsHomePage() {
               );
             })}
           </div>
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/resources"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Resources
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {(activePersona === 'developer' || activePersona === 'builder') && visibleSections.trending && (
@@ -2478,16 +2501,17 @@ export default function EIPsHomePage() {
           className="mb-6 border-t border-border/70 pt-6"
           id={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
         >
-          <TrendingProposals />
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/explore/trending"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Trending
-              <ArrowRight className="h-3 w-3" />
-            </Link>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="inline-flex items-center gap-2">
+                <Flame className="h-5 w-5 text-primary" />
+                <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
+                <CopyLinkButton sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'} tooltipLabel="Copy link" />
+              </div>
+              <p className={sectionSubtitleClass}>Most impactful proposals shaping Ethereum today.</p>
+            </div>
           </div>
+          <TrendingProposals hideHeader />
         </section>
       )}
       
@@ -2504,7 +2528,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Flame className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Trending Proposals</h2>
+                <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-trending-proposals" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
@@ -2540,15 +2564,6 @@ export default function EIPsHomePage() {
               ))
             )}
           </div>
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/explore/trending"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Trending
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'newcomer' && visibleSections.upgradeWatch && (
@@ -2561,7 +2576,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Package className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Upgrade Watch</h2>
+                <SectionTitleLink href="/upgrade" className={sectionTitleClass}>Upgrade Hub</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-upgrade-watch" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
@@ -2586,15 +2601,6 @@ export default function EIPsHomePage() {
           <p className="mt-2 text-xs text-muted-foreground">
             Showing latest snapshot for <span className="font-medium text-foreground">Glamsterdam</span>.
           </p>
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/upgrade"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Upgrades
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'developer' && visibleSections.governanceOverTime && (
@@ -2607,22 +2613,13 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Zap className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Governance Over Time</h2>
+                <SectionTitleLink href="/dashboard" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
                 <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
             </div>
           </div>
           <GovernanceOverTime />
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/dashboard"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Governance
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'builder' && visibleSections.governanceOverTime && (
@@ -2635,7 +2632,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Code className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>EIP Builder</h2>
+                <SectionTitleLink href="/eip-builder" className={sectionTitleClass}>EIP Builder</SectionTitleLink>
                 <CopyLinkButton sectionId="builder-eip-builder-focus" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
@@ -2650,15 +2647,6 @@ export default function EIPsHomePage() {
               Start new standards, validate formatting early, and keep contribution quality high before opening PRs.
             </p>
           </div>
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/eip-builder"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore EIP Builder
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'developer' && visibleSections.board && (
@@ -2671,7 +2659,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Activity className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Board</h2>
+                <SectionTitleLink href="/board" className={sectionTitleClass}>Board</SectionTitleLink>
                 <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
@@ -2707,21 +2695,20 @@ export default function EIPsHomePage() {
                     <th className="w-20 px-3 py-2">Wait</th>
                     <th className="w-28 px-3 py-2">Process</th>
                     <th className="w-36 px-3 py-2">Status</th>
-                    <th className="w-16 px-3 py-2 text-center">Open</th>
                   </tr>
                 </thead>
                 <tbody>
                   {developerBoardLoading ? (
                     Array.from({ length: 6 }).map((_, i) => (
                       <tr key={`dev-board-skeleton-${i}`} className="border-b border-border/60">
-                        <td colSpan={7} className="px-3 py-2.5">
+                        <td colSpan={6} className="px-3 py-2.5">
                           <div className="h-4 animate-pulse rounded bg-muted" />
                         </td>
                       </tr>
                     ))
                   ) : developerBoardRows.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-3 py-8 text-center text-sm text-muted-foreground">
+                      <td colSpan={6} className="px-3 py-8 text-center text-sm text-muted-foreground">
                         No open PR rows found for this filter.
                       </td>
                     </tr>
@@ -2730,10 +2717,15 @@ export default function EIPsHomePage() {
                       const p = waitPriority(row.waitDays);
                       const stateTone = DEV_BOARD_GOVSTATE_BADGES[row.govState] || DEV_BOARD_GOVSTATE_BADGES.Uncategorized;
                       return (
-                      <tr key={`dev-board-${row.repoShort}-${row.prNumber}`} className="border-b border-border/60 transition-colors hover:bg-muted/40">
-                        <td className="px-3 py-2 font-mono font-semibold text-primary">#{row.prNumber}</td>
+                      <tr key={`dev-board-${row.repoShort}-${row.prNumber}`} className="group border-b border-border/60 transition-colors even:bg-muted/20 hover:bg-primary/[0.04]">
                         <td className="px-3 py-2">
-                          <p className="truncate leading-snug text-foreground">{row.title || `PR #${row.prNumber}`}</p>
+                          <a href={`https://github.com/${row.repo}/pull/${row.prNumber}`} target="_blank" rel="noopener noreferrer" className="font-mono font-semibold text-primary underline-offset-2 hover:underline">#{row.prNumber}</a>
+                        </td>
+                        <td className="max-w-0 px-3 py-2">
+                          <a href={`https://github.com/${row.repo}/pull/${row.prNumber}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-foreground transition-colors hover:text-primary" title={row.title || `PR #${row.prNumber}`}>
+                            <span className="truncate leading-snug">{row.title || `PR #${row.prNumber}`}</span>
+                            <ExternalLink className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-50" />
+                          </a>
                           <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{fmtBoardDate(row.createdAt)} · {row.repoShort.toUpperCase()}</p>
                         </td>
                         <td className="px-3 py-2 text-muted-foreground">{row.author || '—'}</td>
@@ -2752,16 +2744,6 @@ export default function EIPsHomePage() {
                           <span className={cn('whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-medium', stateTone)}>
                             {row.govState || 'Uncategorized'}
                           </span>
-                        </td>
-                        <td className="px-3 py-2 text-center">
-                          <a
-                            href={`https://github.com/${row.repo}/pull/${row.prNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-[10px] text-primary transition-colors hover:bg-primary/15"
-                          >
-                            <ExternalLink className="h-2.5 w-2.5" />
-                          </a>
                         </td>
                       </tr>
                     )})
@@ -2821,15 +2803,6 @@ export default function EIPsHomePage() {
               </div>
             </div>
           </div>
-          <div className="mt-4 flex justify-center">
-            <Link
-              href="/board"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-3 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Board
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'builder' && visibleSections.board && (
@@ -2842,7 +2815,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Tool Shortcuts</h2>
+                <SectionTitleLink href="/tools" className={sectionTitleClass}>Tool Shortcuts</SectionTitleLink>
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
@@ -2874,15 +2847,6 @@ export default function EIPsHomePage() {
               );
             })}
           </div>
-          <div className="mt-3 flex justify-center">
-            <Link
-              href="/tools"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Tools
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
         </section>
       )}
       {activePersona === 'newcomer' && visibleSections.board && (
@@ -2895,7 +2859,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Wrench className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</h2>
+                <SectionTitleLink href="/tools" className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</SectionTitleLink>
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
@@ -2926,15 +2890,6 @@ export default function EIPsHomePage() {
                 </Link>
               );
             })}
-          </div>
-          <div className="mt-3 flex justify-center">
-            <Link
-              href="/tools"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Tools
-              <ArrowRight className="h-3 w-3" />
-            </Link>
           </div>
         </section>
       )}
@@ -2988,9 +2943,9 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Eye className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>
-                  Browse by Status, Category, Repository & Stages
-                </h2>
+                <SectionTitleLink href="/explore" className={sectionTitleClass}>
+                  Browse by Status, Category, Repository &amp; Stages
+                </SectionTitleLink>
                 <CopyLinkButton
                   sectionId={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
                   tooltipLabel="Copy link"
@@ -3621,15 +3576,6 @@ export default function EIPsHomePage() {
           </div>
         )}
       </div>
-      <div className="mt-3 flex justify-center">
-        <Link
-          href="/explore"
-          className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-        >
-          Explore Browse
-          <ArrowRight className="h-3 w-3" />
-        </Link>
-      </div>
       </div>
       )}
       {visibleSections.reference && (
@@ -3643,7 +3589,7 @@ export default function EIPsHomePage() {
               <div>
                 <div className="inline-flex items-center gap-2">
                   <FileText className="h-5 w-5 text-primary" />
-                  <h2 className={sectionTitleClass}>Reference</h2>
+                  <SectionTitleLink href="/resources/faq" className={sectionTitleClass}>Reference</SectionTitleLink>
                   <CopyLinkButton sectionId="home-reference" tooltipLabel="Copy link" />
                 </div>
                 <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
@@ -3651,17 +3597,6 @@ export default function EIPsHomePage() {
             </div>
           )}
           <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
-          {activePersona === 'editor' && (
-            <div className="mt-3 flex justify-center">
-              <Link
-                href="/resources/faq"
-                className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-              >
-                Explore FAQ
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-            </div>
-          )}
         </section>
       )}
       {visibleSections.monthly && (
@@ -3677,7 +3612,7 @@ export default function EIPsHomePage() {
           <div>
             <div className="inline-flex items-center gap-2">
               <Trophy className="h-5 w-5 text-primary" />
-              <h2 className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</h2>
+              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</SectionTitleLink>
               <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
@@ -3960,9 +3895,9 @@ export default function EIPsHomePage() {
           <div>
             <div className="inline-flex items-center gap-2">
               <Activity className="h-5 w-5 text-primary" />
-              <h2 className={sectionTitleClass}>
+              <SectionTitleLink href="/analytics/prs" className={sectionTitleClass}>
                 {(activePersona === 'developer' || activePersona === 'builder') ? 'Recent Activity' : 'Recent Governance Activity'}
-              </h2>
+              </SectionTitleLink>
               <CopyLinkButton sectionId="recent-governance-activity" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>
@@ -3972,13 +3907,6 @@ export default function EIPsHomePage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Link
-              href="/analytics/prs"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore PR Analytics
-              <ArrowRight className="h-3 w-3" />
-            </Link>
           </div>
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
@@ -4296,7 +4224,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Layers className="h-5 w-5 text-primary" />
-                <h2 className={sectionTitleClass}>Practical Resources</h2>
+                <SectionTitleLink href="/resources" className={sectionTitleClass}>Practical Resources</SectionTitleLink>
                 <CopyLinkButton sectionId="builder-practical-resources" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Documentation and references to contribute effectively.</p>
@@ -4317,15 +4245,6 @@ export default function EIPsHomePage() {
                 <p className="mt-0.5 text-[11px] text-muted-foreground">{item.desc}</p>
               </Link>
             ))}
-          </div>
-          <div className="mt-3 flex justify-center">
-            <Link
-              href="/resources/docs"
-              className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              Explore Resources
-              <ArrowRight className="h-3 w-3" />
-            </Link>
           </div>
         </section>
       )}

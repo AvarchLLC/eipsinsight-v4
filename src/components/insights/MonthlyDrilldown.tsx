@@ -127,7 +127,9 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const historyFrom = searchParams.get("from") || availableMonthsDefaultStart(defaultMonth);
   const historyTo = searchParams.get("to") || month;
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  const pageSize = 8;
+  // Larger page so the client-side Week filter has the whole month's changes to work with
+  // (status-change-filtered months are well under this).
+  const pageSize = 60;
 
   const [loading, setLoading] = useState(true);
   const [dataUpdatedAt, setDataUpdatedAt] = useState<Date>(new Date());
@@ -143,6 +145,11 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const [columnSearch, setColumnSearch] = useState<Record<string, string>>({});
   const [tableStatusFilter, setTableStatusFilter] = useState<string | null>(null);
   const [tableRepoFilter, setTableRepoFilter] = useState<"eips" | "ercs" | "rips" | null>(null);
+  // Defaults tuned for the newsletter: status changes, most recent first.
+  const [changeFilter, setChangeFilter] = useState<"all" | "status-change" | "content-change" | "metadata-change">("status-change");
+  const [sortFilter, setSortFilter] = useState<"updated_desc" | "status_first" | "prs_desc" | "impact_desc">("updated_desc");
+  const [globalSearch, setGlobalSearch] = useState("");
+  const [weekFilter, setWeekFilter] = useState<number | null>(null);
   const tableSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -158,10 +165,10 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
             repo: tableRepoFilter ?? repo,
             month,
             status: tableStatusFilter ? [tableStatusFilter] : [],
-            change: [],
+            change: changeFilter === "all" ? [] : [changeFilter],
             type: [],
-            q: "",
-            sort: "updated_desc",
+            q: globalSearch.trim(),
+            sort: sortFilter,
             page,
             pageSize,
           }),
@@ -216,12 +223,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       }
     };
     run();
-  }, [repo, month, page, pageSize, tableStatusFilter, tableRepoFilter, historyFrom, historyTo, statusTrendStatus]);
+  }, [repo, month, page, pageSize, tableStatusFilter, tableRepoFilter, changeFilter, sortFilter, globalSearch, historyFrom, historyTo, statusTrendStatus]);
 
   useEffect(() => {
     setTableStatusFilter(null);
     setTableRepoFilter(null);
     setColumnSearch({});
+    setWeekFilter(null);
   }, [repo, month]);
 
   const setParams = (updates: Record<string, string | null>) => {
@@ -275,6 +283,29 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       })
     );
   }, [rows, columnSearch]);
+
+  // Split the month into weeks so the newsletter can zoom into "this week's" changes.
+  const weekOptions = useMemo(() => {
+    const [y, m] = month.split("-").map(Number);
+    if (!y || !m) return [] as Array<{ index: number; label: string; range: string }>;
+    const daysInMonth = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    return Array.from({ length: Math.ceil(daysInMonth / 7) }, (_, i) => ({
+      index: i,
+      label: `W${i + 1}`,
+      range: `${i * 7 + 1}–${Math.min((i + 1) * 7, daysInMonth)}`,
+    }));
+  }, [month]);
+
+  const weekFilteredRows = useMemo(() => {
+    if (weekFilter == null) return filteredRows;
+    return filteredRows.filter((r) => {
+      const at = r.statusTransition?.changedAt || r.latestChangedAt;
+      if (!at) return false;
+      const d = new Date(at);
+      if (Number.isNaN(d.getTime())) return false;
+      return Math.floor((d.getUTCDate() - 1) / 7) === weekFilter;
+    });
+  }, [filteredRows, weekFilter]);
 
   const statusRepoMatrix = useMemo(() => {
     const initRow = () => ({ eips: 0, ercs: 0, rips: 0 });
@@ -677,8 +708,25 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     setTableStatusFilter(null);
     setTableRepoFilter(null);
     setColumnSearch({});
+    setChangeFilter("status-change");
+    setSortFilter("updated_desc");
+    setGlobalSearch("");
+    setWeekFilter(null);
     setParams({ page: "1" });
   };
+
+  const changeTabs: Array<{ key: typeof changeFilter; label: string }> = [
+    { key: "status-change", label: "Status changes" },
+    { key: "content-change", label: "Content" },
+    { key: "metadata-change", label: "Metadata" },
+    { key: "all", label: "All changes" },
+  ];
+  const sortOptions: Array<{ key: typeof sortFilter; label: string }> = [
+    { key: "updated_desc", label: "Most recent" },
+    { key: "status_first", label: "Status changes first" },
+    { key: "prs_desc", label: "Most PRs" },
+    { key: "impact_desc", label: "Highest impact" },
+  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -736,7 +784,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
               <InlineBrandLoader size="md" label="Loading monthly insight..." />
             </div>
           ) : (
-            <>
+            <div className="flex flex-col gap-4">
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
                 <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">
@@ -1004,17 +1052,88 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 </div>
               </div>
 
-              <div ref={tableSectionRef} className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
-                {(tableStatusFilter || tableRepoFilter || Object.values(columnSearch).some((v) => v.trim())) && (
-                  <div className="flex items-center gap-2 border-b border-border bg-muted/20 px-3 py-2 text-xs">
-                    <span className="text-muted-foreground">Table filters:</span>
-                    {tableStatusFilter && <span className="rounded border border-border bg-muted px-2 py-0.5 text-foreground">status: {tableStatusFilter}</span>}
-                    {tableRepoFilter && <span className="rounded border border-border bg-muted px-2 py-0.5 text-foreground">repo: {tableRepoFilter.toUpperCase()}</span>}
-                    <button onClick={clearTableFilters} className="ml-auto rounded border border-border bg-muted px-2 py-0.5 text-xs text-foreground hover:bg-muted/70">
-                      Clear
+              <div ref={tableSectionRef} className="order-first scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Proposal Changes — {monthLabel(month)}
+                    {weekFilter != null && weekOptions[weekFilter] ? ` · Week ${weekFilter + 1} (${weekOptions[weekFilter].range})` : ""}
+                  </h3>
+                  <span className="text-xs text-muted-foreground">{weekFilteredRows.length} shown</span>
+                </div>
+                {/* Filter bar — defaults to status changes, most recent first. */}
+                <div className="space-y-2.5 border-b border-border bg-muted/20 px-3 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex rounded-md border border-border bg-background p-0.5">
+                      {changeTabs.map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => { setChangeFilter(tab.key); setParams({ page: "1" }); }}
+                          className={`rounded px-2.5 py-1 text-xs font-medium transition-colors ${changeFilter === tab.key ? "bg-primary/10 text-primary ring-1 ring-primary/30" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                    <select
+                      value={tableRepoFilter ?? "all"}
+                      onChange={(e) => { setTableRepoFilter(e.target.value === "all" ? null : (e.target.value as "eips" | "ercs" | "rips")); setParams({ page: "1" }); }}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                      aria-label="Repository"
+                    >
+                      <option value="all">All repos</option>
+                      <option value="eips">EIPs</option>
+                      <option value="ercs">ERCs</option>
+                      <option value="rips">RIPs</option>
+                    </select>
+                    <select
+                      value={tableStatusFilter ?? "all"}
+                      onChange={(e) => { setTableStatusFilter(e.target.value === "all" ? null : e.target.value); setParams({ page: "1" }); }}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                      aria-label="Target status"
+                    >
+                      <option value="all">Any status</option>
+                      {STATUS_ORDER.map((s) => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <select
+                      value={sortFilter}
+                      onChange={(e) => { setSortFilter(e.target.value as typeof sortFilter); setParams({ page: "1" }); }}
+                      className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+                      aria-label="Sort"
+                    >
+                      {sortOptions.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+                    </select>
+                    <input
+                      value={globalSearch}
+                      onChange={(e) => { setGlobalSearch(e.target.value); setParams({ page: "1" }); }}
+                      placeholder="Search proposals, authors…"
+                      className="h-8 flex-1 min-w-[160px] rounded-md border border-border bg-background px-2.5 text-xs text-foreground placeholder:text-muted-foreground/70"
+                    />
+                    <button onClick={clearTableFilters} className="h-8 rounded-md border border-border bg-background px-2.5 text-xs text-foreground hover:bg-muted/60">
+                      Reset
                     </button>
                   </div>
-                )}
+                  {weekOptions.length > 1 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Week</span>
+                      <button
+                        onClick={() => setWeekFilter(null)}
+                        className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${weekFilter == null ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+                      >
+                        Whole month
+                      </button>
+                      {weekOptions.map((w) => (
+                        <button
+                          key={w.index}
+                          onClick={() => setWeekFilter(w.index)}
+                          title={`${monthLabel(month)}, days ${w.range}`}
+                          className={`rounded-full border px-2.5 py-0.5 text-[11px] font-medium transition-colors ${weekFilter === w.index ? "border-primary/40 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"}`}
+                        >
+                          {w.label} <span className="opacity-60">{w.range}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
@@ -1043,13 +1162,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                       </tr>
                     </thead>
                     <tbody>
-                      {filteredRows.length === 0 ? (
+                      {weekFilteredRows.length === 0 ? (
                         <tr>
                           <td colSpan={8} className="px-3 py-10 text-center text-sm text-muted-foreground">
-                            No changed proposals found for {monthLabel(month)}.
+                            No {changeFilter === "all" ? "changed" : changeTabs.find((t) => t.key === changeFilter)?.label.toLowerCase()} proposals found for {monthLabel(month)}{weekFilter != null ? `, week ${weekFilter + 1}` : ""}.
                           </td>
                         </tr>
-                      ) : filteredRows.map((r) => (
+                      ) : weekFilteredRows.map((r) => (
                         <tr key={`${r.repo}-${r.number}`} className="border-b border-border/60 hover:bg-muted/20">
                           <td className="px-3 py-2 align-top">
                             <Link href={r.proposalUrl} className="font-mono text-xs font-semibold text-primary hover:underline">
@@ -1138,7 +1257,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                   </div>
                 )}
               </div>
-            </>
+            </div>
           )}
           </div>
         </div>

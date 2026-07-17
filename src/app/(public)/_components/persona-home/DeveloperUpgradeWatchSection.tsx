@@ -3,9 +3,11 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
-import { ArrowRight, Download, Package } from 'lucide-react';
+import { ArrowUpRight, Download, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyLinkButton } from '@/components/header';
+import { ChartWatermark } from '@/components/chart-watermark';
+import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
 
 type UpgradeOption = {
   slug: string;
@@ -55,6 +57,9 @@ export default function DeveloperUpgradeWatchSection({
   downloadMetadataLoading,
 }: DeveloperUpgradeWatchSectionProps) {
   const [showTable, setShowTable] = useState(false);
+  const [chartView, setChartView] = useState<'compact' | 'composition'>('compact');
+
+  const upgradeName = upgradeOptions.find((opt) => opt.slug === upgradeWatchSlug)?.label ?? upgradeWatchSlug;
 
   const renderEipList = (values: string[]) => {
     if (!values.length) return <span className="text-muted-foreground">-</span>;
@@ -71,16 +76,37 @@ export default function DeveloperUpgradeWatchSection({
 
   return (
     <section className="mb-6 border-t border-border/70 pt-6" id="developer-upgrade-watch">
-      <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
             <Package className="h-5 w-5 text-primary" />
-            <h2 className={sectionTitleClass}>Upgrade Watch</h2>
+            {/* Title links straight to the hub. */}
+            <Link href="/upgrade" className={cn(sectionTitleClass, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
+              Upgrade Hub
+              <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+            </Link>
             <CopyLinkButton sectionId="developer-upgrade-watch" className="h-8 w-8 rounded-md" />
           </div>
-          <p className={sectionSubtitleClass}>Compact EIP Composition Timeline by upgrade.</p>
+          <p className={sectionSubtitleClass}>EIP composition timeline by upgrade — proposed through included.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* View toggle: compact bar vs the full hub composition chart. */}
+          <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
+            {(['compact', 'composition'] as const).map((view) => (
+              <button
+                key={view}
+                type="button"
+                onClick={() => setChartView(view)}
+                aria-pressed={chartView === view}
+                className={cn(
+                  'rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors',
+                  chartView === view ? 'bg-background text-primary shadow-sm ring-1 ring-border/60' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {view}
+              </button>
+            ))}
+          </div>
           <select
             value={upgradeWatchSlug}
             onChange={(e) => setUpgradeWatchSlug(e.target.value)}
@@ -92,13 +118,6 @@ export default function DeveloperUpgradeWatchSection({
               </option>
             ))}
           </select>
-          <Link
-            href="/upgrade"
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            Explore Upgrades
-            <ArrowRight className="h-3 w-3" />
-          </Link>
           <button
             type="button"
             onClick={() => setShowTable((prev) => !prev)}
@@ -126,10 +145,19 @@ export default function DeveloperUpgradeWatchSection({
           <div className="flex h-[220px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
             No timeline data available for this upgrade.
           </div>
+        ) : chartView === 'composition' ? (
+          <div className="relative">
+            <UpgradeTimelineChart data={upgradeTimelineRows} upgradeName={upgradeName} />
+            <ChartWatermark />
+          </div>
         ) : (
-          <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
+          <div className="relative">
+            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
+            <ChartWatermark />
+          </div>
         )}
-        <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
+        {chartView === 'compact' && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
           {[
             { key: 'included', label: 'Included', tone: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', count: latestCounts.included },
             { key: 'scheduled', label: 'SFI', tone: 'border-cyan-500/35 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300', count: latestCounts.scheduled },
@@ -142,6 +170,7 @@ export default function DeveloperUpgradeWatchSection({
             </span>
           ))}
         </div>
+        )}
         {showTable && (
           <div className="mt-3 overflow-x-auto rounded-lg border border-border/70">
             <table className="min-w-full text-xs">
