@@ -30,6 +30,32 @@ type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
 const labelClass = "mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-muted-foreground";
 const inputClass = "w-full rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:ring-1 focus:ring-primary/30 transition-all outline-none";
 
+// Helper Helpers
+const formatDate = (isoString?: string | null) => {
+  if (!isoString) return "";
+  const d = new Date(isoString);
+  if (Number.isNaN(d.getTime())) return "";
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+const getProposalLink = (p: { category: string | null; number: number }) => {
+  const cat = p.category?.toLowerCase();
+  const folder = cat === "erc" ? "ercs" : cat === "rip" ? "rips" : "eips";
+  return `/${folder}/${p.number}`;
+};
+
+const getPRLink = (pr: { repoName: string; number: number }) => {
+  return `/pr/${pr.repoName}/${pr.number}`;
+};
+
+const getDevnetLink = (id: string) => {
+  return `/upgrade/devnets/${id}`;
+};
+
+const getCallLink = (c: { series: string; number: string }) => {
+  return `/upgrade/calls/${c.series.toLowerCase()}/${c.number}`;
+};
+
 export default function WeeklyRecapPage() {
   // App States
   const [loading, setLoading] = useState(true);
@@ -173,7 +199,7 @@ export default function WeeklyRecapPage() {
       md += `### 🆕 New Proposals Introduced\n`;
       selectedNew.forEach(p => {
         const typeStr = p.category ? `${p.category} ` : "";
-        md += `- **[${p.status}] [${typeStr}EIP-${p.number}](https://eipsinsight.com/${p.category?.toLowerCase() === "erc" ? "erc" : "eip"}s/${p.number})**: ${p.title}\n`;
+        md += `- **[${p.status}] [${typeStr}EIP-${p.number}](https://eipsinsight.com/${p.category?.toLowerCase() === "erc" ? "erc" : "eip"}s/${p.number})**: ${p.title} *(Created ${formatDate(p.createdAt)})*\n`;
       });
       md += `\n`;
     }
@@ -184,7 +210,7 @@ export default function WeeklyRecapPage() {
       md += `### 🔄 Lifecycle & Status Changes\n`;
       selectedTransition.forEach(sc => {
         const typeStr = sc.category ? `${sc.category} ` : "";
-        md += `- **[${typeStr}EIP-${sc.number}](https://eipsinsight.com/${sc.category?.toLowerCase() === "erc" ? "erc" : "eip"}s/${sc.number})**: Transitioned from \`${sc.from}\` ➔ \`${sc.to}\`\n`;
+        md += `- **[${typeStr}EIP-${sc.number}](https://eipsinsight.com/${sc.category?.toLowerCase() === "erc" ? "erc" : "eip"}s/${sc.number})**: Transitioned from \`${sc.from}\` ➔ \`${sc.to}\` *(Changed ${formatDate(sc.changedAt)})*\n`;
       });
       md += `\n`;
     }
@@ -194,7 +220,7 @@ export default function WeeklyRecapPage() {
     if (selectedMerged.length > 0) {
       md += `### 🪵 Recently Merged Pull Requests\n`;
       selectedMerged.forEach(pr => {
-        md += `- **PR #${pr.number}**: ${pr.title} (Merged by @${pr.author})\n`;
+        md += `- **[PR #${pr.number}](https://eipsinsight.com/pr/${pr.repoName}/${pr.number})**: ${pr.title} *(Merged ${formatDate(pr.mergedAt)} by @${pr.author})*\n`;
       });
       md += `\n`;
     }
@@ -211,7 +237,7 @@ export default function WeeklyRecapPage() {
     if (selectedCallData.length > 0) {
       md += `### 🗣️ Core Dev Calls Highlights\n`;
       selectedCallData.forEach(c => {
-        md += `#### ${c.displayName || `${c.series} #${c.number}`}\n`;
+        md += `#### ${c.displayName || `${c.series} #${c.number}`} *(Occurred ${formatDate(c.occurredOn)})*\n`;
         if (c.tldr) {
           md += `* **Summary:** ${c.tldr}\n`;
         }
@@ -234,7 +260,7 @@ export default function WeeklyRecapPage() {
     if (selectedDevnetData.length > 0) {
       md += `### 🧪 Devnets & Testnet Progression\n`;
       selectedDevnetData.forEach(d => {
-        md += `- **[${d.active ? "Active" : "Closed"}] [${d.series.toUpperCase()} Devnet ${d.number}](https://eipsinsight.com/upgrade/devnets/${d.id})**: ${d.title}\n`;
+        md += `- **[${d.active ? "Active" : "Closed"}] [${d.series.toUpperCase()} Devnet ${d.number}](https://eipsinsight.com/upgrade/devnets/${d.id})**: ${d.title} *(Scraped ${formatDate(d.scrapedAt)})*\n`;
       });
       md += `\n`;
     }
@@ -397,7 +423,7 @@ export default function WeeklyRecapPage() {
               ) : (
                 <div className="grid gap-2">
                   {data?.newProposals.map(p => (
-                    <label key={p.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                    <div key={p.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                       <button 
                         type="button"
                         onClick={() => setSelectedProposals(prev => ({ ...prev, [p.number]: !prev[p.number] }))} 
@@ -405,11 +431,15 @@ export default function WeeklyRecapPage() {
                       >
                         {selectedProposals[p.number] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                       </button>
-                      <div className="text-sm">
-                        <Badge variant="outline" className="mr-2 bg-background/80 text-[10px] py-0">{p.status}</Badge>
-                        <span className="font-semibold text-foreground">EIP-{p.number}:</span> {p.title}
+                      <div className="text-sm flex-1 flex items-center justify-between">
+                        <div>
+                          <Badge variant="outline" className="mr-2 bg-background/80 text-[10px] py-0">{p.status}</Badge>
+                          <span className="font-semibold text-foreground">EIP-{p.number}:</span> {p.title}
+                          <span className="text-xs text-muted-foreground ml-2">({formatDate(p.createdAt)})</span>
+                        </div>
+                        <a href={getProposalLink(p)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
               )}
@@ -425,7 +455,7 @@ export default function WeeklyRecapPage() {
                   {data?.statusChanges.map(sc => {
                     const key = `${sc.number}-${sc.to}`;
                     return (
-                      <label key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                      <div key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                         <button 
                           type="button"
                           onClick={() => setSelectedChanges(prev => ({ ...prev, [key]: !prev[key] }))} 
@@ -433,10 +463,14 @@ export default function WeeklyRecapPage() {
                         >
                           {selectedChanges[key] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                         </button>
-                        <div className="text-sm">
-                          <span className="font-semibold text-foreground">EIP-{sc.number}</span> transitioned from <Badge variant="outline" className="bg-background">{sc.from}</Badge> ➔ <Badge className="bg-primary/25 text-primary">{sc.to}</Badge> ({sc.title})
+                        <div className="text-sm flex-1 flex items-center justify-between">
+                          <div>
+                            <span className="font-semibold text-foreground">EIP-{sc.number}</span> transitioned from <Badge variant="outline" className="bg-background">{sc.from}</Badge> ➔ <Badge className="bg-primary/25 text-primary">{sc.to}</Badge> ({sc.title})
+                            <span className="text-xs text-muted-foreground ml-2">({formatDate(sc.changedAt)})</span>
+                          </div>
+                          <a href={getProposalLink(sc)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
                         </div>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -451,7 +485,7 @@ export default function WeeklyRecapPage() {
               ) : (
                 <div className="grid gap-2">
                   {data?.mergedPRs.map(pr => (
-                    <label key={pr.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                    <div key={pr.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                       <button 
                         type="button"
                         onClick={() => setSelectedPRs(prev => ({ ...prev, [pr.number]: !prev[pr.number] }))} 
@@ -459,10 +493,14 @@ export default function WeeklyRecapPage() {
                       >
                         {selectedPRs[pr.number] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                       </button>
-                      <div className="text-sm">
-                        <span className="font-semibold text-foreground">PR #{pr.number}:</span> {pr.title} <span className="text-xs text-muted-foreground">by @{pr.author}</span>
+                      <div className="text-sm flex-1 flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold text-foreground">PR #{pr.number}:</span> {pr.title} <span className="text-xs text-muted-foreground">by @{pr.author}</span>
+                          <span className="text-xs text-muted-foreground ml-2">({formatDate(pr.mergedAt)})</span>
+                        </div>
+                        <a href={getPRLink(pr)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
               )}
@@ -485,7 +523,7 @@ export default function WeeklyRecapPage() {
                   {data?.recentCalls.map(c => {
                     const key = `${c.series}-${c.number}`;
                     return (
-                      <label key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                      <div key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                         <button 
                           type="button"
                           onClick={() => setSelectedCalls(prev => ({ ...prev, [key]: !prev[key] }))} 
@@ -493,11 +531,15 @@ export default function WeeklyRecapPage() {
                         >
                           {selectedCalls[key] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                         </button>
-                        <div className="text-sm flex-1">
-                          <p className="font-semibold text-foreground">{c.displayName || `${c.series} #${c.number}`}</p>
-                          {c.tldr && <p className="text-xs text-muted-foreground mt-0.5">{String(c.tldr)}</p>}
+                        <div className="text-sm flex-1 flex items-start justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold text-foreground">{c.displayName || `${c.series} #${c.number}`}</p>
+                            {c.tldr && <p className="text-xs text-muted-foreground mt-0.5">{String(c.tldr)}</p>}
+                            <p className="text-[10px] text-muted-foreground mt-1">Happened: {formatDate(c.occurredOn)}</p>
+                          </div>
+                          <a href={getCallLink({ series: c.series, number: c.number || "" })} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold ml-2">[Check]</a>
                         </div>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>
@@ -523,7 +565,7 @@ export default function WeeklyRecapPage() {
               ) : (
                 <div className="grid gap-2">
                   {data?.devnets.map(d => (
-                    <label key={d.id} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                    <div key={d.id} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                       <button 
                         type="button"
                         onClick={() => setSelectedDevnets(prev => ({ ...prev, [d.id]: !prev[d.id] }))} 
@@ -531,10 +573,14 @@ export default function WeeklyRecapPage() {
                       >
                         {selectedDevnets[d.id] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                       </button>
-                      <div className="text-sm">
-                        <span className="font-semibold text-foreground">{d.series.toUpperCase()} Devnet {d.number}:</span> {d.title} <Badge className={d.active ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"}>{d.active ? "Active" : "Closed"}</Badge>
+                      <div className="text-sm flex-1 flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold text-foreground">{d.series.toUpperCase()} Devnet {d.number}:</span> {d.title} <Badge className={d.active ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-500/20 text-slate-400"}>{d.active ? "Active" : "Closed"}</Badge>
+                          <span className="text-xs text-muted-foreground ml-2">({formatDate(d.scrapedAt)})</span>
+                        </div>
+                        <a href={getDevnetLink(d.id)} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
               )}
@@ -564,7 +610,10 @@ export default function WeeklyRecapPage() {
 
             {featuredDetails && (
               <div className="rounded-lg border border-emerald-900 bg-emerald-950/20 p-4 space-y-2">
-                <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Featured EIP details loaded</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Featured EIP details loaded</p>
+                  <a href={getProposalLink({ category: "EIP", number: featuredDetails.number })} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
+                </div>
                 <h4 className="text-sm font-bold text-white">EIP-{featuredDetails.number}: {featuredDetails.title}</h4>
                 {featuredDetails.summary ? (
                   <p className="text-xs text-slate-300 leading-relaxed mt-1">{featuredDetails.summary}</p>
@@ -589,7 +638,7 @@ export default function WeeklyRecapPage() {
               ) : (
                 <div className="grid gap-2">
                   {data?.lastCallEIPs.map(lc => (
-                    <label key={lc.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                    <div key={lc.number} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                       <button 
                         type="button"
                         onClick={() => setSelectedLastCalls(prev => ({ ...prev, [lc.number]: !prev[lc.number] }))} 
@@ -597,10 +646,13 @@ export default function WeeklyRecapPage() {
                       >
                         {selectedLastCalls[lc.number] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                       </button>
-                      <div className="text-sm">
-                        <span className="font-semibold text-foreground">EIP-{lc.number}:</span> {lc.title} <span className="text-xs text-orange-400">(Deadline: {lc.deadline || "Immediate"})</span>
+                      <div className="text-sm flex-1 flex items-center justify-between">
+                        <div>
+                          <span className="font-semibold text-foreground">EIP-{lc.number}:</span> {lc.title} <span className="text-xs text-orange-400">(Deadline: {lc.deadline || "Immediate"})</span>
+                        </div>
+                        <a href={getProposalLink({ category: "EIP", number: lc.number })} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Check]</a>
                       </div>
-                    </label>
+                    </div>
                   ))}
                 </div>
               )}
@@ -616,7 +668,7 @@ export default function WeeklyRecapPage() {
                   {data?.upcomingCalls.map(c => {
                     const key = `${c.series}-${c.callNumber || c.issueNumber}`;
                     return (
-                      <label key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                      <div key={key} className="flex items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 hover:bg-muted/40 transition-colors">
                         <button 
                           type="button"
                           onClick={() => setSelectedUpcoming(prev => ({ ...prev, [key]: !prev[key] }))} 
@@ -624,10 +676,15 @@ export default function WeeklyRecapPage() {
                         >
                           {selectedUpcoming[key] ? <CheckSquare className="h-4 w-4 text-primary" /> : <Square className="h-4 w-4" />}
                         </button>
-                        <div className="text-sm">
-                          <span className="font-semibold text-foreground">{c.title}</span> {c.occursOn ? `on ${c.occursOn}` : ""}
+                        <div className="text-sm flex-1 flex items-center justify-between">
+                          <div>
+                            <span className="font-semibold text-foreground">{c.title}</span> {c.occursOn ? `on ${c.occursOn}` : ""}
+                          </div>
+                          {c.issueUrl && (
+                            <a href={c.issueUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline font-semibold">[Agenda]</a>
+                          )}
                         </div>
-                      </label>
+                      </div>
                     );
                   })}
                 </div>

@@ -546,6 +546,11 @@ export const dashboardProcedures = {
             title: true,
             author: true,
             merged_at: true,
+            repositories: {
+              select: {
+                name: true,
+              }
+            }
           },
           orderBy: { merged_at: "desc" },
         }),
@@ -626,6 +631,7 @@ export const dashboardProcedures = {
           title: pr.title || "",
           author: pr.author || "",
           mergedAt: pr.merged_at ? pr.merged_at.toISOString() : null,
+          repoName: pr.repositories?.name || "",
         })),
         devnets: devnets.map(d => ({
           id: d.id,
