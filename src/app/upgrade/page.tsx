@@ -165,7 +165,7 @@ export default async function UpgradeIndexPage() {
         <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
           Ethereum upgrades, tracked live
         </h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
           What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
           there — parsed automatically from meta-EIP commits.
         </p>
@@ -224,6 +224,11 @@ export default async function UpgradeIndexPage() {
                     >
                       EIP-{event.eip_number}
                     </Link>
+                  )}
+                  {event.status && (
+                    <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                      {event.status}
+                    </span>
                   )}
                   <span className="hidden max-w-72 truncate text-sm text-muted-foreground md:inline">
                     {event.title}

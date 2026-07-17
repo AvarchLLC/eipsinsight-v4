@@ -134,7 +134,7 @@ export default function AboutPage() {
           <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             EIPsInsight turns Ethereum standards activity into something people can actually navigate.
           </h1>
-          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             We build an operational view of EIPs, ERCs, RIPs, proposal workflows, and governance movement so builders, editors, researchers, and newcomers can understand what is changing and why.
           </p>
 

@@ -43,7 +43,7 @@ export function EIPsPageHeader() {
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground"
+              className="mt-1.5 text-sm leading-relaxed text-muted-foreground"
             >
               Real-time view of proposal lifecycle, upgrade progress, and editorial activity across EIPs, ERCs, and RIPs.
             </motion.p>

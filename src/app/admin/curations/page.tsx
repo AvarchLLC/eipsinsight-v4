@@ -223,7 +223,7 @@ export default function AdminCurationsPage() {
           <h1 className="dec-title persona-title mt-2 text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             EIP Curations
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
             Plain-language summaries, benefits, and tradeoffs shown on the /upgrade pages.
             Seeded from public curation datasets; rows edited here are never overwritten
             by re-imports.

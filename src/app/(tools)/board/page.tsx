@@ -486,7 +486,7 @@ function BoardBrowser() {
               <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
                 EIP / ERC / RIP Board
               </h1>
-              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
                 Open pull requests by type and status for {monthLabel}. Sorted by longest wait first — the editorial queue,
                 oldest at the top.
               </p>

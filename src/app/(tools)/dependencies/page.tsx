@@ -464,7 +464,7 @@ export default function DependenciesPage() {
               <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
                 Upgrade Dependencies
               </h1>
-              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
                 Track how hard forks reuse older EIPs, which upgrades contribute the biggest building blocks, and where direct dependencies turn into longer inherited chains.
               </p>
             </div>

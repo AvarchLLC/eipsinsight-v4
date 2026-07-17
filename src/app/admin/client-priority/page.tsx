@@ -128,7 +128,7 @@ export default function AdminClientPriorityPage() {
           <h1 className="dec-title persona-title mt-2 text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             Client Priority
           </h1>
-          <p className="mt-2 max-w-2xl text-sm text-muted-foreground sm:text-base">
+          <p className="mt-2 text-sm text-muted-foreground sm:text-base">
             Client-team stances on candidate EIPs, shown on the upgrade&apos;s Client priority tab.
             Seeded from a public snapshot; owned and editable here.
           </p>

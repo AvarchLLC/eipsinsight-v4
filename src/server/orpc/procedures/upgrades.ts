@@ -500,15 +500,21 @@ export const upgradesProcedures = {
       const eips = eipNumbers.length > 0
         ? await prisma.eips.findMany({
             where: { eip_number: { in: eipNumbers } },
-            select: { eip_number: true, title: true },
+            select: {
+              eip_number: true,
+              title: true,
+              eip_snapshots: { select: { status: true } },
+            },
           })
         : [];
       const titleMap = new Map(eips.map(e => [e.eip_number, e.title]));
+      const statusMap = new Map(eips.map(e => [e.eip_number, e.eip_snapshots?.status ?? null]));
 
       return events.map(event => ({
         commit_date: event.commit_date?.toISOString() || null,
         eip_number: event.eip_number,
         title: event.eip_number ? (titleMap.get(event.eip_number) ?? null) : null,
+        status: event.eip_number ? (statusMap.get(event.eip_number) ?? null) : null,
         event_type: event.event_type || null,
         bucket: normalizeUpgradeBucket(event.bucket),
         upgrade_slug: event.upgrades?.slug ?? null,

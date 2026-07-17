@@ -36,6 +36,23 @@ const upgradeRank = (slug: string) => {
   return i === -1 ? -1 : i; // unknown slugs sort last when descending
 };
 
+/** Activation year per upgrade (mainnet). Used to stamp each EIP card with its upgrade year. */
+const UPGRADE_YEARS: Record<string, number> = {
+  frontier: 2015, homestead: 2016, 'dao-fork': 2016, 'tangerine-whistle': 2016,
+  'spurious-dragon': 2016, byzantium: 2017, constantinople: 2019, istanbul: 2019,
+  'muir-glacier': 2020, berlin: 2021, london: 2021, altair: 2021, 'arrow-glacier': 2021,
+  'gray-glacier': 2022, bellatrix: 2022, paris: 2022, shanghai: 2023, capella: 2023,
+  cancun: 2024, deneb: 2024, prague: 2025, electra: 2025, pectra: 2025,
+  fusaka: 2026, fulu: 2026, glamsterdam: 2026, hegota: 2027,
+};
+
+/** Consensus-layer forks — their EIPs are CL. Everything else defaults to EL (pre-Merge is all EL). */
+const CL_UPGRADES = new Set(['altair', 'bellatrix', 'capella', 'deneb', 'electra', 'fulu']);
+const deriveLayer = (layer: string | null, upgradeSlug: string): 'EL' | 'CL' => {
+  if (layer === 'EL' || layer === 'CL') return layer;
+  return CL_UPGRADES.has(upgradeSlug) ? 'CL' : 'EL';
+};
+
 interface EipRow {
   eip_number: number;
   title: string;
@@ -184,18 +201,47 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     }
   };
 
+  // Normalise every row once: fill EL/CL layer and stamp the upgrade year.
+  const eips = useMemo(
+    () =>
+      initialEips.map((e) => ({
+        ...e,
+        layer: deriveLayer(e.layer, e.upgrade_slug),
+        year: UPGRADE_YEARS[e.upgrade_slug] ?? null,
+      })),
+    [initialEips]
+  );
+
+  // Which upgrades the current search text touches — used to auto-highlight those filter chips.
+  const matchedUpgradeSlugs = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return new Set<string>();
+    const slugs = new Set<string>();
+    for (const e of eips) {
+      if (
+        String(e.eip_number).includes(q) ||
+        e.title.toLowerCase().includes(q) ||
+        e.category.toLowerCase().includes(q) ||
+        e.type.toLowerCase().includes(q)
+      ) {
+        slugs.add(e.upgrade_slug);
+      }
+    }
+    return slugs;
+  }, [eips, search]);
+
   // Extract unique statuses and layers for filters
   const uniqueStatuses = useMemo(() => {
     const statuses = new Set<string>();
-    initialEips.forEach((e) => {
+    eips.forEach((e) => {
       if (e.status) statuses.add(e.status);
     });
     return Array.from(statuses).sort();
-  }, [initialEips]);
+  }, [eips]);
 
   // Filter & Sort computation
   const filteredEips = useMemo(() => {
-    let result = [...initialEips];
+    let result = [...eips];
 
     // Search filter
     if (search.trim()) {
@@ -254,16 +300,16 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     });
 
     return result;
-  }, [initialEips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, sortField, sortOrder]);
+  }, [eips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, sortField, sortOrder]);
 
   // Upgrade filter options: only upgrades that actually have EIPs here,
   // ordered newest-first (chronological, descending).
   const upgradeOptions = useMemo(() => {
-    const present = new Set(initialEips.map((e) => e.upgrade_slug));
+    const present = new Set(eips.map((e) => e.upgrade_slug));
     return upgrades
       .filter((u) => present.has(u.slug))
       .sort((a, b) => upgradeRank(b.slug) - upgradeRank(a.slug));
-  }, [upgrades, initialEips]);
+  }, [upgrades, eips]);
 
   const activeFilterCount =
     selectedUpgrades.length +
@@ -342,16 +388,25 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
           <FilterSection title="Network upgrade">
             <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {upgradeOptions.map((up) => (
-                <button
-                  key={up.slug}
-                  type="button"
-                  onClick={() => handleUpgradeToggle(up.slug)}
-                  className={pillClass(selectedUpgrades.includes(up.slug))}
-                >
-                  {up.name}
-                </button>
-              ))}
+              {upgradeOptions.map((up) => {
+                const highlighted = matchedUpgradeSlugs.has(up.slug);
+                return (
+                  <button
+                    key={up.slug}
+                    type="button"
+                    onClick={() => handleUpgradeToggle(up.slug)}
+                    title={highlighted ? 'Matches your search' : undefined}
+                    className={cn(
+                      pillClass(selectedUpgrades.includes(up.slug)),
+                      // Auto-highlight upgrades that the current search touches.
+                      highlighted && !selectedUpgrades.includes(up.slug) && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-background',
+                    )}
+                  >
+                    {up.name}
+                    {UPGRADE_YEARS[up.slug] ? <span className="ml-1 opacity-60">’{String(UPGRADE_YEARS[up.slug]).slice(2)}</span> : null}
+                  </button>
+                );
+              })}
             </div>
           </FilterSection>
 
@@ -373,14 +428,14 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
           <FilterSection title="Layer">
             <div className="flex flex-wrap gap-1.5">
-              {['EL', 'CL', 'unset'].map((lyr) => (
+              {['EL', 'CL'].map((lyr) => (
                 <button
                   key={lyr}
                   type="button"
                   onClick={() => handleLayerToggle(lyr)}
                   className={pillClass(selectedLayers.includes(lyr))}
                 >
-                  {lyr === 'EL' ? 'Execution' : lyr === 'CL' ? 'Consensus' : 'Cross / Unset'}
+                  {lyr === 'EL' ? 'Execution (EL)' : 'Consensus (CL)'}
                 </button>
               ))}
             </div>
@@ -568,13 +623,14 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                         <div className="mt-0.5 text-[10px] text-muted-foreground">{eip.category}</div>
                       </td>
 
-                      {/* Upgrade */}
+                      {/* Upgrade + year */}
                       <td className="whitespace-nowrap px-4 py-3.5 align-middle">
                         <Link
                           href={`/upgrade/${eip.upgrade_slug}`}
-                          className="inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
+                          className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
                         >
                           {eip.upgrade_name}
+                          {eip.year ? <span className="opacity-60">· {eip.year}</span> : null}
                         </Link>
                       </td>
 

@@ -351,7 +351,7 @@ EIP Editing Office Hour
           <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
             Office Hour Agenda Maker
           </h1>
-          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Status moves (Final / Last Call / Review) and drafts are pulled live from the PR board and pre-sorted. Tick what
             you want, add references, then copy the ready-to-paste agenda.
           </p>

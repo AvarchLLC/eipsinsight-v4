@@ -20,11 +20,11 @@ export default async function UpgradeEipsPage() {
     <div className="mx-auto w-full max-w-6xl space-y-8 px-4 pb-12 pt-8 sm:px-6">
       <header>
         <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-          EIP Directory
+          Upgrade EIP Directory
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Every EIP, ERC, and RIP included, scheduled, or considered across Ethereum&apos;s
-          network upgrades — from Homestead through the forks in progress.
+          Every EIP included, scheduled, or considered across Ethereum&apos;s network upgrades —
+          from Frontier through the forks in progress — with the upgrade, year, and affected layer.
         </p>
       </header>
 

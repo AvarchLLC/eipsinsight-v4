@@ -57,7 +57,7 @@ export default function ToolsPage() {
               Ethereum Standards
             </span>
           </h1>
-          <p className="mx-auto mt-4 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mx-auto mt-4 text-sm leading-relaxed text-muted-foreground sm:text-base">
             Purpose-built tools for drafting proposals, tracking lifecycle states, and mapping dependencies.
           </p>
         </div>
