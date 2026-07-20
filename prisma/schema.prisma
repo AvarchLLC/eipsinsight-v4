@@ -407,10 +407,17 @@ model protocol_calls {
   source_updated_at DateTime? @db.Timestamptz(6)
   created_at        DateTime  @default(now()) @db.Timestamptz(6)
   updated_at        DateTime  @default(now()) @db.Timestamptz(6)
+  /// Set once the scheduler has posted this call's "artifacts ready" Discord
+  /// announcement. NULL = never announced. This is the dedupe key for the
+  /// call notifier — without it every scheduler cycle would re-post the
+  /// entire backlog, since "artifacts became available" is a state
+  /// transition, not an append-only event we can cursor over.
+  announced_at      DateTime? @db.Timestamptz(6)
 
   @@unique([series, call_id])
   @@index([occurred_on])
   @@index([series])
+  @@index([announced_at])
 }
 
 /// Upcoming protocol calls parsed from open ethereum/pm agenda issues.
