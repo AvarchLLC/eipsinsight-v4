@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { CalendarClock } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
@@ -122,7 +123,9 @@ export default async function ProtocolCallsPage() {
             first run.
           </p>
         ) : (
-          <CallsBrowser calls={recent} />
+          <Suspense fallback={null}>
+            <CallsBrowser calls={recent} />
+          </Suspense>
         )}
       </section>
     </div>

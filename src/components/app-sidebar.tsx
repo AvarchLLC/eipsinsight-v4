@@ -7,6 +7,8 @@ import { usePathname, useSearchParams } from "next/navigation";
 import {
   BookOpen,
   Home,
+  CalendarClock,
+  ClipboardList,
   Layers,
   LineChart,
   Lightbulb,
@@ -114,10 +116,58 @@ const sidebarSections: SidebarSection[] = [
         href: "/upgrade",
         items: [
           { title: "Overview", href: "/upgrade" },
-          { title: "Hegota", href: "/upgrade/hegota" },
-          { title: "Glamsterdam", href: "/upgrade/glamsterdam" },
-          { title: "Fusaka", href: "/upgrade/fusaka" },
+          { title: "Upgrade EIP Directory", href: "/upgrade/eips" },
+          {
+            title: "In progress",
+            href: "/upgrade",
+            items: [
+              { title: "Hegotá", href: "/upgrade/hegota" },
+              { title: "Glamsterdam", href: "/upgrade/glamsterdam" },
+              { title: "Fusaka", href: "/upgrade/fusaka" },
+            ],
+          },
           { title: "Previous Upgrades", href: "/upgrade/archive" },
+          { title: "Devnets", href: "/upgrade/devnets" },
+          { title: "Schedule", href: "/upgrade/schedule" },
+          { title: "Analytics", href: "/upgrade/analytics" },
+        ],
+      },
+      {
+        title: "Calls & Decisions",
+        icon: CalendarClock,
+        href: "/upgrade/calls",
+        items: [
+          { title: "All Calls", href: "/upgrade/calls" },
+          {
+            title: "ACD Calls",
+            href: "/upgrade/calls?series=acd",
+            items: [
+              { title: "ACDE — Execution", href: "/upgrade/calls?series=acd&acd=acde" },
+              { title: "ACDC — Consensus", href: "/upgrade/calls?series=acd&acd=acdc" },
+              { title: "ACDT — Testing", href: "/upgrade/calls?series=acd&acd=acdt" },
+              { title: "ACDT-CL Breakout", href: "/upgrade/calls?series=acd&acd=acdtcl" },
+            ],
+          },
+          { title: "Breakout Calls", href: "/upgrade/calls?series=breakouts" },
+          {
+            title: "Decisions",
+            href: "/upgrade/decisions",
+            items: [
+              { title: "All Decisions", href: "/upgrade/decisions" },
+              { title: "From ACD", href: "/upgrade/decisions?series=acd" },
+              { title: "From Breakouts", href: "/upgrade/decisions?series=breakouts" },
+            ],
+          },
+        ],
+      },
+      {
+        title: "EIP Board",
+        icon: ClipboardList,
+        href: "/board",
+        items: [
+          { title: "Open PR Board", href: "/board" },
+          { title: "Waiting on Editor", href: "/board?status=Waiting+on+Editor" },
+          { title: "Agenda Maker", href: "/board/agenda" },
         ],
       },
       {
@@ -154,14 +204,14 @@ const sidebarSections: SidebarSection[] = [
         icon: LineChart,
         href: "/analytics",
         items: [
-          { title: "EIPs", href: "/analytics/eips" },
+          // Most-used first: PR and Editor analytics are the daily drivers.
           { title: "PRs", href: "/analytics/prs" },
-          { title: "Issues", href: "/analytics/issues" },
-          { title: "Board", href: "/board" },
           { title: "Editors", href: "/analytics/editors" },
+          { title: "EIPs", href: "/analytics/eips" },
           { title: "Reviewers", href: "/analytics/reviewers" },
           { title: "Authors", href: "/analytics/authors" },
           { title: "Contributors", href: "/analytics/contributors" },
+          { title: "Issues", href: "/analytics/issues" },
         ],
       },
       {
@@ -186,7 +236,7 @@ const sidebarSections: SidebarSection[] = [
         icon: Wrench,
         href: "/tools",
         items: [
-          { title: "Board", href: "/board" },
+          // Board lives at top level as "EIP Board" — not duplicated here.
           { title: "EIP Builder", href: "/eip-builder" },
           { title: "Timeline", href: "/timeline" },
           { title: "Dependencies", href: "/dependencies" },
@@ -272,31 +322,38 @@ const PERSONA_VISIBLE_SECTIONS: Record<Persona, string[]> = {
 // Undefined entry = allow all sub-items.
 const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>>> = {
   editor: {
-    // Authors and Contributors are not part of the editorial workflow
-    Analytics: ["EIPs", "PRs", "Board", "Editors", "Reviewers"],
+    // Authors and Contributors are not part of the editorial workflow.
+    // (Board moved out of Analytics to its own top-level "EIP Board" item.)
+    Analytics: ["PRs", "Editors", "EIPs", "Reviewers"],
   },
 };
 
+// The four daily drivers — Upgrades, Calls & Decisions, EIP Board, Analytics/Insights —
+// are ranked first for the personas that actually use them.
 const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   developer: [
     "Upgrades",
-    "Standards",
+    "Calls & Decisions",
+    "EIP Board",
     "Analytics",
-    "Tools",
     "Insights",
+    "Standards",
     "Explore",
+    "Tools",
     "Resources",
     "Search",
     "Home",
     "Dashboard",
   ],
   editor: [
-    "Search",
+    "EIP Board",
+    "Calls & Decisions",
     "Analytics",
-    "Tools",
     "Upgrades",
-    "Standards",
     "Insights",
+    "Search",
+    "Standards",
+    "Tools",
     "Explore",
     "Resources",
     "Home",
@@ -306,7 +363,9 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Analytics",
     "Insights",
     "Upgrades",
+    "Calls & Decisions",
     "Standards",
+    "EIP Board",
     "Explore",
     "Search",
     "Tools",
@@ -318,9 +377,11 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Tools",
     "Upgrades",
     "Standards",
+    "EIP Board",
     "Search",
     "Explore",
     "Resources",
+    "Calls & Decisions",
     "Insights",
     "Analytics",
     "Home",
@@ -328,11 +389,13 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   ],
   enterprise: [
     "Upgrades",
+    "Calls & Decisions",
     "Insights",
     "Standards",
     "Analytics",
     "Explore",
     "Resources",
+    "EIP Board",
     "Tools",
     "Search",
     "Home",
@@ -346,7 +409,9 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Home",
     "Dashboard",
     "Insights",
+    "Calls & Decisions",
     "Analytics",
+    "EIP Board",
     "Tools",
     "Search",
   ],

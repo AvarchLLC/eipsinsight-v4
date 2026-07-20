@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ExternalLink, Github, Video, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -43,8 +44,40 @@ function SeriesBadge({ series }: { series: string }) {
  * over a compact card list (summaries stay collapsed to keep it scannable).
  */
 export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
-  const [series, setSeries] = useState<SeriesFilterValue>(DEFAULT_SERIES_FILTER);
-  const [search, setSearch] = useState('');
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initialise from the URL so sidebar deep links (?series=acd&acd=acde) and shared
+  // links restore the exact filter state.
+  const [series, setSeries] = useState<SeriesFilterValue>(() => {
+    const g = searchParams.get('series');
+    if (g === 'acd') return { group: 'acd', acd: searchParams.get('acd') ?? 'all' };
+    if (g === 'breakouts') return { group: 'breakouts', acd: 'all' };
+    return DEFAULT_SERIES_FILTER;
+  });
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
+
+  // Reflect the current filters back into the URL (shareable, back-button friendly).
+  const syncUrl = (next: { series?: SeriesFilterValue; search?: string }) => {
+    const s = next.series ?? series;
+    const q = (next.search ?? search).trim();
+    const params = new URLSearchParams();
+    if (s.group !== 'all') params.set('series', s.group);
+    if (s.group === 'acd' && s.acd !== 'all') params.set('acd', s.acd);
+    if (q) params.set('q', q);
+    const qs = params.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  };
+
+  const changeSeries = (v: SeriesFilterValue) => {
+    setSeries(v);
+    syncUrl({ series: v });
+  };
+  const changeSearch = (v: string) => {
+    setSearch(v);
+    syncUrl({ search: v });
+  };
 
   const counts = useMemo(() => {
     const c: Record<string, number> = {};
@@ -65,12 +98,12 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     <div className="space-y-4">
       {/* Search + grouped series filter */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <SeriesFilter value={series} onChange={setSeries} counts={counts} />
+        <SeriesFilter value={series} onChange={changeSeries} counts={counts} />
         <div className="relative w-full sm:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => changeSearch(e.target.value)}
             placeholder="Search calls…"
             className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
