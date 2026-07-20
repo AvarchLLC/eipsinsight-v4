@@ -133,7 +133,7 @@ const sidebarSections: SidebarSection[] = [
         ],
       },
       {
-        title: "Calls & Decisions",
+        title: "Calls",
         icon: CalendarClock,
         href: "/upgrade/calls",
         items: [
@@ -333,7 +333,7 @@ const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>
 const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   developer: [
     "Upgrades",
-    "Calls & Decisions",
+    "Calls",
     "EIP Board",
     "Analytics",
     "Insights",
@@ -347,7 +347,7 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   ],
   editor: [
     "EIP Board",
-    "Calls & Decisions",
+    "Calls",
     "Analytics",
     "Upgrades",
     "Insights",
@@ -363,7 +363,7 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Analytics",
     "Insights",
     "Upgrades",
-    "Calls & Decisions",
+    "Calls",
     "Standards",
     "EIP Board",
     "Explore",
@@ -381,7 +381,7 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Search",
     "Explore",
     "Resources",
-    "Calls & Decisions",
+    "Calls",
     "Insights",
     "Analytics",
     "Home",
@@ -389,7 +389,7 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
   ],
   enterprise: [
     "Upgrades",
-    "Calls & Decisions",
+    "Calls",
     "Insights",
     "Standards",
     "Analytics",
@@ -409,7 +409,7 @@ const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
     "Home",
     "Dashboard",
     "Insights",
-    "Calls & Decisions",
+    "Calls",
     "Analytics",
     "EIP Board",
     "Tools",
@@ -984,8 +984,11 @@ function AppSidebarContent() {
                 {state === "expanded" && (
                   <>
                     <span
+                      title={item.title}
                       className={cn(
-                        "flex-1 text-sm font-medium transition-colors",
+                        // min-w-0 + truncate: long labels ellipsise instead of wrapping and
+                        // overflowing the fixed-height row.
+                        "min-w-0 flex-1 truncate text-sm font-medium transition-colors",
                         isHighlighted
                           ? "text-foreground"
                           : "text-muted-foreground group-hover:text-foreground"
