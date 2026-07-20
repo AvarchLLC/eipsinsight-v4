@@ -77,6 +77,7 @@ const mobileNavSections = [
     label: "Upgrades",
     items: [
       { title: "Overview", href: "/upgrade", icon: Package },
+      { title: "EIP Upgrade Directory", href: "/upgrade/eips", icon: Package },
       { title: "Archive", href: "/upgrade/archive", icon: Package },
       { title: "Pectra", href: "/upgrade/pectra", icon: Package },
       { title: "Fusaka", href: "/upgrade/fusaka", icon: Package },
@@ -90,7 +91,7 @@ const mobileNavSections = [
       { title: "Analytics Home", href: "/analytics", icon: LineChart },
       { title: "EIPs", href: "/analytics/eips", icon: LineChart },
       { title: "PRs", href: "/analytics/prs", icon: LineChart },
-      { title: "Editors", href: "/analytics/editors", icon: LineChart },
+      { title: "Editors Leadership Board", href: "/analytics/editors", icon: LineChart },
       { title: "Reviewers", href: "/analytics/reviewers", icon: LineChart },
       { title: "Authors", href: "/analytics/authors", icon: LineChart },
       { title: "Contributors", href: "/analytics/contributors", icon: LineChart },
@@ -104,7 +105,7 @@ const mobileNavSections = [
     label: "Tools",
     items: [
       { title: "Tools Home", href: "/tools", icon: Wrench },
-      { title: "Board", href: "/board", icon: Wrench },
+      { title: "Open PR Board", href: "/board", icon: Wrench },
       { title: "EIP Builder", href: "/eip-builder", icon: Wrench },
       { title: "Dependencies", href: "/dependencies", icon: Wrench },
       { title: "Timeline", href: "/timeline", icon: Wrench },

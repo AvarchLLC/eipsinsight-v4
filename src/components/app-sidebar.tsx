@@ -161,7 +161,7 @@ const sidebarSections: SidebarSection[] = [
         ],
       },
       {
-        title: "EIP Board",
+        title: "Open PR Board",
         icon: ClipboardList,
         href: "/board",
         items: [
@@ -206,7 +206,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           // Most-used first: PR and Editor analytics are the daily drivers.
           { title: "PRs", href: "/analytics/prs" },
-          { title: "Editors", href: "/analytics/editors" },
+          { title: "Editors Leadership Board", href: "/analytics/editors" },
           { title: "EIPs", href: "/analytics/eips" },
           { title: "Reviewers", href: "/analytics/reviewers" },
           { title: "Authors", href: "/analytics/authors" },
@@ -324,7 +324,7 @@ const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>
   editor: {
     // Authors and Contributors are not part of the editorial workflow.
     // (Board moved out of Analytics to its own top-level "EIP Board" item.)
-    Analytics: ["PRs", "Editors", "EIPs", "Reviewers"],
+    Analytics: ["PRs", "Editor Leadership Board", "EIPs", "Reviewers"],
   },
 };
 

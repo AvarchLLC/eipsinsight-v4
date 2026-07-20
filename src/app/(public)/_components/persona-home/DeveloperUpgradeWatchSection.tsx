@@ -5,6 +5,7 @@ import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
 import { ArrowUpRight, Download, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { CopyLinkButton } from '@/components/header';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
@@ -90,6 +91,11 @@ export default function DeveloperUpgradeWatchSection({
           <p className={sectionSubtitleClass}>EIP composition timeline by upgrade — proposed through included.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href="/upgrade/eips">
+            <Button variant="outline" size="sm" className="h-8 border-border bg-card/60 hover:bg-muted text-xs gap-1">
+              EIP Upgrade Directory <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+            </Button>
+          </Link>
           {/* View toggle: compact bar vs the full hub composition chart. */}
           <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
             {(['compact', 'composition'] as const).map((view) => (

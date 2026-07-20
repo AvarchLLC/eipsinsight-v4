@@ -413,7 +413,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     tools: [
       { key: 'upgrade-hub', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upgrade timelines, headliner EIPs, and what ships next.', image: '/quick-access/upgrade-hub.png' },
       { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Key outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
-      { key: 'editor-insights', title: 'Editor Insights', href: '/analytics/editors', cta: 'View insights', icon: Trophy, blurb: 'Editorial workload, coverage, and the leaderboard.', image: '/quick-access/editor-insights.png' },
+      { key: 'editor-insights', title: 'Editor Leadership Board', href: '/analytics/editors', cta: 'View leadership board', icon: Trophy, blurb: 'Editorial workload, coverage, and the leadership board.', image: '/quick-access/editor-insights.png' },
       { key: 'eip-analytics', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore analytics', icon: FileText, blurb: 'Proposal activity and lifecycle, Draft to Final.', image: '/quick-access/eip-analytics.png' },
       { key: 'pr-board', title: 'Open PR Board', href: '/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
       { key: 'monthly-insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: ArrowUpDown, blurb: 'A month-by-month standards & governance recap.', image: '/quick-access/monthly-insights.png' },
@@ -2358,7 +2358,7 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</SectionTitleLink>
+                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editor Leadership Board - {editorContributionWindowLabel}</SectionTitleLink>
                 <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
@@ -3613,7 +3613,7 @@ export default function EIPsHomePage() {
           <div>
             <div className="inline-flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</SectionTitleLink>
+              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leadership Board</SectionTitleLink>
               <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>

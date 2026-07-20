@@ -56,6 +56,11 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
+        source: '/upgrade-hub',
+        destination: '/upgrade',
+        permanent: false,
+      },
+      {
         source: '/upgrades',
         destination: '/upgrade',
         permanent: false,
