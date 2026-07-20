@@ -20,6 +20,7 @@ import {
   Flame,
   GitCommit,
   GitMerge,
+  GitPullRequest,
   Layers,
   Loader2,
   RefreshCw,
@@ -36,7 +37,7 @@ import { cn } from '@/lib/utils';
 
 type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
 
-type RecapFilter = 'all' | 'new_proposals' | 'status_changes' | 'merged_prs' | 'calls_devnets' | 'last_call';
+type RecapFilter = 'all' | 'new_proposals' | 'status_changes' | 'merged_prs' | 'editor_activity' | 'calls_devnets' | 'last_call';
 
 interface WeeklyRecapSectionProps {
   sectionTitleClass?: string;
@@ -132,7 +133,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
     if (!data) return [];
     const list: Array<{
       id: string;
-      kind: 'new_proposal' | 'status_change' | 'merged_pr' | 'call' | 'devnet' | 'last_call';
+      kind: 'new_proposal' | 'status_change' | 'merged_pr' | 'editor_activity' | 'call' | 'devnet' | 'last_call';
       title: string;
       subtitle?: string;
       actor?: string | null;
@@ -188,6 +189,25 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
         externalHref: pr.repoName ? `https://github.com/${pr.repoName}/pull/${pr.number}` : undefined,
       });
     });
+
+    // Editor Actions
+    if (data.editorActions) {
+      data.editorActions.forEach((ea) => {
+        const repoPath = normalizeRepoSegment(ea.repoName);
+        list.push({
+          id: `editor-${ea.repoName}-${ea.number}-${ea.editor}-${ea.actedAt}`,
+          kind: 'editor_activity',
+          title: `PR #${ea.number}: ${ea.title || 'Editor Activity'}`,
+          subtitle: `Editor @${ea.editor} (${ea.eventType}) in ${ea.repoName}`,
+          actor: ea.editor,
+          badgeText: `Editor ${ea.eventType}`,
+          badgeVariant: 'indigo',
+          dateIso: ea.actedAt,
+          href: `/pr/${repoPath}/${ea.number}`,
+          externalHref: ea.eventUrl || undefined,
+        });
+      });
+    }
 
     // Recent calls
     data.recentCalls.forEach((c) => {
@@ -260,6 +280,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
     if (filter === 'new_proposals') return items.filter((i) => i.kind === 'new_proposal');
     if (filter === 'status_changes') return items.filter((i) => i.kind === 'status_change');
     if (filter === 'merged_prs') return items.filter((i) => i.kind === 'merged_pr');
+    if (filter === 'editor_activity') return items.filter((i) => i.kind === 'editor_activity');
     if (filter === 'calls_devnets') return items.filter((i) => i.kind === 'call' || i.kind === 'devnet');
     if (filter === 'last_call') return items.filter((i) => i.kind === 'last_call');
     return items;
@@ -271,6 +292,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
   const totalNew = data?.newProposals.length ?? 0;
   const totalChanges = data?.statusChanges.length ?? 0;
   const totalPRs = data?.mergedPRs.length ?? 0;
+  const totalEditorActions = data?.editorActions?.length ?? 0;
   const totalCalls = (data?.recentCalls.length ?? 0) + (data?.devnets.length ?? 0);
 
   return (
@@ -293,7 +315,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
             <CopyLinkButton sectionId="weekly-recap-digest" tooltipLabel="Copy link" />
           </div>
           <p className={sectionSubtitleClass || 'mt-1 text-sm text-muted-foreground'}>
-            Verifiable, real-time audit feed of new EIP proposals, status transitions, merged PRs, devnets, and ACD call decisions.
+            Verifiable, real-time audit feed of new EIP proposals, status transitions, merged PRs, editor reviews, devnets, and ACD call decisions.
           </p>
         </div>
 
@@ -331,6 +353,10 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
           <span className="text-muted-foreground">Merged PRs</span>
         </div>
         <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
+          <span className="font-semibold text-foreground">{totalEditorActions}</span>{' '}
+          <span className="text-muted-foreground">Editor Reviews</span>
+        </div>
+        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
           <span className="font-semibold text-foreground">{totalCalls}</span>{' '}
           <span className="text-muted-foreground">ACD & Devnet Milestones</span>
         </div>
@@ -344,6 +370,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
             { id: 'new_proposals', label: `New (${totalNew})` },
             { id: 'status_changes', label: `Status Changes (${totalChanges})` },
             { id: 'merged_prs', label: `Merged PRs (${totalPRs})` },
+            { id: 'editor_activity', label: `Editor Activity (${totalEditorActions})` },
             { id: 'calls_devnets', label: `ACD & Devnets (${totalCalls})` },
             { id: 'last_call', label: `Last Call (${data?.lastCallEIPs.length ?? 0})` },
           ] as const

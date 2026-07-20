@@ -18,6 +18,7 @@ import {
   Filter,
   Flame,
   GitMerge,
+  GitPullRequest,
   Layers,
   Loader2,
   RefreshCw,
@@ -35,7 +36,7 @@ import { callSeriesShort } from '@/data/call-series';
 
 type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
 
-type RecapFilter = 'all' | 'new_proposals' | 'status_changes' | 'merged_prs' | 'calls_devnets' | 'last_call';
+type RecapFilter = 'all' | 'new_proposals' | 'status_changes' | 'merged_prs' | 'editor_activity' | 'calls_devnets' | 'last_call';
 type RepoFilter = 'all' | 'eip' | 'erc' | 'rip';
 
 function formatDate(isoString?: string | null) {
@@ -139,7 +140,7 @@ export default function DedicatedRecapPage() {
       md += `### 🆕 New Proposals Introduced\n`;
       data.newProposals.forEach((p) => {
         const typeStr = p.category ? `${p.category} ` : '';
-        md += `- **[${p.status}] [${typeStr}EIP-${p.number}](https://eipsinsight.com/${p.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${p.number})**: ${p.title} *(Created ${formatDate(p.createdAt)})*\n`;
+        md += `- **[${p.status}] [${typeStr}EIP-${p.number}](https://eipsinsight.com/${p.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${p.number})**: ${p.title} *(Created ${formatDate(p.createdAt)})\*\n`;
       });
       md += `\n`;
     }
@@ -148,7 +149,7 @@ export default function DedicatedRecapPage() {
       md += `### 🔄 Lifecycle & Status Changes\n`;
       data.statusChanges.forEach((sc) => {
         const typeStr = sc.category ? `${sc.category} ` : '';
-        md += `- **[${typeStr}EIP-${sc.number}](https://eipsinsight.com/${sc.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${sc.number})**: \`${sc.from}\` ➔ \`${sc.to}\` *(Changed ${formatDate(sc.changedAt)})*\n`;
+        md += `- **[${typeStr}EIP-${sc.number}](https://eipsinsight.com/${sc.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${sc.number})**: \`${sc.from}\` ➔ \`${sc.to}\` *(Changed ${formatDate(sc.changedAt)})\*\n`;
       });
       md += `\n`;
     }
@@ -157,7 +158,16 @@ export default function DedicatedRecapPage() {
       md += `### 🪵 Recently Merged Pull Requests\n`;
       data.mergedPRs.forEach((pr) => {
         const repoPath = normalizeRepoSegment(pr.repoName);
-        md += `- **[PR #${pr.number}](https://eipsinsight.com/pr/${repoPath}/${pr.number})**: ${pr.title} *(Merged ${formatDate(pr.mergedAt)} by @${pr.author})*\n`;
+        md += `- **[PR #${pr.number}](https://eipsinsight.com/pr/${repoPath}/${pr.number})**: ${pr.title} *(Merged ${formatDate(pr.mergedAt)} by @${pr.author})\*\n`;
+      });
+      md += `\n`;
+    }
+
+    if (data.editorActions && data.editorActions.length > 0) {
+      md += `### ✍️ Editor Review Activity\n`;
+      data.editorActions.forEach((ea) => {
+        const repoPath = normalizeRepoSegment(ea.repoName);
+        md += `- **[PR #${ea.number}](https://eipsinsight.com/pr/${repoPath}/${ea.number})**: ${ea.title || 'Editor action'} *(Editor @${ea.editor} - ${ea.eventType} on ${formatDate(ea.actedAt)})\*\n`;
       });
       md += `\n`;
     }
@@ -185,7 +195,7 @@ export default function DedicatedRecapPage() {
     if (data.lastCallEIPs.length > 0) {
       md += `### 📢 Last Call Deadlines\n`;
       data.lastCallEIPs.forEach((lc) => {
-        md += `- **[EIP-${lc.number}](https://eipsinsight.com/eips/${lc.number})**: ${lc.title} *(Deadline: ${lc.deadline || 'Immediate'})*\n`;
+        md += `- **[EIP-${lc.number}](https://eipsinsight.com/eips/${lc.number})**: ${lc.title} *(Deadline: ${lc.deadline || 'Immediate'})\*\n`;
       });
       md += `\n`;
     }
@@ -219,7 +229,7 @@ export default function DedicatedRecapPage() {
     if (!data) return [];
     const list: Array<{
       id: string;
-      kind: 'new_proposal' | 'status_change' | 'merged_pr' | 'call' | 'devnet' | 'last_call';
+      kind: 'new_proposal' | 'status_change' | 'merged_pr' | 'editor_activity' | 'call' | 'devnet' | 'last_call';
       repoCategory: 'eip' | 'erc' | 'rip';
       title: string;
       subtitle?: string;
@@ -282,6 +292,27 @@ export default function DedicatedRecapPage() {
         externalHref: pr.repoName ? `https://github.com/${pr.repoName}/pull/${pr.number}` : undefined,
       });
     });
+
+    // Editor Actions
+    if (data.editorActions) {
+      data.editorActions.forEach((ea) => {
+        const cat = ea.repoName?.includes('erc') ? 'erc' : ea.repoName?.includes('rip') ? 'rip' : 'eip';
+        const repoPath = normalizeRepoSegment(ea.repoName);
+        list.push({
+          id: `editor-${ea.repoName}-${ea.number}-${ea.editor}-${ea.actedAt}`,
+          kind: 'editor_activity',
+          repoCategory: cat,
+          title: `PR #${ea.number}: ${ea.title || 'Editor Activity'}`,
+          subtitle: `Editor @${ea.editor} (${ea.eventType}) in ${ea.repoName}`,
+          actor: ea.editor,
+          badgeText: `Editor ${ea.eventType}`,
+          badgeVariant: 'indigo',
+          dateIso: ea.actedAt,
+          href: `/pr/${repoPath}/${ea.number}`,
+          externalHref: ea.eventUrl || undefined,
+        });
+      });
+    }
 
     // Recent calls
     data.recentCalls.forEach((c) => {
@@ -358,6 +389,7 @@ export default function DedicatedRecapPage() {
       if (filter === 'new_proposals' && item.kind !== 'new_proposal') return false;
       if (filter === 'status_changes' && item.kind !== 'status_change') return false;
       if (filter === 'merged_prs' && item.kind !== 'merged_pr') return false;
+      if (filter === 'editor_activity' && item.kind !== 'editor_activity') return false;
       if (filter === 'calls_devnets' && item.kind !== 'call' && item.kind !== 'devnet') return false;
       if (filter === 'last_call' && item.kind !== 'last_call') return false;
 
@@ -380,6 +412,7 @@ export default function DedicatedRecapPage() {
   const totalNew = data?.newProposals.length ?? 0;
   const totalChanges = data?.statusChanges.length ?? 0;
   const totalPRs = data?.mergedPRs.length ?? 0;
+  const totalEditorActions = data?.editorActions?.length ?? 0;
   const totalCalls = (data?.recentCalls.length ?? 0) + (data?.devnets.length ?? 0);
 
   return (
@@ -406,7 +439,7 @@ export default function DedicatedRecapPage() {
               </Badge>
             </div>
             <p className="mt-1.5 text-sm text-muted-foreground max-w-3xl">
-              Comprehensive, real-time audit log tracking all new EIP/ERC/RIP proposals, status transitions, merged pull requests, devnet progressions, and core developer meeting decisions across Ethereum standards.
+              Comprehensive, real-time audit log tracking all new EIP/ERC/RIP proposals, status transitions, merged pull requests, editor reviews, devnet progressions, and core developer meeting decisions across Ethereum standards.
             </p>
           </div>
 
@@ -435,7 +468,7 @@ export default function DedicatedRecapPage() {
       </div>
 
       {/* KPI Stats Overview Cards */}
-      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-8 grid grid-cols-2 gap-4 sm:grid-cols-5">
         <div className="rounded-xl border border-border/80 bg-card/60 p-4 shadow-xs">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">New Proposals</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{totalNew}</p>
@@ -451,6 +484,12 @@ export default function DedicatedRecapPage() {
         <div className="rounded-xl border border-border/80 bg-card/60 p-4 shadow-xs">
           <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Merged PRs</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{totalPRs}</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">In last {days} days</p>
+        </div>
+
+        <div className="rounded-xl border border-border/80 bg-card/60 p-4 shadow-xs">
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Editor Reviews</p>
+          <p className="mt-1 text-2xl font-bold text-foreground">{totalEditorActions}</p>
           <p className="text-[11px] text-muted-foreground mt-0.5">In last {days} days</p>
         </div>
 
@@ -518,6 +557,7 @@ export default function DedicatedRecapPage() {
                   { id: 'new_proposals', label: `New (${totalNew})` },
                   { id: 'status_changes', label: `Status Changes (${totalChanges})` },
                   { id: 'merged_prs', label: `Merged PRs (${totalPRs})` },
+                  { id: 'editor_activity', label: `Editor Activity (${totalEditorActions})` },
                   { id: 'calls_devnets', label: `ACD & Devnets (${totalCalls})` },
                   { id: 'last_call', label: `Last Call (${data?.lastCallEIPs.length ?? 0})` },
                 ] as const
