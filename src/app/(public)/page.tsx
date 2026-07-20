@@ -2357,7 +2357,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-primary" />
+                <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
                 <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</SectionTitleLink>
                 <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" />
               </div>
@@ -2465,7 +2465,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-primary" />
+                <BookOpen className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Learning Resources</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-learning-resources" tooltipLabel="Copy link" />
               </div>
@@ -2505,7 +2505,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Flame className="h-5 w-5 text-primary" />
+                <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
                 <CopyLinkButton sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'} tooltipLabel="Copy link" />
               </div>
@@ -2528,7 +2528,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Flame className="h-5 w-5 text-primary" />
+                <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-trending-proposals" tooltipLabel="Copy link" />
               </div>
@@ -2576,7 +2576,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Package className="h-5 w-5 text-primary" />
+                <Package className="h-5 w-5 text-sky-400 shrink-0" />
                 <SectionTitleLink href="/upgrade" className={sectionTitleClass}>Upgrade Hub</SectionTitleLink>
                 <CopyLinkButton sectionId="newcomer-upgrade-watch" tooltipLabel="Copy link" />
               </div>
@@ -2613,7 +2613,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Zap className="h-5 w-5 text-primary" />
+                <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
                 <SectionTitleLink href="/dashboard" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
                 <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" />
               </div>
@@ -2632,7 +2632,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Code className="h-5 w-5 text-primary" />
+                <Code className="h-5 w-5 text-purple-400 shrink-0" />
                 <SectionTitleLink href="/eip-builder" className={sectionTitleClass}>EIP Builder</SectionTitleLink>
                 <CopyLinkButton sectionId="builder-eip-builder-focus" tooltipLabel="Copy link" />
               </div>
@@ -2659,7 +2659,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Activity className="h-5 w-5 text-primary" />
+                <Activity className="h-5 w-5 text-blue-400 shrink-0" />
                 <SectionTitleLink href="/board" className={sectionTitleClass}>Board</SectionTitleLink>
                 <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" />
               </div>
@@ -2815,7 +2815,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-primary" />
+                <Wrench className="h-5 w-5 text-indigo-400 shrink-0" />
                 <SectionTitleLink href="/tools" className={sectionTitleClass}>Tool Shortcuts</SectionTitleLink>
               </div>
               <div className="mt-1 flex items-center gap-2">
@@ -2859,7 +2859,7 @@ export default function EIPsHomePage() {
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-primary" />
+                <Wrench className="h-5 w-5 text-indigo-400 shrink-0" />
                 <SectionTitleLink href="/tools" className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</SectionTitleLink>
               </div>
               <div className="mt-1 flex items-center gap-2">
@@ -2943,7 +2943,7 @@ export default function EIPsHomePage() {
           <div className="flex min-w-0 items-start">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Eye className="h-5 w-5 text-primary" />
+                <Eye className="h-5 w-5 text-teal-400 shrink-0" />
                 <SectionTitleLink href="/explore" className={sectionTitleClass}>
                   Browse by Status, Category, Repository &amp; Stages
                 </SectionTitleLink>
@@ -3589,7 +3589,7 @@ export default function EIPsHomePage() {
             <div className="mb-3 flex items-start justify-between gap-2">
               <div>
                 <div className="inline-flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-primary" />
+                  <FileText className="h-5 w-5 text-cyan-400 shrink-0" />
                   <SectionTitleLink href="/resources/faq" className={sectionTitleClass}>Reference</SectionTitleLink>
                   <CopyLinkButton sectionId="home-reference" tooltipLabel="Copy link" />
                 </div>
@@ -3612,7 +3612,7 @@ export default function EIPsHomePage() {
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
             <div className="inline-flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-primary" />
+              <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
               <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</SectionTitleLink>
               <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" />
             </div>
@@ -3918,7 +3918,7 @@ export default function EIPsHomePage() {
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <div className="inline-flex items-center gap-2">
-                <Layers className="h-5 w-5 text-primary" />
+                <Layers className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Practical Resources</SectionTitleLink>
                 <CopyLinkButton sectionId="builder-practical-resources" tooltipLabel="Copy link" />
               </div>

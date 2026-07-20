@@ -79,7 +79,7 @@ export default function DeveloperUpgradeWatchSection({
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
+            <Package className="h-5 w-5 text-sky-400 shrink-0" />
             {/* Title links straight to the hub. */}
             <Link href="/upgrade" className={cn(sectionTitleClass, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
               Upgrade Hub

@@ -134,7 +134,7 @@ export default function EditorReviewQueueSection({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <GitPullRequest className="h-5 w-5 text-primary" />
+            <GitPullRequest className="h-5 w-5 text-rose-400 shrink-0" />
             <h2 className={sectionTitleClass}>Editor Review Queue</h2>
             <CopyLinkButton sectionId="editor-review-queue" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>

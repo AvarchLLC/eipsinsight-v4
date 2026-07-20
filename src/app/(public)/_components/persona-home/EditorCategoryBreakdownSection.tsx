@@ -56,7 +56,7 @@ export default function EditorCategoryBreakdownSection({
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Layers className="h-5 w-5 text-primary" />
+            <Layers className="h-5 w-5 text-violet-400 shrink-0" />
             <h2 className={sectionTitleClass}>Category Breakdown</h2>
             <CopyLinkButton sectionId="editor-category-breakdown" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>

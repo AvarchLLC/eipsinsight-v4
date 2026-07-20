@@ -239,7 +239,7 @@ export default function SocialCommunityUpdates({
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Share2 className="h-5 w-5 text-primary" />
+            <Share2 className="h-5 w-5 text-sky-400 shrink-0" />
             <h2 className={sectionTitleClass}>Social & Community Updates</h2>
             <CopyLinkButton sectionId="social-community" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
