@@ -2090,16 +2090,24 @@ export default function EIPsHomePage() {
     ] as const;
 
     return {
-      grid: { left: 36, right: 10, top: 24, bottom: 56 },
+      grid: { left: 16, right: 16, top: 32, bottom: 44, containLabel: true },
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
-        borderColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)',
-        borderWidth: 1,
+        axisPointer: {
+          type: 'line',
+          lineStyle: {
+            color: isDark ? 'rgba(56, 189, 248, 0.6)' : 'rgba(2, 132, 199, 0.6)',
+            type: 'dotted',
+            width: 1.5,
+          },
+        },
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
+        borderColor: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.45)',
+        borderWidth: 1.5,
         padding: [10, 14],
         textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
-        extraCssText: 'box-shadow: 0 10px 30px -5px rgba(0,0,0,0.3); border-radius: 12px; backdrop-filter: blur(12px);',
+        extraCssText:
+          'border-style: dotted !important; box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-radius: 12px; backdrop-filter: blur(16px); min-width: 170px;',
         formatter: (params: unknown) => {
           const items = Array.isArray(params) ? (params as any[]) : [];
           if (!items.length) return '';
@@ -2112,7 +2120,7 @@ export default function EIPsHomePage() {
             total += val;
             html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
           }
-          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid ${isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#38bdf8' : '#0284c7'}">${total}</span></div>`;
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#38bdf8' : '#0284c7'}">${total}</span></div>`;
           return html;
         },
       },

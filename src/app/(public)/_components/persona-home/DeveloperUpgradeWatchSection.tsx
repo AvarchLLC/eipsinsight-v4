@@ -147,9 +147,9 @@ export default function DeveloperUpgradeWatchSection({
 
       <div className="rounded-xl border border-border bg-card/60 p-3">
         {upgradeTimelineLoading ? (
-          <div className="h-[220px] animate-pulse rounded-lg bg-muted" />
+          <div className="h-[280px] animate-pulse rounded-lg bg-muted" />
         ) : !upgradeWatchChartOption ? (
-          <div className="flex h-[220px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
+          <div className="flex h-[280px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
             No timeline data available for this upgrade.
           </div>
         ) : chartView === 'composition' ? (
@@ -159,7 +159,7 @@ export default function DeveloperUpgradeWatchSection({
           </div>
         ) : (
           <div className="relative">
-            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
+            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '280px', width: '100%' }} opts={{ renderer: 'svg' }} />
             <ChartWatermark position="center" />
           </div>
         )}
