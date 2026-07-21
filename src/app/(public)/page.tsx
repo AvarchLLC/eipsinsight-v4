@@ -2096,14 +2096,14 @@ export default function EIPsHomePage() {
         axisPointer: {
           type: 'line',
           lineStyle: {
-            color: isDark ? 'rgba(56, 189, 248, 0.6)' : 'rgba(2, 132, 199, 0.6)',
-            type: 'dotted',
+            color: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.4)',
+            type: 'dashed',
             width: 1.5,
           },
         },
-        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.94)' : 'rgba(255, 255, 255, 0.96)',
-        borderColor: isDark ? 'rgba(56, 189, 248, 0.45)' : 'rgba(2, 132, 199, 0.45)',
-        borderWidth: 1.5,
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+        borderColor: isDark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+        borderWidth: 1,
         padding: [10, 14],
         textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
         extraCssText:
@@ -2120,7 +2120,7 @@ export default function EIPsHomePage() {
             total += val;
             html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
           }
-          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#38bdf8' : '#0284c7'}">${total}</span></div>`;
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#f8fafc' : '#0f172a'}">${total}</span></div>`;
           return html;
         },
       },
