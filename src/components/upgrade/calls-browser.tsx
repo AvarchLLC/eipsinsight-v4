@@ -48,15 +48,27 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialise from the URL so sidebar deep links (?series=acd&acd=acde) and shared
-  // links restore the exact filter state.
-  const [series, setSeries] = useState<SeriesFilterValue>(() => {
+  // The URL is the source of truth for the series filter — NOT a useState initialiser.
+  // Sidebar deep links (?series=acd&acd=acde) are client-side navigations that
+  // re-render this component without remounting it, so an initialiser would only ever
+  // read the URL present on first mount and every later link would silently no-op.
+  const series = useMemo<SeriesFilterValue>(() => {
     const g = searchParams.get('series');
     if (g === 'acd') return { group: 'acd', acd: searchParams.get('acd') ?? 'all' };
     if (g === 'breakouts') return { group: 'breakouts', acd: 'all' };
     return DEFAULT_SERIES_FILTER;
-  });
-  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  // Search keeps local state so typing stays responsive, but adopts the URL when it
+  // changes externally (sidebar link, back button). Render-phase adjustment is React's
+  // documented pattern for this and avoids a setState-in-effect.
+  const urlSearch = searchParams.get('q') ?? '';
+  const [search, setSearch] = useState(urlSearch);
+  const [syncedSearch, setSyncedSearch] = useState(urlSearch);
+  if (urlSearch !== syncedSearch) {
+    setSyncedSearch(urlSearch);
+    setSearch(urlSearch);
+  }
 
   // Reflect the current filters back into the URL (shareable, back-button friendly).
   const syncUrl = (next: { series?: SeriesFilterValue; search?: string }) => {
@@ -70,8 +82,8 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
+  // No setSeries: the URL drives it, and syncUrl re-renders us with the new params.
   const changeSeries = (v: SeriesFilterValue) => {
-    setSeries(v);
     syncUrl({ series: v });
   };
   const changeSearch = (v: string) => {

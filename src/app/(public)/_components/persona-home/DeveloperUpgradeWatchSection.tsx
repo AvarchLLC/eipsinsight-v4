@@ -5,7 +5,9 @@ import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
 import { ArrowUpRight, Download, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 import { CopyLinkButton } from '@/components/header';
+import { ChartFooter } from '@/components/chart-footer';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
 
@@ -75,21 +77,26 @@ export default function DeveloperUpgradeWatchSection({
   };
 
   return (
-    <section className="mb-6 border-t border-border/70 pt-6" id="developer-upgrade-watch">
+    <section className="mb-6 border-t border-border/70 pt-6" id="upgrade-watch">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
-            <Package className="h-5 w-5 text-sky-400 shrink-0" />
+            <Package className="h-5 w-5 text-primary shrink-0" />
             {/* Title links straight to the hub. */}
             <Link href="/upgrade" className={cn(sectionTitleClass, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
               Upgrade Hub
               <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
             </Link>
-            <CopyLinkButton sectionId="developer-upgrade-watch" className="h-8 w-8 rounded-md" />
+            <CopyLinkButton sectionId="upgrade-watch" className="h-8 w-8 rounded-md" />
           </div>
           <p className={sectionSubtitleClass}>EIP composition timeline by upgrade — proposed through included.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link href="/upgrade/eips">
+            <Button variant="outline" size="sm" className="h-8 border-border bg-card/60 hover:bg-muted text-xs gap-1">
+              EIP Upgrade Directory <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
+            </Button>
+          </Link>
           {/* View toggle: compact bar vs the full hub composition chart. */}
           <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
             {(['compact', 'composition'] as const).map((view) => (
@@ -140,20 +147,20 @@ export default function DeveloperUpgradeWatchSection({
 
       <div className="rounded-xl border border-border bg-card/60 p-3">
         {upgradeTimelineLoading ? (
-          <div className="h-[220px] animate-pulse rounded-lg bg-muted" />
+          <div className="h-[280px] animate-pulse rounded-lg bg-muted" />
         ) : !upgradeWatchChartOption ? (
-          <div className="flex h-[220px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
+          <div className="flex h-[280px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
             No timeline data available for this upgrade.
           </div>
         ) : chartView === 'composition' ? (
           <div className="relative">
             <UpgradeTimelineChart data={upgradeTimelineRows} upgradeName={upgradeName} />
-            <ChartWatermark />
+            <ChartWatermark position="center" />
           </div>
         ) : (
           <div className="relative">
-            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
-            <ChartWatermark />
+            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '280px', width: '100%' }} opts={{ renderer: 'svg' }} />
+            <ChartWatermark position="center" />
           </div>
         )}
         {chartView === 'compact' && (
@@ -171,6 +178,7 @@ export default function DeveloperUpgradeWatchSection({
           ))}
         </div>
         )}
+        <ChartFooter />
         {showTable && (
           <div className="mt-3 overflow-x-auto rounded-lg border border-border/70">
             <table className="min-w-full text-xs">

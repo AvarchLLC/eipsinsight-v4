@@ -66,6 +66,7 @@ import { cn } from '@/lib/utils';
 import { ASSOCIATE_EIP_EDITORS, CANONICAL_EIP_EDITORS } from '@/data/eip-contributor-roles';
 import { getUpgradeTimelineData } from '@/data/upgrade-timelines';
 import { useEffectivePersona, useIsHydrated } from '@/stores/personaStore';
+import { chartTooltip, chartTooltipRow, chartTooltipTitle, CHART_TOOLTIP_BORDER } from '@/lib/chart-theme';
 
 type Dimension = 'status' | 'category' | 'repo' | 'stages';
 type SortBy = 'github' | 'eip' | 'title' | 'author' | 'type' | 'category' | 'status' | 'updated_at';
@@ -413,7 +414,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
     tools: [
       { key: 'upgrade-hub', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upgrade timelines, headliner EIPs, and what ships next.', image: '/quick-access/upgrade-hub.png' },
       { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Key outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
-      { key: 'editor-insights', title: 'Editor Insights', href: '/analytics/editors', cta: 'View insights', icon: Trophy, blurb: 'Editorial workload, coverage, and the leaderboard.', image: '/quick-access/editor-insights.png' },
+      { key: 'editor-insights', title: 'Editor Leadership Board', href: '/analytics/editors', cta: 'View leadership board', icon: Trophy, blurb: 'Editorial workload, coverage, and the leadership board.', image: '/quick-access/editor-insights.png' },
       { key: 'eip-analytics', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore analytics', icon: FileText, blurb: 'Proposal activity and lifecycle, Draft to Final.', image: '/quick-access/eip-analytics.png' },
       { key: 'pr-board', title: 'Open PR Board', href: '/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
       { key: 'monthly-insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: ArrowUpDown, blurb: 'A month-by-month standards & governance recap.', image: '/quick-access/monthly-insights.png' },
@@ -469,12 +470,23 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
 
 /** Section title that links to its full page, with a hover arrow. Replaces the old
  *  "Explore X" footer buttons — the header itself is now the way in. */
+/**
+ * Section title that doubles as a link to the section's full page.
+ *
+ * Renders a real <h2> because the sidebar scroll spy labels each section from
+ * its first descendant h1/h2/h3 — without one, it reaches into nested
+ * components and mislabels the section with some inner card's heading.
+ * `display: contents` keeps the heading out of the layout, so the link renders
+ * exactly as it did when this was a bare <a>.
+ */
 function SectionTitleLink({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className={cn(className, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
-      {children}
-      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
-    </Link>
+    <h2 className="contents">
+      <Link href={href} className={cn(className, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
+        {children}
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+      </Link>
+    </h2>
   );
 }
 
@@ -834,7 +846,9 @@ export default function EIPsHomePage() {
   const [downloadingLeaderboard, setDownloadingLeaderboard] = useState(false);
   const [monthlyDeltaUpdatedAt, setMonthlyDeltaUpdatedAt] = useState<string | null>(null);
   const [monthlyLeaderboardUpdatedAt, setMonthlyLeaderboardUpdatedAt] = useState<string | null>(null);
-  const [showProposalTable, setShowProposalTable] = useState(true);
+  // RIPs are a separate track — opt-in so status/category counts are not skewed.
+  const [includeRips, setIncludeRips] = useState(false);
+  const [showProposalTable, setShowProposalTable] = useState(false);
   const [showPersonaWorkspace, setShowPersonaWorkspace] = useState(true);
   const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
   const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('');
@@ -891,8 +905,11 @@ export default function EIPsHomePage() {
     setPage(1);
   }, [dimension, activeBucket, sortBy, sortDir, columnSearch]);
 
+  // Collapse the proposal table whenever the persona changes. It stays hidden for
+  // every persona now (not just editor) — the distribution cards are the scannable
+  // summary, and the table is opt-in via "Show table".
   useEffect(() => {
-    setShowProposalTable(activePersona !== 'editor');
+    setShowProposalTable(false);
   }, [activePersona]);
 
   useEffect(() => {
@@ -1140,7 +1157,7 @@ export default function EIPsHomePage() {
       (async () => {
         setDistributionLoading(true);
         try {
-          const distRes = await client.standards.getUnifiedDistribution({ dimension: dimension as 'status' | 'category' | 'repo' });
+          const distRes = await client.standards.getUnifiedDistribution({ dimension: dimension as 'status' | 'category' | 'repo', includeRips });
           if (!cancelled) setDistribution(distRes);
         } catch (err) {
           console.error('Failed to load homepage distribution:', err);
@@ -1152,7 +1169,7 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [dimension]);
+  }, [dimension, includeRips]);
 
   // Fetch status sub-distribution when category/repo bucket is selected
   useEffect(() => {
@@ -1261,6 +1278,7 @@ export default function EIPsHomePage() {
             sortDir,
             dimension: dimension as 'status' | 'category' | 'repo',
             bucket: activeBucket ?? undefined,
+            includeRips,
             columnSearch: {
               github: debouncedColumnSearch.github || undefined,
               eip: debouncedColumnSearch.eip || undefined,
@@ -1285,7 +1303,7 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [dimension, page, sortBy, sortDir, activeBucket, debouncedColumnSearch]);
+  }, [dimension, page, sortBy, sortDir, activeBucket, debouncedColumnSearch, includeRips]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1439,14 +1457,11 @@ export default function EIPsHomePage() {
     [febInsightPieData]
   );
   const febInsightDonutOption = useMemo(() => ({
-    tooltip: {
+    tooltip: chartTooltip({
       trigger: 'item',
       formatter: (params: { name: string; value: number; percent: number }) =>
         `${params.name}<br/>${params.value} (${params.percent}%)`,
-      backgroundColor: isDark ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.98)',
-      borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
-      textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
-    },
+    }),
     legend: {
       show: true,
       orient: 'vertical',
@@ -1553,12 +1568,9 @@ export default function EIPsHomePage() {
     });
 
     return {
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? 'rgba(15,23,42,0.94)' : 'rgba(255,255,255,0.98)',
-        borderColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)',
-        textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
         formatter: (params: Array<{ seriesName: string; value: number; marker: string; axisValue: string }>) => {
           if (!params?.length) return '';
           const actor = params[0]?.axisValue ?? '';
@@ -1577,7 +1589,7 @@ export default function EIPsHomePage() {
           `;
           return [header, ...lines, `<strong>Total: ${total.toLocaleString()}</strong>`].join('<br/>');
         },
-      },
+      }),
       legend: {
         top: 0,
         textStyle: { color: isDark ? '#cbd5e1' : '#475569', fontSize: 11 },
@@ -1702,6 +1714,7 @@ export default function EIPsHomePage() {
       const res = await client.standards.exportUnifiedDetailedCSV({
         dimension: csvDimension,
         bucket: activeBucket ?? undefined,
+        includeRips,
         search: undefined,
         columnSearch: {
           github: columnSearch.github || undefined,
@@ -2020,10 +2033,36 @@ export default function EIPsHomePage() {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? '#020617' : '#ffffff',
-        borderColor: isDark ? '#1f2937' : '#e2e8f0',
-        textStyle: { color: isDark ? '#e5e7eb' : '#0f172a' },
+        axisPointer: {
+          type: 'line',
+          lineStyle: {
+            color: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.4)',
+            type: 'dashed',
+            width: 1.5,
+          },
+        },
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+        borderColor: isDark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+        borderWidth: 1,
+        padding: [10, 14],
+        textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
+        extraCssText:
+          'border-style: dotted !important; box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-radius: 12px; backdrop-filter: blur(16px); min-width: 170px;',
+        formatter: (params: unknown) => {
+          const items = Array.isArray(params) ? (params as any[]) : [];
+          if (!items.length) return '';
+          const name = items[0].axisValue;
+          let html = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;color:${isDark ? '#f8fafc' : '#0f172a'}">${name}</div>`;
+          let total = 0;
+          for (const item of items) {
+            const val = item.value || 0;
+            if (val === 0) continue;
+            total += val;
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
+          }
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total PRs</span><span style="font-weight:800;color:${isDark ? '#f8fafc' : '#0f172a'}">${total}</span></div>`;
+          return html;
+        },
       },
       legend: {
         top: 0,
@@ -2079,12 +2118,32 @@ export default function EIPsHomePage() {
     ] as const;
 
     return {
-      grid: { left: 36, right: 10, top: 24, bottom: 56 },
-      tooltip: {
+      grid: { left: 16, right: 16, top: 32, bottom: 44, containLabel: true },
+      tooltip: chartTooltip({
         trigger: 'axis',
-        backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
-        borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
-      },
+        axisPointer: {
+          type: 'line',
+          lineStyle: { color: 'var(--border)', type: 'dashed', width: 1.5 },
+        },
+        formatter: (params: unknown) => {
+          const items = Array.isArray(params) ? (params as any[]) : [];
+          if (!items.length) return '';
+
+          let html = chartTooltipTitle(items[0].axisValue);
+          let total = 0;
+          for (const item of items) {
+            const val = item.value || 0;
+            if (val === 0) continue;
+            total += val;
+            html += chartTooltipRow(item.seriesName, val, item.color);
+          }
+          html +=
+            `<div style="margin-top:8px;padding-top:6px;border-top:1px solid ${CHART_TOOLTIP_BORDER}">` +
+            chartTooltipRow('Total EIPs', total) +
+            `</div>`;
+          return html;
+        },
+      }, { minWidth: 172 }),
       legend: {
         top: 0,
         right: 0,
@@ -2276,7 +2335,7 @@ export default function EIPsHomePage() {
       )}
 
       {visibleSections.quickAccess && (
-        <section className="mb-6" id="persona-home-workspace">
+        <section className="mb-6" id="workspace">
           <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -2353,13 +2412,13 @@ export default function EIPsHomePage() {
       )}
       <PersonaDashboardComponent>
       {activePersona === 'editor' && (
-        <section className="mb-6 border-t border-border/70 pt-6" id="editor-contributions-overview">
+        <section className="mb-6 border-t border-border/70 pt-6" id="contributions">
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editors - {editorContributionWindowLabel}</SectionTitleLink>
-                <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" />
+                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editor Leadership Board - {editorContributionWindowLabel}</SectionTitleLink>
+                <CopyLinkButton sectionId="contributions" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
                 Contribution ranking with action coverage and repository breakdown.
@@ -2460,14 +2519,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.learning }}
           className="mb-6"
-          id="newcomer-learning-resources"
+          id="learn"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Learning Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-learning-resources" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="learn" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
             </div>
@@ -2500,14 +2559,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.trending }}
           className="mb-6 border-t border-border/70 pt-6"
-          id={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
+          id="trending"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'} tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Most discussed proposals shaping Ethereum today.</p>
             </div>
@@ -2523,14 +2582,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.trending }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-trending-proposals"
+          id="trending"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-trending-proposals" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
             </div>
@@ -2571,14 +2630,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.upgradeWatch }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-upgrade-watch"
+          id="upgrade-watch"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Package className="h-5 w-5 text-sky-400 shrink-0" />
                 <SectionTitleLink href="/upgrade" className={sectionTitleClass}>Upgrade Hub</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-upgrade-watch" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="upgrade-watch" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
             </div>
@@ -2608,14 +2667,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.governanceOverTime }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="developer-governance-over-time"
+          id="over-time"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
                 <SectionTitleLink href="/dashboard" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
-                <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="over-time" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
             </div>
@@ -2627,14 +2686,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.governanceOverTime }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="builder-eip-builder-focus"
+          id="eip-builder"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Code className="h-5 w-5 text-purple-400 shrink-0" />
                 <SectionTitleLink href="/eip-builder" className={sectionTitleClass}>EIP Builder</SectionTitleLink>
-                <CopyLinkButton sectionId="builder-eip-builder-focus" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="eip-builder" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
             </div>
@@ -2654,14 +2713,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="developer-board-snapshot"
+          id="board"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Activity className="h-5 w-5 text-blue-400 shrink-0" />
                 <SectionTitleLink href="/board" className={sectionTitleClass}>Board</SectionTitleLink>
-                <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="board" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
                 Compact open PR snapshot from the{' '}
@@ -2810,7 +2869,7 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="builder-tool-shortcuts"
+          id="tools"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -2820,7 +2879,7 @@ export default function EIPsHomePage() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
-                <CopyLinkButton sectionId="builder-tool-shortcuts" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
             </div>
@@ -2854,7 +2913,7 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-tools-shortcuts"
+          id="tools"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -2864,7 +2923,7 @@ export default function EIPsHomePage() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
-                <CopyLinkButton sectionId="newcomer-tools-shortcuts" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
             </div>
@@ -2936,7 +2995,7 @@ export default function EIPsHomePage() {
       <div
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.browse }}
         className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
-        id={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
+        id="browse"
       >
       <div className="mb-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2948,7 +3007,7 @@ export default function EIPsHomePage() {
                   Browse by Status, Category, Repository &amp; Stages
                 </SectionTitleLink>
                 <CopyLinkButton
-                  sectionId={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
+                  sectionId="browse"
                   tooltipLabel="Copy link"
                   className="h-8 w-8 rounded-md"
                 />
@@ -2961,6 +3020,32 @@ export default function EIPsHomePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Repo view is the EIPs/ERCs/RIPs split itself, so the toggle is
+                meaningless there — hidden rather than shown as a no-op. */}
+            {dimension !== 'repo' && (
+              <label
+                className={cn(
+                  'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
+                  'h-8 focus-within:ring-2 focus-within:ring-ring/40',
+                  includeRips
+                    ? 'border-primary/50 bg-primary/10 text-foreground'
+                    : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
+                )}
+                title="RIPs are a separate track — off by default so status and category counts reflect EIPs and ERCs only."
+              >
+                <input
+                  type="checkbox"
+                  checked={includeRips}
+                  onChange={(e) => {
+                    setActiveBucket(null);
+                    setPage(1);
+                    setIncludeRips(e.target.checked);
+                  }}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                Include RIPs
+              </label>
+            )}
             {(() => {
               const BrowseIcon =
                 dimension === 'status'
@@ -3331,7 +3416,7 @@ export default function EIPsHomePage() {
 
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">
-          Proposal table view{activePersona === 'editor' ? ' (hidden by default for editor workflow)' : ''}
+          Proposal table view
         </p>
         <button
           type="button"
@@ -3583,7 +3668,7 @@ export default function EIPsHomePage() {
         <section
           className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
           style={activePersona === 'editor' ? { order: 99 } : { order: sectionOrder.learning }}
-          id="home-reference"
+          id="reference"
         >
           {activePersona === 'editor' && (
             <div className="mb-3 flex items-start justify-between gap-2">
@@ -3591,7 +3676,7 @@ export default function EIPsHomePage() {
                 <div className="inline-flex items-center gap-2">
                   <FileText className="h-5 w-5 text-cyan-400 shrink-0" />
                   <SectionTitleLink href="/resources/faq" className={sectionTitleClass}>Reference</SectionTitleLink>
-                  <CopyLinkButton sectionId="home-reference" tooltipLabel="Copy link" />
+                  <CopyLinkButton sectionId="reference" tooltipLabel="Copy link" />
                 </div>
                 <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
               </div>
@@ -3604,7 +3689,7 @@ export default function EIPsHomePage() {
       <div
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}
         className={cn(activePersona === 'editor' && 'mb-6 border-t border-border/70 pt-6')}
-        id="editor-monthly-insight"
+        id="monthly"
       >
       {activePersona !== 'editor' && visibleSections.monthly && <hr className="my-6 border-border" />}
 
@@ -3613,8 +3698,8 @@ export default function EIPsHomePage() {
           <div>
             <div className="inline-flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leaderboard</SectionTitleLink>
-              <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" />
+              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leadership Board</SectionTitleLink>
+              <CopyLinkButton sectionId="monthly" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
           </div>
@@ -3891,9 +3976,9 @@ export default function EIPsHomePage() {
       >
       {activePersona !== 'editor' && visibleSections.governance && <hr className="my-6 border-border" />}
 
-      <section className="mb-6 w-full" id="recent-governance-activity">
-        <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
-      </section>
+      {/* No wrapper <section id>: WeeklyRecapSection owns its own #weekly-recap
+          anchor. Wrapping it would put two ids in the scroll spy for one section. */}
+      <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
 
       </div>
       )}
@@ -3913,14 +3998,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.social }}
           className="mb-2 border-t border-border/70 pt-6"
-          id="builder-practical-resources"
+          id="resources"
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Layers className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Practical Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="builder-practical-resources" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="resources" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Documentation and references to contribute effectively.</p>
             </div>

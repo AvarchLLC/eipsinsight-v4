@@ -140,28 +140,28 @@ const sidebarSections: SidebarSection[] = [
           { title: "All Calls", href: "/calls" },
           {
             title: "ACD Calls",
-            href: "/calls?series=acd",
+            href: "/calls?series=acd#recent",
             items: [
-              { title: "ACDE — Execution", href: "/calls?series=acd&acd=acde" },
-              { title: "ACDC — Consensus", href: "/calls?series=acd&acd=acdc" },
-              { title: "ACDT — Testing", href: "/calls?series=acd&acd=acdt" },
-              { title: "ACDT-CL Breakout", href: "/calls?series=acd&acd=acdtcl" },
+              { title: "ACDE — Execution", href: "/calls?series=acd&acd=acde#recent" },
+              { title: "ACDC — Consensus", href: "/calls?series=acd&acd=acdc#recent" },
+              { title: "ACDT — Testing", href: "/calls?series=acd&acd=acdt#recent" },
+              { title: "ACDT-CL Breakout", href: "/calls?series=acd&acd=acdtcl#recent" },
             ],
           },
-          { title: "Breakout Calls", href: "/calls?series=breakouts" },
+          { title: "Breakout Calls", href: "/calls?series=breakouts#recent" },
           {
             title: "Decisions",
             href: "/decisions",
             items: [
               { title: "All Decisions", href: "/decisions" },
-              { title: "From ACD", href: "/decisions?series=acd" },
-              { title: "From Breakouts", href: "/decisions?series=breakouts" },
+              { title: "From ACD", href: "/decisions?series=acd#decisions" },
+              { title: "From Breakouts", href: "/decisions?series=breakouts#decisions" },
             ],
           },
         ],
       },
       {
-        title: "EIP Board",
+        title: "Open PR Board",
         icon: ClipboardList,
         href: "/board",
         items: [
@@ -206,7 +206,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           // Most-used first: PR and Editor analytics are the daily drivers.
           { title: "PRs", href: "/analytics/prs" },
-          { title: "Editors", href: "/analytics/editors" },
+          { title: "Editors Leadership Board", href: "/analytics/editors" },
           { title: "EIPs", href: "/analytics/eips" },
           { title: "Reviewers", href: "/analytics/reviewers" },
           { title: "Authors", href: "/analytics/authors" },
@@ -324,7 +324,7 @@ const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>
   editor: {
     // Authors and Contributors are not part of the editorial workflow.
     // (Board moved out of Analytics to its own top-level "EIP Board" item.)
-    Analytics: ["PRs", "Editors", "EIPs", "Reviewers"],
+    Analytics: ["PRs", "Editor Leadership Board", "EIPs", "Reviewers"],
   },
 };
 
@@ -435,23 +435,19 @@ function sortItemsByPersonaPriority(
   });
 }
 
+/**
+ * Display-label overrides for "On this page", keyed by section id.
+ *
+ * Only needed where `toTitle(id)` gets it wrong — section ids are short and
+ * persona-independent, so most auto-title correctly ("trending" → "Trending")
+ * and must NOT be listed here. This map is global across routes, so an entry
+ * here relabels that id on every page: keep keys specific enough not to collide
+ * (that's why home uses "upgrade-watch" while /upgrade uses "upgrades").
+ */
 const SECTION_LABEL_OVERRIDES: Record<string, string> = {
-  "persona-home-workspace": "Workspace",
-  "developer-upgrade-watch": "Upgrade Watch",
-  "developer-governance-over-time": "Over Time",
-  "developer-board-snapshot": "Board",
-  "editor-review-queue": "Review Queue",
-  "editor-category-breakdown": "Breakdown",
-  "editor-browse-snapshot": "Browse",
-  "editor-monthly-insight": "Monthly",
-  "builder-eip-builder-focus": "EIP Builder",
-  "builder-tool-shortcuts": "Tool Shortcuts",
-  "builder-practical-resources": "Resources",
-  "newcomer-learning-resources": "Learning",
-  "newcomer-trending-proposals": "Trending",
-  "newcomer-upgrade-watch": "Upgrade Watch",
-  "newcomer-tools-shortcuts": "Tool Shortcuts",
-  "recent-governance-activity": "Recent Activity",
+  // Home — only the ones auto-titling can't produce.
+  "eip-builder": "EIP Builder",
+  "weekly-recap": "Weekly Standards Recap",
   "explore-detail-header": "Overview",
   "explore-detail-timeline": "Over Time",
   "explore-detail-editor-reviews-24h": "Reviews (24h)",
@@ -594,23 +590,49 @@ function AppSidebarContent() {
         .trim()
         .replace(/\b\w/g, (c) => c.toUpperCase());
 
+    const SECTION_SELECTOR = "section[id], [data-sidebar-section][id]";
+
+    /**
+     * Text of the first heading that belongs to THIS section.
+     *
+     * Headings inside a nested section[id] are ignored — otherwise an embedded
+     * component (a trending list, a chart card) donates one of its item titles
+     * as the section's label, which is how "On this page" ended up showing
+     * proposal names.
+     */
+    const ownHeadingText = (node: HTMLElement): string | null => {
+      const headings = Array.from(node.querySelectorAll<HTMLElement>("h1, h2, h3"));
+      for (const heading of headings) {
+        if (heading.closest(SECTION_SELECTOR) === node) {
+          return heading.textContent?.trim() || null;
+        }
+      }
+      return null;
+    };
+
     const build = () => {
       const query = currentSearchStr ? `?${currentSearchStr}` : "";
       const seen = new Set<string>();
       const seenTitles = new Set<string>();
       const collected: SidebarSubItem[] = [];
-      const nodes = Array.from(document.querySelectorAll<HTMLElement>("section[id], [data-sidebar-section][id]"));
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>(SECTION_SELECTOR));
 
       for (const node of nodes) {
         const id = (node.id || "").trim();
         if (!id || seen.has(id)) continue;
+
+        // Only top-level sections are page sections. A section[id] nested inside
+        // another one belongs to an embedded component that happens to carry its
+        // own anchor (e.g. TrendingProposals inside the home page's #trending);
+        // listing it duplicates the entry the outer section already provides.
+        if (node.parentElement?.closest(SECTION_SELECTOR)) continue;
+
         seen.add(id);
         const fromData = node.getAttribute("data-sidebar-label")?.trim();
-        const heading = node.querySelector<HTMLElement>("h1, h2, h3");
         const title =
           SECTION_LABEL_OVERRIDES[id] ||
           fromData ||
-          heading?.textContent?.trim() ||
+          ownHeadingText(node) ||
           toTitle(id);
         const titleKey = title.toLowerCase().replace(/\s+/g, " ").trim();
         if (seenTitles.has(titleKey)) continue;
