@@ -469,12 +469,23 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
 
 /** Section title that links to its full page, with a hover arrow. Replaces the old
  *  "Explore X" footer buttons — the header itself is now the way in. */
+/**
+ * Section title that doubles as a link to the section's full page.
+ *
+ * Renders a real <h2> because the sidebar scroll spy labels each section from
+ * its first descendant h1/h2/h3 — without one, it reaches into nested
+ * components and mislabels the section with some inner card's heading.
+ * `display: contents` keeps the heading out of the layout, so the link renders
+ * exactly as it did when this was a bare <a>.
+ */
 function SectionTitleLink({ href, className, children }: { href: string; className: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className={cn(className, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
-      {children}
-      <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
-    </Link>
+    <h2 className="contents">
+      <Link href={href} className={cn(className, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
+        {children}
+        <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+      </Link>
+    </h2>
   );
 }
 
@@ -2080,6 +2091,21 @@ export default function EIPsHomePage() {
 
     return {
       grid: { left: 36, right: 10, top: 24, bottom: 56 },
+      graphic: [
+        {
+          type: 'text',
+          left: '33%',
+          top: '33%',
+          style: {
+            text: 'EIPsInsight.com',
+            fill: isDark ? 'rgba(148, 163, 184, 0.25)' : 'rgba(100, 116, 139, 0.25)',
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: 2,
+          },
+          z: 0,
+        },
+      ],
       tooltip: {
         trigger: 'axis',
         backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
@@ -2276,7 +2302,7 @@ export default function EIPsHomePage() {
       )}
 
       {visibleSections.quickAccess && (
-        <section className="mb-6" id="persona-home-workspace">
+        <section className="mb-6" id="workspace">
           <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
@@ -2353,13 +2379,13 @@ export default function EIPsHomePage() {
       )}
       <PersonaDashboardComponent>
       {activePersona === 'editor' && (
-        <section className="mb-6 border-t border-border/70 pt-6" id="editor-contributions-overview">
+        <section className="mb-6 border-t border-border/70 pt-6" id="contributions">
           <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
                 <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editor Leadership Board - {editorContributionWindowLabel}</SectionTitleLink>
-                <CopyLinkButton sectionId="editor-contributions-overview" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="contributions" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
                 Contribution ranking with action coverage and repository breakdown.
@@ -2460,14 +2486,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.learning }}
           className="mb-6"
-          id="newcomer-learning-resources"
+          id="learn"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Learning Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-learning-resources" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="learn" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
             </div>
@@ -2500,14 +2526,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.trending }}
           className="mb-6 border-t border-border/70 pt-6"
-          id={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'}
+          id="trending"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId={activePersona === 'builder' ? 'builder-trending-proposals' : 'developer-trending-proposals'} tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Most discussed proposals shaping Ethereum today.</p>
             </div>
@@ -2523,14 +2549,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.trending }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-trending-proposals"
+          id="trending"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Flame className="h-5 w-5 text-rose-500 shrink-0" />
                 <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-trending-proposals" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
             </div>
@@ -2571,14 +2597,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.upgradeWatch }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-upgrade-watch"
+          id="upgrade-watch"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Package className="h-5 w-5 text-sky-400 shrink-0" />
                 <SectionTitleLink href="/upgrade" className={sectionTitleClass}>Upgrade Hub</SectionTitleLink>
-                <CopyLinkButton sectionId="newcomer-upgrade-watch" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="upgrade-watch" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
             </div>
@@ -2608,14 +2634,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.governanceOverTime }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="developer-governance-over-time"
+          id="over-time"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
                 <SectionTitleLink href="/dashboard" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
-                <CopyLinkButton sectionId="developer-governance-over-time" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="over-time" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
             </div>
@@ -2627,14 +2653,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.governanceOverTime }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="builder-eip-builder-focus"
+          id="eip-builder"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Code className="h-5 w-5 text-purple-400 shrink-0" />
                 <SectionTitleLink href="/eip-builder" className={sectionTitleClass}>EIP Builder</SectionTitleLink>
-                <CopyLinkButton sectionId="builder-eip-builder-focus" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="eip-builder" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
             </div>
@@ -2654,14 +2680,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="developer-board-snapshot"
+          id="board"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Activity className="h-5 w-5 text-blue-400 shrink-0" />
                 <SectionTitleLink href="/board" className={sectionTitleClass}>Board</SectionTitleLink>
-                <CopyLinkButton sectionId="developer-board-snapshot" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="board" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
                 Compact open PR snapshot from the{' '}
@@ -2810,7 +2836,7 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="builder-tool-shortcuts"
+          id="tools"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -2820,7 +2846,7 @@ export default function EIPsHomePage() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
-                <CopyLinkButton sectionId="builder-tool-shortcuts" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
             </div>
@@ -2854,7 +2880,7 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.board }}
           className="mb-6 border-t border-border/70 pt-6"
-          id="newcomer-tools-shortcuts"
+          id="tools"
         >
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
@@ -2864,7 +2890,7 @@ export default function EIPsHomePage() {
               </div>
               <div className="mt-1 flex items-center gap-2">
                 <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
-                <CopyLinkButton sectionId="newcomer-tools-shortcuts" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
             </div>
@@ -2936,7 +2962,7 @@ export default function EIPsHomePage() {
       <div
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.browse }}
         className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
-        id={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
+        id="browse"
       >
       <div className="mb-4 space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -2948,7 +2974,7 @@ export default function EIPsHomePage() {
                   Browse by Status, Category, Repository &amp; Stages
                 </SectionTitleLink>
                 <CopyLinkButton
-                  sectionId={activePersona === 'builder' ? 'builder-browse-snapshot' : 'editor-browse-snapshot'}
+                  sectionId="browse"
                   tooltipLabel="Copy link"
                   className="h-8 w-8 rounded-md"
                 />
@@ -3583,7 +3609,7 @@ export default function EIPsHomePage() {
         <section
           className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
           style={activePersona === 'editor' ? { order: 99 } : { order: sectionOrder.learning }}
-          id="home-reference"
+          id="reference"
         >
           {activePersona === 'editor' && (
             <div className="mb-3 flex items-start justify-between gap-2">
@@ -3591,7 +3617,7 @@ export default function EIPsHomePage() {
                 <div className="inline-flex items-center gap-2">
                   <FileText className="h-5 w-5 text-cyan-400 shrink-0" />
                   <SectionTitleLink href="/resources/faq" className={sectionTitleClass}>Reference</SectionTitleLink>
-                  <CopyLinkButton sectionId="home-reference" tooltipLabel="Copy link" />
+                  <CopyLinkButton sectionId="reference" tooltipLabel="Copy link" />
                 </div>
                 <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
               </div>
@@ -3604,7 +3630,7 @@ export default function EIPsHomePage() {
       <div
         style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}
         className={cn(activePersona === 'editor' && 'mb-6 border-t border-border/70 pt-6')}
-        id="editor-monthly-insight"
+        id="monthly"
       >
       {activePersona !== 'editor' && visibleSections.monthly && <hr className="my-6 border-border" />}
 
@@ -3614,7 +3640,7 @@ export default function EIPsHomePage() {
             <div className="inline-flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
               <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leadership Board</SectionTitleLink>
-              <CopyLinkButton sectionId="editor-monthly-insight" tooltipLabel="Copy link" />
+              <CopyLinkButton sectionId="monthly" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
           </div>
@@ -3891,9 +3917,9 @@ export default function EIPsHomePage() {
       >
       {activePersona !== 'editor' && visibleSections.governance && <hr className="my-6 border-border" />}
 
-      <section className="mb-6 w-full" id="weekly-recap-digest">
-        <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
-      </section>
+      {/* No wrapper <section id>: WeeklyRecapSection owns its own #weekly-recap
+          anchor. Wrapping it would put two ids in the scroll spy for one section. */}
+      <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
 
       </div>
       )}
@@ -3913,14 +3939,14 @@ export default function EIPsHomePage() {
         <section
           style={{ order: sectionOrder.social }}
           className="mb-2 border-t border-border/70 pt-6"
-          id="builder-practical-resources"
+          id="resources"
         >
           <div className="mb-3 flex items-start justify-between gap-3">
             <div>
               <div className="inline-flex items-center gap-2">
                 <Layers className="h-5 w-5 text-emerald-400 shrink-0" />
                 <SectionTitleLink href="/resources" className={sectionTitleClass}>Practical Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="builder-practical-resources" tooltipLabel="Copy link" />
+                <CopyLinkButton sectionId="resources" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>Documentation and references to contribute effectively.</p>
             </div>

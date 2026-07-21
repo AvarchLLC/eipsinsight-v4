@@ -76,7 +76,7 @@ export default function DeveloperUpgradeWatchSection({
   };
 
   return (
-    <section className="mb-6 border-t border-border/70 pt-6" id="developer-upgrade-watch">
+    <section className="mb-6 border-t border-border/70 pt-6" id="upgrade-watch">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
@@ -86,7 +86,7 @@ export default function DeveloperUpgradeWatchSection({
               Upgrade Hub
               <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
             </Link>
-            <CopyLinkButton sectionId="developer-upgrade-watch" className="h-8 w-8 rounded-md" />
+            <CopyLinkButton sectionId="upgrade-watch" className="h-8 w-8 rounded-md" />
           </div>
           <p className={sectionSubtitleClass}>EIP composition timeline by upgrade — proposed through included.</p>
         </div>
@@ -154,12 +154,12 @@ export default function DeveloperUpgradeWatchSection({
         ) : chartView === 'composition' ? (
           <div className="relative">
             <UpgradeTimelineChart data={upgradeTimelineRows} upgradeName={upgradeName} />
-            <ChartWatermark />
+            <ChartWatermark position="one-third" />
           </div>
         ) : (
           <div className="relative">
             <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
-            <ChartWatermark />
+            <ChartWatermark position="one-third" />
           </div>
         )}
         {chartView === 'compact' && (
