@@ -7,7 +7,7 @@ import { ArrowUpRight, Download, Package } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { CopyLinkButton } from '@/components/header';
-import { ChartWatermark } from '@/components/chart-watermark';
+import { ChartFooter } from '@/components/chart-footer';
 import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
 
 type UpgradeOption = {
@@ -152,14 +152,12 @@ export default function DeveloperUpgradeWatchSection({
             No timeline data available for this upgrade.
           </div>
         ) : chartView === 'composition' ? (
-          <div className="relative">
+          <div>
             <UpgradeTimelineChart data={upgradeTimelineRows} upgradeName={upgradeName} />
-            <ChartWatermark position="one-third" />
           </div>
         ) : (
-          <div className="relative">
+          <div>
             <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '220px', width: '100%' }} opts={{ renderer: 'svg' }} />
-            <ChartWatermark position="one-third" />
           </div>
         )}
         {chartView === 'compact' && (
@@ -177,6 +175,7 @@ export default function DeveloperUpgradeWatchSection({
           ))}
         </div>
         )}
+        <ChartFooter />
         {showTable && (
           <div className="mt-3 overflow-x-auto rounded-lg border border-border/70">
             <table className="min-w-full text-xs">

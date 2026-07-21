@@ -2091,21 +2091,6 @@ export default function EIPsHomePage() {
 
     return {
       grid: { left: 36, right: 10, top: 24, bottom: 56 },
-      graphic: [
-        {
-          type: 'text',
-          left: '33%',
-          top: '33%',
-          style: {
-            text: 'EIPsInsight.com',
-            fill: isDark ? 'rgba(148, 163, 184, 0.25)' : 'rgba(100, 116, 139, 0.25)',
-            fontSize: 13,
-            fontWeight: 700,
-            letterSpacing: 2,
-          },
-          z: 0,
-        },
-      ],
       tooltip: {
         trigger: 'axis',
         backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
