@@ -231,6 +231,13 @@ function BoardBrowser() {
 
   // Mirror state into the URL so "Copy link" (and browser back/refresh) actually work.
   useEffect(() => {
+    if (tab === "agenda") {
+      const p = new URLSearchParams(searchParams.toString());
+      p.set("tab", "agenda");
+      const qs = p.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      return;
+    }
     const p = new URLSearchParams();
     if (repo) p.set("repo", repo);
     if (selectedGovStates.length === 0) p.set("status", "none");
@@ -245,7 +252,7 @@ function BoardBrowser() {
     if (hasConflicts) p.set("conflict", "1");
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router]);
+  }, [tab, repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;

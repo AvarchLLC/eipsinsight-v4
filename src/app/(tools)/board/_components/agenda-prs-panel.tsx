@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   CalendarClock,
   ChevronDown,
@@ -87,11 +88,20 @@ function formatDate(value: string | Date | null | undefined): string {
 }
 
 export function AgendaPrsPanel() {
-  const [series, setSeries] = useState<string>('');
-  const [window, setWindow] = useState<'upcoming' | 'all'>('all');
-  const [search, setSearch] = useState('');
-  const [debounced, setDebounced] = useState('');
-  const [page, setPage] = useState(1);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [series, setSeries] = useState<string>(() => {
+    const s = searchParams.get('series') || searchParams.get('acd_series');
+    return s && ['acde', 'acdc', 'acdt', 'acdtcl'].includes(s) ? s : '';
+  });
+  const [window, setWindow] = useState<'upcoming' | 'all'>(() => {
+    return searchParams.get('window') === 'upcoming' ? 'upcoming' : 'all';
+  });
+  const [search, setSearch] = useState(() => searchParams.get('acd_q') || '');
+  const [debounced, setDebounced] = useState(() => searchParams.get('acd_q') || '');
+  const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('acd_page')) || 1));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<{
@@ -106,6 +116,22 @@ export function AgendaPrsPanel() {
     const t = setTimeout(() => setDebounced(search), 300);
     return () => clearTimeout(t);
   }, [search]);
+
+  // Mirror agenda state to URL search parameters so sharing links retains tab + filters
+  useEffect(() => {
+    const p = new URLSearchParams(searchParams.toString());
+    p.set('tab', 'agenda');
+    if (series) p.set('series', series);
+    else p.delete('series');
+    if (window !== 'all') p.set('window', window);
+    else p.delete('window');
+    if (debounced) p.set('acd_q', debounced);
+    else p.delete('acd_q');
+    if (page > 1) p.set('acd_page', String(page));
+    else p.delete('acd_page');
+    const qs = p.toString();
+    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+  }, [series, window, debounced, page, pathname, router, searchParams]);
 
   // Filter changes reset paging in the handlers rather than via an effect on
   // [series, window, debounced] — that effect would setState synchronously on
