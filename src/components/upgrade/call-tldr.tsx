@@ -1,8 +1,5 @@
 'use client';
 
-import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 /**
  * Defensive renderer for ACDbot tldr.json payloads. The shape varies across
@@ -101,9 +98,12 @@ function TldrSection({ label, value }: { label: string; value: unknown }) {
   return null;
 }
 
+/**
+ * Always-expanded call summary. The summary is the primary reason to open a call
+ * page, so it is not collapsible — the meeting chat carries the collapse instead,
+ * since that is the long, skimmable artifact.
+ */
 export function CallTldr({ tldr }: { tldr: unknown }) {
-  const [expanded, setExpanded] = useState(false);
-
   if (!tldr || typeof tldr !== 'object') return null;
   const sections = Object.entries(tldr as Record<string, unknown>).filter(
     ([key, value]) => !SKIP_KEYS.has(key.toLowerCase()) && value != null
@@ -111,30 +111,10 @@ export function CallTldr({ tldr }: { tldr: unknown }) {
   if (sections.length === 0) return null;
 
   return (
-    <div className="mt-2">
-      <div
-        className={cn(
-          'grid transition-[grid-template-rows] duration-300 ease-in-out',
-          expanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
-        )}
-      >
-        <div className="overflow-hidden">
-          <div className="space-y-3 pb-2 pt-1">
-            {sections.map(([key, value]) => (
-              <TldrSection key={key} label={titleize(key)} value={value} />
-            ))}
-          </div>
-        </div>
-      </div>
-      <button
-        onClick={() => setExpanded((current) => !current)}
-        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-      >
-        <ChevronDown
-          className={cn('h-3.5 w-3.5 transition-transform duration-300', expanded && 'rotate-180')}
-        />
-        {expanded ? 'Hide summary' : 'Show summary'}
-      </button>
+    <div className="mt-2 space-y-3">
+      {sections.map(([key, value]) => (
+        <TldrSection key={key} label={titleize(key)} value={value} />
+      ))}
     </div>
   );
 }

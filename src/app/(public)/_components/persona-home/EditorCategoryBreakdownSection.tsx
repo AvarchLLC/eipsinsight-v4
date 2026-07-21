@@ -6,6 +6,8 @@ import ReactECharts from 'echarts-for-react';
 import { ArrowRight, CircleHelp, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { CopyLinkButton } from '@/components/header';
+import { ChartFooter } from '@/components/chart-footer';
+import { ChartWatermark } from '@/components/chart-watermark';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
@@ -52,13 +54,13 @@ export default function EditorCategoryBreakdownSection({
     'Awaited means the PR is in Draft state.';
 
   return (
-    <section className="mb-6 border-t border-border/70 pt-6" id="editor-category-breakdown">
+    <section className="mb-6 border-t border-border/70 pt-6" id="categories">
       <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="inline-flex items-center gap-2">
             <Layers className="h-5 w-5 text-violet-400 shrink-0" />
             <h2 className={sectionTitleClass}>Category Breakdown</h2>
-            <CopyLinkButton sectionId="editor-category-breakdown" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+            <CopyLinkButton sectionId="categories" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
           <p className={sectionSubtitleClass}>Participants × process stacked distribution for open PRs.</p>
           <p className="mt-1 text-[11px] text-muted-foreground">Month context: {monthLabelText}</p>
@@ -131,11 +133,14 @@ export default function EditorCategoryBreakdownSection({
         ) : !categoryBreakdownChartOption ? (
           <p className="py-8 text-center text-sm text-muted-foreground">No category data available.</p>
         ) : (
-          <ReactECharts
-            option={categoryBreakdownChartOption as object}
-            style={{ height: '300px', width: '100%' }}
-            opts={{ renderer: 'svg' }}
-          />
+          <div className="relative">
+            <ReactECharts
+              option={categoryBreakdownChartOption as object}
+              style={{ height: '300px', width: '100%' }}
+              opts={{ renderer: 'svg' }}
+            />
+            <ChartWatermark position="center" />
+          </div>
         )}
         <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-2 text-xs text-muted-foreground">
           <span>
@@ -161,6 +166,7 @@ export default function EditorCategoryBreakdownSection({
             </button>
           </div>
         </div>
+        <ChartFooter />
       </div>
     </section>
   );

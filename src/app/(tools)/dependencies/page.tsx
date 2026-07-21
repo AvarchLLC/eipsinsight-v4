@@ -16,6 +16,7 @@ import {
 import { upgradeDependencies } from "@/data/upgrade-dependencies";
 import { eipTitles } from "@/data/network-upgrades";
 import { cn } from "@/lib/utils";
+import { chartTooltip } from '@/lib/chart-theme';
 
 type UpgradeName = (typeof upgradeDependencies)[number]["name"];
 type UpgradeFilter = UpgradeName | "All";
@@ -266,11 +267,8 @@ export default function DependenciesPage() {
     return {
       animationDurationUpdate: 250,
       backgroundColor: "transparent",
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: "item",
-        backgroundColor: "rgba(15,23,42,0.96)",
-        borderColor: "rgba(148,163,184,0.25)",
-        textStyle: { color: "#e2e8f0", fontSize: 12 },
         formatter: (params: { dataType: string; data: GraphNode | GraphLink }) => {
           if (params.dataType === "edge") {
             const link = params.data as GraphLink;
@@ -280,7 +278,7 @@ export default function DependenciesPage() {
           const node = params.data as GraphNode;
           return `${node.name}<br/>${node.title}<br/>${node.category}`;
         },
-      },
+      }),
       series: [
         {
           type: "graph",

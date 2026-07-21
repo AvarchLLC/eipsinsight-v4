@@ -66,6 +66,7 @@ import { cn } from '@/lib/utils';
 import { ASSOCIATE_EIP_EDITORS, CANONICAL_EIP_EDITORS } from '@/data/eip-contributor-roles';
 import { getUpgradeTimelineData } from '@/data/upgrade-timelines';
 import { useEffectivePersona, useIsHydrated } from '@/stores/personaStore';
+import { chartTooltip, chartTooltipRow, chartTooltipTitle, CHART_TOOLTIP_BORDER } from '@/lib/chart-theme';
 
 type Dimension = 'status' | 'category' | 'repo' | 'stages';
 type SortBy = 'github' | 'eip' | 'title' | 'author' | 'type' | 'category' | 'status' | 'updated_at';
@@ -845,7 +846,9 @@ export default function EIPsHomePage() {
   const [downloadingLeaderboard, setDownloadingLeaderboard] = useState(false);
   const [monthlyDeltaUpdatedAt, setMonthlyDeltaUpdatedAt] = useState<string | null>(null);
   const [monthlyLeaderboardUpdatedAt, setMonthlyLeaderboardUpdatedAt] = useState<string | null>(null);
-  const [showProposalTable, setShowProposalTable] = useState(true);
+  // RIPs are a separate track — opt-in so status/category counts are not skewed.
+  const [includeRips, setIncludeRips] = useState(false);
+  const [showProposalTable, setShowProposalTable] = useState(false);
   const [showPersonaWorkspace, setShowPersonaWorkspace] = useState(true);
   const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
   const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('');
@@ -902,8 +905,11 @@ export default function EIPsHomePage() {
     setPage(1);
   }, [dimension, activeBucket, sortBy, sortDir, columnSearch]);
 
+  // Collapse the proposal table whenever the persona changes. It stays hidden for
+  // every persona now (not just editor) — the distribution cards are the scannable
+  // summary, and the table is opt-in via "Show table".
   useEffect(() => {
-    setShowProposalTable(activePersona !== 'editor');
+    setShowProposalTable(false);
   }, [activePersona]);
 
   useEffect(() => {
@@ -1151,7 +1157,7 @@ export default function EIPsHomePage() {
       (async () => {
         setDistributionLoading(true);
         try {
-          const distRes = await client.standards.getUnifiedDistribution({ dimension: dimension as 'status' | 'category' | 'repo' });
+          const distRes = await client.standards.getUnifiedDistribution({ dimension: dimension as 'status' | 'category' | 'repo', includeRips });
           if (!cancelled) setDistribution(distRes);
         } catch (err) {
           console.error('Failed to load homepage distribution:', err);
@@ -1163,7 +1169,7 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [dimension]);
+  }, [dimension, includeRips]);
 
   // Fetch status sub-distribution when category/repo bucket is selected
   useEffect(() => {
@@ -1272,6 +1278,7 @@ export default function EIPsHomePage() {
             sortDir,
             dimension: dimension as 'status' | 'category' | 'repo',
             bucket: activeBucket ?? undefined,
+            includeRips,
             columnSearch: {
               github: debouncedColumnSearch.github || undefined,
               eip: debouncedColumnSearch.eip || undefined,
@@ -1296,7 +1303,7 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [dimension, page, sortBy, sortDir, activeBucket, debouncedColumnSearch]);
+  }, [dimension, page, sortBy, sortDir, activeBucket, debouncedColumnSearch, includeRips]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1450,14 +1457,11 @@ export default function EIPsHomePage() {
     [febInsightPieData]
   );
   const febInsightDonutOption = useMemo(() => ({
-    tooltip: {
+    tooltip: chartTooltip({
       trigger: 'item',
       formatter: (params: { name: string; value: number; percent: number }) =>
         `${params.name}<br/>${params.value} (${params.percent}%)`,
-      backgroundColor: isDark ? 'rgba(15,23,42,0.92)' : 'rgba(255,255,255,0.98)',
-      borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
-      textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
-    },
+    }),
     legend: {
       show: true,
       orient: 'vertical',
@@ -1564,12 +1568,9 @@ export default function EIPsHomePage() {
     });
 
     return {
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? 'rgba(15,23,42,0.94)' : 'rgba(255,255,255,0.98)',
-        borderColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)',
-        textStyle: { color: isDark ? '#e2e8f0' : '#0f172a', fontSize: 12 },
         formatter: (params: Array<{ seriesName: string; value: number; marker: string; axisValue: string }>) => {
           if (!params?.length) return '';
           const actor = params[0]?.axisValue ?? '';
@@ -1588,7 +1589,7 @@ export default function EIPsHomePage() {
           `;
           return [header, ...lines, `<strong>Total: ${total.toLocaleString()}</strong>`].join('<br/>');
         },
-      },
+      }),
       legend: {
         top: 0,
         textStyle: { color: isDark ? '#cbd5e1' : '#475569', fontSize: 11 },
@@ -1713,6 +1714,7 @@ export default function EIPsHomePage() {
       const res = await client.standards.exportUnifiedDetailedCSV({
         dimension: csvDimension,
         bucket: activeBucket ?? undefined,
+        includeRips,
         search: undefined,
         columnSearch: {
           github: columnSearch.github || undefined,
@@ -2031,10 +2033,36 @@ export default function EIPsHomePage() {
       backgroundColor: 'transparent',
       tooltip: {
         trigger: 'axis',
-        axisPointer: { type: 'shadow' },
-        backgroundColor: isDark ? '#020617' : '#ffffff',
-        borderColor: isDark ? '#1f2937' : '#e2e8f0',
-        textStyle: { color: isDark ? '#e5e7eb' : '#0f172a' },
+        axisPointer: {
+          type: 'line',
+          lineStyle: {
+            color: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.4)',
+            type: 'dashed',
+            width: 1.5,
+          },
+        },
+        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
+        borderColor: isDark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
+        borderWidth: 1,
+        padding: [10, 14],
+        textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
+        extraCssText:
+          'border-style: dotted !important; box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-radius: 12px; backdrop-filter: blur(16px); min-width: 170px;',
+        formatter: (params: unknown) => {
+          const items = Array.isArray(params) ? (params as any[]) : [];
+          if (!items.length) return '';
+          const name = items[0].axisValue;
+          let html = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;color:${isDark ? '#f8fafc' : '#0f172a'}">${name}</div>`;
+          let total = 0;
+          for (const item of items) {
+            const val = item.value || 0;
+            if (val === 0) continue;
+            total += val;
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
+          }
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total PRs</span><span style="font-weight:800;color:${isDark ? '#f8fafc' : '#0f172a'}">${total}</span></div>`;
+          return html;
+        },
       },
       legend: {
         top: 0,
@@ -2091,39 +2119,31 @@ export default function EIPsHomePage() {
 
     return {
       grid: { left: 16, right: 16, top: 32, bottom: 44, containLabel: true },
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: 'axis',
         axisPointer: {
           type: 'line',
-          lineStyle: {
-            color: isDark ? 'rgba(148, 163, 184, 0.4)' : 'rgba(100, 116, 139, 0.4)',
-            type: 'dashed',
-            width: 1.5,
-          },
+          lineStyle: { color: 'var(--border)', type: 'dashed', width: 1.5 },
         },
-        backgroundColor: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-        borderColor: isDark ? 'rgba(148, 163, 184, 0.3)' : 'rgba(148, 163, 184, 0.4)',
-        borderWidth: 1,
-        padding: [10, 14],
-        textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
-        extraCssText:
-          'border-style: dotted !important; box-shadow: 0 12px 32px rgba(0,0,0,0.35); border-radius: 12px; backdrop-filter: blur(16px); min-width: 170px;',
         formatter: (params: unknown) => {
           const items = Array.isArray(params) ? (params as any[]) : [];
           if (!items.length) return '';
-          const date = items[0].axisValue;
-          let html = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;color:${isDark ? '#f8fafc' : '#0f172a'}">${date}</div>`;
+
+          let html = chartTooltipTitle(items[0].axisValue);
           let total = 0;
           for (const item of items) {
             const val = item.value || 0;
             if (val === 0) continue;
             total += val;
-            html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
+            html += chartTooltipRow(item.seriesName, val, item.color);
           }
-          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px dashed ${isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#f8fafc' : '#0f172a'}">${total}</span></div>`;
+          html +=
+            `<div style="margin-top:8px;padding-top:6px;border-top:1px solid ${CHART_TOOLTIP_BORDER}">` +
+            chartTooltipRow('Total EIPs', total) +
+            `</div>`;
           return html;
         },
-      },
+      }, { minWidth: 172 }),
       legend: {
         top: 0,
         right: 0,
@@ -3000,6 +3020,32 @@ export default function EIPsHomePage() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Repo view is the EIPs/ERCs/RIPs split itself, so the toggle is
+                meaningless there — hidden rather than shown as a no-op. */}
+            {dimension !== 'repo' && (
+              <label
+                className={cn(
+                  'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
+                  'h-8 focus-within:ring-2 focus-within:ring-ring/40',
+                  includeRips
+                    ? 'border-primary/50 bg-primary/10 text-foreground'
+                    : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
+                )}
+                title="RIPs are a separate track — off by default so status and category counts reflect EIPs and ERCs only."
+              >
+                <input
+                  type="checkbox"
+                  checked={includeRips}
+                  onChange={(e) => {
+                    setActiveBucket(null);
+                    setPage(1);
+                    setIncludeRips(e.target.checked);
+                  }}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                Include RIPs
+              </label>
+            )}
             {(() => {
               const BrowseIcon =
                 dimension === 'status'
@@ -3370,7 +3416,7 @@ export default function EIPsHomePage() {
 
       <div className="mb-2 flex items-center justify-between gap-2">
         <p className="text-xs font-medium text-muted-foreground">
-          Proposal table view{activePersona === 'editor' ? ' (hidden by default for editor workflow)' : ''}
+          Proposal table view
         </p>
         <button
           type="button"

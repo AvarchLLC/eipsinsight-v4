@@ -191,6 +191,10 @@ export default async function CallDetailPage({ params }: Props) {
       {/* Below: summary + decisions/eips/links */}
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
         <div className="space-y-8 lg:col-span-2">
+          {/* Meeting chat sits above the summary and is collapsed by default, so the
+              always-expanded summary below it stays close to the top of the column. */}
+          {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
+
           <section className="space-y-3">
             <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
               <FileText className="h-4 w-4 text-muted-foreground" />
@@ -204,9 +208,6 @@ export default async function CallDetailPage({ params }: Props) {
               </p>
             )}
           </section>
-
-          {/* Meeting chat */}
-          {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
 
           {/* Transcript fallback when there's a transcript but no embeddable video */}
           {call.has_transcript && !youtubeId && (

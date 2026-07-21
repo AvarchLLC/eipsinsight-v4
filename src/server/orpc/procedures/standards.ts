@@ -163,6 +163,12 @@ const tableInputSchema = z.object({
 
 const unifiedDistributionInputSchema = z.object({
   dimension: z.enum(['status', 'category', 'repo']).default('status'),
+  /**
+   * RIPs are a separate track from EIPs/ERCs, so they're opt-in — mixing them
+   * into a status or category breakdown by default skews the counts. Ignored for
+   * the `repo` dimension, where the whole point is the EIPs/ERCs/RIPs split.
+   */
+  includeRips: z.boolean().optional().default(false),
 })
 
 const unifiedTableInputSchema = z.object({
@@ -173,6 +179,8 @@ const unifiedTableInputSchema = z.object({
   search: z.string().optional(),
   dimension: z.enum(['status', 'category', 'repo']).optional(),
   bucket: z.string().optional(),
+  /** See unifiedDistributionInputSchema — kept in sync so cards and table agree. */
+  includeRips: z.boolean().optional().default(false),
   columnSearch: z.object({
     eip: z.string().optional(),
     github: z.string().optional(),
@@ -898,6 +906,23 @@ const results = await prisma.$queryRawUnsafe<Array<{
         : input.dimension === 'repo'
           ? 'repo_group'
           : 'status';
+      // The repo breakdown exists to show the EIPs/ERCs/RIPs split, so the toggle
+      // is ignored there — dropping RIPs would silently remove a whole bucket.
+      const includeRips = input.dimension === 'repo' || input.includeRips;
+      const ripsBranch = includeRips
+        ? `
+          UNION ALL
+          SELECT
+            COALESCE(NULLIF(r.status, ''), 'Unknown') AS status,
+            CASE
+              WHEN COALESCE(r.title, '') ~* '\\mRRC[-\\s]?[0-9]+' OR COALESCE(r.title, '') ~* '^RRC\\M'
+                THEN 'RRC'
+              ELSE 'RIP'
+            END AS category,
+            'RIPs'::text AS repo_group
+          FROM rips r
+          WHERE r.rip_number <> 0`
+        : '';
       const results = await prisma.$queryRawUnsafe<Array<{ bucket: string; count: bigint }>>(
         `
         WITH unified AS (
@@ -912,17 +937,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
           JOIN eips e ON e.id = s.eip_id
           LEFT JOIN repositories r ON r.id = s.repository_id
           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
-          UNION ALL
-          SELECT
-            COALESCE(NULLIF(r.status, ''), 'Unknown') AS status,
-            CASE
-              WHEN COALESCE(r.title, '') ~* '\\mRRC[-\\s]?[0-9]+' OR COALESCE(r.title, '') ~* '^RRC\\M'
-                THEN 'RRC'
-              ELSE 'RIP'
-            END AS category,
-            'RIPs'::text AS repo_group
-          FROM rips r
-          WHERE r.rip_number <> 0
+          ${ripsBranch}
         )
         SELECT ${field} AS bucket, COUNT(*)::bigint AS count
         FROM unified
@@ -945,6 +960,10 @@ const results = await prisma.$queryRawUnsafe<Array<{
       const search = input.search?.trim() ?? '';
       const hasSearch = search.length > 0;
       const hasBucket = Boolean(input.dimension && input.bucket);
+      // Literal (not a bind param) because it's interpolated into the rip_rows CTE,
+      // which is gated to zero rows rather than removed so the UNION keeps its shape.
+      // Always TRUE for the repo dimension — see unifiedDistributionInputSchema.
+      const ripRowsEnabled = input.dimension === 'repo' || input.includeRips ? 'TRUE' : 'FALSE';
       const bucketField = input.dimension === 'category'
         ? 'category'
         : input.dimension === 'repo'
@@ -1001,7 +1020,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
             COALESCE(MAX(rc.commit_date), r.created_at, NOW()) AS updated_at
           FROM rips r
           LEFT JOIN rip_commits rc ON rc.rip_id = r.id
-          WHERE r.rip_number <> 0
+          WHERE r.rip_number <> 0 AND ${ripRowsEnabled}
           GROUP BY r.rip_number, r.title, r.author, r.status, r.created_at
         ),
         eip_rows AS (
@@ -1109,7 +1128,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
             COALESCE(MAX(rc.commit_date), r.created_at, NOW()) AS updated_at
           FROM rips r
           LEFT JOIN rip_commits rc ON rc.rip_id = r.id
-          WHERE r.rip_number <> 0
+          WHERE r.rip_number <> 0 AND ${ripRowsEnabled}
           GROUP BY r.rip_number, r.title, r.author, r.status, r.created_at
         ),
         eip_rows AS (
@@ -1214,6 +1233,8 @@ const results = await prisma.$queryRawUnsafe<Array<{
       dimension: z.enum(['status', 'category', 'repo']).default('status'),
       bucket: z.string().optional(),
       search: z.string().optional(),
+      /** Mirrors the table's toggle so an export matches what's on screen. */
+      includeRips: z.boolean().optional().default(false),
       columnSearch: z.object({
         eip: z.string().optional(),
         github: z.string().optional(),
@@ -1229,6 +1250,8 @@ const results = await prisma.$queryRawUnsafe<Array<{
       const search = input.search?.trim() ?? '';
       const hasSearch = search.length > 0;
       const hasBucket = Boolean(input.bucket);
+      // See getUnifiedProposals — same gating so the CSV matches the on-screen table.
+      const ripRowsEnabled = input.dimension === 'repo' || input.includeRips ? 'TRUE' : 'FALSE';
       const columnSearch = input.columnSearch ?? {};
       const eipSearch = columnSearch.eip?.trim() ?? '';
       const githubSearch = columnSearch.github?.trim() ?? '';
@@ -1289,7 +1312,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
             COALESCE(MAX(rc.commit_date), r.created_at, NOW()) AS updated_at
           FROM rips r
           LEFT JOIN rip_commits rc ON rc.rip_id = r.id
-          WHERE r.rip_number <> 0
+          WHERE r.rip_number <> 0 AND ${ripRowsEnabled}
           GROUP BY r.rip_number, r.title, r.author, r.status, r.created_at
         )
         SELECT ${bucketField} AS bucket, COUNT(*)::bigint AS count
@@ -1367,7 +1390,7 @@ const results = await prisma.$queryRawUnsafe<Array<{
             COALESCE(MAX(rc.commit_date), r.created_at, NOW()) AS updated_at
           FROM rips r
           LEFT JOIN rip_commits rc ON rc.rip_id = r.id
-          WHERE r.rip_number <> 0
+          WHERE r.rip_number <> 0 AND ${ripRowsEnabled}
           GROUP BY r.rip_number, r.title, r.author, r.status, r.created_at
         ),
         eip_rows AS (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { MessagesSquare, Play, Search, X } from 'lucide-react';
+import { MessagesSquare, Play, Search, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ChatMessage } from '@/lib/call-artifacts';
 
@@ -58,6 +58,7 @@ function renderText(text: string) {
 }
 
 export function CallChat({ messages }: { messages: ChatMessage[] }) {
+  const [open, setOpen] = useState(false);
   const [search, setSearch] = useState('');
   const query = search.trim().toLowerCase();
 
@@ -75,14 +76,34 @@ export function CallChat({ messages }: { messages: ChatMessage[] }) {
 
   return (
     <section className="space-y-3">
-      <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-        <MessagesSquare className="h-4 w-4 text-muted-foreground" />
-        Meeting chat
-        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
-          {messages.length}
-        </span>
+      {/* Collapsed by default: the chat log is long and secondary to the summary,
+          which now sits below it and is always expanded. */}
+      <h2 className="text-lg font-semibold tracking-tight text-foreground">
+        <button
+          type="button"
+          onClick={() => setOpen((current) => !current)}
+          aria-expanded={open}
+          aria-controls="meeting-chat-panel"
+          className="group flex w-full items-center gap-2 text-left transition-colors hover:text-primary"
+        >
+          <MessagesSquare className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+          Meeting chat
+          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-semibold text-muted-foreground">
+            {messages.length}
+          </span>
+          <ChevronDown
+            className={cn(
+              'h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-300',
+              open && 'rotate-180'
+            )}
+          />
+        </button>
       </h2>
-      <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+      <div
+        id="meeting-chat-panel"
+        hidden={!open}
+        className="overflow-hidden rounded-xl border border-border bg-card/60"
+      >
         <div className="border-b border-border/50 p-3">
           <div className="relative">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

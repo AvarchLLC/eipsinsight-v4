@@ -167,7 +167,9 @@ export function CallPlayer({
   const hasTranscript = cues.length > 0;
 
   return (
-    <div className={cn('grid gap-4', hasTranscript && 'lg:grid-cols-5')}>
+    // lg:pb-7 reserves room for the playhead caption, which is lifted out of flow
+    // below so the video box alone sets the row height (see the caption comment).
+    <div className={cn('grid gap-4', hasTranscript && 'lg:grid-cols-5 lg:pb-7')}>
       {/* Video */}
       <div className={cn(hasTranscript && 'lg:col-span-3')}>
         <div className="lg:sticky lg:top-20">
@@ -175,7 +177,10 @@ export function CallPlayer({
             <div ref={mountRef} className="absolute inset-0 h-full w-full" />
           </div>
           {ready && (
-            <div className="mt-2 flex items-center gap-2 px-0.5 text-xs text-muted-foreground">
+            // On lg this floats just under the video instead of adding to the column's
+            // height — otherwise the transcript (which fills the column) would always
+            // sit ~26px taller than the video box it is meant to line up with.
+            <div className="mt-2 flex items-center gap-2 px-0.5 text-xs text-muted-foreground lg:absolute lg:inset-x-0 lg:top-full">
               {playing ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
               <span className="font-mono">{fmt(currentTime)}</span>
               {hasTranscript && activeIdx >= 0 && (
@@ -186,10 +191,13 @@ export function CallPlayer({
         </div>
       </div>
 
-      {/* Transcript */}
+      {/* Transcript — on lg it is absolutely positioned inside its grid cell so it
+          matches the video column's height exactly. The video (aspect-video) is then
+          the only auto-height item, so it alone drives the row height and the
+          transcript fills it rather than running taller on its own max-height. */}
       {hasTranscript && (
-        <div className="lg:col-span-2">
-          <div className="flex h-full flex-col rounded-2xl border border-border/50 bg-card/60">
+        <div className="lg:relative lg:col-span-2">
+          <div className="flex h-full flex-col rounded-2xl border border-border/50 bg-card/60 lg:absolute lg:inset-0">
             <div className="border-b border-border/50 p-3">
               <div className="mb-2 flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-foreground">Transcript</h3>
@@ -223,7 +231,9 @@ export function CallPlayer({
             </div>
             <div
               ref={listRef}
-              className="max-h-[62vh] min-h-64 overflow-y-auto p-1.5"
+              // Mobile keeps a viewport cap (the card is static there); on lg the card
+              // is height-bound by the grid cell, so the list just flexes to fill it.
+              className="max-h-[62vh] min-h-64 overflow-y-auto p-1.5 lg:max-h-none lg:min-h-0 lg:flex-1"
             >
               {visibleCues.length === 0 ? (
                 <p className="px-2 py-6 text-center text-xs text-muted-foreground">

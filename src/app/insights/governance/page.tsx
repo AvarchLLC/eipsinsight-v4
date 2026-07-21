@@ -9,6 +9,7 @@ import { PageHeader, SectionSeparator } from "@/components/header";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { chartTooltip } from '@/lib/chart-theme';
 
 const STATE_ORDER = ["STALLED", "WAITING_ON_EDITOR", "WAITING_ON_AUTHOR", "MERGED", "CLOSED"] as const;
 const STATE_COLORS: Record<string, string> = {
@@ -171,12 +172,7 @@ export default function GovernanceProcessPage() {
   }, [stateMap]);
 
   const governanceStateOption = useMemo(() => ({
-    tooltip: {
-      trigger: "item",
-      backgroundColor: "rgba(15,23,42,0.96)",
-      borderColor: "rgba(148,163,184,0.25)",
-      textStyle: { color: "#e2e8f0", fontSize: 12 },
-    },
+    tooltip: chartTooltip({ trigger: "item" }),
     grid: { left: 0, right: 8, top: 6, bottom: 6, containLabel: true },
     xAxis: {
       type: "value",

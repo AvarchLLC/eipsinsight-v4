@@ -296,7 +296,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
   const totalCalls = (data?.recentCalls.length ?? 0) + (data?.devnets.length ?? 0);
 
   return (
-    <section className="mb-8 w-full" id="weekly-recap-digest">
+    <section className="mb-8 w-full" id="weekly-recap">
       {/* Section Header */}
       <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -312,7 +312,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
               Weekly Standards Recap & Audit Feed
               <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
             </Link>
-            <CopyLinkButton sectionId="weekly-recap-digest" tooltipLabel="Copy link" />
+            <CopyLinkButton sectionId="weekly-recap" tooltipLabel="Copy link" />
           </div>
           <p className={sectionSubtitleClass || 'mt-1 text-sm text-muted-foreground'}>
             Verifiable, real-time audit feed of new EIP proposals, status transitions, merged PRs, editor reviews, devnets, and ACD call decisions.

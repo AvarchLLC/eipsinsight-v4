@@ -130,13 +130,13 @@ export default function EditorReviewQueueSection({
   }, [downloadingReport, editorRepoFilter, selectedBoardProcesses]);
 
   return (
-    <section className="mb-6 border-t border-border/70 pt-6" id="editor-review-queue">
+    <section className="mb-6 border-t border-border/70 pt-6" id="review-queue">
       <div className="mb-4 flex items-start justify-between gap-3">
         <div>
           <div className="inline-flex items-center gap-2">
             <GitPullRequest className="h-5 w-5 text-rose-400 shrink-0" />
             <h2 className={sectionTitleClass}>Editor Review Queue</h2>
-            <CopyLinkButton sectionId="editor-review-queue" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
+            <CopyLinkButton sectionId="review-queue" tooltipLabel="Copy link" className="h-8 w-8 rounded-md" />
           </div>
           <p className={sectionSubtitleClass}>
             Open PRs currently waiting on editor action in the{' '}

@@ -54,18 +54,28 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  // Initialise from the URL so shared links restore the exact filter state.
-  const [series, setSeries] = useState<SeriesFilterValue>(() => {
+  // The URL is the source of truth — NOT a useState initialiser. Sidebar deep links
+  // (?series=acd) are client-side navigations that re-render without remounting, so an
+  // initialiser would only ever read the first URL and later links would silently no-op.
+  const series = useMemo<SeriesFilterValue>(() => {
     const g = searchParams.get('series');
     if (g === 'acd') return { group: 'acd', acd: searchParams.get('acd') ?? 'all' };
     if (g === 'breakouts') return { group: 'breakouts', acd: 'all' };
     return DEFAULT_SERIES_FILTER;
-  });
-  const [type, setType] = useState<DecisionType | 'all'>(() => {
+  }, [searchParams]);
+  const type = useMemo<DecisionType | 'all'>(() => {
     const t = searchParams.get('type');
     return (DECISION_TYPES as readonly string[]).includes(t ?? '') ? (t as DecisionType) : 'all';
-  });
-  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
+  }, [searchParams]);
+
+  // Search keeps local state for responsive typing but adopts external URL changes.
+  const urlSearch = searchParams.get('q') ?? '';
+  const [search, setSearch] = useState(urlSearch);
+  const [syncedSearch, setSyncedSearch] = useState(urlSearch);
+  if (urlSearch !== syncedSearch) {
+    setSyncedSearch(urlSearch);
+    setSearch(urlSearch);
+  }
 
   // Reflect the current filters into the URL (shareable, back-button friendly).
   const syncUrl = (next: {
@@ -85,12 +95,11 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   };
 
+  // No setSeries/setType: the URL drives both, and syncUrl re-renders with new params.
   const changeSeries = (v: SeriesFilterValue) => {
-    setSeries(v);
     syncUrl({ series: v });
   };
   const changeType = (t: DecisionType | 'all') => {
-    setType(t);
     syncUrl({ type: t });
   };
   const changeSearch = (v: string) => {

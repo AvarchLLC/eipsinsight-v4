@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { chartTooltip, CHART_TOOLTIP_FG, CHART_TOOLTIP_BORDER } from '@/lib/chart-theme';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: "#64748b",
@@ -338,14 +339,11 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     ].filter((d) => d.value > 0);
 
     return {
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: "item",
-        backgroundColor: "rgba(15,23,42,0.96)",
-        borderColor: "rgba(148,163,184,0.28)",
-        textStyle: { color: "#e2e8f0", fontSize: 12 },
         formatter: (params: { name: string; value: number; percent: number }) =>
           `${params.name}<br/><b>${params.value}</b> (${params.percent}%)`,
-      },
+      }),
       legend: {
         bottom: 0,
         left: "center",
@@ -394,12 +392,9 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const editorBarOption = useMemo(() => {
     const top = [...editors].slice(0, 10).reverse();
     return {
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: "axis",
         axisPointer: { type: "shadow" },
-        backgroundColor: "rgba(15,23,42,0.96)",
-        borderColor: "rgba(148,163,184,0.28)",
-        textStyle: { color: "#e2e8f0", fontSize: 12 },
         formatter: (params: Array<{ seriesName: string; value: number; color: string; dataIndex: number }>) => {
           if (!params?.length) return "";
           const idx = params[0]?.dataIndex ?? 0;
@@ -410,13 +405,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
           const total = row?.totalActions ?? (eips + ercs + rips);
 
           const lines = [
-            `<div style="margin-bottom:6px;font-weight:600;color:#f8fafc">${row?.editor ?? ""}</div>`,
+            `<div style="margin-bottom:6px;font-weight:600;color:${CHART_TOOLTIP_FG}">${row?.editor ?? ""}</div>`,
             ...params.map((p) => `<span style="display:inline-block;margin-right:8px;color:${p.color}">●</span>${p.seriesName}: <b>${Number(p.value || 0)}</b>`),
-            `<div style="margin-top:6px;padding-top:6px;border-top:1px solid rgba(148,163,184,0.25)">Total: <b>${total}</b></div>`,
+            `<div style="margin-top:6px;padding-top:6px;border-top:1px solid ${CHART_TOOLTIP_BORDER}">Total: <b>${total}</b></div>`,
           ];
           return lines.join("<br/>");
         },
-      },
+      }),
       grid: { left: 120, right: 18, top: 10, bottom: 24 },
       xAxis: {
         type: "value",
@@ -471,12 +466,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const draftVsFinalOption = useMemo(() => {
     const months = draftFinalHistory.map((row) => monthLabel(row.month));
     return {
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: "rgba(15,23,42,0.96)",
-        borderColor: "rgba(148,163,184,0.28)",
-        textStyle: { color: "#e2e8f0", fontSize: 12 },
-      },
+      tooltip: chartTooltip({ trigger: "axis" }),
       legend: {
         top: 0,
         right: 0,
@@ -540,12 +530,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     }));
 
     return {
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: "rgba(15,23,42,0.96)",
-        borderColor: "rgba(148,163,184,0.28)",
-        textStyle: { color: "#e2e8f0", fontSize: 12 },
-      },
+      tooltip: chartTooltip({ trigger: "axis" }),
       legend: {
         top: 0,
         left: 0,

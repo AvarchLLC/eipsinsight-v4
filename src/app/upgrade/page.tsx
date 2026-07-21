@@ -3,6 +3,7 @@ import { ArrowRight, Archive, BarChart2, CalendarClock, GitCommit, Info, Package
 import { CopyLinkButton } from '@/components/header';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
+import { statusBadgeClass } from '@/lib/proposal-status';
 import {
   getInProgressUpgrades,
   getLiveUpgrades,
@@ -234,21 +235,19 @@ export default async function UpgradeIndexPage() {
                       EIP-{event.eip_number}
                     </Link>
                   )}
-                  {event.status && (
-                    <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                      {event.status}
-                    </span>
-                  )}
                   <span className="hidden max-w-72 truncate text-sm text-muted-foreground md:inline">
                     {event.title}
                   </span>
-                  <span className="text-sm text-muted-foreground">
-                    {event.event_type === 'removed' ? 'removed from' : `${event.event_type} to`}
-                  </span>
-                  <StageBadge bucket={event.bucket} abbreviated />
-                  {event.upgrade_slug && (
+
+                  {/* The verb's object is the UPGRADE, so the clause has to close on the
+                      upgrade name. Putting the badges inside it read as "added to Draft
+                      CFI" — but Draft is the proposal's lifecycle status, not something
+                      an EIP is added to. Badges follow as trailing metadata instead. */}
+                  {event.upgrade_slug ? (
                     <>
-                      <span className="text-sm text-muted-foreground">in</span>
+                      <span className="text-sm text-muted-foreground">
+                        {event.event_type === 'removed' ? 'removed from' : `${event.event_type} to`}
+                      </span>
                       <Link
                         href={`/upgrade/${event.upgrade_slug}`}
                         className="text-sm font-medium text-foreground hover:text-primary"
@@ -256,7 +255,24 @@ export default async function UpgradeIndexPage() {
                         {event.upgrade_name ?? event.upgrade_slug}
                       </Link>
                     </>
+                  ) : (
+                    <span className="text-sm text-muted-foreground">{event.event_type}</span>
                   )}
+
+                  <span className="inline-flex shrink-0 items-center gap-1.5">
+                    {event.status && (
+                      <span
+                        title={`Proposal status: ${event.status}`}
+                        className={cn(
+                          'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
+                          statusBadgeClass(event.status, 'outline')
+                        )}
+                      >
+                        {event.status}
+                      </span>
+                    )}
+                    <StageBadge bucket={event.bucket} abbreviated />
+                  </span>
                   <span className="ml-auto shrink-0 text-xs text-muted-foreground">
                     {event.commit_date ? timeAgo(event.commit_date) : ''}
                   </span>

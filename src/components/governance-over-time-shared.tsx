@@ -7,6 +7,7 @@ import { ChevronDown, ChevronUp, Download, Table } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
+import { chartTooltip, CHART_TOOLTIP_BORDER } from '@/lib/chart-theme';
 
 type TimelinePoint = {
   year: number;
@@ -325,9 +326,6 @@ export function GovernanceOverTimeShared({
     const isLight = !isDarkMode;
     const axisLabelColor = isLight ? '#475569' : '#94A3B8';
     const gridLineColor = isLight ? 'rgba(100, 116, 139, 0.12)' : 'rgba(148, 163, 184, 0.08)';
-    const tooltipBg = isLight ? 'rgba(248, 250, 252, 0.95)' : 'rgba(15, 23, 42, 0.92)';
-    const tooltipBorder = isLight ? 'rgba(100, 116, 139, 0.25)' : 'rgba(148, 163, 184, 0.2)';
-
     const series: echarts.SeriesOption[] = allKeys.map((key) => {
       const baseColor = colors[key] || '#94a3b8';
       return {
@@ -362,12 +360,9 @@ export function GovernanceOverTimeShared({
 
     return {
       animationDuration: 350,
-      tooltip: {
+      tooltip: chartTooltip({
         trigger: 'axis',
         axisPointer: { type: 'shadow' },
-        backgroundColor: tooltipBg,
-        borderColor: tooltipBorder,
-        borderWidth: 1,
         formatter: (params: unknown) => {
           const entries = Array.isArray(params) ? (params as TooltipParam[]) : [];
           const bars = entries.filter((p) => p.seriesName !== 'Total');
@@ -378,10 +373,10 @@ export function GovernanceOverTimeShared({
             if (!p.value) continue;
             html += `<div style="display:flex;justify-content:space-between;gap:14px"><span>${p.seriesName}</span><span style="font-weight:600">${p.value}</span></div>`;
           }
-          html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid ${tooltipBorder};display:flex;justify-content:space-between"><span>Total</span><span style="font-weight:700">${total}</span></div>`;
+          html += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid ${CHART_TOOLTIP_BORDER};display:flex;justify-content:space-between"><span>Total</span><span style="font-weight:700">${total}</span></div>`;
           return html;
         },
-      },
+      }),
       legend: { show: false },
       grid: { left: '4%', right: '4%', top: '10%', bottom: '14%', containLabel: true },
       xAxis: {
