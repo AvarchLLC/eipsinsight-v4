@@ -2093,8 +2093,28 @@ export default function EIPsHomePage() {
       grid: { left: 36, right: 10, top: 24, bottom: 56 },
       tooltip: {
         trigger: 'axis',
+        axisPointer: { type: 'shadow' },
         backgroundColor: isDark ? 'rgba(15,23,42,0.95)' : 'rgba(255,255,255,0.98)',
-        borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
+        borderColor: isDark ? 'rgba(148,163,184,0.25)' : 'rgba(148,163,184,0.35)',
+        borderWidth: 1,
+        padding: [10, 14],
+        textStyle: { color: isDark ? '#f8fafc' : '#0f172a', fontSize: 12 },
+        extraCssText: 'box-shadow: 0 10px 30px -5px rgba(0,0,0,0.3); border-radius: 12px; backdrop-filter: blur(12px);',
+        formatter: (params: unknown) => {
+          const items = Array.isArray(params) ? (params as any[]) : [];
+          if (!items.length) return '';
+          const date = items[0].axisValue;
+          let html = `<div style="font-weight:700;font-size:12px;margin-bottom:6px;color:${isDark ? '#f8fafc' : '#0f172a'}">${date}</div>`;
+          let total = 0;
+          for (const item of items) {
+            const val = item.value || 0;
+            if (val === 0) continue;
+            total += val;
+            html += `<div style="display:flex;align-items:center;justify-content:space-between;gap:16px;font-size:11px;margin-top:4px"><span style="display:inline-flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background-color:${item.color}"></span><span style="color:${isDark ? '#cbd5e1' : '#475569'}">${item.seriesName}</span></span><span style="font-weight:700;color:${isDark ? '#f8fafc' : '#0f172a'}">${val}</span></div>`;
+          }
+          html += `<div style="margin-top:8px;padding-top:6px;border-top:1px solid ${isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.3)'};display:flex;align-items:center;justify-content:space-between;font-size:11px"><span style="color:${isDark ? '#94a3b8' : '#64748b'};font-weight:600">Total EIPs</span><span style="font-weight:800;color:${isDark ? '#38bdf8' : '#0284c7'}">${total}</span></div>`;
+          return html;
+        },
       },
       legend: {
         top: 0,
