@@ -10,7 +10,13 @@ type BuildMetadataInput = {
   path: string;
   keywords?: string[];
   noIndex?: boolean;
-  image?: string;
+  /**
+   * Social card image. Pass `null` when the route has its own
+   * `opengraph-image.tsx` — Next only falls back to that file convention if the
+   * metadata does NOT specify images, so leaving the default here would silently
+   * shadow the generated card with the static logo.
+   */
+  image?: string | null;
 };
 
 export function buildMetadata({
@@ -23,10 +29,13 @@ export function buildMetadata({
 }: BuildMetadataInput): Metadata {
   const canonicalPath = path.startsWith("/") ? path : `/${path}`;
   const url = `${SITE_URL}${canonicalPath}`;
+  // null => omit images entirely so a route-level opengraph-image.tsx wins.
   const imageUrl =
-    image.startsWith("http://") || image.startsWith("https://")
-      ? image
-      : `${SITE_URL}${image.startsWith("/") ? image : `/${image}`}`;
+    image === null
+      ? null
+      : image.startsWith("http://") || image.startsWith("https://")
+        ? image
+        : `${SITE_URL}${image.startsWith("/") ? image : `/${image}`}`;
 
   return {
     title,
@@ -41,20 +50,15 @@ export function buildMetadata({
       title,
       description,
       url,
-      images: [
-        {
-          url: imageUrl,
-          width: 1200,
-          height: 630,
-          alt: title,
-        },
-      ],
+      ...(imageUrl
+        ? { images: [{ url: imageUrl, width: 1200, height: 630, alt: title }] }
+        : {}),
     },
     twitter: {
       card: "summary_large_image",
       title,
       description,
-        images: [imageUrl],
+      ...(imageUrl ? { images: [imageUrl] } : {}),
       creator: "@EIPsInsight",
     },
     robots: noIndex
