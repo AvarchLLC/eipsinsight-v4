@@ -24,7 +24,7 @@ export default async function UpgradeEipsPage() {
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
           Every EIP included, scheduled, or considered across Ethereum&apos;s network upgrades —
-          from Frontier through the forks in progress — with the upgrade, year, and affected layer.
+          from Frontier through the forks in progress - with the upgrade, year, and affected layer.
         </p>
       </header>
 

@@ -26,6 +26,7 @@ import {
   callSeriesShort,
 } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
+import { ShareButtons } from '@/components/share-buttons';
 import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-decisions';
 import { CallPlayer, CallVideoFallback } from '@/components/upgrade/call-player';
 import { CallChat } from '@/components/upgrade/call-chat';
@@ -60,6 +61,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: callDisplayName(call),
     description: `Recording, summary, decisions, and transcript for ${callDisplayName(call)}.`,
     path: `/calls/${resolvedParams.series}/${resolvedParams.number}`,
+    // null so the generated opengraph-image.tsx card is used instead of the
+    // static site logo — that's what puts real call content in a shared post.
+    image: null,
   });
 }
 
@@ -96,6 +100,61 @@ export default async function CallDetailPage({ params }: Props) {
     : (payload?.key_decisions ?? []);
 
   const neighbors = await getCachedCallNeighbors(call.series, call.occurred_on);
+
+  // Series tag (ACDT/ACDE/…) first, matching how the account tags its posts.
+  const shareHashtags = [callSeriesShort(call.series).replace(/[^A-Za-z0-9]/g, ''), 'Ethereum'];
+
+  // X allows 280, counts any link as 23 regardless of its real length, and weights
+  // emoji as 2. Everything below is fitted to that budget so the composer never
+  // opens already over the limit.
+  const TWEET_LIMIT = 280;
+  const LINK_COST = 23;
+  const weigh = (s: string) =>
+    [...s].reduce((n, ch) => n + (ch.codePointAt(0)! > 0xffff ? 2 : 1), 0);
+  const tweetBudget =
+    TWEET_LIMIT - LINK_COST - shareHashtags.reduce((n, t) => n + t.length + 2, 0) - 2;
+
+  /** Trim to a word boundary so a decision never ends mid-word. */
+  const clip = (text: string, max: number) => {
+    const clean = text.replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    const cut = clean.slice(0, max - 1);
+    return `${cut.slice(0, cut.lastIndexOf(' ')) || cut}…`;
+  };
+
+  const shareOpener = `${callDisplayName(call)} is now live on @EIPsInsight.`;
+
+  // The decisions ARE the story — "4 key decisions" only states a count. Quote as
+  // many as the budget allows, then spend whatever is left on the artifact line.
+  const decisionLines = decisions
+    .map((d) => clip(d.original_text ?? '', 105))
+    .filter((d) => d.length > 20)
+    .map((d) => `→ ${d}`);
+
+  const artifactLine = [
+    call.video_url ? '🎥 Recording' : null,
+    call.tldr ? '📝 Summary' : null,
+    transcriptCues ? `🔍 ${transcriptCues.length}-line transcript` : null,
+    chatMessages && chatMessages.length > 0 ? '💬 Chat' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
+  // Greedily add decisions while they fit, reserving room for the artifact line.
+  const chosen: string[] = [];
+  for (const line of decisionLines) {
+    const candidate = [shareOpener, [...chosen, line].join('\n'), artifactLine]
+      .filter(Boolean)
+      .join('\n\n');
+    if (weigh(candidate) > tweetBudget) break;
+    chosen.push(line);
+  }
+
+  const shareText =
+    chosen.length > 0
+      ? [shareOpener, chosen.join('\n'), artifactLine].filter(Boolean).join('\n\n')
+      : // No quotable decision - fall back to naming what's on the page.
+        [shareOpener, artifactLine].filter(Boolean).join('\n\n');
 
   // EIPs discussed: union of every EIP referenced across the decisions.
   const discussedEips = Array.from(
@@ -148,9 +207,14 @@ export default async function CallDetailPage({ params }: Props) {
           </span>
           <span className="font-mono text-xs text-muted-foreground">{call.call_id}</span>
         </div>
-        <h1 className="persona-title mt-1.5 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          {callDisplayName(call)}
-        </h1>
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
+          <h1 className="persona-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+            {callDisplayName(call)}
+          </h1>
+          {/* Template names what's actually on the page, so a share reads as a
+              useful pointer rather than a bare link. The platform appends the URL. */}
+          <ShareButtons text={shareText} hashtags={shareHashtags} />
+        </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <CalendarDays className="h-4 w-4" /> {call.occurred_on}

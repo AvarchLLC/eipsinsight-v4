@@ -1549,7 +1549,7 @@ export default function PRsAnalyticsPage() {
           <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>
-              Oldest open PR: <span className="font-semibold">{openSummary.oldestPR.repo}#{openSummary.oldestPR.pr_number}</span> by {openSummary.oldestPR.author} — open for {openSummary.oldestPR.age_days} days.
+              Oldest open PR: <span className="font-semibold">{openSummary.oldestPR.repo}#{openSummary.oldestPR.pr_number}</span> by {openSummary.oldestPR.author} - open for {openSummary.oldestPR.age_days} days.
             </span>
           </div>
         )}

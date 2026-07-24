@@ -3021,7 +3021,7 @@ export default function EIPsHomePage() {
           </div>
           <div className="flex items-center gap-2">
             {/* Repo view is the EIPs/ERCs/RIPs split itself, so the toggle is
-                meaningless there — hidden rather than shown as a no-op. */}
+                meaningless there - hidden rather than shown as a no-op. */}
             {dimension !== 'repo' && (
               <label
                 className={cn(
@@ -3031,7 +3031,7 @@ export default function EIPsHomePage() {
                     ? 'border-primary/50 bg-primary/10 text-foreground'
                     : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
                 )}
-                title="RIPs are a separate track — off by default so status and category counts reflect EIPs and ERCs only."
+                title="RIPs are a separate track - off by default so status and category counts reflect EIPs and ERCs only."
               >
                 <input
                   type="checkbox"

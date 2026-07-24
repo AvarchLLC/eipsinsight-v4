@@ -18,7 +18,7 @@ export const revalidate = 300;
 export const metadata: Metadata = buildMetadata({
   title: 'Protocol Calls',
   description:
-    'Upcoming and recent Ethereum protocol calls — AllCoreDevs, testing, and breakout series — with agendas, recordings, and summaries.',
+    'Upcoming and recent Ethereum protocol calls - AllCoreDevs, testing, and breakout series - with agendas, recordings, and summaries.',
   path: '/calls',
   keywords: ['AllCoreDevs', 'ACDE', 'ACDC', 'Ethereum protocol calls'],
 });
@@ -60,7 +60,7 @@ export default async function ProtocolCallsPage() {
         eyebrow="Governance"
         indicator={{ icon: 'calendar', label: 'Protocol calls', pulse: upcoming.length > 0 }}
         title="Protocol calls"
-        description="AllCoreDevs and breakout calls where upgrade decisions happen — agendas from ethereum/pm, recordings, and AI summaries, synced automatically."
+        description="AllCoreDevs and breakout calls where upgrade decisions happen - agendas from ethereum/pm, recordings, and AI summaries, synced automatically."
         sectionId="protocol-calls-overview"
         padding="px-0"
       />
@@ -73,7 +73,7 @@ export default async function ProtocolCallsPage() {
       >
         {upcoming.length === 0 ? (
           <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-            No upcoming calls found right now — check back after the next scheduler sync.
+            No upcoming calls found right now - check back after the next scheduler sync.
           </p>
         ) : (
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
@@ -109,11 +109,11 @@ export default async function ProtocolCallsPage() {
         id="recent"
         icon={History}
         title="Recent calls"
-        description="Latest calls with recordings and summaries from the ACDbot pipeline — filter by series below."
+        description="Latest calls with recordings and summaries from the ACDbot pipeline - filter by series below."
       >
         {recent.length === 0 ? (
           <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-            No calls synced yet — the scheduler populates this within a few minutes of its
+            No calls synced yet - the scheduler populates this within a few minutes of its
             first run.
           </p>
         ) : (

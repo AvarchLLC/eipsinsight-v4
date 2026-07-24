@@ -310,7 +310,7 @@ export default function GrantsPage() {
               </span>
             </div>
             <h1 className="mb-2 text-4xl font-bold text-slate-900 dark:text-slate-100">
-              EIPsInsight — Grants
+              EIPsInsight - Grants
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
               EIPsInsight gratefully acknowledges funding that keeps this project running. Below are active rounds, awarded grants, and opportunities.

@@ -203,7 +203,7 @@ export default function IssueDetailPage() {
   const blockerSummary = governanceImpact.type === 'BLOCKING'
     ? governanceImpact.summary
     : relatedProposals.length > 0
-      ? `Linked to ${relatedProposals[0].kind}-${relatedProposals[0].number} — ${governanceImpact.summary}`
+      ? `Linked to ${relatedProposals[0].kind}-${relatedProposals[0].number} - ${governanceImpact.summary}`
       : governanceImpact.summary;
 
   return (
@@ -212,7 +212,7 @@ export default function IssueDetailPage() {
         <PageHeader
           sectionId="issue-detail"
           indicator={{ icon: 'activity', label: `${issue.repo.toUpperCase()} ISSUE`, pulse: issue.state?.toLowerCase() === 'open' }}
-          title={`Issue #${issue.number} — ${issue.title || 'Untitled issue'}`}
+          title={`Issue #${issue.number} - ${issue.title || 'Untitled issue'}`}
           description={blockerSummary}
         />
 

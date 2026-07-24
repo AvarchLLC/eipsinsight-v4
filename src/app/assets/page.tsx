@@ -47,28 +47,28 @@ function SectionHead({ label, title, description }: { label: string; title: stri
 
 const LOGOS = [
   {
-    name: 'Wordmark — Light',
+    name: 'Wordmark - Light',
     file: '[LEFT] Logo + EIPsInsight [Black].png',
     bg: 'bg-white',
     hint: 'Use on light backgrounds',
     animated: false,
   },
   {
-    name: 'Wordmark — Dark',
+    name: 'Wordmark - Dark',
     file: '[LEFT] Logo + EIPsInsight [White].png',
     bg: 'bg-zinc-950',
     hint: 'Use on dark backgrounds',
     animated: false,
   },
   {
-    name: 'Icon — Light',
+    name: 'Icon - Light',
     file: 'Circle logo [Black].png',
     bg: 'bg-white',
     hint: 'Square / avatar contexts',
     animated: false,
   },
   {
-    name: 'Icon — Dark',
+    name: 'Icon - Dark',
     file: 'Circle logo [White].png',
     bg: 'bg-zinc-950',
     hint: 'Square / avatar contexts',
@@ -247,9 +247,9 @@ function PersonaCard({ name, primary, primaryDark, bg, desc }: typeof PERSONA_CO
 /* ─────────────────────────── typography ─────────────────────────── */
 
 const TYPE_SCALE = [
-  { label: 'H1 — Page title', className: 'dec-title text-3xl font-semibold', size: '30px', sample: 'Ethereum Improvement Proposals' },
-  { label: 'H2 — Section', className: 'dec-title text-2xl font-semibold', size: '24px', sample: 'Protocol Upgrades' },
-  { label: 'H3 — Card', className: 'text-xl font-semibold', size: '20px', sample: 'EIP-4844 Blob Transactions' },
+  { label: 'H1 - Page title', className: 'dec-title text-3xl font-semibold', size: '30px', sample: 'Ethereum Improvement Proposals' },
+  { label: 'H2 - Section', className: 'dec-title text-2xl font-semibold', size: '24px', sample: 'Protocol Upgrades' },
+  { label: 'H3 - Card', className: 'text-xl font-semibold', size: '20px', sample: 'EIP-4844 Blob Transactions' },
   { label: 'Body Large', className: 'text-base', size: '16px', sample: 'Track EIP status, contributor activity, and editorial governance.' },
   { label: 'Body', className: 'text-sm', size: '14px', sample: 'All proposals follow the EIP process from draft to final.' },
   { label: 'Small / Label', className: 'text-xs font-semibold uppercase tracking-wider text-muted-foreground', size: '12px', sample: 'Last updated · 3 days ago' },
@@ -267,7 +267,7 @@ const GRADIENTS = [
   },
   {
     name: 'persona-gradient-soft',
-    desc: 'Subtle surface tints — left panels, hero backgrounds.',
+    desc: 'Subtle surface tints - left panels, hero backgrounds.',
     class: 'persona-gradient-soft',
     usage: 'className="persona-gradient-soft rounded-xl p-6"',
   },
@@ -307,7 +307,7 @@ export default function AssetsPage() {
       {/* ── Logos ── */}
       <section>
         <SectionHead
-          label="01 — Identity"
+          label="01 - Identity"
           title="Logo & Wordmark"
           description="Use the black variant on light backgrounds and the white variant on dark backgrounds. Never alter the logo proportions or colors."
         />
@@ -325,9 +325,9 @@ export default function AssetsPage() {
       {/* ── Semantic Colors ── */}
       <section>
         <SectionHead
-          label="02 — Colors"
+          label="02 - Colors"
           title="Semantic Palette"
-          description="Use CSS variables only — never hardcode hex values in components. These tokens adapt automatically to light and dark mode."
+          description="Use CSS variables only - never hardcode hex values in components. These tokens adapt automatically to light and dark mode."
         />
         <div className="grid gap-2 sm:grid-cols-2">
           {SEMANTIC_COLORS.map((c) => (
@@ -339,7 +339,7 @@ export default function AssetsPage() {
       {/* ── Status Colors ── */}
       <section>
         <SectionHead
-          label="03 — Status"
+          label="03 - Status"
           title="EIP Status Colors"
           description="Applied to proposal lifecycle badges. The left swatch is light-mode hex, the right is dark-mode hex."
         />
@@ -353,9 +353,9 @@ export default function AssetsPage() {
       {/* ── Persona Colors ── */}
       <section>
         <SectionHead
-          label="04 — Personas"
+          label="04 - Personas"
           title="Persona Color System"
-          description="Six personas drive the app's accent system at runtime. The --persona-primary CSS variable switches automatically. Never hardcode persona colors in shared components — use text-primary and bg-primary/10 instead."
+          description="Six personas drive the app's accent system at runtime. The --persona-primary CSS variable switches automatically. Never hardcode persona colors in shared components - use text-primary and bg-primary/10 instead."
         />
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PERSONA_COLORS.map((p) => (
@@ -379,7 +379,7 @@ export default function AssetsPage() {
       {/* ── Typography ── */}
       <section>
         <SectionHead
-          label="05 — Typography"
+          label="05 - Typography"
           title="Type Scale"
           description="Two font families: Inter for UI and body copy, Libre Baskerville for decorative headings (.dec-title)."
         />
@@ -387,13 +387,13 @@ export default function AssetsPage() {
         {/* Font families */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2">
           <div className="rounded-xl border border-border bg-card/60 p-5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Primary — Inter</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Primary - Inter</p>
             <p className="mt-3 font-sans text-2xl font-semibold text-foreground">Aa Bb Cc 0–9</p>
             <p className="mt-2 font-sans text-sm text-muted-foreground">Used for all UI text, navigation, body copy, and labels.</p>
             <code className="mt-3 block text-[10px] text-muted-foreground">--font-inter · var(--font-sans)</code>
           </div>
           <div className="rounded-xl border border-border bg-card/60 p-5">
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Decorative — Libre Baskerville</p>
+            <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Decorative - Libre Baskerville</p>
             <p className="dec-title mt-3 text-2xl font-semibold text-foreground">Aa Bb Cc 0–9</p>
             <p className="mt-2 text-sm text-muted-foreground font-sans">Used for page titles, section headings. Add <code className="rounded bg-muted px-1 text-[10px]">.dec-title</code> class.</p>
             <code className="mt-3 block text-[10px] text-muted-foreground">--font-libre-baskerville · var(--font-mono)</code>
@@ -422,7 +422,7 @@ export default function AssetsPage() {
       {/* ── Gradients ── */}
       <section>
         <SectionHead
-          label="06 — Effects"
+          label="06 - Effects"
           title="Gradients & Effects"
           description="Persona-aware utility classes for CTAs, backgrounds, and focus glows. These update automatically when the persona changes."
         />
@@ -458,16 +458,16 @@ export default function AssetsPage() {
       {/* ── Spacing & Tokens ── */}
       <section>
         <SectionHead
-          label="07 — Layout"
+          label="07 - Layout"
           title="Spacing & Layout Tokens"
           description="Shared layout primitives. Use these rather than raw Tailwind values to keep spacing consistent across pages."
         />
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {[
-            { token: 'page-shell', desc: 'Standard page container — max-width, padding, and top spacing. Apply to the root div of every page.' },
+            { token: 'page-shell', desc: 'Standard page container - max-width, padding, and top spacing. Apply to the root div of every page.' },
             { token: 'h-14 (56px)', desc: 'Navbar and sidebar header height. Use min-h-[calc(100vh-56px)] for full-viewport content.' },
             { token: 'rounded-xl border border-border bg-card/60', desc: 'Standard card surface. Add hover:border-primary/40 for interactive cards.' },
-            { token: 'rounded-xl border border-border bg-card/60 hover:border-primary/40', desc: 'Interactive card — adds primary border on hover.' },
+            { token: 'rounded-xl border border-border bg-card/60 hover:border-primary/40', desc: 'Interactive card - adds primary border on hover.' },
             { token: 'h-9 rounded-md', desc: 'Standard button / input height.' },
             { token: 'text-[10px] font-semibold uppercase tracking-widest text-muted-foreground', desc: 'Section eye-brow label above a heading.' },
           ].map(({ token, desc }) => (

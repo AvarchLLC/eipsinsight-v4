@@ -10,7 +10,7 @@ export const revalidate = 300;
 export const metadata: Metadata = buildMetadata({
   title: 'Devnets',
   description:
-    'Ethereum devnets for in-progress network upgrades — specs, EIP scope, live status, and client support, scraped automatically from ethpandaops.',
+    'Ethereum devnets for in-progress network upgrades - specs, EIP scope, live status, and client support, scraped automatically from ethpandaops.',
   path: '/upgrade/devnets',
   keywords: ['Ethereum devnets', 'glamsterdam devnet', 'devnet spec'],
 });
@@ -60,7 +60,7 @@ export default async function DevnetsPage() {
 
       {devnets.length === 0 && (
         <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-          No devnet specs synced yet — the scheduler populates this within a few minutes of
+          No devnet specs synced yet - the scheduler populates this within a few minutes of
           its first run.
         </p>
       )}

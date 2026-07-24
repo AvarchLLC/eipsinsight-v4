@@ -169,7 +169,7 @@ export default async function UpgradeIndexPage() {
         </h1>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
           What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
-          there — parsed automatically from meta-EIP commits.
+          there - parsed automatically from meta-EIP commits.
         </p>
       </header>
 
@@ -241,7 +241,7 @@ export default async function UpgradeIndexPage() {
 
                   {/* The verb's object is the UPGRADE, so the clause has to close on the
                       upgrade name. Putting the badges inside it read as "added to Draft
-                      CFI" — but Draft is the proposal's lifecycle status, not something
+                      CFI" - but Draft is the proposal's lifecycle status, not something
                       an EIP is added to. Badges follow as trailing metadata instead. */}
                   {event.upgrade_slug ? (
                     <>
@@ -296,7 +296,7 @@ export default async function UpgradeIndexPage() {
                 <CopyLinkButton sectionId="protocol-calls" tooltipLabel="Copy link" />
               </div>
               <p className="mt-0.5 text-sm text-muted-foreground">
-                Where upgrade decisions happen — agendas, recordings, and summaries.
+                Where upgrade decisions happen - agendas, recordings, and summaries.
               </p>
             </div>
             <Link

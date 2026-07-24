@@ -113,7 +113,7 @@ export default function AdminCurationsPage() {
             }
           : current,
       );
-      toast.success('Draft generated — review, then Save to keep it');
+      toast.success('Draft generated - review, then Save to keep it');
     } catch {
       toast.error('Could not generate (no spec or model error)');
     } finally {

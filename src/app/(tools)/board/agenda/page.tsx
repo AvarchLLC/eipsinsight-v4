@@ -223,7 +223,7 @@ export default function AgendaMakerPage() {
 
   const applyImport = () => {
     if (!candidates) {
-      toast.error("Still loading the board — try again in a moment.");
+      toast.error("Still loading the board - try again in a moment.");
       return;
     }
     const parsed = parseAgenda(importText);
@@ -254,7 +254,7 @@ export default function AgendaMakerPage() {
     if (orphans.length) {
       const carried = orphans.map((o) => `- ${o.url}${o.ref ? `  Ref: ${o.ref}` : ""}`).join("\n");
       misc = misc ? `${misc}\n${carried}` : carried;
-      toast.info(`${orphans.length} imported PR(s) aren't open on the board anymore — moved to Misc.`);
+      toast.info(`${orphans.length} imported PR(s) aren't open on the board anymore - moved to Misc.`);
     }
     setMiscText(misc);
 
@@ -384,7 +384,7 @@ EIP Editing Office Hour
             {showImport && (
               <div className="mb-3 rounded-lg border border-dashed border-border bg-muted/30 p-3">
                 <p className="mb-2 text-xs text-muted-foreground">
-                  Paste an existing agenda body to edit it — the date, editor, Zoom, sections, PR selections, and refs are
+                  Paste an existing agenda body to edit it - the date, editor, Zoom, sections, PR selections, and refs are
                   restored. PRs that have since merged/closed drop to Misc.
                 </p>
                 <textarea
@@ -438,7 +438,7 @@ EIP Editing Office Hour
             <h2 className="mb-3 text-sm font-semibold text-foreground">Manual sections</h2>
             <div className="space-y-3">
               <Field label="ACD related">
-                <textarea value={acdText} onChange={(e) => setAcdText(e.target.value)} rows={2} placeholder="Leave blank for _TBA_ — no reliable signal for ACD items, editor's call" className={textareaCls} />
+                <textarea value={acdText} onChange={(e) => setAcdText(e.target.value)} rows={2} placeholder="Leave blank for _TBA_ - no reliable signal for ACD items, editor's call" className={textareaCls} />
               </Field>
               <Field label="Misc">
                 <textarea value={miscText} onChange={(e) => setMiscText(e.target.value)} rows={3} placeholder="Leave blank for _TBA_" className={textareaCls} />

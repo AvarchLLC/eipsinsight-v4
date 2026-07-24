@@ -860,7 +860,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
 
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard — {monthLabel(month)}</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
                   <button
                     onClick={exportEditorsDetailedCsv}
                     className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-muted px-2 text-[11px] text-foreground hover:bg-muted/70"
@@ -1039,7 +1039,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
               <div ref={tableSectionRef} className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
                   <h3 className="text-sm font-semibold text-foreground">
-                    Proposal Changes — {monthLabel(month)}
+                    Proposal Changes - {monthLabel(month)}
                     {rangeDays != null ? ` · last ${rangeDays} days` : ""}
                   </h3>
                   <span className="text-xs text-muted-foreground">{rangeFilteredRows.length} shown</span>

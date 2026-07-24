@@ -89,7 +89,7 @@ export default function DeveloperUpgradeWatchSection({
             </Link>
             <CopyLinkButton sectionId="upgrade-watch" className="h-8 w-8 rounded-md" />
           </div>
-          <p className={sectionSubtitleClass}>EIP composition timeline by upgrade — proposed through included.</p>
+          <p className={sectionSubtitleClass}>EIP composition timeline by upgrade - proposed through included.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/upgrade/eips">

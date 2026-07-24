@@ -111,7 +111,7 @@ export function DevnetInclusionMatrix({
           <span className="font-semibold">How to read this:</span> every{' '}
           <span className="font-medium">row is an EIP</span>, every{' '}
           <span className="font-medium">column is a devnet</span> (newest on the left). A{' '}
-          <span className="font-medium">✓ means the EIP ships in that devnet</span> — its color
+          <span className="font-medium">✓ means the EIP ships in that devnet</span> - its color
           tells you how it appears there:
         </p>
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
@@ -199,7 +199,7 @@ export function DevnetInclusionMatrix({
                     <th key={devnet.id} className="px-2 py-2.5 text-center">
                       <Link
                         href={`/upgrade/devnets/${devnet.id}`}
-                        title={devnet.active ? `${devnet.id} — live` : devnet.id}
+                        title={devnet.active ? `${devnet.id} - live` : devnet.id}
                         className="inline-flex items-center justify-center gap-1 whitespace-nowrap hover:text-primary"
                       >
                         {devnet.active && (
@@ -239,7 +239,7 @@ export function DevnetInclusionMatrix({
                       return (
                         <td key={devnet.id} className="px-2 py-2.5 text-center">
                           {meta ? (
-                            <span title={`${meta.label} — ${devnet.label}`}>
+                            <span title={`${meta.label} - ${devnet.label}`}>
                               <Check className={cn('mx-auto h-4 w-4', meta.className)} />
                             </span>
                           ) : (

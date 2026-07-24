@@ -135,7 +135,7 @@ export default function BlogPostPage() {
 
   const handleShare = (platform: string) => {
     const url = window.location.href;
-    const text = post ? `${post.title} — EIPsInsight` : "";
+    const text = post ? `${post.title} - EIPsInsight` : "";
     if (platform === "copy") {
       navigator.clipboard.writeText(url);
       setCopied(true);

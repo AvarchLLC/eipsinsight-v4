@@ -5,6 +5,7 @@ import { Copy, Check, Activity, Sparkles, TrendingUp, BarChart3, CalendarClock, 
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
+import { ShareButtons } from '@/components/share-buttons';
 
 export function CopyLinkButton({
   sectionId,
@@ -77,6 +78,13 @@ interface PageHeaderProps {
   padding?: string;
   /** Extra classes for the description — e.g. widen or narrow its measure. */
   descriptionClassName?: string;
+  /**
+   * Pre-filled text for the share buttons. Omit to fall back to the title.
+   * Keep it a self-contained sentence — the platform appends the URL after it.
+   */
+  shareText?: string;
+  /** Restrict which platforms appear; defaults to X, Farcaster, LinkedIn, Telegram. */
+  sharePlatforms?: React.ComponentProps<typeof ShareButtons>["platforms"];
 }
 
 /**
@@ -105,22 +113,10 @@ export function PageHeader({
   titleAs = 'h1',
   padding = 'px-4 sm:px-6 lg:px-8 xl:px-12',
   descriptionClassName,
+  shareText,
+  sharePlatforms,
 }: PageHeaderProps) {
-  const [copied, setCopied] = useState(false);
   const IconComponent = indicator?.customIcon || (indicator?.icon ? iconMap[indicator.icon] : null);
-
-  const handleCopyLink = async () => {
-    if (!sectionId) return;
-
-    const url = `${window.location.origin}${window.location.pathname}#${sectionId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1600);
-    } catch (err) {
-      console.error('Failed to copy:', err);
-    }
-  };
 
   const TitleTag = titleAs;
 
@@ -181,16 +177,30 @@ export function PageHeader({
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.05 }}
             >
-              <TitleTag
-                className={cn(
-                  'dec-title text-balance font-semibold tracking-tight leading-[1.1]',
-                  titleAs === 'h1'
-                    ? 'persona-title text-3xl sm:text-4xl'
-                    : 'text-xl text-foreground sm:text-2xl'
-                )}
-              >
-                {title}
-              </TitleTag>
+              {/* Actions sit inline after the title rather than pinned to the far
+                  right of the header: at wide widths the old layout stranded the
+                  copy button half a screen away from the thing it copies. */}
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                <TitleTag
+                  className={cn(
+                    'dec-title text-balance font-semibold tracking-tight leading-[1.1]',
+                    titleAs === 'h1'
+                      ? 'persona-title text-3xl sm:text-4xl'
+                      : 'text-xl text-foreground sm:text-2xl'
+                  )}
+                >
+                  {title}
+                </TitleTag>
+                {(showCopyLink && sectionId) || shareText ? (
+                  <ShareButtons
+                    text={shareText ?? title}
+                    // The copy button is part of this cluster whenever the header
+                    // is anchored; otherwise ShareButtons renders share-only.
+                    showCopy={Boolean(showCopyLink && sectionId)}
+                    platforms={sharePlatforms}
+                  />
+                ) : null}
+              </div>
             </motion.div>
 
             {description && (
@@ -210,30 +220,6 @@ export function PageHeader({
             )}
           </div>
 
-          {showCopyLink && sectionId && (
-            <motion.button
-              onClick={handleCopyLink}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.25, delay: 0.15 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className={cn(
-                'group relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-muted/60 backdrop-blur-sm',
-                'transition-colors hover:border-primary/40 hover:bg-primary/10',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40'
-              )}
-              title="Copy section link"
-              aria-label="Copy section link"
-              type="button"
-            >
-              {copied ? (
-                <Check className="h-4 w-4 text-emerald-500" />
-              ) : (
-                <Copy className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" />
-              )}
-            </motion.button>
-          )}
         </div>
       </div>
     </section>

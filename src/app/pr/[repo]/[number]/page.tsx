@@ -199,7 +199,7 @@ export default function PRDetailPage() {
         <PageHeader
           sectionId="pr-detail"
           indicator={{ icon: 'activity', label: `${pr.repo.toUpperCase()} PR`, pulse: checks.pending > 0 }}
-          title={`PR #${pr.number} — ${pr.title || 'Untitled pull request'}`}
+          title={`PR #${pr.number} - ${pr.title || 'Untitled pull request'}`}
           description={`Blocked by: ${blocker}`}
         />
 

@@ -23,7 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = getUpgradeRegistryEntry(slug);
   return buildMetadata({
-    title: `${entry?.name ?? slug} — Test Complexity`,
+    title: `${entry?.name ?? slug} - Test Complexity`,
     description: `STEEL testing-complexity assessments for EIPs in the ${entry?.name ?? slug} upgrade.`,
     path: `/upgrade/${slug}/test-complexity`,
   });

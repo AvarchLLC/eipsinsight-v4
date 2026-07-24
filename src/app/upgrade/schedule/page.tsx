@@ -35,7 +35,7 @@ export const revalidate = 3600;
 export const metadata: Metadata = buildMetadata({
   title: 'Upgrade Schedule',
   description:
-    'Phase-by-phase timelines for upcoming Ethereum network upgrades — headliner selection, EIP deadlines, devnets, testnets, and mainnet targets.',
+    'Phase-by-phase timelines for upcoming Ethereum network upgrades - headliner selection, EIP deadlines, devnets, testnets, and mainnet targets.',
   path: '/upgrade/schedule',
   keywords: ['Ethereum upgrade schedule', 'devnets', 'fork timeline'],
 });
@@ -146,7 +146,7 @@ function PhaseBlock({ phase, today }: { phase: SchedulePhase; today: string }) {
             return (
               <span
                 key={milestone.id}
-                title={`${milestone.label} — ${milestone.date}${milestone.locked ? ' (confirmed)' : ' (projected)'}`}
+                title={`${milestone.label} - ${milestone.date}${milestone.locked ? ' (confirmed)' : ' (projected)'}`}
                 className={cn(
                   'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium',
                   isPast
@@ -292,7 +292,7 @@ export default async function UpgradeSchedulePage() {
           Upgrade schedule
         </h1>
         <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Where each in-progress upgrade stands — scoping, devnets, testnets, mainnet — with
+          Where each in-progress upgrade stands - scoping, devnets, testnets, mainnet - with
           confirmed dates pinned from AllCoreDevs decisions and the rest projected.
         </p>
       </header>

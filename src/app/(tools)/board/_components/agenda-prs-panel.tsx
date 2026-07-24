@@ -381,7 +381,7 @@ export function AgendaPrsPanel() {
                           </div>
                         ))}
                         <p className="pl-5 text-[10px] text-muted-foreground/70">
-                          Mentions are quoted from ethereum/pm agenda issues — a request to discuss,
+                          Mentions are quoted from ethereum/pm agenda issues - a request to discuss,
                           not a decision.
                         </p>
                       </div>

@@ -11,7 +11,7 @@ export const revalidate = 300;
 export const metadata: Metadata = buildMetadata({
   title: 'Protocol Decisions',
   description:
-    'Key decisions from AllCoreDevs and breakout calls — stage changes, devnet inclusions, and headliner selections, with timestamps and sources.',
+    'Key decisions from AllCoreDevs and breakout calls - stage changes, devnet inclusions, and headliner selections, with timestamps and sources.',
   path: '/decisions',
   keywords: ['AllCoreDevs decisions', 'Ethereum governance', 'ACD decisions'],
 });
@@ -28,7 +28,7 @@ export default async function DecisionsPage() {
         eyebrow="Governance"
         indicator={{ icon: 'clipboard', label: 'Protocol decisions' }}
         title="Protocol decisions"
-        description="What was actually decided on each core-dev call — stage changes, devnet inclusions, and headliner selections, extracted from call recordings with timestamps."
+        description="What was actually decided on each core-dev call - stage changes, devnet inclusions, and headliner selections, extracted from call recordings with timestamps."
         sectionId="protocol-decisions-overview"
         padding="px-0"
       />
@@ -38,7 +38,7 @@ export default async function DecisionsPage() {
       <section id="decisions" className="scroll-mt-24 pt-5">
         {calls.length === 0 ? (
           <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-            No structured decisions synced yet — run the protocol-calls sync (decisions are
+            No structured decisions synced yet - run the protocol-calls sync (decisions are
             fetched alongside call summaries).
           </p>
         ) : (

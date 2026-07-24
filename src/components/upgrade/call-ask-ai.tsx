@@ -51,7 +51,7 @@ export function CallAskAi({
         setAnswer(data.answer ?? '');
       }
     } catch {
-      setError('Network error — please try again.');
+      setError('Network error - please try again.');
     } finally {
       setLoading(false);
     }
@@ -124,7 +124,7 @@ export function CallAskAi({
           )}
         </div>
       )}
-      <p className="mt-2 text-[10px] text-muted-foreground/60">AI-generated — verify against the recording.</p>
+      <p className="mt-2 text-[10px] text-muted-foreground/60">AI-generated - verify against the recording.</p>
     </section>
   );
 }

@@ -59,7 +59,7 @@ function StanceChip({ stance }: { stance: ClientStanceView }) {
   const content = (
     <span
       className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-1.5 py-0.5 text-[10px] font-medium"
-      title={`${stance.clientName}: ${stance.rawRating}${stance.comment ? ` — ${stance.comment}` : ''} (${stance.ratingSystem})`}
+      title={`${stance.clientName}: ${stance.rawRating}${stance.comment ? ` - ${stance.comment}` : ''} (${stance.ratingSystem})`}
     >
       <span className={cn('h-2 w-2 rounded-full', scoreDot(stance.normalizedScore))} />
       <span className="text-foreground/80">{stance.clientName}</span>

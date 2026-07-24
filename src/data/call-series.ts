@@ -15,22 +15,22 @@ const DEFAULT_BADGE = 'border-slate-500/30 bg-slate-500/15 text-slate-700 dark:t
 
 export const CALL_SERIES: Record<string, CallSeriesMeta> = {
   acde: {
-    label: 'AllCoreDevs — Execution',
+    label: 'AllCoreDevs - Execution',
     short: 'ACDE',
     badgeClass: 'border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-300',
   },
   acdc: {
-    label: 'AllCoreDevs — Consensus',
+    label: 'AllCoreDevs - Consensus',
     short: 'ACDC',
     badgeClass: 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300',
   },
   acdt: {
-    label: 'AllCoreDevs — Testing',
+    label: 'AllCoreDevs - Testing',
     short: 'ACDT',
     badgeClass: 'border-cyan-500/30 bg-cyan-500/15 text-cyan-700 dark:text-cyan-300',
   },
   acdtcl: {
-    label: 'AllCoreDevs — Testing CL Breakout',
+    label: 'AllCoreDevs - Testing CL Breakout',
     short: 'ACDT-CL',
     badgeClass: 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300',
   },

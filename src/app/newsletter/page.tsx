@@ -27,7 +27,7 @@ const PERKS = [
   {
     icon: CheckCircle2,
     title: 'Community Pulse',
-    description: 'Contributor milestones, ecosystem events, and platform news — no spam.',
+    description: 'Contributor milestones, ecosystem events, and platform news - no spam.',
   },
 ];
 
@@ -148,7 +148,7 @@ export default function NewsletterPage() {
             /* Subscribe form */
             <div className="rounded-xl border border-border bg-card/60 p-8">
               <h2 className="dec-title text-2xl font-semibold text-foreground">
-                Subscribe — it&apos;s free
+                Subscribe - it&apos;s free
               </h2>
               <p className="mt-1.5 text-sm text-muted-foreground">
                 Join the readers staying ahead of Ethereum governance.

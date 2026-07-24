@@ -56,7 +56,7 @@ export default function NotFound() {
           transition={{ duration: 0.4, delay: 0.15 }}
           className="mt-1.5 max-w-md text-sm leading-relaxed text-slate-600 dark:text-slate-400"
         >
-          This proposal has been withdrawn — or perhaps it never existed. Try
+          This proposal has been withdrawn - or perhaps it never existed. Try
           searching or head back to explore standards.
         </motion.p>
 

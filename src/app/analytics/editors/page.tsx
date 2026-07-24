@@ -1513,7 +1513,7 @@ export default function EditorsAnalyticsPage() {
           <div className="flex flex-col gap-1">
             <div className="inline-flex items-center gap-2">
               <BarChart3 className="h-5 w-5 text-primary" />
-              <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Editor Leaderboard — {leaderboardLabel}</h2>
+              <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Editor Leaderboard - {leaderboardLabel}</h2>
               <CopyLinkButton sectionId="editor-leaderboard" className="h-7 w-7 rounded-md border border-border bg-muted/65 hover:border-primary/45 hover:bg-primary/10" />
             </div>
             <p className="text-xs text-muted-foreground">Main ranking of canonical editors sorted by their PR reviews, comments, and total indexed actions.</p>

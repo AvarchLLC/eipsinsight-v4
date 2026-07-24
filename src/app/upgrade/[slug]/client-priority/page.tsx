@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = getUpgradeRegistryEntry(slug);
   return buildMetadata({
-    title: `${entry?.name ?? slug} — Client Priority`,
+    title: `${entry?.name ?? slug} - Client Priority`,
     description: `How EL and CL client teams rank candidate EIPs for the ${entry?.name ?? slug} upgrade.`,
     path: `/upgrade/${slug}/client-priority`,
   });
@@ -87,7 +87,7 @@ export default async function ClientPriorityPage({ params }: Props) {
 
       <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pb-12 pt-6 sm:px-6">
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Where each candidate EIP stands with client teams — sorted by overall support, so
+          Where each candidate EIP stands with client teams - sorted by overall support, so
           what&apos;s likely in floats to the top. Each team&apos;s own rating (tiers,
           support/oppose) is normalized to a 1–5 scale; the{' '}
           <span className="font-medium text-emerald-700 dark:text-emerald-300">devnet</span>{' '}

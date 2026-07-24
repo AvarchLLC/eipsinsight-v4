@@ -27,7 +27,7 @@ const Inter = InterFont({
 
 export const metadata: Metadata = {
   ...buildMetadata({
-    title: "EIPsInsight — Ethereum Standards Intelligence",
+    title: "EIPsInsight - Ethereum Standards Intelligence",
     description:
       "EIPsInsight provides clear, visual insights into Ethereum Improvement Proposals. Track EIPs, ERCs, and RIPs with analytics, governance signals, and historical context.",
     path: "/",
@@ -44,7 +44,7 @@ export const metadata: Metadata = {
     ],
   }),
   title: {
-    default: "EIPsInsight — Ethereum Standards Intelligence",
+    default: "EIPsInsight - Ethereum Standards Intelligence",
     template: "%s · EIPsInsight",
   },
   authors: [{ name: "EIPsInsight" }],

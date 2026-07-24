@@ -19,7 +19,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const entry = getUpgradeRegistryEntry(slug);
   return buildMetadata({
-    title: `${entry?.name ?? slug} — Stakeholders`,
+    title: `${entry?.name ?? slug} - Stakeholders`,
     description: `How the ${entry?.name ?? slug} upgrade affects end users, app developers, wallets, Layer 2s, stakers, and client teams.`,
     path: `/upgrade/${slug}/stakeholders`,
   });
@@ -63,7 +63,7 @@ export default async function StakeholdersPage({ params }: Props) {
 
       <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pb-12 pt-6 sm:px-6">
         <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
-          Who each in-scope EIP affects, and how. Every proposal appears once — scan the grid
+          Who each in-scope EIP affects, and how. Every proposal appears once - scan the grid
           for the big picture, click a row for the full breakdown, or focus a single group.
         </p>
 

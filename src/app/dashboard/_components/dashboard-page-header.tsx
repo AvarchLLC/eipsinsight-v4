@@ -50,7 +50,7 @@ export function DashboardPageHeader() {
               transition={{ duration: 0.4, delay: 0.05 }}
               className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
             >
-              Ethereum proposals by category, status, and repository — with downloadable reports.
+              Ethereum proposals by category, status, and repository - with downloadable reports.
               Powered by <span className="text-foreground/80">EIPsInsight</span>.
             </motion.p>
           </div>

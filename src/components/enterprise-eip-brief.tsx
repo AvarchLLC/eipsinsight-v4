@@ -167,13 +167,13 @@ function getSimplifiedTechOverview(proposal: ProposalData, upgrades: UpgradeIncl
         ? 'Client teams, validators, node operators, RPC providers'
         : 'App developers, wallet providers, DeFi protocols',
     },
-    { topic: 'Consensus-critical?', explanation: isCore ? 'Yes — all clients must implement simultaneously' : 'No — protocol rules unchanged' },
-    { topic: 'App changes needed?', explanation: isCore ? 'Usually no — transparent to applications' : 'Possibly — if integrating this standard' },
+    { topic: 'Consensus-critical?', explanation: isCore ? 'Yes - all clients must implement simultaneously' : 'No - protocol rules unchanged' },
+    { topic: 'App changes needed?', explanation: isCore ? 'Usually no - transparent to applications' : 'Possibly - if integrating this standard' },
     {
       topic: 'Infrastructure updates?',
       explanation: isCore
-        ? included ? `Yes — required before ${included.name} activation` : 'Possibly — monitor client updates'
-        : 'No — infrastructure unaffected',
+        ? included ? `Yes - required before ${included.name} activation` : 'Possibly - monitor client updates'
+        : 'No - infrastructure unaffected',
     },
   ];
 }
@@ -376,7 +376,7 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
                       : 'Application Layer',
                     colorClass: undefined
                   },
-                  { label: 'Risk Level', value: `${enterpriseRisk.level} — ${enterpriseRisk.note}`, colorClass: enterpriseRisk.color },
+                  { label: 'Risk Level', value: `${enterpriseRisk.level} - ${enterpriseRisk.note}`, colorClass: enterpriseRisk.color },
                   { label: 'Action Required', value: enterpriseAction, colorClass: undefined },
                 ] as { label: string; value: string; colorClass?: string }[]).map(({ label, value, colorClass }) => (
                   <tr key={label} className="hover:bg-muted/20 transition-colors">

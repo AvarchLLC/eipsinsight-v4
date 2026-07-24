@@ -551,7 +551,7 @@ export default function ExploreDetailPage({
             <div className="mt-3 rounded-2xl border border-border/80 bg-gradient-to-br from-card/90 via-card/75 to-muted/30 p-4 shadow-sm">
               <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-semibold tracking-tight text-foreground">
-                  GitHub Stats — {overview?.label ?? slug}
+                  GitHub Stats - {overview?.label ?? slug}
                 </p>
                 {repoStats?.githubRepo ? (
                   <a

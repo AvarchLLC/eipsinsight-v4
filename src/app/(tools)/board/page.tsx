@@ -449,7 +449,7 @@ function BoardBrowser() {
       });
 
       const order = PROCESS_ORDER.concat([...grouped.keys()].filter((p) => !PROCESS_ORDER.includes(p)));
-      let markdown = `## Open PR Board — ${monthLabel}\n\n`;
+      let markdown = `## Open PR Board - ${monthLabel}\n\n`;
       for (const process of order) {
         const sectionRows = grouped.get(process);
         if (!sectionRows?.length) continue;
@@ -457,7 +457,7 @@ function BoardBrowser() {
         sectionRows.forEach((row) => {
           const title = (row.title ?? "Untitled").replace(/\]/g, "\\]");
           const url = `https://github.com/${row.repo}/pull/${row.prNumber}`;
-          markdown += `- [${title} #${row.prNumber}](${url}) — ${row.govState} · waiting ${fmtWait(row.waitDays)}\n`;
+          markdown += `- [${title} #${row.prNumber}](${url}) - ${row.govState} · waiting ${fmtWait(row.waitDays)}\n`;
         });
         markdown += "\n";
       }
@@ -498,7 +498,7 @@ function BoardBrowser() {
                 EIP / ERC / RIP Board
               </h1>
               <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Open pull requests by type and status for {monthLabel}. Sorted by longest wait first — the editorial queue,
+                Open pull requests by type and status for {monthLabel}. Sorted by longest wait first - the editorial queue,
                 oldest at the top.
               </p>
             </div>
@@ -733,7 +733,7 @@ function BoardBrowser() {
               <button
                 onClick={toggleConflicts}
                 aria-pressed={hasConflicts}
-                title="PRs with merge conflicts — the author must resolve before review"
+                title="PRs with merge conflicts - the author must resolve before review"
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
                   hasConflicts
@@ -910,7 +910,7 @@ function BoardBrowser() {
                         <td className="px-3 py-2">
                           <span
                             className={cn("inline-flex items-center gap-1 text-[11px] font-medium", p.color)}
-                            title={`${row.waitDays} days — ${p.note}`}
+                            title={`${row.waitDays} days - ${p.note}`}
                           >
                             <p.Icon className="h-3 w-3" />
                             {fmtWait(row.waitDays)}
@@ -1016,7 +1016,7 @@ function SignalBadges({ row }: { row: PRRow }) {
     badges.push({
       key: "conflict",
       label: "Conflicts",
-      title: "Merge conflicts — author must resolve before this can be reviewed",
+      title: "Merge conflicts - author must resolve before this can be reviewed",
       cls: "border-orange-500/30 bg-orange-500/10 text-orange-700 dark:text-orange-300",
       Icon: GitMerge,
     });

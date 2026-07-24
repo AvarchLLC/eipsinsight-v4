@@ -131,7 +131,7 @@ export function StakeholdersMatrix({ eips }: { eips: StakeholderEip[] }) {
                         'cursor-pointer px-1 py-2.5 text-center align-bottom transition-colors',
                         focus === group.key ? 'bg-primary/10' : 'hover:bg-muted/40'
                       )}
-                      title={`${group.label} — ${group.blurb}`}
+                      title={`${group.label} - ${group.blurb}`}
                     >
                       <div className="mx-auto flex flex-col items-center gap-1">
                         {Icon && (

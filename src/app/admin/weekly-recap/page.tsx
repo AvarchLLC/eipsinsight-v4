@@ -207,7 +207,7 @@ export default function WeeklyRecapPage() {
     });
 
     let md = `# Ethereum Standards Weekly Recap - ${formattedDate}\n\n`;
-    md += `Ethereum protocol upgrades, governance decisions, and EIP analysis — compiled directly from EIPsInsight.\n\n---\n\n`;
+    md += `Ethereum protocol upgrades, governance decisions, and EIP analysis - compiled directly from EIPsInsight.\n\n---\n\n`;
 
     // 1. STANDARDS IN MOTION
     md += `## 3.1 Standards in Motion\n\n`;

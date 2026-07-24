@@ -336,7 +336,7 @@ export function SchedulePlanner() {
           </table>
         </div>
         <p className="border-t border-border px-4 py-2.5 text-[11px] text-muted-foreground">
-          Hypothetical projections for planning — not commitments. Dates with{' '}
+          Hypothetical projections for planning - not commitments. Dates with{' '}
           <Pin className="inline h-3 w-3 text-primary" /> are confirmed via AllCoreDevs; the rest
           are projected from the mainnet target and shift as you edit.
         </p>

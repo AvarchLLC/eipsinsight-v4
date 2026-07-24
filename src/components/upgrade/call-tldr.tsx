@@ -1,6 +1,5 @@
 'use client';
 
-
 /**
  * Defensive renderer for ACDbot tldr.json payloads. The shape varies across
  * call series and bot versions, so we render whatever sections exist:
@@ -24,7 +23,7 @@ function itemToText(item: unknown): string {
     }
     return Object.values(record)
       .filter((value): value is string => typeof value === 'string')
-      .join(' — ');
+      .join(' - ');
   }
   return String(item);
 }
@@ -98,11 +97,7 @@ function TldrSection({ label, value }: { label: string; value: unknown }) {
   return null;
 }
 
-/**
- * Always-expanded call summary. The summary is the primary reason to open a call
- * page, so it is not collapsible — the meeting chat carries the collapse instead,
- * since that is the long, skimmable artifact.
- */
+/** Renders whatever summary sections a call's tldr payload contains. */
 export function CallTldr({ tldr }: { tldr: unknown }) {
   if (!tldr || typeof tldr !== 'object') return null;
   const sections = Object.entries(tldr as Record<string, unknown>).filter(

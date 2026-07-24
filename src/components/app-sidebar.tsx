@@ -142,9 +142,9 @@ const sidebarSections: SidebarSection[] = [
             title: "ACD Calls",
             href: "/calls?series=acd#recent",
             items: [
-              { title: "ACDE — Execution", href: "/calls?series=acd&acd=acde#recent" },
-              { title: "ACDC — Consensus", href: "/calls?series=acd&acd=acdc#recent" },
-              { title: "ACDT — Testing", href: "/calls?series=acd&acd=acdt#recent" },
+              { title: "ACDE - Execution", href: "/calls?series=acd&acd=acde#recent" },
+              { title: "ACDC - Consensus", href: "/calls?series=acd&acd=acdc#recent" },
+              { title: "ACDT - Testing", href: "/calls?series=acd&acd=acdt#recent" },
               { title: "ACDT-CL Breakout", href: "/calls?series=acd&acd=acdtcl#recent" },
             ],
           },
@@ -310,7 +310,7 @@ const DEFAULT_SECTION_ORDER = ["standards", "analytics", "tools", "learn"];
 // ============================================================================
 
 const PERSONA_VISIBLE_SECTIONS: Record<Persona, string[]> = {
-  developer:  ["standards", "analytics", "tools", "learn"], // all — baseline
+  developer:  ["standards", "analytics", "tools", "learn"], // all - baseline
   editor:     ["analytics", "standards"],                    // hide tools + learn
   researcher: ["analytics", "standards", "tools", "learn"],
   builder:    ["tools", "standards", "learn", "analytics"],

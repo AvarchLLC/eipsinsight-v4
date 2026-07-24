@@ -49,7 +49,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     status: 'Upcoming',
     tagline: 'The next major upgrade after Fusaka, with shorter slot times and block-level access lists in focus.',
     statusNote:
-      'Scoping complete — implemented EIPs are being tested on devnets; devnet-7 is planned as the final devnet.',
+      'Scoping complete - implemented EIPs are being tested on devnets; devnet-7 is planned as the final devnet.',
     description:
       'Ethereum developers are preparing for the next major network upgrade, Glamsterdam. It introduces key changes to both the Execution and Consensus layers on mainnet. Candidate EIPs are being fine-tuned, implemented, and tested on devnets as the scope firms up.',
     executionName: 'Amsterdam',
@@ -76,7 +76,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     status: 'Planning',
     tagline: 'Early-stage upgrade following Glamsterdam; headliner selection in progress.',
     statusNote:
-      'Headliner selection underway — FOCIL leading; EIP proposals (PFI) open until Aug 6, 2026.',
+      'Headliner selection underway - FOCIL leading; EIP proposals (PFI) open until Aug 6, 2026.',
     description:
       'Hegotá is in early planning. The headliner proposal window is opening, with fork-choice enforced inclusion lists (FOCIL) among the leading candidates. Check back for updates as the upgrade planning process progresses.',
     executionName: 'Bogotá',
