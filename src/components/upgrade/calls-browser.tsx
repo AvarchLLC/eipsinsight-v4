@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ExternalLink, Github, Video, Search } from 'lucide-react';
+import { ExternalLink, Github, Video, Search, ChevronRight, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
@@ -39,9 +39,15 @@ function SeriesBadge({ series }: { series: string }) {
   );
 }
 
+// Recent calls list reveals in batches — how many to show first, and per click.
+const INITIAL_VISIBLE = 13;
+const STEP = 13;
+
 /**
- * Client browser for recent protocol calls: colorful per-series filter tabs
- * over a compact card list (summaries stay collapsed to keep it scannable).
+ * Client browser for recent protocol calls: colorful per-series filter tabs over
+ * a compact card list. Each card is collapsed to its title row and expands to
+ * reveal the summary on click; the list shows a batch at a time (Show more)
+ * rather than dumping all ~300 calls at once.
  */
 export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
   const router = useRouter();
@@ -106,6 +112,30 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     });
   }, [calls, series, search]);
 
+  // Which cards are expanded. Independent (not an accordion) so an editor can open
+  // several summaries side by side. Keyed by series+call_id.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggle = (key: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+
+  // Reveal the list in batches. visibleCount resets when the filter changes, via the
+  // render-phase pattern — a plain initialiser wouldn't re-run, and a reset effect
+  // would trip the React Compiler's setState-in-effect rule.
+  const filterKey = `${series.group}:${series.acd ?? ''}:${search.trim().toLowerCase()}`;
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE);
+  const [syncedFilterKey, setSyncedFilterKey] = useState(filterKey);
+  if (filterKey !== syncedFilterKey) {
+    setSyncedFilterKey(filterKey);
+    setVisibleCount(INITIAL_VISIBLE);
+  }
+  const visible = filtered.slice(0, visibleCount);
+  const remaining = filtered.length - visible.length;
+
   return (
     <div className="space-y-4">
       {/* Search + grouped series filter */}
@@ -122,67 +152,102 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
         </div>
       </div>
 
-      {/* Call list */}
+      {/* Call list — collapsed cards, revealed a batch at a time. */}
       {filtered.length === 0 ? (
         <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
           No calls in this series yet.
         </p>
       ) : (
         <div className="space-y-2.5">
-          {filtered.map((call) => (
-            <div
-              key={`${call.series}-${call.call_id}`}
-              className="rounded-xl border border-border bg-card/60 p-4 transition-colors hover:border-primary/40"
-            >
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                <SeriesBadge series={call.series} />
-                <Link
-                  href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
-                  className="min-w-0 flex-1 text-sm font-medium text-foreground transition-colors hover:text-primary hover:underline"
-                >
-                  {callDisplayName(call)}
-                </Link>
-                <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
-                <div className="flex items-center gap-3">
-                  {call.video_url && (
-                    <a
-                      href={call.video_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Recording"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          {visible.map((call) => {
+            const key = `${call.series}-${call.call_id}`;
+            const hasTldr = call.tldr != null;
+            const isOpen = expanded.has(key);
+            return (
+              <div
+                key={key}
+                className="rounded-xl border border-border bg-card/60 p-4 transition-colors hover:border-primary/40"
+              >
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                  {/* Expander first, so every card's disclosure control lines up. It's
+                      only interactive when there's a summary to reveal. */}
+                  {hasTldr ? (
+                    <button
+                      type="button"
+                      onClick={() => toggle(key)}
+                      aria-expanded={isOpen}
+                      aria-label={isOpen ? 'Collapse summary' : 'Expand summary'}
+                      className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-primary"
                     >
-                      <Video className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Recording</span>
-                    </a>
+                      <ChevronRight
+                        className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-90')}
+                      />
+                    </button>
+                  ) : (
+                    <span className="w-5 shrink-0" aria-hidden />
                   )}
-                  {call.issue_number && (
-                    <a
-                      href={`https://github.com/ethereum/pm/issues/${call.issue_number}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      title="Agenda"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                    >
-                      <Github className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Agenda</span>
-                    </a>
-                  )}
-                  {call.has_transcript && (
-                    <Link
-                      href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
-                      title="Transcript"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Transcript</span>
-                    </Link>
-                  )}
+                  <SeriesBadge series={call.series} />
+                  <Link
+                    href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
+                    className="min-w-0 flex-1 text-sm font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                  >
+                    {callDisplayName(call)}
+                  </Link>
+                  <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
+                  <div className="flex items-center gap-3">
+                    {call.video_url && (
+                      <a
+                        href={call.video_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Recording"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        <Video className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Recording</span>
+                      </a>
+                    )}
+                    {call.issue_number && (
+                      <a
+                        href={`https://github.com/ethereum/pm/issues/${call.issue_number}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Agenda"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        <Github className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Agenda</span>
+                      </a>
+                    )}
+                    {call.has_transcript && (
+                      <Link
+                        href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
+                        title="Transcript"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Transcript</span>
+                      </Link>
+                    )}
+                  </div>
                 </div>
+                {/* Collapsed by default — the full summary reveals in place on click. */}
+                {hasTldr && isOpen && <CallTldr tldr={call.tldr} />}
               </div>
-              {call.tldr != null && <CallTldr tldr={call.tldr} />}
-            </div>
-          ))}
+            );
+          })}
+
+          {remaining > 0 && (
+            <button
+              type="button"
+              onClick={() => setVisibleCount((c) => c + STEP)}
+              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card/60 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              Show {Math.min(STEP, remaining)} more
+              <span className="text-xs text-muted-foreground/70">({remaining} remaining)</span>
+              <ChevronDown className="h-4 w-4" />
+            </button>
+          )}
         </div>
       )}
     </div>

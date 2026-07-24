@@ -111,33 +111,45 @@ async function callGemini(system: string, user: string, modelOverride?: string):
   if (!key) return null;
   const model = modelOverride || process.env.GEMINI_EXPLAIN_MODEL || 'gemini-2.5-flash';
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: user }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-        temperature: 0.3,
-      },
-      systemInstruction: {
-        parts: [{ text: system }],
-      },
-    }),
+  const requestBody = JSON.stringify({
+    contents: [{ parts: [{ text: user }] }],
+    generationConfig: { responseMimeType: 'application/json', temperature: 0.3 },
+    systemInstruction: { parts: [{ text: system }] },
   });
-  if (!response.ok) {
-    throw new Error(`Gemini ${response.status}: ${(await response.text()).slice(0, 200)}`);
+
+  // Retry on rate limits, matching callGroq. Preview/thinking models like
+  // gemini-3-flash-preview have tight RPM limits, so without this a burst of page
+  // views (or React's dev double-render) throws 429 and the caller sees a failure.
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: requestBody,
+    });
+
+    if (response.status === 429 || response.status === 503) {
+      const retryAfter = Number(response.headers.get('retry-after'));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 8_000;
+      await sleep(Math.min(waitMs + 500, 30_000));
+      continue;
+    }
+    if (!response.ok) {
+      throw new Error(`Gemini ${response.status}: ${(await response.text()).slice(0, 200)}`);
+    }
+
+    const data = (await response.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    // Join ALL text parts: thinking models (gemini-3-*) can return a separate
+    // thought part alongside the answer, so parts[0] alone may miss the text.
+    const parts = data.candidates?.[0]?.content?.parts ?? [];
+    const text = parts
+      .map((p) => p.text ?? '')
+      .join('')
+      .trim();
+    return text || null;
   }
-  const data = (await response.json()) as {
-    candidates?: Array<{
-      content?: {
-        parts?: Array<{ text?: string }>;
-      };
-    }>;
-  };
-  return data.candidates?.[0]?.content?.parts?.[0]?.text ?? null;
+  throw new Error('Gemini 429: rate limit not cleared after retries');
 }
 
 /** Prefer Gemini when configured, then Anthropic, else Groq. */

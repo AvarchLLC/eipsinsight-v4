@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
 import { getCachedDevnet, getCachedEipMeta } from '@/lib/upgrade-data.server';
 import { devnetResourceLinks } from '@/lib/devnet-resources';
+import { AnnouncementMarkdown } from '@/components/upgrade/announcement-markdown';
 
 export const revalidate = 300;
 
@@ -220,14 +221,12 @@ export default async function DevnetDetailPage({ params }: Props) {
             <Megaphone className="h-4 w-4 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">Announcements</h2>
           </div>
-          <ul className="mt-2 space-y-1.5">
+          {/* Rendered as markdown: announcements routinely embed GFM tables
+              (system-contract addresses) and :emoji: shortcodes. */}
+          <ul className="mt-2 space-y-2.5">
             {devnet.announcements.map((announcement, index) => (
-              <li
-                key={index}
-                className="line-clamp-4 break-words text-sm leading-relaxed text-muted-foreground"
-                title={announcement.length > 300 ? announcement : undefined}
-              >
-                {announcement.length > 600 ? `${announcement.slice(0, 600)}…` : announcement}
+              <li key={index} className="break-words border-t border-border/40 pt-2.5 first:border-0 first:pt-0">
+                <AnnouncementMarkdown text={announcement} />
               </li>
             ))}
           </ul>

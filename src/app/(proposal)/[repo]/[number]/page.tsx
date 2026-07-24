@@ -508,11 +508,15 @@ export default function ProposalDetailPage() {
     return () => { cancelled = true; };
   }, [number, proposal?.title]);
 
-  // Fetch AI summary when markdown content is available
+  // Fetch AI summary when markdown content is available.
   useEffect(() => {
     if (!markdownContent || !number) return;
 
-    let cancelled = false;
+    // AbortController (not just a `cancelled` flag) so a superseded run actually
+    // cancels its in-flight request. Without this, React StrictMode's double-invoke
+    // in dev fired TWO concurrent LLM calls; the second raced the first into the
+    // provider's rate limit and 503'd, and its error clobbered the good first result.
+    const controller = new AbortController();
 
     const fetchAiSummary = async () => {
       try {
@@ -523,28 +527,36 @@ export default function ProposalDetailPage() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ eipNo: number, content: markdownContent, proposalType: repoDisplayName }),
+          signal: controller.signal,
         });
 
         const data = await res.json();
-        if (cancelled) return;
 
-        if (res.ok) {
-          setAiSummary(data.summary);
+        // Guard against a provider quota/error notice slipping through as a
+        // "summary" (the old Cohere trial-key warning did exactly this).
+        const summary: string = typeof data.summary === 'string' ? data.summary : '';
+        const looksLikeNoise = /trial key|api-keys|rate limit|dashboard\.cohere|upgrade to a production key/i.test(
+          summary
+        );
+
+        if (res.ok && summary && !looksLikeNoise) {
+          setAiSummary(summary);
         } else {
-          setAiSummaryError(data.error || 'Failed to generate summary');
+          setAiSummaryError(data.error || 'AI summary is temporarily unavailable.');
         }
-      } catch {
-        if (!cancelled) setAiSummaryError('Failed to generate summary');
+      } catch (err) {
+        // An abort is expected on cleanup — don't surface it as a failure.
+        if ((err as Error)?.name !== 'AbortError') {
+          setAiSummaryError('Failed to generate summary');
+        }
       } finally {
-        if (!cancelled) setAiSummaryLoading(false);
+        if (!controller.signal.aborted) setAiSummaryLoading(false);
       }
     };
 
     fetchAiSummary();
 
-    return () => {
-      cancelled = true;
-    };
+    return () => controller.abort();
   }, [markdownContent, number, repoDisplayName]);
 
 
