@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { ArrowRight, Archive, BarChart2, CalendarClock, GitCommit, Info, Package, Star, Zap } from 'lucide-react';
 import { CopyLinkButton } from '@/components/header';
+import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { statusBadgeClass } from '@/lib/proposal-status';
@@ -484,8 +485,10 @@ export default async function UpgradeIndexPage() {
         <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/60 p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap gap-x-8 gap-y-3">
             <div>
-              <p className="text-2xl font-semibold text-foreground">{stats?.totalUpgrades ?? '—'}</p>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Tracked upgrades</p>
+              {/* Complete historical count (22) from the static timeline, not the
+                  live DB count — only 17 upgrades are seeded, which is incomplete. */}
+              <p className="text-2xl font-semibold text-foreground">{TOTAL_NETWORK_UPGRADES}</p>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Network upgrades</p>
             </div>
             <div>
               <p className="text-2xl font-semibold text-foreground">{stats?.totalCoreEIPs ?? '—'}</p>

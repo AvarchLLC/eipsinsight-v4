@@ -4,6 +4,13 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Rocket, Code, Layers, Network, FileText, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  TOTAL_NETWORK_UPGRADES,
+  EXECUTION_EIP_COUNT,
+  CONSENSUS_EIP_COUNT,
+  TOTAL_EIPS_DEPLOYED,
+} from '@/data/upgrade-timeline-stats';
+import { upgradeMetaEIPs } from '@/data/network-upgrades';
 
 interface UpgradeStatsCardsProps {
   totalUpgrades?: number;
@@ -12,8 +19,13 @@ interface UpgradeStatsCardsProps {
   onSelectTable?: (mode: 'core' | 'meta' | 'execution' | 'consensus' | 'authors') => void;
 }
 
+// Meta EIPs paired with upgrades (one per hard fork that has a meta EIP).
+const META_EIP_COUNT = Object.keys(upgradeMetaEIPs).length;
+
 export function UpgradeStatsCards({
-  totalUpgrades = 27,
+  // All defaults derive from the static timeline so the cards, the chart, and the
+  // /upgrade page can't disagree. Callers may still override totalUpgrades.
+  totalUpgrades = TOTAL_NETWORK_UPGRADES,
   independentIncludedAuthors = 0,
   activeTable = null,
   onSelectTable,
@@ -79,8 +91,8 @@ export function UpgradeStatsCards({
               Execution Layer
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">19</p>
-          <p className="text-xs text-muted-foreground">Protocol & EVM</p>
+          <p className="text-3xl font-bold text-foreground mb-1">{EXECUTION_EIP_COUNT}</p>
+          <p className="text-xs text-muted-foreground">EIPs · Protocol & EVM</p>
         </motion.button>
 
         {/* Consensus Layer */}
@@ -106,8 +118,8 @@ export function UpgradeStatsCards({
               Consensus Layer
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">6</p>
-          <p className="text-xs text-muted-foreground">Beacon Chain</p>
+          <p className="text-3xl font-bold text-foreground mb-1">{CONSENSUS_EIP_COUNT}</p>
+          <p className="text-xs text-muted-foreground">EIPs · Beacon Chain</p>
         </motion.button>
       </div>
 
@@ -162,8 +174,8 @@ export function UpgradeStatsCards({
               EIPs Deployed
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">62</p>
-          <p className="text-xs text-muted-foreground">Core EIPs deployed in upgrades</p>
+          <p className="text-3xl font-bold text-foreground mb-1">{TOTAL_EIPS_DEPLOYED}</p>
+          <p className="text-xs text-muted-foreground">EIPs deployed in upgrades (EL + CL)</p>
         </motion.button>
 
         <motion.button
@@ -188,7 +200,7 @@ export function UpgradeStatsCards({
               Hard Fork Meta EIPs
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">20</p>
+          <p className="text-3xl font-bold text-foreground mb-1">{META_EIP_COUNT}</p>
           <p className="text-xs text-muted-foreground">Meta EIPs paired with upgrades</p>
         </motion.button>
       </div>

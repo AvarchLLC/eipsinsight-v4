@@ -173,8 +173,17 @@ export function NetworkUpgradesChart() {
   };
 
   const downloadCSV = () => {
-    const sortedData = [...rawData].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    // One row per activation DATE, so the sheet's row count equals the 22
+    // distinct network upgrades — same-date EL/CL pairs (e.g. Shanghai+Capella)
+    // share a row instead of being listed twice.
+    const byDate = new Map<string, UpgradeData[]>();
+    for (const item of rawData) {
+      const list = byDate.get(item.date) ?? [];
+      list.push(item);
+      byDate.set(item.date, list);
+    }
+    const sortedDates = [...byDate.keys()].sort(
+      (a, b) => new Date(b).getTime() - new Date(a).getTime()
     );
 
     const headers = [
@@ -189,21 +198,27 @@ export function NetworkUpgradesChart() {
       'EIPs',
     ];
 
-    const rows = sortedData.map((upgrade, index) => {
-      const metaEIP = upgradeMetaEIPs[upgrade.upgrade] || '';
-      const eips = upgrade.eips
-        .filter((e: string) => e !== 'NO-EIP' && e !== 'CONSENSUS')
+    const rows = sortedDates.map((date, index) => {
+      const group = byDate.get(date)!;
+      const execution = group.find((g) => g.layer === 'execution');
+      const consensus = group.find((g) => g.layer === 'consensus');
+      const displayName =
+        pairedUpgradeNames[date] || execution?.upgrade || consensus?.upgrade || '';
+      const metaEIP = group.map((g) => upgradeMetaEIPs[g.upgrade]).find(Boolean) || '';
+      const eips = group
+        .flatMap((g) => g.eips)
+        .filter((e: string) => e !== 'NO-EIP' && e !== 'CONSENSUS' && !e.endsWith('-removed'))
         .map((e: string) => e.replace('EIP-', ''))
         .join('; ');
 
       return [
-        sortedData.length - index,
-        upgrade.upgrade,
-        upgrade.date,
-        upgrade.layer === 'execution' ? upgrade.upgrade : '',
-        upgrade.layer === 'consensus' ? upgrade.upgrade : '',
-        upgrade.blockNumber || '',
-        upgrade.forkEpoch || '',
+        sortedDates.length - index,
+        displayName,
+        date,
+        execution?.upgrade ?? '',
+        consensus?.upgrade ?? '',
+        execution?.blockNumber || '',
+        consensus?.forkEpoch || '',
         metaEIP,
         eips,
       ];
