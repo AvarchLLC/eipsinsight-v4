@@ -13,7 +13,7 @@ interface UpgradeStatsCardsProps {
 }
 
 export function UpgradeStatsCards({
-  totalUpgrades = 27,
+  totalUpgrades = 22,
   independentIncludedAuthors = 0,
   activeTable = null,
   onSelectTable,
@@ -79,7 +79,7 @@ export function UpgradeStatsCards({
               Execution Layer
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">19</p>
+          <p className="text-3xl font-bold text-foreground mb-1">18</p>
           <p className="text-xs text-muted-foreground">Protocol & EVM</p>
         </motion.button>
 
@@ -106,7 +106,7 @@ export function UpgradeStatsCards({
               Consensus Layer
             </h3>
           </div>
-          <p className="text-3xl font-bold text-foreground mb-1">6</p>
+          <p className="text-3xl font-bold text-foreground mb-1">4</p>
           <p className="text-xs text-muted-foreground">Beacon Chain</p>
         </motion.button>
       </div>
