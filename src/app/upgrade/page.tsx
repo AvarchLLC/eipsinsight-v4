@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Archive, BarChart2, CalendarClock, GitCommit, Info, Package, Star, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Archive, BarChart2, CalendarClock, GitCommit, Info, Package, Search, Star, Zap } from 'lucide-react';
 import { CopyLinkButton } from '@/components/header';
 import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
 import '@/lib/orpc.server';
@@ -21,18 +21,13 @@ import {
 import { getCurrentPhase } from '@/data/fork-schedule';
 import {
   getCachedRecentActivity,
-  getCachedRecentCalls,
-  getCachedUpcomingCalls,
   getCachedUpgradeComposition,
   getCachedUpgradeList,
   getCachedUpgradeStats,
 } from '@/lib/upgrade-data.server';
-import {
-  callDisplayName,
-  callSeriesBadgeClass,
-  callSeriesShort,
-} from '@/data/call-series';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
+import { EipDirectorySearch } from '@/components/upgrade/eip-directory-search';
+import { ScheduleTimelinePreview } from '@/components/upgrade/schedule-timeline-preview';
 import { PhaseBadge, StageBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { EipInclusionProcessGraph } from '@/components/upgrade/eip-inclusion-process-graph';
 
@@ -150,12 +145,10 @@ export default async function UpgradeIndexPage() {
   // Featured cards: newest live fork + everything in progress.
   const featured = [live[0], ...inProgress].filter(Boolean);
 
-  const [list, stats, activity, recentCalls, upcomingCalls, ...compositions] = await Promise.all([
+  const [list, stats, activity, ...compositions] = await Promise.all([
     getCachedUpgradeList(),
     getCachedUpgradeStats(),
     getCachedRecentActivity(10),
-    getCachedRecentCalls(5),
-    getCachedUpcomingCalls(),
     ...featured.map((entry) => getCachedUpgradeComposition(entry.slug)),
   ]);
 
@@ -203,6 +196,56 @@ export default async function UpgradeIndexPage() {
             />
           ))}
         </div>
+      </section>
+
+      {/* EIP Directory search preview */}
+      <section id="eip-directory">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <Search className="h-5 w-5 text-primary" />
+              <Link
+                href="/upgrade/eips"
+                className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
+              >
+                Upgrade EIP Directory
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+              </Link>
+              <CopyLinkButton sectionId="eip-directory" tooltipLabel="Copy link" />
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Search every EIP across all upgrades, or jump straight to a filtered view.
+            </p>
+          </div>
+        </div>
+        <EipDirectorySearch
+          upgradeChips={inProgress
+            .slice(0, 2)
+            .map((entry) => ({ label: entry.name, href: `/upgrade/eips?upgrade=${entry.slug}` }))}
+        />
+      </section>
+
+      {/* Timeline View — schedule preview */}
+      <section id="timeline-view">
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 text-primary" />
+              <Link
+                href="/upgrade/schedule"
+                className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
+              >
+                Timeline View
+                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+              </Link>
+              <CopyLinkButton sectionId="timeline-view" tooltipLabel="Copy link" />
+            </div>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Upgrade phases and milestones across forks, on a shared calendar.
+            </p>
+          </div>
+        </div>
+        <ScheduleTimelinePreview today={today} />
       </section>
 
       {/* Latest changes */}
@@ -280,102 +323,6 @@ export default async function UpgradeIndexPage() {
                 </li>
               ))}
             </ul>
-          </div>
-        </section>
-      )}
-
-      {/* Protocol calls */}
-      {(recentCalls.length > 0 || upcomingCalls.length > 0) && (
-        <section id="protocol-calls">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <CalendarClock className="h-5 w-5 text-primary" />
-                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                  Protocol calls
-                </h2>
-                <CopyLinkButton sectionId="protocol-calls" tooltipLabel="Copy link" />
-              </div>
-              <p className="mt-0.5 text-sm text-muted-foreground">
-                Where upgrade decisions happen - agendas, recordings, and summaries.
-              </p>
-            </div>
-            <Link
-              href="/calls"
-              className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-            >
-              All calls
-              <ArrowRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="grid gap-4 lg:grid-cols-2">
-            {upcomingCalls.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-                <h3 className="border-b border-border/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Upcoming
-                </h3>
-                <ul className="divide-y divide-border/60">
-                  {upcomingCalls.slice(0, 4).map((call) => (
-                    <li key={call.issue_number} className="flex items-center gap-3 px-4 py-2.5">
-                      <span
-                        className={cn(
-                          'inline-flex w-14 shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
-                          call.series
-                            ? callSeriesBadgeClass(call.series)
-                            : 'border-border bg-muted text-muted-foreground'
-                        )}
-                      >
-                        {call.series ? callSeriesShort(call.series) : '—'}
-                      </span>
-                      <a
-                        href={call.issue_url ?? '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="min-w-0 flex-1 truncate text-sm text-foreground transition-colors hover:text-primary"
-                      >
-                        {call.title}
-                      </a>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {call.occurs_on ?? 'TBD'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {recentCalls.length > 0 && (
-              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-                <h3 className="border-b border-border/60 px-4 py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Recent
-                </h3>
-                <ul className="divide-y divide-border/60">
-                  {recentCalls.slice(0, 4).map((call) => (
-                    <li
-                      key={`${call.series}-${call.call_id}`}
-                      className="flex items-center gap-3 px-4 py-2.5"
-                    >
-                      <span
-                        className={cn(
-                          'inline-flex w-14 shrink-0 items-center justify-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold',
-                          callSeriesBadgeClass(call.series)
-                        )}
-                      >
-                        {callSeriesShort(call.series)}
-                      </span>
-                      <Link
-                        href="/calls"
-                        className="min-w-0 flex-1 truncate text-sm text-foreground transition-colors hover:text-primary"
-                      >
-                        {callDisplayName(call)}
-                      </Link>
-                      <span className="shrink-0 text-[11px] text-muted-foreground">
-                        {call.occurred_on}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         </section>
       )}
