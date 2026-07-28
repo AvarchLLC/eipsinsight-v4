@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
+  ChevronDown,
   ExternalLink,
   Filter,
   GitPullRequest,
@@ -371,13 +372,22 @@ function SearchPageContent() {
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-              Search Everything
+            {/* Compact once a query is active: the big intro is only useful on the
+                empty landing state, not while reading results. */}
+            <h1
+              className={cn(
+                "dec-title persona-title text-balance font-semibold tracking-tight leading-[1.1]",
+                q ? "text-2xl sm:text-3xl" : "text-3xl sm:text-4xl"
+              )}
+            >
+              {q ? "Search results" : "Search Everything"}
             </h1>
-            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Search proposals, pull requests, issues, and contributors from one place. Start broad, then narrow with
-              advanced filters only if you need them.
-            </p>
+            {!q && (
+              <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                Search proposals, pull requests, issues, and contributors from one place. Start broad, then narrow with
+                advanced filters only if you need them.
+              </p>
+            )}
           </div>
           <button
             type="button"
@@ -559,11 +569,42 @@ function SearchPageContent() {
 
       {q && (
         <section className="mt-6 space-y-4">
-          <div className="grid gap-4 md:grid-cols-4">
-            <SummaryCard label="Total results" value={loading ? "..." : `${totalResults}`} />
-            <SummaryCard label="Proposals" value={loading ? "..." : `${filteredProposals.length}`} />
-            <SummaryCard label="PRs + Issues" value={loading ? "..." : `${filteredPrs.length + filteredIssues.length}`} />
-            <SummaryCard label="People" value={loading ? "..." : `${filteredPeople.length}`} />
+          {/* Result-type tabs: filter to one category so the page shows a single
+              focused list instead of every category stacked. Counts live on the
+              tabs, replacing the old stat cards. */}
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                { key: "all", label: "All", count: totalResults },
+                { key: "proposals", label: "Proposals", count: filteredProposals.length },
+                { key: "prs", label: "PRs", count: filteredPrs.length },
+                { key: "issues", label: "Issues", count: filteredIssues.length },
+                { key: "people", label: "People", count: filteredPeople.length },
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                onClick={() => setKind(tab.key)}
+                aria-pressed={kind === tab.key}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                  kind === tab.key
+                    ? "border-primary/50 bg-primary/10 text-foreground"
+                    : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                )}
+              >
+                {tab.label}
+                <span
+                  className={cn(
+                    "rounded-full px-1.5 text-xs",
+                    kind === tab.key ? "bg-primary/20 text-primary" : "bg-muted/60 text-muted-foreground"
+                  )}
+                >
+                  {loading ? "…" : tab.count}
+                </span>
+              </button>
+            ))}
           </div>
 
           {error && (
@@ -801,15 +842,6 @@ function FilterChip({
   );
 }
 
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-xl border border-border bg-card/60 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-foreground">{value}</p>
-    </div>
-  );
-}
-
 function OverviewCard({
   icon,
   title,
@@ -830,6 +862,9 @@ function OverviewCard({
   );
 }
 
+/** How many rows a section shows before "Show all" — keeps the page scannable. */
+const SECTION_PREVIEW_ROWS = 5;
+
 function ResultSection({
   title,
   description,
@@ -841,18 +876,33 @@ function ResultSection({
   count: number;
   children: React.ReactNode;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const rows = React.Children.toArray(children);
+  const hiddenCount = rows.length - SECTION_PREVIEW_ROWS;
+  const visibleRows = expanded ? rows : rows.slice(0, SECTION_PREVIEW_ROWS);
+
   return (
     <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
         <div>
-          <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</h2>
+          <h2 className="dec-title text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h2>
           <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
         </div>
         <span className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
           {count} result{count === 1 ? "" : "s"}
         </span>
       </div>
-      <ul className="space-y-3">{children}</ul>
+      <ul className="space-y-3">{visibleRows}</ul>
+      {hiddenCount > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((value) => !value)}
+          className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-background/40 px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+        >
+          {expanded ? "Show less" : `Show all ${rows.length}`}
+          <ChevronDown className={cn("h-4 w-4 transition-transform", expanded && "rotate-180")} />
+        </button>
+      )}
     </section>
   );
 }

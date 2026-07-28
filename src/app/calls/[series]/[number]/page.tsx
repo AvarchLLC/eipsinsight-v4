@@ -27,6 +27,7 @@ import {
 } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
 import { ShareButtons } from '@/components/share-buttons';
+import { classifyProposalRef, proposalRefHref, proposalRefLabel } from '@/lib/proposal-ref';
 import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-decisions';
 import { CallPlayer, CallVideoFallback } from '@/components/upgrade/call-player';
 import { CallChat } from '@/components/upgrade/call-chat';
@@ -247,7 +248,9 @@ export default async function CallDetailPage({ params }: Props) {
           suggestions={[
             'What were the main decisions?',
             'Summarize this call in 3 points',
-            ...(discussedEips.length > 0 ? [`What was said about EIP-${discussedEips[0]}?`] : []),
+            ...(discussedEips.length > 0
+              ? [`What was said about ${proposalRefLabel(discussedEips[0])}?`]
+              : []),
           ]}
         />
       )}
@@ -306,15 +309,21 @@ export default async function CallDetailPage({ params }: Props) {
             <section className="space-y-2">
               <h3 className="text-sm font-semibold text-foreground">EIPs discussed</h3>
               <div className="flex flex-wrap gap-1.5">
-                {discussedEips.map((eip) => (
-                  <Link
-                    key={eip}
-                    href={`/eip/${eip}`}
-                    className="rounded-md border border-border bg-card/60 px-2 py-0.5 font-mono text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
-                  >
-                    EIP-{eip}
-                  </Link>
-                ))}
+                {discussedEips.map((eip) => {
+                  // A too-large number is a PR the summary mislabeled as an EIP
+                  // (e.g. 11905). Link it to the PR and label it as one.
+                  const isPr = classifyProposalRef(eip) === 'pr';
+                  return (
+                    <Link
+                      key={eip}
+                      href={proposalRefHref(eip)}
+                      title={isPr ? `${eip} is a GitHub PR number, not an EIP.` : undefined}
+                      className="rounded-md border border-border bg-card/60 px-2 py-0.5 font-mono text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
+                    >
+                      {isPr ? `PR-${eip}` : `EIP-${eip}`}
+                    </Link>
+                  );
+                })}
               </div>
             </section>
           )}

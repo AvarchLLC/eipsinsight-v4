@@ -15,6 +15,7 @@ import { Loader2, Calendar, BarChart2, Users, Package } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { eipTitles, rawData, upgradeMetaEIPs, pairedUpgradeNames } from '@/data/network-upgrades';
+import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
 
 export default function UpgradeAnalyticsPage() {
   const [loading, setLoading] = useState(true);
@@ -59,15 +60,19 @@ export default function UpgradeAnalyticsPage() {
   const authorsSectionRef = useRef<HTMLDivElement>(null);
   const sectionHeaderPaddingClass =
     '[&>div:last-child]:px-3 [&>div:last-child]:sm:px-4 [&>div:last-child]:lg:px-5 [&>div:last-child]:xl:px-6';
-  const totalUpgradeCount = useMemo(
-    () => rawData.length,
-    []
-  );
+  // Distinct activation dates (22) — same-date EL/CL pairs and the
+  // Constantinople/Petersburg hotfix count once. The old getDisplayUpgradeName
+  // recount left Constantinople/Petersburg as two, giving 23.
+  const totalUpgradeCount = TOTAL_NETWORK_UPGRADES;
   const coreEipRows = useMemo(() => {
     return rawData
       .flatMap((item) =>
         item.eips
-          .filter((eip) => eip !== 'NO-EIP' && eip !== 'CONSENSUS')
+          // Exclude placeholders and '-removed' entries so the row count equals
+          // the "EIPs deployed" stat (a removed EIP was not actually deployed).
+          .filter(
+            (eip) => eip !== 'NO-EIP' && eip !== 'CONSENSUS' && !eip.endsWith('-removed')
+          )
           .map((eip) => {
             const eipNumber = eip.replace('EIP-', '').replace('-removed', '');
             const eipInfo = eipTitles[eipNumber];

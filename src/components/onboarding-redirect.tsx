@@ -33,7 +33,6 @@ export function OnboardingRedirect() {
   const { syncPersonaToServer, isAuthenticated } = usePersonaSyncOnChange();
   const {
     persona,
-    defaultView,
     isOnboarded,
     isHydrated,
     hasSyncedFromServer,
@@ -139,16 +138,14 @@ export function OnboardingRedirect() {
       nextPath = `/analytics/${page}`;
     }
 
-    if (routeScope === "upgrade" && pathname === "/upgrade" && !current.get("view")) {
-      current.set("view", config.upgradesView || defaultView.upgradesView || "summary");
-      nextPath = `${pathname}?${current.toString()}`;
-    }
+    // The /upgrade page doesn't read a `view` param, so appending ?view=technical
+    // (from the persona default) only cluttered the URL with a no-op. Removed.
 
     sessionStorage.setItem(key, "1");
     if (nextPath) {
       router.replace(nextPath);
     }
-  }, [defaultView.upgradesView, pathname, persona, ready, router]);
+  }, [pathname, persona, ready, router]);
 
   React.useEffect(() => {
     if (!ready || !isAuthed) return;

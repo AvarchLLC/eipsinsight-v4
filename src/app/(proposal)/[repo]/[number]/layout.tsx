@@ -17,6 +17,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       "View proposal details, governance history, status transitions, and linked discussions.",
     path: `/${repo}/${number}`,
     keywords: ["proposal detail", "Ethereum governance", "EIP status history"],
+    // null so the route-level opengraph-image.tsx drives BOTH og:image and
+    // twitter:image, instead of the static logo shadowing the generated card.
+    image: null,
   });
 }
 
