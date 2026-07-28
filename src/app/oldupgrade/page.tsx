@@ -62,7 +62,7 @@ export default function UpgradePage() {
   const sectionHeaderPaddingClass =
     '[&>div:last-child]:px-3 [&>div:last-child]:sm:px-4 [&>div:last-child]:lg:px-5 [&>div:last-child]:xl:px-6';
   const totalUpgradeCount = useMemo(
-    () => new Set(rawData.map((item) => getDisplayUpgradeName(item.upgrade, item.date))).size,
+    () => rawData.length,
     []
   );
   const coreEipRows = useMemo(() => {
@@ -223,7 +223,7 @@ export default function UpgradePage() {
     const header = ['EIP', 'Title', 'Upgrade', 'Layer', 'Date'];
 
     const rows = filteredRows.map((row) =>
-      [ `EIP-${row.eipNumber}`, row.title, row.upgrade, row.layer, row.date ]
+      [`EIP-${row.eipNumber}`, row.title, row.upgrade, row.layer, row.date]
         .map(csvEscape)
         .join(',')
     );
@@ -472,145 +472,145 @@ export default function UpgradePage() {
           </div>
           <p className="text-sm text-muted-foreground">Authors whose EIPs are included across Ethereum network upgrades.</p>
         </div>
-          <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25 }}
-            className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm"
-          >
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-245 table-fixed text-sm">
-                <colgroup>
-                  <col className="w-[24%]" />
-                  <col className="w-[12%]" />
-                  <col className="w-[34%]" />
-                  <col className="w-[30%]" />
-                </colgroup>
-                <thead>
-                  <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    <th className="px-3 py-2">Author</th>
-                    <th className="px-3 py-2">EIPs</th>
-                    <th className="px-3 py-2">Included EIP List</th>
-                    <th className="px-3 py-2">Upgrades</th>
-                  </tr>
-                  <tr className="border-b border-border/60 bg-muted/40">
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.author}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, author: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="Author name or handle"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                    <th className="px-3 py-2">
-                      <span className="inline-flex h-8 w-full items-center rounded-md border border-border bg-muted/50 px-2 text-[11px] text-muted-foreground">
-                        Count
-                      </span>
-                    </th>
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.eip}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, eip: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="EIP-1559 / 1559"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                    <th className="px-3 py-2">
-                      <input
-                        value={authorFilters.upgrade}
-                        onChange={(e) => {
-                          setAuthorFilters((current) => ({ ...current, upgrade: e.target.value }));
-                          setAuthorPage(1);
-                        }}
-                        placeholder="Upgrade"
-                        className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-                      />
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedAuthorRows.map((row) => {
-                    return (
-                      <tr key={row.id} className="border-b border-border/60 text-foreground hover:bg-muted/40">
-                        <td className="px-3 py-2 font-medium text-foreground">
-                          <div className="flex items-center gap-2">
-                            <Avatar className="h-7 w-7 border border-border/70">
-                              {row.githubHandle ? (
-                                <AvatarImage src={`https://github.com/${row.githubHandle}.png?size=64`} alt={row.displayName} />
-                              ) : null}
-                              <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
-                                {getInitials(row.displayName)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="flex flex-col">
-                              <span>{row.displayName}</span>
-                              {row.githubHandle && <span className="text-[11px] font-normal text-muted-foreground">@{row.githubHandle}</span>}
-                            </div>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className="overflow-hidden rounded-xl border border-border bg-card/60 backdrop-blur-sm"
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-245 table-fixed text-sm">
+              <colgroup>
+                <col className="w-[24%]" />
+                <col className="w-[12%]" />
+                <col className="w-[34%]" />
+                <col className="w-[30%]" />
+              </colgroup>
+              <thead>
+                <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="px-3 py-2">Author</th>
+                  <th className="px-3 py-2">EIPs</th>
+                  <th className="px-3 py-2">Included EIP List</th>
+                  <th className="px-3 py-2">Upgrades</th>
+                </tr>
+                <tr className="border-b border-border/60 bg-muted/40">
+                  <th className="px-3 py-2">
+                    <input
+                      value={authorFilters.author}
+                      onChange={(e) => {
+                        setAuthorFilters((current) => ({ ...current, author: e.target.value }));
+                        setAuthorPage(1);
+                      }}
+                      placeholder="Author name or handle"
+                      className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    />
+                  </th>
+                  <th className="px-3 py-2">
+                    <span className="inline-flex h-8 w-full items-center rounded-md border border-border bg-muted/50 px-2 text-[11px] text-muted-foreground">
+                      Count
+                    </span>
+                  </th>
+                  <th className="px-3 py-2">
+                    <input
+                      value={authorFilters.eip}
+                      onChange={(e) => {
+                        setAuthorFilters((current) => ({ ...current, eip: e.target.value }));
+                        setAuthorPage(1);
+                      }}
+                      placeholder="EIP-1559 / 1559"
+                      className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    />
+                  </th>
+                  <th className="px-3 py-2">
+                    <input
+                      value={authorFilters.upgrade}
+                      onChange={(e) => {
+                        setAuthorFilters((current) => ({ ...current, upgrade: e.target.value }));
+                        setAuthorPage(1);
+                      }}
+                      placeholder="Upgrade"
+                      className="h-8 w-full rounded-md border border-border bg-muted/60 px-2 text-xs text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+                    />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedAuthorRows.map((row) => {
+                  return (
+                    <tr key={row.id} className="border-b border-border/60 text-foreground hover:bg-muted/40">
+                      <td className="px-3 py-2 font-medium text-foreground">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7 border border-border/70">
+                            {row.githubHandle ? (
+                              <AvatarImage src={`https://github.com/${row.githubHandle}.png?size=64`} alt={row.displayName} />
+                            ) : null}
+                            <AvatarFallback className="bg-primary/10 text-[10px] font-semibold text-primary">
+                              {getInitials(row.displayName)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex flex-col">
+                            <span>{row.displayName}</span>
+                            {row.githubHandle && <span className="text-[11px] font-normal text-muted-foreground">@{row.githubHandle}</span>}
                           </div>
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">{row.totalEips}</td>
-                        <td className="px-3 py-2 text-primary">
-                          <div className="flex flex-wrap gap-x-2 gap-y-1">
-                            {row.eipNumbers.map((eipNumber) => (
-                              <Link key={`${row.id}-eip-${eipNumber}`} href={`/eip/${eipNumber}`} className="hover:underline">
-                                EIP-{eipNumber}
-                              </Link>
-                            ))}
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 text-muted-foreground">{row.upgrades.join(', ') || '-'}</td>
-                      </tr>
-                    );
-                  })}
-                  {paginatedAuthorRows.length === 0 && (
-                    <tr className="border-b border-border/60">
-                      <td colSpan={4} className="px-4 py-8 text-sm text-muted-foreground">
-                        No matching rows found for the current filters.
+                        </div>
                       </td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.totalEips}</td>
+                      <td className="px-3 py-2 text-primary">
+                        <div className="flex flex-wrap gap-x-2 gap-y-1">
+                          {row.eipNumbers.map((eipNumber) => (
+                            <Link key={`${row.id}-eip-${eipNumber}`} href={`/eip/${eipNumber}`} className="hover:underline">
+                              EIP-{eipNumber}
+                            </Link>
+                          ))}
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.upgrades.join(', ') || '-'}</td>
                     </tr>
-                  )}
-                </tbody>
-              </table>
+                  );
+                })}
+                {paginatedAuthorRows.length === 0 && (
+                  <tr className="border-b border-border/60">
+                    <td colSpan={4} className="px-4 py-8 text-sm text-muted-foreground">
+                      No matching rows found for the current filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+            <span>{Object.values(authorFilters).some((value) => value.trim().length > 0) ? 'Filtered results' : 'Results'}: {filteredAuthorRows.length.toLocaleString()}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={clearAuthorFilters}
+                className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
+              >
+                Reset Filters
+              </button>
+              <button
+                onClick={downloadAuthorReport}
+                className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
+              >
+                Download Reports
+              </button>
+              <button
+                onClick={() => setAuthorPage((current) => Math.max(1, current - 1))}
+                disabled={authorPage <= 1}
+                className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+              >
+                Prev
+              </button>
+              <span>Page {authorPage} / {authorTotalPages}</span>
+              <button
+                onClick={() => setAuthorPage((current) => Math.min(authorTotalPages, current + 1))}
+                disabled={authorPage >= authorTotalPages}
+                className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
+              >
+                Next
+              </button>
             </div>
-            <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-              <span>{Object.values(authorFilters).some((value) => value.trim().length > 0) ? 'Filtered results' : 'Results'}: {filteredAuthorRows.length.toLocaleString()}</span>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={clearAuthorFilters}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                >
-                  Reset Filters
-                </button>
-                <button
-                  onClick={downloadAuthorReport}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-                >
-                  Download Reports
-                </button>
-                <button
-                  onClick={() => setAuthorPage((current) => Math.max(1, current - 1))}
-                  disabled={authorPage <= 1}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Prev
-                </button>
-                <span>Page {authorPage} / {authorTotalPages}</span>
-                <button
-                  onClick={() => setAuthorPage((current) => Math.min(authorTotalPages, current + 1))}
-                  disabled={authorPage >= authorTotalPages}
-                  className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          </motion.div>
+          </div>
+        </motion.div>
       </section>
 
       <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
@@ -629,9 +629,9 @@ export default function UpgradePage() {
                     ? 'Execution Layer EIPs'
                     : activeTable === 'consensus'
                       ? 'Consensus Layer EIPs'
-                  : activeTable === 'core'
-                    ? 'EIPs Deployed'
-                    : 'Included EIP Authors'}
+                      : activeTable === 'core'
+                        ? 'EIPs Deployed'
+                        : 'Included EIP Authors'}
               </h2>
               <CopyLinkButton sectionId="upgrade-eip-details" tooltipLabel="Copy link" />
             </div>
@@ -642,9 +642,9 @@ export default function UpgradePage() {
                   ? 'Core EIPs deployed through execution-layer upgrades.'
                   : activeTable === 'consensus'
                     ? 'Core EIPs deployed through consensus-layer upgrades.'
-                : activeTable === 'core'
-                  ? 'Core EIPs deployed in upgrades from the distribution chart.'
-                  : 'Authors whose EIPs are included across Ethereum network upgrades.'}
+                    : activeTable === 'core'
+                      ? 'Core EIPs deployed in upgrades from the distribution chart.'
+                      : 'Authors whose EIPs are included across Ethereum network upgrades.'}
             </p>
             {activeTable === 'meta' && (
               <p className="mt-1 text-xs text-muted-foreground">
@@ -670,7 +670,7 @@ export default function UpgradePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-              {activeTable && activeTable !== 'authors' ? (
+                {activeTable && activeTable !== 'authors' ? (
                   <table className="w-full min-w-full table-fixed text-sm">
                     <colgroup>
                       <col className="w-[14%]" />
@@ -761,12 +761,12 @@ export default function UpgradePage() {
                       )}
                     </tbody>
                   </table>
-              ) : (
-                <div className="px-4 py-10 text-sm text-muted-foreground">
-                  Choose <span className="text-foreground">EIPs Deployed</span> or <span className="text-foreground">Hard Fork Meta EIPs</span> above to load the table.
-                </div>
-              )}
-            </div>
+                ) : (
+                  <div className="px-4 py-10 text-sm text-muted-foreground">
+                    Choose <span className="text-foreground">EIPs Deployed</span> or <span className="text-foreground">Hard Fork Meta EIPs</span> above to load the table.
+                  </div>
+                )}
+              </div>
             )}
             {activeTable && activeTable !== 'authors' && (
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground">

@@ -75,7 +75,7 @@ const PERSONA_INTROS: Record<Persona, PersonaIntro> = {
     ctaLabel: "View Analytics",
     ctaLink: "/analytics/prs",
     stats: [
-      { label: "Total Upgrades", value: "18", icon: TrendingUp },
+      { label: "Total Upgrades", value: "22", icon: TrendingUp },
       { label: "Avg EIPs/Upgrade", value: "7.2", icon: FileCode2 },
       { label: "Avg Time to Fork", value: "8 mo", icon: Calendar },
     ],
