@@ -3,21 +3,21 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
 import { CopyLinkButton } from '@/components/header';
-import { ZoomableTimeline } from '@/components/upgrade/zoomable-timeline';
 import { UpgradeStatsCards } from '@/components/upgrade/upgrade-stats-cards';
-import { NetworkUpgradesChart } from '@/components/upgrade/network-upgrades-chart';
-import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
-import { EipInclusionProcessGraph } from '@/components/upgrade/eip-inclusion-process-graph';
 
 import { client } from '@/lib/orpc';
-import { cn } from '@/lib/utils';
-import { Loader2, Calendar, BarChart2, Users, Package } from 'lucide-react';
+import { Loader2, BarChart2, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { eipTitles, rawData, upgradeMetaEIPs, pairedUpgradeNames } from '@/data/network-upgrades';
 import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
 
-export default function UpgradeAnalyticsPage() {
+/**
+ * The stats-and-tables half of the old /upgrade/analytics page, extracted so it
+ * can live at the bottom of /upgrade. The two timeline charts it used to hold
+ * now live in <UpgradeChartsTabs> higher on the page, so they're omitted here.
+ */
+export function UpgradeStatsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTable, setActiveTable] = useState<'core' | 'meta' | 'execution' | 'consensus' | 'authors' | null>(null);
@@ -30,14 +30,6 @@ export default function UpgradeAnalyticsPage() {
     layer: '',
     date: '',
   });
-  const [glamsterdamTimeline, setGlamsterdamTimeline] = useState<Array<{
-    date: string;
-    included: string[];
-    scheduled: string[];
-    declined: string[];
-    considered: string[];
-    proposed: string[];
-  }>>([]);
   const [independentIncludedAuthors, setIndependentIncludedAuthors] = useState<number>(0);
   const [independentAuthorRows, setIndependentAuthorRows] = useState<Array<{
     id: string;
@@ -58,8 +50,6 @@ export default function UpgradeAnalyticsPage() {
   const [authorPage, setAuthorPage] = useState(1);
   const detailsSectionRef = useRef<HTMLDivElement>(null);
   const authorsSectionRef = useRef<HTMLDivElement>(null);
-  const sectionHeaderPaddingClass =
-    '[&>div:last-child]:px-3 [&>div:last-child]:sm:px-4 [&>div:last-child]:lg:px-5 [&>div:last-child]:xl:px-6';
   // Distinct activation dates (22) — same-date EL/CL pairs and the
   // Constantinople/Petersburg hotfix count once. The old getDisplayUpgradeName
   // recount left Constantinople/Petersburg as two, giving 23.
@@ -297,18 +287,17 @@ export default function UpgradeAnalyticsPage() {
   }, [activeTable]);
 
   useEffect(() => {
+    // Loads author leaderboard data for the tables below the stat cards.
     async function fetchData() {
       try {
         setLoading(true);
         setError(null);
 
-        const [timelineData, upgradeStats, independentAuthors] = await Promise.all([
-          client.upgrades.getUpgradeTimeline({ slug: 'glamsterdam' }).catch(() => []),
+        const [upgradeStats, independentAuthors] = await Promise.all([
           client.upgrades.getUpgradeStats({}).catch(() => null),
           client.upgrades.getIndependentIncludedAuthors({}).catch(() => []),
         ]);
 
-        setGlamsterdamTimeline(timelineData);
         setIndependentIncludedAuthors(upgradeStats?.independentIncludedAuthors ?? 0);
         setIndependentAuthorRows(
           independentAuthors.map((row) => ({
@@ -347,136 +336,30 @@ export default function UpgradeAnalyticsPage() {
   }
 
   return (
-    <div className="bg-background relative mx-auto w-full max-w-6xl overflow-hidden">
-      {/* Page header */}
-      <header className="mx-auto w-full px-3 pt-8 sm:px-4 lg:px-5 xl:px-6">
-        <Link
-          href="/upgrade"
-          className="text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          ← All upgrades
-        </Link>
-        <h1 className="dec-title persona-title mt-2 text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-          Upgrade Analytics
-        </h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Distribution charts, author leaderboards, and historical EIP tables across all
-          Ethereum network upgrades.
-        </p>
-      </header>
-
-      {/* Stats & Flowchart Section */}
-      <section id="stats" className="relative w-full bg-background">
-        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6 pt-6 pb-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            {/* Left: Stats Cards */}
-            <div className="flex h-full">
-              <div className="w-full h-full min-h-65 sm:min-h-70 lg:min-h-75 flex items-stretch">
-                <UpgradeStatsCards
-                  totalUpgrades={totalUpgradeCount}
-                  independentIncludedAuthors={independentIncludedAuthors}
-                  activeTable={activeTable}
-                  onSelectTable={handleSelectTable}
-                />
-              </div>
-            </div>
-
-            {/* Right: EIP Inclusion Flowchart */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className={cn(
-                "relative rounded-xl border border-border",
-                "bg-card/60 backdrop-blur-sm overflow-hidden",
-                "hover:border-primary/40 hover:shadow-lg hover:shadow-primary/15",
-                "transition-all duration-200",
-                "h-full min-h-65 sm:min-h-70 lg:min-h-75"
-              )}
-            >
-              <EipInclusionProcessGraph />
-            </motion.div>
-          </div>
-        </div>
+    <div className="flex flex-col gap-8">
+      {/* Stat cards — click a card to reveal its dataset in the tables below. */}
+      <section id="stats">
+        <UpgradeStatsCards
+          totalUpgrades={totalUpgradeCount}
+          independentIncludedAuthors={independentIncludedAuthors}
+          activeTable={activeTable}
+          onSelectTable={handleSelectTable}
+        />
       </section>
 
-      {/* Glamsterdam composition-over-time chart */}
-      <section id="upgrades" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Package className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Active Upgrade Composition</h2>
-            <CopyLinkButton sectionId="upgrades" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">How the EIP composition of the upcoming upgrade has changed over time.</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          {glamsterdamTimeline.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="mt-6"
-            >
-              <UpgradeTimelineChart data={glamsterdamTimeline} upgradeName="Glamsterdam" />
-            </motion.div>
-          )}
-        </div>
-      </section>
+      {/* The "Active Upgrade Composition" chart and the two timeline charts that
+          used to sit here now live higher up the /upgrade page (the composition
+          view under Timeline View, the charts in <UpgradeChartsTabs>). */}
 
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      {/* Timeline Section */}
-      <section id="timeline" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Ethereum Upgrade Timeline (by timeline)</h2>
-            <CopyLinkButton sectionId="timeline" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">Visual timeline of all network upgrades from Frontier to present</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          <ZoomableTimeline
-            imagePath="/upgrade/ethupgradetimeline.png"
-            alt="Ethereum Network Upgrade Timeline"
-          />
-        </div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      {/* Network Upgrades Chart Section */}
-      <section id="network-upgrades-chart" className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <BarChart2 className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Network Upgrade Timeline (by distribution of EIPs)</h2>
-            <CopyLinkButton sectionId="network-upgrades-chart" tooltipLabel="Copy link" />
-          </div>
-          <p className="text-sm text-muted-foreground">Interactive timeline showing all Ethereum network upgrades and their EIP implementations</p>
-        </div>
-        <div className="mx-auto w-full pb-6">
-          <NetworkUpgradesChart />
-        </div>
-      </section>
-
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      <section ref={authorsSectionRef} className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6" id="included-authors">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2 mb-2">
-            <Users className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">Included EIP Authors</h2>
+      {/* Authors table sits last (below the click-to-reveal EIP tables). */}
+      <section ref={authorsSectionRef} id="included-authors" className="order-last">
+        <div className="mb-3">
+          <div className="inline-flex items-center gap-2">
+            <Users className="h-4 w-4 text-indigo-500" />
+            <h3 className="text-base font-semibold tracking-tight text-foreground">Included EIP Authors</h3>
             <CopyLinkButton sectionId="included-authors" tooltipLabel="Copy link" />
           </div>
-          <p className="text-sm text-muted-foreground">Authors whose EIPs are included across Ethereum network upgrades.</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">Authors whose EIPs are included across Ethereum network upgrades.</p>
         </div>
         <motion.div
           initial={{ opacity: 0, y: 8 }}
@@ -619,16 +502,12 @@ export default function UpgradeAnalyticsPage() {
         </motion.div>
       </section>
 
-      <div className="w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-        <div className="h-px w-full bg-border/60" />
-      </div>
-
-      <section ref={detailsSectionRef} className="relative w-full bg-background px-3 sm:px-4 lg:px-5 xl:px-6 py-6" id="upgrade-eip-details">
+      <section ref={detailsSectionRef} id="upgrade-eip-details">
         {activeTable && (
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2 mb-2">
-              <BarChart2 className="h-5 w-5 text-primary" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+          <div className="mb-3">
+            <div className="inline-flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-indigo-500" />
+              <h3 className="text-base font-semibold tracking-tight text-foreground">
                 {activeTable === 'meta'
                   ? 'Hard Fork Meta EIPs'
                   : activeTable === 'execution'
@@ -638,10 +517,10 @@ export default function UpgradeAnalyticsPage() {
                       : activeTable === 'core'
                         ? 'EIPs Deployed'
                         : 'Included EIP Authors'}
-              </h2>
+              </h3>
               <CopyLinkButton sectionId="upgrade-eip-details" tooltipLabel="Copy link" />
             </div>
-            <p className="text-sm text-muted-foreground">
+            <p className="mt-0.5 text-sm text-muted-foreground">
               {activeTable === 'meta'
                 ? 'Meta EIPs associated with upgrades in the distribution chart.'
                 : activeTable === 'execution'
