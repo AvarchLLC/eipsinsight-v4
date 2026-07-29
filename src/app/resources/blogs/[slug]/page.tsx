@@ -11,6 +11,7 @@ import {
   Check,
   Clock,
   Copy,
+  ListTree,
   Heart,
   Linkedin,
   Loader2,
@@ -124,6 +125,65 @@ export default function BlogPostPage() {
     setTimeout(collect, 500);
   }, [post?.content]);
 
+  // Scrollspy: highlight the heading currently being read. We use "the last
+  // heading whose top has crossed a line just below the sticky navbar" rather
+  // than an IntersectionObserver band — headings are single points, so a band
+  // leaves gaps (nothing active while you read the body between two headings).
+  //
+  // The app content scrolls inside an inner `overflow-y-auto` element, not the
+  // window, and scroll events don't bubble (nor reach document in the capture
+  // phase reliably), so we find that container and listen on it directly. That's
+  // why the scrollspy looked frozen before: nothing was ever listening.
+  useEffect(() => {
+    if (headings.length === 0) return;
+    const els = headings
+      .map((h) => document.getElementById(h.id))
+      .filter((el): el is HTMLElement => el !== null);
+    if (els.length === 0) return;
+
+    const findScroller = (node: HTMLElement): HTMLElement | null => {
+      let el: HTMLElement | null = node.parentElement;
+      while (el && el !== document.body) {
+        const cs = getComputedStyle(el);
+        if (
+          (cs.overflowY === "auto" || cs.overflowY === "scroll") &&
+          el.scrollHeight > el.clientHeight + 4
+        ) {
+          return el;
+        }
+        el = el.parentElement;
+      }
+      return null;
+    };
+    const scroller = findScroller(els[0]);
+
+    let ticking = false;
+    const compute = () => {
+      ticking = false;
+      const line = 120; // px from the top of the viewport
+      let current = els[0].id;
+      for (const el of els) {
+        if (el.getBoundingClientRect().top - line <= 0) current = el.id;
+        else break;
+      }
+      setActiveHeadingId(current);
+    };
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(compute);
+    };
+
+    requestAnimationFrame(compute);
+    const target: HTMLElement | Window = scroller ?? window;
+    target.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll, { passive: true });
+    return () => {
+      target.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+    };
+  }, [headings]);
+
   const handleLike = async () => {
     if (!post || !likeKey) return;
     try {
@@ -204,10 +264,58 @@ export default function BlogPostPage() {
 
           {/* Excerpt */}
           {post.excerpt && (
-            <p className="max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
               {post.excerpt}
             </p>
           )}
+
+          {/* Like + share toolbar — moved up here, right after the title/excerpt
+              and before the "written by" byline, so it's visible immediately. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleLike}
+              className={cn(
+                "flex h-9 items-center gap-2 rounded-md border px-4 text-xs font-semibold uppercase tracking-wider transition-all",
+                liked
+                  ? "border-rose-500/50 bg-rose-500/10 text-rose-500"
+                  : "border-border bg-muted/60 text-muted-foreground hover:border-rose-500/30 hover:text-rose-500"
+              )}
+            >
+              <Heart className={cn("h-3.5 w-3.5", liked && "fill-current")} />
+              {likeCount}
+            </button>
+            <button
+              onClick={() => document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" })}
+              className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/60 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+            >
+              <MessageCircle className="h-3.5 w-3.5" />
+              Discuss
+            </button>
+
+            <div className="ml-auto flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Share
+              </span>
+              {[
+                { id: "twitter", icon: Twitter },
+                { id: "linkedin", icon: Linkedin },
+              ].map(({ id, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => handleShare(id)}
+                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </button>
+              ))}
+              <button
+                onClick={() => handleShare("copy")}
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+              >
+                {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+              </button>
+            </div>
+          </div>
 
           {/* Meta row */}
           <div className="flex flex-wrap items-center gap-6 border-t border-border/60 pt-5">
@@ -260,7 +368,7 @@ export default function BlogPostPage() {
 
       {/* ── Body: article + sidebar ── */}
       <div className="page-shell pt-12">
-        <div className="flex flex-col gap-12 lg:flex-row lg:items-start">
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
 
           {/* Article */}
           <article className="min-w-0 flex-1 max-w-3xl">
@@ -284,53 +392,6 @@ export default function BlogPostPage() {
                 ))}
               </div>
             )}
-
-            {/* ── Engagement ── */}
-            <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card/60 px-6 py-4">
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleLike}
-                  className={cn(
-                    "flex h-9 items-center gap-2 rounded-md border px-4 text-xs font-semibold uppercase tracking-wider transition-all",
-                    liked
-                      ? "border-rose-500/50 bg-rose-500/10 text-rose-500"
-                      : "border-border bg-muted/60 text-muted-foreground hover:border-rose-500/30 hover:text-rose-500"
-                  )}
-                >
-                  <Heart className={cn("h-3.5 w-3.5", liked && "fill-current")} />
-                  {likeCount}
-                </button>
-                <button
-                  onClick={() => document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" })}
-                  className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/60 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" />
-                  Discuss
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Share</span>
-                {[
-                  { id: "twitter", icon: Twitter },
-                  { id: "linkedin", icon: Linkedin },
-                ].map(({ id, icon: Icon }) => (
-                  <button
-                    key={id}
-                    onClick={() => handleShare(id)}
-                    className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                  </button>
-                ))}
-                <button
-                  onClick={() => handleShare("copy")}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
-                >
-                  {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                </button>
-              </div>
-            </div>
 
             {/* ── Author bio ── */}
             <div className="mt-8 flex flex-col gap-6 rounded-xl border border-border bg-card/60 p-6 sm:flex-row sm:items-start">
@@ -386,33 +447,50 @@ export default function BlogPostPage() {
           <aside className="hidden w-64 shrink-0 lg:sticky lg:top-28 lg:block">
             <div className="space-y-8">
 
-              {/* Table of contents */}
+              {/* Table of contents — a distinct live rail: accent header + icon,
+                  a continuous rail, and a filled accent dot marking the heading
+                  currently in view (matches the app sidebar's "On this page"). */}
               {headings.length > 0 && (
-                <div className="rounded-xl border border-border bg-card/60 p-5">
-                  <h3 className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    On this page
-                  </h3>
-                  <nav className="space-y-0.5">
-                    {headings.map((h) => (
-                      <a
-                        key={h.id}
-                        href={`#${h.id}`}
-                        className={cn(
-                          "block border-l-2 py-1.5 pl-3 text-xs transition-all hover:text-primary",
-                          h.level === 3 && "pl-5",
-                          activeHeadingId === h.id
-                            ? "border-primary font-semibold text-primary"
-                            : "border-transparent text-muted-foreground hover:border-border"
-                        )}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" });
-                          setActiveHeadingId(h.id);
-                        }}
-                      >
-                        {h.text}
-                      </a>
-                    ))}
+                <div className="rounded-xl border border-primary/15 bg-primary/[0.04] p-4">
+                  <div className="mb-2.5 flex items-center gap-1.5">
+                    <ListTree className="h-4 w-4 text-primary" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-primary/90">
+                      On this page
+                    </h3>
+                  </div>
+                  <nav className="relative space-y-0.5 border-l border-border/60">
+                    {headings.map((h) => {
+                      const active = activeHeadingId === h.id;
+                      return (
+                        <a
+                          key={h.id}
+                          href={`#${h.id}`}
+                          className={cn(
+                            "group relative flex items-center rounded-md py-1.5 pr-2 text-sm transition-colors",
+                            h.level === 3 ? "pl-6" : "pl-4",
+                            active
+                              ? "font-medium text-primary"
+                              : "text-muted-foreground/80 hover:text-foreground"
+                          )}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" });
+                            setActiveHeadingId(h.id);
+                          }}
+                        >
+                          <span
+                            aria-hidden
+                            className={cn(
+                              "absolute top-1/2 -translate-y-1/2 rounded-full transition-all",
+                              active
+                                ? "-left-[4px] h-2 w-2 bg-primary ring-2 ring-background"
+                                : "left-[-1px] h-1 w-1 bg-border group-hover:bg-primary/60"
+                            )}
+                          />
+                          <span className="truncate">{h.text}</span>
+                        </a>
+                      );
+                    })}
                   </nav>
                 </div>
               )}

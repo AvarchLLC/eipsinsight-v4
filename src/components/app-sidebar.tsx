@@ -16,6 +16,7 @@ import {
   Settings,
   ChevronRight,
   Sparkles,
+  ListTree,
   PanelLeft,
   PanelLeftOpen,
   Compass,
@@ -956,6 +957,56 @@ function AppSidebarContent() {
     );
   };
 
+  /**
+   * A single "On this page" row. Unlike nav sub-items, these render as a live
+   * table-of-contents: a continuous rail (the <ul> left border) with a filled
+   * accent dot + bold accent text marking the section currently in view
+   * (scrollspy via `activeSection`), so it reads as a page map, not more links.
+   */
+  const renderPageTocItem = (subItem: SidebarSubItem, keyPath: string) => {
+    const isActive = isSubItemActive(subItem);
+    return (
+      <li key={subItem.title + subItem.href + keyPath} className="list-none">
+        <Link
+          href={subItem.href}
+          onClick={(e) => {
+            const url = new URL(subItem.href, "http://localhost");
+            const sectionId = subItem.sectionId || url.hash.replace(/^#/, "");
+            const samePath = pathname === url.pathname;
+            if (sectionId && samePath) {
+              e.preventDefault();
+              const el = document.getElementById(sectionId);
+              if (el) {
+                el.scrollIntoView({ behavior: "smooth", block: "start" });
+                window.history.replaceState(null, "", subItem.href);
+                setActiveSection(sectionId);
+              }
+            }
+          }}
+          className={cn(
+            "group relative flex items-center rounded-md py-1 pl-4 pr-2 text-xs transition-colors",
+            isActive
+              ? "font-medium text-primary"
+              : "text-muted-foreground/80 hover:text-foreground"
+          )}
+        >
+          {/* Rail marker: filled accent dot when the section is in view, a small
+              faint tick otherwise. Sits on the <ul>'s left border. */}
+          <span
+            aria-hidden
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 rounded-full transition-all",
+              isActive
+                ? "-left-[4px] h-2 w-2 bg-primary ring-2 ring-background"
+                : "left-[-1px] h-1 w-1 bg-border group-hover:bg-primary/60"
+            )}
+          />
+          <span className="truncate">{subItem.title}</span>
+        </Link>
+      </li>
+    );
+  };
+
   const renderItem = (item: SidebarItem) => {
     const isActive = isParentPathActive(item.href);
     const contextualSectionItems: SidebarSubItem[] = isActive ? pageSectionItems : [];
@@ -1039,22 +1090,26 @@ function AppSidebarContent() {
               >
                 <SidebarMenuSub className="ml-0 border-l-2 border-border/80 pl-6 pt-2">
                   {staticItems.map((sub, idx) => renderSubItem(sub, `${item.title}.${idx}`))}
-                  
-                  {/* Visual separator for page sections */}
-                  {hasPageSections && hasStaticItems && (
-                    <div className="my-2 px-3">
-                      <div className="h-px bg-border/40" />
-                    </div>
-                  )}
-                  
-                  {/* Page sections header */}
+
+                  {/* "On this page" — a distinct live TOC, deliberately styled
+                      unlike the nav links above it so people notice it. */}
                   {hasPageSections && (
-                    <div className="px-3 py-2 mt-1">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70 mb-2">On this page</p>
-                    </div>
+                    <li className="mt-2.5 list-none">
+                      <div className="rounded-lg border border-primary/15 bg-primary/[0.04] px-2 py-2">
+                        <div className="mb-1.5 flex items-center gap-1.5 px-1">
+                          <ListTree className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90">
+                            On this page
+                          </span>
+                        </div>
+                        <ul className="relative ml-1 space-y-0.5 border-l border-border/60">
+                          {contextualSectionItems.map((sub, idx) =>
+                            renderPageTocItem(sub, `${item.title}.page.${idx}`)
+                          )}
+                        </ul>
+                      </div>
+                    </li>
                   )}
-                  
-                  {contextualSectionItems.map((sub, idx) => renderSubItem(sub, `${item.title}.page.${idx}`))}
                 </SidebarMenuSub>
               </CollapsibleContent>
             )}
