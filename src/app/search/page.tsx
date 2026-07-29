@@ -14,6 +14,7 @@ import {
   Info,
   Loader2,
   Search as SearchIcon,
+  Sparkles,
   UserRound,
   Waypoints,
 } from "lucide-react";
@@ -245,12 +246,11 @@ function SearchPageContent() {
     setInputValue(q);
   }, [q]);
 
-  useEffect(() => {
-    const trimmed = inputValue.trim();
-    if (trimmed === q) return;
-    const timeout = window.setTimeout(() => setQuery(trimmed), 250);
-    return () => window.clearTimeout(timeout);
-  }, [inputValue, q, setQuery]);
+  // NOTE: the empty-state search box is submit-driven (Enter or the Search
+  // button), NOT live-as-you-type. It lives inside `{!q && …}`, so pushing the
+  // query on every keystroke would flip `q` to non-empty after the first
+  // character and unmount the input mid-typing. Live search still happens in the
+  // always-mounted navbar search bar.
 
   useEffect(() => {
     if (!q.trim()) {
@@ -352,6 +352,33 @@ function SearchPageContent() {
       .slice(0, 3);
   }, [filteredProposals]);
 
+  // Exact proposal-number match ("1559", "EIP-1559", "erc 20"). When the query
+  // is a number the matching proposal page must be the single top result, so we
+  // surface it in a prominent hero above the grouped result lists. A bare number
+  // prefers EIP, then ERC, then RIP; an explicit prefix wins.
+  const bestMatch = useMemo(() => {
+    const m = q.trim().match(/^(eip|erc|rip)?[-\s]?0*(\d{1,7})$/i);
+    if (!m) return null;
+    const num = Number.parseInt(m[2], 10);
+    if (!Number.isFinite(num)) return null;
+    const preferred = m[1]?.toLowerCase() as "eip" | "erc" | "rip" | undefined;
+    const exact = filteredProposals.filter((p) => p.number === num);
+    if (exact.length === 0) return null;
+    if (preferred) return exact.find((p) => p.repo === preferred) ?? exact[0];
+    const rank: Record<string, number> = { eip: 0, erc: 1, rip: 2 };
+    return [...exact].sort((a, b) => (rank[a.repo] ?? 9) - (rank[b.repo] ?? 9))[0];
+  }, [filteredProposals, q]);
+
+  const showHero = Boolean(bestMatch) && (kind === "all" || kind === "proposals");
+
+  // The proposals list drops the hero row so it isn't shown twice.
+  const proposalsForList = useMemo(() => {
+    if (!showHero || !bestMatch) return filteredProposals;
+    return filteredProposals.filter(
+      (p) => !(p.repo === bestMatch.repo && p.number === bestMatch.number)
+    );
+  }, [filteredProposals, showHero, bestMatch]);
+
   const runQuickSearch = (value: string) => {
     setInputValue(value);
     setQuery(value);
@@ -382,7 +409,13 @@ function SearchPageContent() {
             >
               {q ? "Search results" : "Search Everything"}
             </h1>
-            {!q && (
+            {q ? (
+              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                Showing results for{" "}
+                <span className="font-medium text-foreground">“{q}”</span> — refine or start a new
+                search from the bar at the top.
+              </p>
+            ) : (
               <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
                 Search proposals, pull requests, issues, and contributors from one place. Start broad, then narrow with
                 advanced filters only if you need them.
@@ -443,6 +476,10 @@ function SearchPageContent() {
         </AnimatePresence>
       </motion.header>
 
+      {/* The full search box only shows on the empty landing state. On the
+          results page it's redundant with the always-visible header search bar,
+          so we drop it and keep just the tabs + a compact filters toggle. */}
+      {!q && (
       <section className="rounded-xl border border-border bg-card/60 p-4 shadow-sm sm:p-5">
         <form onSubmit={onSubmit} className="flex flex-col gap-3">
           <div className="flex flex-col gap-3 lg:flex-row">
@@ -541,6 +578,7 @@ function SearchPageContent() {
           </CollapsibleContent>
         </Collapsible>
       </section>
+      )}
 
       {!q && (
         <section className="mt-6 grid gap-4 lg:grid-cols-4">
@@ -571,41 +609,97 @@ function SearchPageContent() {
         <section className="mt-6 space-y-4">
           {/* Result-type tabs: filter to one category so the page shows a single
               focused list instead of every category stacked. Counts live on the
-              tabs, replacing the old stat cards. */}
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                { key: "all", label: "All", count: totalResults },
-                { key: "proposals", label: "Proposals", count: filteredProposals.length },
-                { key: "prs", label: "PRs", count: filteredPrs.length },
-                { key: "issues", label: "Issues", count: filteredIssues.length },
-                { key: "people", label: "People", count: filteredPeople.length },
-              ] as const
-            ).map((tab) => (
-              <button
-                key={tab.key}
-                type="button"
-                onClick={() => setKind(tab.key)}
-                aria-pressed={kind === tab.key}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
-                  kind === tab.key
-                    ? "border-primary/50 bg-primary/10 text-foreground"
-                    : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
-                )}
-              >
-                {tab.label}
-                <span
+              tabs, replacing the old stat cards. A compact "Filters" toggle keeps
+              repo/status refinement available now that the search box is gone. */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  { key: "all", label: "All", count: totalResults },
+                  { key: "proposals", label: "Proposals", count: filteredProposals.length },
+                  { key: "prs", label: "PRs", count: filteredPrs.length },
+                  { key: "issues", label: "Issues", count: filteredIssues.length },
+                  { key: "people", label: "People", count: filteredPeople.length },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setKind(tab.key)}
+                  aria-pressed={kind === tab.key}
                   className={cn(
-                    "rounded-full px-1.5 text-xs",
-                    kind === tab.key ? "bg-primary/20 text-primary" : "bg-muted/60 text-muted-foreground"
+                    "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                    kind === tab.key
+                      ? "border-primary/50 bg-primary/10 text-foreground"
+                      : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
                   )}
                 >
-                  {loading ? "…" : tab.count}
-                </span>
-              </button>
-            ))}
+                  {tab.label}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 text-xs",
+                      kind === tab.key ? "bg-primary/20 text-primary" : "bg-muted/60 text-muted-foreground"
+                    )}
+                  >
+                    {loading ? "…" : tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => setAdvancedOpen((value) => !value)}
+              aria-pressed={advancedOpen}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors",
+                advancedOpen || repo !== "all" || proposalStatusFilter !== "all"
+                  ? "border-primary/50 bg-primary/10 text-foreground"
+                  : "border-border bg-card/60 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+              )}
+            >
+              <Filter className="h-4 w-4" />
+              Filters
+              <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
+            </button>
           </div>
+
+          {advancedOpen && (
+            <div className="grid gap-4 rounded-xl border border-border bg-card/60 p-4 sm:grid-cols-2 sm:p-5">
+              <FilterGroup label="Repository family">
+                {[
+                  ["all", "All repos"],
+                  ["eip", "EIPs"],
+                  ["erc", "ERCs"],
+                  ["rip", "RIPs"],
+                ].map(([value, label]) => (
+                  <FilterChip
+                    key={value}
+                    active={repo === value}
+                    onClick={() => setRepo(value as RepoFilter)}
+                    label={label}
+                  />
+                ))}
+              </FilterGroup>
+              <FilterGroup label="Proposal status">
+                {[
+                  ["all", "Any status"],
+                  ["draft", "Draft"],
+                  ["review", "Review"],
+                  ["last call", "Last Call"],
+                  ["final", "Final"],
+                  ["living", "Living"],
+                  ["other", "Other"],
+                ].map(([value, label]) => (
+                  <FilterChip
+                    key={value}
+                    active={proposalStatusFilter === value}
+                    onClick={() => setProposalStatusFilter(value as ProposalStatusFilter)}
+                    label={label}
+                  />
+                ))}
+              </FilterGroup>
+            </div>
+          )}
 
           {error && (
             <div className="rounded-xl border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
@@ -626,17 +720,21 @@ function SearchPageContent() {
             </div>
           ) : (
             <div className="space-y-4">
-              {visibleSections.some((section) => section.key === "proposals" && section.count > 0) && (
+              {/* Top result: the exact proposal for a number query, shown first
+                  and prominently. Secondary data (PRs, issues, people) follows. */}
+              {showHero && bestMatch && <TopResultCard item={bestMatch} />}
+
+              {proposalsForList.length > 0 && (kind === "all" || kind === "proposals") && (
                 <ResultSection
-                  title="Proposals"
+                  title={showHero ? "More proposals" : "Proposals"}
                   description={
                     topProposalCategories.length > 0
                       ? `Top categories: ${topProposalCategories.map(([name, count]) => `${name} (${count})`).join(" • ")}`
                       : "EIPs, ERCs, and RIPs matching your query."
                   }
-                  count={filteredProposals.length}
+                  count={proposalsForList.length}
                 >
-                  {filteredProposals.slice(0, 20).map((item) => {
+                  {proposalsForList.slice(0, 20).map((item) => {
                     const prefix = item.repo === "erc" ? "ERC" : item.repo === "rip" ? "RIP" : "EIP";
                     return (
                       <li key={`${item.repo}-${item.number}`}>
@@ -839,6 +937,45 @@ function FilterChip({
     >
       {label}
     </button>
+  );
+}
+
+/** Prominent single "best match" card for exact proposal-number queries. */
+function TopResultCard({ item }: { item: ProposalSearchResult }) {
+  const prefix = item.repo === "erc" ? "ERC" : item.repo === "rip" ? "RIP" : "EIP";
+  return (
+    <Link
+      href={`/${item.repo}/${item.number}`}
+      className="group block rounded-xl border border-primary/40 bg-primary/5 p-5 shadow-sm transition-all hover:border-primary/60 hover:bg-primary/10 hover:shadow-md sm:p-6"
+    >
+      <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+        <Sparkles className="h-3.5 w-3.5" />
+        Top result
+      </div>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-mono text-lg font-bold text-primary">
+              {prefix}-{item.number}
+            </span>
+            <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
+              {item.status}
+            </span>
+            {(item.category || item.type) && (
+              <span className="rounded-full border border-border bg-muted/30 px-2 py-0.5 text-[11px] text-muted-foreground">
+                {item.category || item.type}
+              </span>
+            )}
+          </div>
+          <p className="mt-2 text-base font-semibold text-foreground sm:text-lg">{item.title}</p>
+          {item.author && <p className="mt-1 text-sm text-muted-foreground">{item.author}</p>}
+        </div>
+        <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg persona-gradient px-4 py-2 text-sm font-semibold text-black transition-opacity group-hover:opacity-90">
+          Open {prefix}-{item.number}
+          <ArrowRight className="h-4 w-4" />
+        </span>
+      </div>
+    </Link>
   );
 }
 
