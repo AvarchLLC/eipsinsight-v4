@@ -31,7 +31,10 @@ export function ThemeLoading() {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-          className="fixed inset-0 z-9999 flex items-center justify-center bg-background/70 backdrop-blur-md"
+          // pointer-events-none so this brief loading veil never intercepts
+          // clicks/typing on the navbar search underneath it (it covers the whole
+          // screen at z-9999). It's a cosmetic loading state, not a modal gate.
+          className="pointer-events-none fixed inset-0 z-9999 flex items-center justify-center bg-background/70 backdrop-blur-md"
         >
           <div className="w-full max-w-md px-4">
             <motion.div

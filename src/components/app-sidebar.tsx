@@ -129,7 +129,6 @@ const sidebarSections: SidebarSection[] = [
           { title: "Previous Upgrades", href: "/upgrade/archive" },
           { title: "Devnets", href: "/upgrade/devnets" },
           { title: "Schedule", href: "/upgrade/schedule" },
-          { title: "Analytics", href: "/upgrade/analytics" },
         ],
       },
       {

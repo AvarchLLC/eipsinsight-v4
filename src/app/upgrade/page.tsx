@@ -1,34 +1,23 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ArrowUpRight, Archive, BarChart2, CalendarClock, GitCommit, Info, Package, Search, Star, Zap } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Archive, CalendarClock, GitCommit, Info, LineChart, Package, PieChart, Search, Zap } from 'lucide-react';
 import { CopyLinkButton } from '@/components/header';
-import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
+import { ShareButtons } from '@/components/share-buttons';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { statusBadgeClass } from '@/lib/proposal-status';
-import {
-  getInProgressUpgrades,
-  getLiveUpgrades,
-  type UpgradeRegistryEntry,
-} from '@/data/upgrade-registry';
-import {
-  STAGE_ORDER,
-  stageAbbreviation,
-  stageBadgeClass,
-  stageDefinition,
-  stageLabel,
-  type UpgradeBucket,
-} from '@/lib/upgrade-stages';
-import { getCurrentPhase } from '@/data/fork-schedule';
-import {
-  getCachedRecentActivity,
-  getCachedUpgradeComposition,
-  getCachedUpgradeList,
-  getCachedUpgradeStats,
-} from '@/lib/upgrade-data.server';
+import { getInProgressUpgrades, upgradeRegistry } from '@/data/upgrade-registry';
+import type { UpgradeRegistryEntry } from '@/data/upgrade-registry';
+import { rawData, pairedUpgradeNames, upgradeDescriptions } from '@/data/network-upgrades';
+import { STAGE_ORDER, stageDefinition, stageLabel } from '@/lib/upgrade-stages';
+import { getCachedRecentActivity } from '@/lib/upgrade-data.server';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
 import { EipDirectorySearch } from '@/components/upgrade/eip-directory-search';
 import { ScheduleTimelinePreview } from '@/components/upgrade/schedule-timeline-preview';
-import { PhaseBadge, StageBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
+import { UpgradeChartsTabs } from '@/components/upgrade/upgrade-charts-tabs';
+import { UpgradeStatsPanel } from '@/components/upgrade/upgrade-stats-panel';
+import { StageBadge } from '@/components/upgrade/stage-badge';
 import { EipInclusionProcessGraph } from '@/components/upgrade/eip-inclusion-process-graph';
 
 export const revalidate = 300;
@@ -41,183 +30,159 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-function stageCounts(composition: Awaited<ReturnType<typeof getCachedUpgradeComposition>>) {
-  const counts = new Map<UpgradeBucket, number>();
-  for (const eip of composition) {
-    if (eip.bucket) counts.set(eip.bucket, (counts.get(eip.bucket) ?? 0) + 1);
-  }
-  return counts;
-}
+/** Per-section accent tints for the header icon chips. */
+const ACCENTS = {
+  blue: { chip: 'bg-blue-500/10 ring-blue-500/20', icon: 'text-blue-500' },
+  violet: { chip: 'bg-violet-500/10 ring-violet-500/20', icon: 'text-violet-500' },
+  amber: { chip: 'bg-amber-500/10 ring-amber-500/20', icon: 'text-amber-500' },
+  cyan: { chip: 'bg-cyan-500/10 ring-cyan-500/20', icon: 'text-cyan-500' },
+  emerald: { chip: 'bg-emerald-500/10 ring-emerald-500/20', icon: 'text-emerald-500' },
+  rose: { chip: 'bg-rose-500/10 ring-rose-500/20', icon: 'text-rose-500' },
+  green: { chip: 'bg-green-500/10 ring-green-500/20', icon: 'text-green-500' },
+  indigo: { chip: 'bg-indigo-500/10 ring-indigo-500/20', icon: 'text-indigo-500' },
+} as const;
 
-function formatDate(iso: string): string {
-  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
-}
-
-function UpgradeCard({
-  entry,
-  counts,
-  today,
+/**
+ * Consistent section header: a colored icon chip, the title (optionally a link
+ * out), a copy-link button, and a description aligned under the title. An
+ * optional `action` slot floats to the right (e.g. the Live "Full archive" pill).
+ */
+function SectionHeader({
+  icon: Icon,
+  accent,
+  title,
+  sectionId,
+  description,
+  href,
+  action,
 }: {
-  entry: UpgradeRegistryEntry;
-  counts: Map<UpgradeBucket, number>;
-  today: string;
+  icon: LucideIcon;
+  accent: keyof typeof ACCENTS;
+  title: string;
+  sectionId: string;
+  description: string;
+  href?: string;
+  action?: ReactNode;
 }) {
-  const totalEips = Array.from(counts.values()).reduce((sum, count) => sum + count, 0);
-  const isLive = entry.status === 'Live';
-  const phase = isLive ? null : getCurrentPhase(entry.slug, today);
-
+  const a = ACCENTS[accent];
   return (
-    <Link
-      href={`/upgrade/${entry.slug}`}
-      className="group flex h-full flex-col rounded-xl border border-border bg-card/60 p-5 transition-colors hover:border-primary/40"
-    >
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-          {entry.name}
-        </h3>
-        {phase ? (
-          <PhaseBadge phaseId={phase.id} label={phase.label} />
-        ) : (
-          <UpgradeStatusBadge status={entry.status} />
-        )}
-      </div>
-      <p className="mt-0.5 text-xs font-medium text-muted-foreground">
-        {isLive && entry.activationDate
-          ? `Activated: ${formatDate(entry.activationDate)}`
-          : phase
-            ? `Target: ${phase.targetYear}`
-            : null}
-      </p>
-      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">
-        {entry.statusNote ?? entry.tagline}
-      </p>
-
-      {entry.headliners && entry.headliners.length > 0 && (
-        <p className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
-          <Star className="mt-0.5 h-3 w-3 shrink-0 fill-current text-primary" />
-          <span>
-            {entry.headliners
-              .map((headliner) => `EIP-${headliner.eip}`)
-              .join(' · ')}{' '}
-            headline this upgrade
+    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2.5">
+          <span
+            className={cn(
+              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
+              a.chip
+            )}
+          >
+            <Icon className={cn('h-[18px] w-[18px]', a.icon)} />
           </span>
-        </p>
-      )}
-
-      {totalEips > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {STAGE_ORDER.map((bucket) => {
-            const count = counts.get(bucket);
-            if (!count) return null;
-            return (
-              <span
-                key={bucket}
-                title={stageLabel(bucket)}
-                className={cn(
-                  'inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium',
-                  stageBadgeClass(bucket)
-                )}
-              >
-                {count} {stageAbbreviation(bucket)}
-              </span>
-            );
-          })}
+          {href ? (
+            <Link
+              href={href}
+              className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
+            >
+              {title}
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+            </Link>
+          ) : (
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              {title}
+            </h2>
+          )}
+          <CopyLinkButton sectionId={sectionId} tooltipLabel="Copy link" />
         </div>
-      )}
-
-      <span className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-primary">
-        View upgrade
-        <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
-      </span>
-    </Link>
+        <p className="mt-1.5 pl-[46px] text-sm text-muted-foreground">{description}</p>
+      </div>
+      {action}
+    </div>
   );
 }
+
+/**
+ * The complete list of activated mainnet upgrades (all 22 distinct activation
+ * dates in the static timeline), newest first. Same-date EL/CL forks collapse
+ * into one row. Where a fork has a dedicated registry page we link to it and use
+ * its curated tagline; older forks (Bellatrix, the Glaciers, Altair, Phase 0,
+ * Frontier Thawing …) fall back to their raw name and one-line description.
+ */
+interface LiveUpgradeRow {
+  date: string;
+  name: string;
+  slug?: string;
+  eipCount: number;
+  tagline: string;
+}
+
+function isRealEip(eip: string): boolean {
+  return eip.startsWith('EIP-') && !eip.endsWith('-removed');
+}
+
+function buildLiveUpgrades(): LiveUpgradeRow[] {
+  const registryByDate = new Map<string, UpgradeRegistryEntry>();
+  for (const entry of Object.values(upgradeRegistry)) {
+    if (entry.activationDate) registryByDate.set(entry.activationDate, entry);
+  }
+
+  const byDate = new Map<string, typeof rawData>();
+  for (const row of rawData) {
+    const bucket = byDate.get(row.date);
+    if (bucket) bucket.push(row);
+    else byDate.set(row.date, [row]);
+  }
+
+  const rows: LiveUpgradeRow[] = [...byDate.entries()].map(([date, entries]) => {
+    const reg = registryByDate.get(date);
+    const forkNames = [...new Set(entries.map((e) => e.upgrade))];
+    const name =
+      pairedUpgradeNames[date] ??
+      (forkNames.length > 1 ? forkNames.join(' / ') : (reg?.name ?? forkNames[0]));
+    const eipCount = new Set(entries.flatMap((e) => e.eips).filter(isRealEip)).size;
+    const tagline = reg?.tagline ?? upgradeDescriptions[forkNames[0]] ?? '';
+    return { date, name, slug: reg?.slug, eipCount, tagline };
+  });
+
+  rows.sort((a, b) => (a.date < b.date ? 1 : -1));
+  return rows;
+}
+
+const liveUpgrades = buildLiveUpgrades();
 
 export default async function UpgradeIndexPage() {
   const today = new Date().toISOString().slice(0, 10);
   const inProgress = getInProgressUpgrades();
-  const live = getLiveUpgrades();
-  // Featured cards: newest live fork + everything in progress.
-  const featured = [live[0], ...inProgress].filter(Boolean);
-
-  const [list, stats, activity, ...compositions] = await Promise.all([
-    getCachedUpgradeList(),
-    getCachedUpgradeStats(),
-    getCachedRecentActivity(10),
-    ...featured.map((entry) => getCachedUpgradeComposition(entry.slug)),
-  ]);
-
-  const eipCountBySlug = new Map(list.map((upgrade) => [upgrade.slug, upgrade.stats.totalEIPs]));
+  const activity = await getCachedRecentActivity(10);
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-12 pt-8 sm:px-6">
+    <div className="mx-auto w-full max-w-6xl divide-y divide-border/50 px-4 pb-12 pt-8 sm:px-6 [&>*:first-child]:pt-0 [&>*]:py-10">
       {/* Hero */}
-      <header>
-        <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-          Ethereum upgrades, tracked live
-        </h1>
-        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-          What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
-          there - parsed automatically from meta-EIP commits.
-        </p>
-      </header>
-
-      {/* Roadmap strip */}
-      <section aria-label="Upgrade roadmap">
-        <UpgradeTimelineStrip />
-      </section>
-
-      {/* Network upgrades */}
-      <section id="network-upgrades">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              Network upgrades
-            </h2>
-            <CopyLinkButton sectionId="network-upgrades" tooltipLabel="Copy link" />
-          </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Where each upgrade stands right now.
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+            Ethereum upgrades, tracked live
+          </h1>
+          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+            What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
+            there - parsed automatically from meta-EIP commits.
           </p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((entry, index) => (
-            <UpgradeCard
-              key={entry.slug}
-              entry={entry}
-              counts={stageCounts(compositions[index] ?? [])}
-              today={today}
-            />
-          ))}
-        </div>
-      </section>
+        <ShareButtons
+          text="Ethereum upgrades, tracked live — what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
+          hashtags={['Ethereum', 'EIPs']}
+          className="shrink-0"
+        />
+      </header>
 
-      {/* EIP Directory search preview */}
+      {/* Upgrade Directory — top of page */}
       <section id="eip-directory">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Search className="h-5 w-5 text-primary" />
-              <Link
-                href="/upgrade/eips"
-                className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
-              >
-                Upgrade EIP Directory
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-              </Link>
-              <CopyLinkButton sectionId="eip-directory" tooltipLabel="Copy link" />
-            </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Search every EIP across all upgrades, or jump straight to a filtered view.
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          icon={Search}
+          accent="blue"
+          title="Upgrade EIP Directory"
+          sectionId="eip-directory"
+          href="/upgrade/eips"
+          description="Search every EIP across all upgrades, or jump straight to a filtered view."
+        />
         <EipDirectorySearch
           upgradeChips={inProgress
             .slice(0, 2)
@@ -225,44 +190,53 @@ export default async function UpgradeIndexPage() {
         />
       </section>
 
+      {/* Network upgrades — roadmap timeline (the cards moved to the stats panel below) */}
+      <section id="network-upgrades">
+        <SectionHeader
+          icon={Package}
+          accent="violet"
+          title="Network upgrades"
+          sectionId="network-upgrades"
+          description="The last shipped fork, the one being built now, and what's next — where each stands today."
+        />
+        <UpgradeTimelineStrip liveCount={2} />
+      </section>
+
       {/* Timeline View — schedule preview */}
       <section id="timeline-view">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 text-primary" />
-              <Link
-                href="/upgrade/schedule"
-                className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
-              >
-                Timeline View
-                <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
-              </Link>
-              <CopyLinkButton sectionId="timeline-view" tooltipLabel="Copy link" />
-            </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Upgrade phases and milestones across forks, on a shared calendar.
-            </p>
-          </div>
-        </div>
+        <SectionHeader
+          icon={CalendarClock}
+          accent="amber"
+          title="Timeline View"
+          sectionId="timeline-view"
+          href="/upgrade/schedule"
+          description="Upgrade phases and milestones across forks, on a shared calendar. Expand a fork for the detail."
+        />
         <ScheduleTimelinePreview today={today} />
+      </section>
+
+      {/* Upgrade charts — Ethereum timeline + EIP distribution (tabbed) */}
+      <section id="upgrade-charts">
+        <SectionHeader
+          icon={LineChart}
+          accent="cyan"
+          title="Upgrade timelines"
+          sectionId="upgrade-charts"
+          description="The full historical timeline, and how EIPs are distributed across upgrades."
+        />
+        <UpgradeChartsTabs />
       </section>
 
       {/* Latest changes */}
       {activity.length > 0 && (
         <section id="latest-changes">
-          <div className="mb-4">
-            <div className="inline-flex items-center gap-2">
-              <GitCommit className="h-5 w-5 text-primary" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Latest changes
-              </h2>
-              <CopyLinkButton sectionId="latest-changes" tooltipLabel="Copy link" />
-            </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Every EIP movement across all upgrades, straight from the meta-EIP commit history.
-            </p>
-          </div>
+          <SectionHeader
+            icon={GitCommit}
+            accent="emerald"
+            title="Latest changes"
+            sectionId="latest-changes"
+            description="Every EIP movement across all upgrades, straight from the meta-EIP commit history."
+          />
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
             <ul className="divide-y divide-border/60">
               {activity.map((event, index) => (
@@ -329,18 +303,13 @@ export default async function UpgradeIndexPage() {
 
       {/* How inclusion works */}
       <section id="how-inclusion-works">
-        <div className="mb-4">
-          <div className="inline-flex items-center gap-2">
-            <Info className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              How EIPs get into an upgrade
-            </h2>
-            <CopyLinkButton sectionId="how-inclusion-works" tooltipLabel="Copy link" />
-          </div>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Proposals move through inclusion stages as client teams evaluate them.
-          </p>
-        </div>
+        <SectionHeader
+          icon={Info}
+          accent="rose"
+          title="How EIPs get into an upgrade"
+          sectionId="how-inclusion-works"
+          description="Proposals move through inclusion stages as client teams evaluate them."
+        />
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
             <EipInclusionProcessGraph />
@@ -365,27 +334,22 @@ export default async function UpgradeIndexPage() {
 
       {/* Live upgrades */}
       <section id="live">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Zap className="h-5 w-5 text-primary" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Live on mainnet
-              </h2>
-              <CopyLinkButton sectionId="live" tooltipLabel="Copy link" />
-            </div>
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              Activated network upgrades, newest first.
-            </p>
-          </div>
-          <Link
-            href="/upgrade/archive"
-            className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-          >
-            <Archive className="h-3.5 w-3.5" />
-            Full archive
-          </Link>
-        </div>
+        <SectionHeader
+          icon={Zap}
+          accent="green"
+          title="Live on mainnet"
+          sectionId="live"
+          description="All 22 activated network upgrades, newest first."
+          action={
+            <Link
+              href="/upgrade/archive"
+              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+            >
+              <Archive className="h-3.5 w-3.5" />
+              Full archive
+            </Link>
+          }
+        />
         <div className="overflow-hidden rounded-xl border border-border bg-card/60">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -399,25 +363,34 @@ export default async function UpgradeIndexPage() {
                 </tr>
               </thead>
               <tbody>
-                {live.map((entry) => (
+                {liveUpgrades.map((entry) => (
                   <tr
-                    key={entry.slug}
+                    key={entry.date}
                     className="border-b border-border/60 last:border-0 hover:bg-muted/40"
                   >
                     <td className="px-4 py-3 font-medium text-foreground">
-                      <Link href={`/upgrade/${entry.slug}`} className="text-primary hover:underline">
-                        {entry.name}
-                      </Link>
+                      {entry.slug ? (
+                        <Link
+                          href={`/upgrade/${entry.slug}`}
+                          className="text-primary hover:underline"
+                        >
+                          {entry.name}
+                        </Link>
+                      ) : (
+                        entry.name
+                      )}
                     </td>
-                    <td className="px-4 py-3 text-muted-foreground">{entry.activationDate}</td>
+                    <td className="px-4 py-3 text-muted-foreground">{entry.date}</td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                      {eipCountBySlug.get(entry.slug) || '—'}
+                      {entry.eipCount || '—'}
                     </td>
                     <td className="hidden max-w-md px-4 py-3 text-muted-foreground md:table-cell">
                       {entry.tagline}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                      {entry.slug && (
+                        <ArrowRight className="ml-auto h-3.5 w-3.5 text-muted-foreground" />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -427,35 +400,16 @@ export default async function UpgradeIndexPage() {
         </div>
       </section>
 
-      {/* Stats + deep-dive link */}
-      <section aria-label="Statistics">
-        <div className="flex flex-col gap-4 rounded-xl border border-border bg-card/60 p-5 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex flex-wrap gap-x-8 gap-y-3">
-            <div>
-              {/* Complete historical count (22) from the static timeline, not the
-                  live DB count — only 17 upgrades are seeded, which is incomplete. */}
-              <p className="text-2xl font-semibold text-foreground">{TOTAL_NETWORK_UPGRADES}</p>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Network upgrades</p>
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-foreground">{stats?.totalCoreEIPs ?? '—'}</p>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Core EIPs deployed</p>
-            </div>
-            <div>
-              <p className="text-2xl font-semibold text-foreground">
-                {stats?.independentIncludedAuthors ?? '—'}
-              </p>
-              <p className="text-xs uppercase tracking-wider text-muted-foreground">Included EIP authors</p>
-            </div>
-          </div>
-          <Link
-            href="/upgrade/analytics"
-            className="inline-flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            <BarChart2 className="h-4 w-4" />
-            Upgrade analytics
-          </Link>
-        </div>
+      {/* Analytics stats: cards (click to reveal each dataset) + EIP/author tables */}
+      <section id="analytics">
+        <SectionHeader
+          icon={PieChart}
+          accent="indigo"
+          title="Upgrade analytics"
+          sectionId="analytics"
+          description="The numbers behind the upgrades — click any card to see the EIPs, meta EIPs, or authors behind it."
+        />
+        <UpgradeStatsPanel />
       </section>
     </div>
   );
