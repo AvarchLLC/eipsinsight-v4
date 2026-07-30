@@ -680,6 +680,24 @@ export default function ProposalDetailPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        <a
+                          href={githubUrl}
+                          target="_blank; noreferrer"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <Github className="h-3.5 w-3.5" />
+                          <span>View on GitHub</span>
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">View specification on GitHub</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <button
                           onClick={handleCopyLink}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card/70 transition-colors hover:border-primary/40 hover:bg-primary/10"
@@ -1336,28 +1354,6 @@ export default function ProposalDetailPage() {
               </div>
             </div>
           </motion.section>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="border-t border-border/70 pt-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Github className="h-4 w-4 text-muted-foreground" />
-                <a
-                  href={githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  View on GitHub
-                </a>
-              </div>
-              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-          </motion.div>
           </div>
         </div>
     </div>
