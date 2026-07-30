@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
+import { BrandLoader } from "@/components/brand-loader";
 import { CHART_SERIES } from "@/lib/chart-colors";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 import { 
@@ -1444,25 +1445,11 @@ export default function EditorsAnalyticsPage() {
   // Custom Pulsing Glassmorphic Loader
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[500px] rounded-2xl border border-border/40 bg-card/35 backdrop-blur-md p-8 relative overflow-hidden">
-        {/* Glowing backdrop ambient blur */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-primary/10 rounded-full blur-[110px] pointer-events-none" />
-        
-        <div className="relative w-20 h-20">
-          <div className="absolute inset-0 rounded-full border-4 border-primary/10" />
-          <div className="absolute inset-0 rounded-full border-4 border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin" />
-          <div className="absolute inset-3.5 rounded-full border-2 border-primary/5" />
-          <div className="absolute inset-3.5 rounded-full border-2 border-t-transparent border-r-transparent border-b-primary border-l-transparent animate-spin [animation-duration:1.5s]" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <Activity className="h-6 w-6 text-primary animate-pulse" />
-          </div>
-        </div>
-        
-        <h3 className="mt-6 text-base font-semibold text-foreground tracking-tight">Analyzing Editor Performance</h3>
-        <p className="mt-1.5 text-xs text-muted-foreground max-w-sm text-center leading-relaxed">
-          Compiling activity leaderboards, response latency metrics, category coverage depth, and repo distributions...
-        </p>
-      </div>
+      <BrandLoader
+        title="Analyzing Editor Performance"
+        description="Compiling activity leaderboards, response latency metrics, category coverage depth, and repo distributions..."
+        minHeight="min-h-[500px]"
+      />
     );
   }
 
