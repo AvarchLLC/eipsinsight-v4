@@ -371,9 +371,9 @@ export default function ContributorsAnalyticsPage() {
           >
             <ResponsiveContainer>
               <BarChart data={activityByType} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis type="number" stroke="#94a3b8" />
-                <YAxis dataKey="actionType" type="category" stroke="#94a3b8" width={100} />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis type="number" stroke="var(--muted-foreground)" />
+                <YAxis dataKey="actionType" type="category" stroke="var(--muted-foreground)" width={100} />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="count" radius={[0, 8, 8, 0]}>
                   {activityByType.map((entry, index) => (
@@ -401,9 +401,9 @@ export default function ContributorsAnalyticsPage() {
           >
             <ResponsiveContainer>
               <BarChart data={repoHeatmap}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="repo" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="repo" stroke="var(--muted-foreground)" />
+                <YAxis stroke="var(--muted-foreground)" />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                   {repoHeatmap.map((entry, index) => (

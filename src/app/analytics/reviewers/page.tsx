@@ -729,9 +729,9 @@ export default function ReviewersAnalyticsPage() {
             <div className="relative h-full w-full">
               <ResponsiveContainer>
                 <LineChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="month" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="month" stroke="var(--muted-foreground)" />
+                  <YAxis stroke="var(--muted-foreground)" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Legend />
                   {trendActors.map((actor, idx) => (
@@ -776,9 +776,9 @@ export default function ReviewersAnalyticsPage() {
             <div className="relative h-full w-full">
               <ResponsiveContainer>
                 <BarChart data={cyclesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="cycles" stroke="#94a3b8" label={{ value: "Number of Reviewers", position: "insideBottom", offset: -5 }} />
-                  <YAxis stroke="#94a3b8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="cycles" stroke="var(--muted-foreground)" label={{ value: "Number of Reviewers", position: "insideBottom", offset: -5 }} />
+                  <YAxis stroke="var(--muted-foreground)" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#22c55e">
                     {cyclesData.map((entry, index) => (
@@ -828,9 +828,9 @@ export default function ReviewersAnalyticsPage() {
           <div className="relative h-full w-full">
             <ResponsiveContainer>
               <LineChart data={monthlyReviewedTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="month" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" stroke="var(--muted-foreground)" />
+                <YAxis stroke="var(--muted-foreground)" />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Legend />
                 {reviewedTrendActors.map((actor, idx) => (
@@ -881,9 +881,9 @@ export default function ReviewersAnalyticsPage() {
           <div className="relative h-full w-full">
             <ResponsiveContainer>
               <BarChart data={dailyStackedChartData.rows}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="date" stroke="#94a3b8" />
-                <YAxis stroke="#94a3b8" />
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="date" stroke="var(--muted-foreground)" />
+                <YAxis stroke="var(--muted-foreground)" />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Legend />
                 {dailyStackedChartData.actors.map((actor, idx) => (
@@ -1010,9 +1010,9 @@ export default function ReviewersAnalyticsPage() {
             <div className="relative h-full w-full">
               <ResponsiveContainer>
                 <BarChart data={reviewerRepoStackedData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="repo" stroke="#94a3b8" />
-                  <YAxis stroke="#94a3b8" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                  <XAxis dataKey="repo" stroke="var(--muted-foreground)" />
+                  <YAxis stroke="var(--muted-foreground)" />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Legend />
                   {OFFICIAL_REVIEWERS.map((reviewer, idx) => (
