@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
+import { CHART_SERIES } from "@/lib/chart-colors";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 import { 
   Loader2, 
@@ -142,6 +143,9 @@ function getTimeWindow(
       break;
     case "7d":
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      break;
+    case "15d":
+      from = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
       break;
     case "30d":
       from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
@@ -1303,20 +1307,7 @@ export default function EditorsAnalyticsPage() {
 
   // ECharts Leaderboard Option that reflects active Metric filter
   const leaderboardHeroOption = useMemo(() => {
-    const palette = [
-      "#79d2e8",
-      "#8b7dff",
-      "#ff8a80",
-      "#7ea8ff",
-      "#6f9bff",
-      "#ffd166",
-      "#ff9f68",
-      "#b794f4",
-      "#4fd1c5",
-      "#f687b3",
-      "#90cdf4",
-      "#c6f6d5",
-    ];
+    const palette = CHART_SERIES;
     const ordered = [...leaderboardHeroRows].reverse();
     const maxValue = Math.max(1, ...ordered.map((row) => {
       if (selectedMetric === "reviews") return row.reviews;

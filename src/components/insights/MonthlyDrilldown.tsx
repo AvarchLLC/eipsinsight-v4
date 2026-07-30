@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactECharts from "echarts-for-react";
 import { client } from "@/lib/orpc";
+import { CHART_SERIES } from "@/lib/chart-colors";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import {
   ArrowLeft,
@@ -42,16 +43,7 @@ function normalizeStatusLabel(raw: string | null | undefined): string {
   if (canonical) return canonical;
   return value;
 }
-const CATEGORY_LINE_COLORS = [
-  "#10b981",
-  "#60a5fa",
-  "#f59e0b",
-  "#f472b6",
-  "#a78bfa",
-  "#22d3ee",
-  "#fb923c",
-  "#94a3b8",
-];
+const CATEGORY_LINE_COLORS = CHART_SERIES;
 
 function csvEscape(v: string | number | null | undefined) {
   const s = String(v ?? "");

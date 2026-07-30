@@ -182,7 +182,7 @@ export default function EIPsAnalyticsPage() {
   const { resolvedTheme } = useTheme();
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const throughputMonths =
-    timeRange === "7d"
+    timeRange === "7d" || timeRange === "15d"
       ? 3
       : timeRange === "30d"
         ? 6
