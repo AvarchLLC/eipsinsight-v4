@@ -137,6 +137,8 @@ interface StatusEvent {
 }
 
 interface GovernanceState {
+  pr_number: number | null;
+  pr_url: string | null;
   current_pr_state: string | null;
   waiting_on: string | null;
   days_since_last_action: number | null;
@@ -678,6 +680,24 @@ export default function ProposalDetailPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
+                        <a
+                          href={githubUrl}
+                          target="_blank; noreferrer"
+                          rel="noopener noreferrer"
+                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <Github className="h-3.5 w-3.5" />
+                          <span>View on GitHub</span>
+                        </a>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p className="text-xs">View specification on GitHub</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
                         <button
                           onClick={handleCopyLink}
                           className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card/70 transition-colors hover:border-primary/40 hover:bg-primary/10"
@@ -848,34 +868,6 @@ export default function ProposalDetailPage() {
                     <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</td>
                     <td className="px-6 py-4 text-sm text-foreground">{proposal.title}</td>
                   </tr>
-                  <tr>
-                    <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Status</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{proposal.status}</td>
-                  </tr>
-                  {proposal.type && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Type</td>
-                      <td className="px-6 py-4 text-sm text-foreground">{proposal.type}</td>
-                    </tr>
-                  )}
-                  {proposal.category && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</td>
-                      <td className="px-6 py-4 text-sm text-foreground">{proposal.category}</td>
-                    </tr>
-                  )}
-                  {proposal.category === 'Core' && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Layer</td>
-                      <td className="px-6 py-4 text-sm text-foreground">
-                        {latestUpgrade?.layer
-                          ? latestUpgrade.layer === 'consensus'
-                            ? 'Consensus Layer (CL)'
-                            : 'Execution Layer (EL)'
-                          : 'Protocol Layer (Pending Assignment)'}
-                      </td>
-                    </tr>
-                  )}
                   {proposal.authors.length > 0 && (
                     <tr>
                       <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Author</td>
@@ -910,48 +902,6 @@ export default function ProposalDetailPage() {
                         </a>
                       </td>
                     </tr>
-                  )}
-                  {/* Inclusion Status and Network Upgrade - show if upgrades exist */}
-                  {upgrades.length > 0 && (
-                    <>
-                      <tr>
-                        <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Inclusion Status</td>
-                        <td className="px-6 py-4 text-sm text-foreground">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', getBucketBadgeClass(latestUpgrade?.bucket || null))}>
-                              {formatInclusionBucket(latestUpgrade?.bucket || null)}
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Network Upgrade</td>
-                        <td className="px-6 py-4 text-sm text-foreground">
-                          <div className="flex flex-wrap items-center gap-2">
-                            {upgrades.map((upgrade) => (
-                              <Link
-                                key={upgrade.upgrade_id}
-                                href={upgrade.slug ? `/upgrade/${upgrade.slug}` : '#'}
-                                title={`${upgrade.name}: ${formatInclusionBucket(upgrade.bucket)}`}
-                                className="inline-flex items-center overflow-hidden rounded-full border border-border text-[11px] font-medium transition-colors hover:border-primary/40"
-                              >
-                                <span className="bg-muted/60 px-2 py-0.5 text-primary">
-                                  {upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
-                                </span>
-                                <span
-                                  className={cn(
-                                    'border-l px-2 py-0.5',
-                                    getBucketBadgeClass(upgrade.bucket)
-                                  )}
-                                >
-                                  {formatInclusionBucket(upgrade.bucket)}
-                                </span>
-                              </Link>
-                            ))}
-                          </div>
-                        </td>
-                      </tr>
-                    </>
                   )}
                 </tbody>
               </table>
@@ -1070,42 +1020,88 @@ export default function ProposalDetailPage() {
             repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
           />
 
-          {/* 4. Governance Signals */}
+          {/* 4. Editorial Review & PR Coordination */}
           <div className="space-y-8">
-            {/* Governance Signals */}
-            {governanceState && (governanceState.waiting_on || governanceState.days_since_last_action !== null) && (
+            {governanceState && (
               <motion.div
-                id="governance"
+                id="coordination"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
                 className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6"
               >
-                <div className="flex items-center gap-2 mb-4">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Governance Signals</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {governanceState.waiting_on && (
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground">Waiting On</p>
-                      {(() => {
-                        const waitingStr = formatWaitingOn(governanceState.waiting_on);
-                        const isClosed = /closed/i.test(waitingStr);
-                        const valueClass = isClosed ? 'text-sm font-semibold text-slate-700 dark:text-slate-300' : 'text-sm font-semibold text-emerald-700 dark:text-emerald-300';
-                        return <p className={valueClass}>{waitingStr}</p>;
-                      })()}
-                    </div>
-                  )}
-                  {governanceState.days_since_last_action !== null && (
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground">Days Since Last Action</p>
-                      <p className={cn("text-sm font-semibold", getUrgencyColor(governanceState.days_since_last_action))}>
-                        {governanceState.days_since_last_action} day{governanceState.days_since_last_action !== 1 ? 's' : ''}
-                      </p>
-                    </div>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-primary" />
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                      Editorial Review & PR Coordination
+                    </h3>
+                  </div>
+                  {governanceState.pr_number && (
+                    <span className={cn(
+                      'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
+                      governanceState.current_pr_state === 'open'
+                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                        : governanceState.current_pr_state === 'merged'
+                          ? 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
+                          : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground'
+                    )}>
+                      PR {governanceState.current_pr_state || 'unknown'}
+                    </span>
                   )}
                 </div>
+
+                {governanceState.pr_number ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                      <p className="mb-1 text-xs text-muted-foreground font-medium">Active Pull Request</p>
+                      {governanceState.pr_url ? (
+                        <a
+                          href={governanceState.pr_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                        >
+                          <Github className="h-4 w-4 shrink-0" />
+                          PR #{governanceState.pr_number}
+                          <ExternalLink className="h-3 w-3 opacity-60" />
+                        </a>
+                      ) : (
+                        <p className="text-sm font-semibold text-foreground">#{governanceState.pr_number}</p>
+                      )}
+                    </div>
+
+                    {governanceState.waiting_on && (
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground font-medium">Review Stage / Waiting On</p>
+                        {(() => {
+                          const waitingStr = formatWaitingOn(governanceState.waiting_on);
+                          const isClosed = /closed/i.test(waitingStr);
+                          const valueClass = isClosed
+                            ? 'text-sm font-semibold text-slate-600 dark:text-slate-400'
+                            : 'text-sm font-semibold text-emerald-600 dark:text-emerald-400';
+                          return <p className={valueClass}>{waitingStr}</p>;
+                        })()}
+                      </div>
+                    )}
+
+                    {governanceState.days_since_last_action !== null && (
+                      <div>
+                        <p className="mb-1 text-xs text-muted-foreground font-medium">Last Queue Update</p>
+                        <p className={cn("text-sm font-semibold", getUrgencyColor(governanceState.days_since_last_action))}>
+                          {governanceState.days_since_last_action === 0
+                            ? 'Updated today'
+                            : `${governanceState.days_since_last_action} day${governanceState.days_since_last_action !== 1 ? 's' : ''} ago`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground flex items-center gap-2 py-2">
+                    <AlertCircle className="h-4 w-4 shrink-0 opacity-70" />
+                    <span>No active editorial PRs are currently linked to this proposal in the tracking database.</span>
+                  </div>
+                )}
               </motion.div>
             )}
           </div>
@@ -1358,28 +1354,6 @@ export default function ProposalDetailPage() {
               </div>
             </div>
           </motion.section>
-
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="border-t border-border/70 pt-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Github className="h-4 w-4 text-muted-foreground" />
-                <a
-                  href={githubUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-sm font-medium text-primary transition-colors hover:text-primary/80"
-                >
-                  View on GitHub
-                </a>
-              </div>
-              <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-            </div>
-          </motion.div>
           </div>
         </div>
     </div>

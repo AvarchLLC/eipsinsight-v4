@@ -1050,8 +1050,8 @@ export default function EIPsAnalyticsPage() {
         <Link href="/explore/years" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
           Explore Yearly Patterns
         </Link>
-        <Link href="/insights/governance" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          View Governance Process Insights
+        <Link href="/insights" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
+          View Monthly Analysis Insights
         </Link>
       </div>
 
