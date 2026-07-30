@@ -264,6 +264,27 @@ function getBucketBadgeClass(bucket: string | null): string {
   return stageBadgeClass(normalizeUpgradeBucket(bucket));
 }
 
+// Higher = more "active"/advanced. When an EIP sits in several upgrades (e.g.
+// declined in one, then re-proposed in a newer one), the headline inclusion
+// status should surface the live stage, not the dead-end DFI. Per-upgrade stages
+// are still listed separately so the DFI history is preserved.
+function bucketRank(bucket: string | null): number {
+  switch (normalizeUpgradeBucket(bucket)) {
+    case 'included':
+      return 5;
+    case 'scheduled':
+      return 4;
+    case 'considered':
+      return 3;
+    case 'proposed':
+      return 2;
+    case 'declined':
+      return 1;
+    default:
+      return 0;
+  }
+}
+
 function getStatusBadgeClass(status: string | null): string {
   if (!status) return 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300';
   const norm = status.toLowerCase();
@@ -383,7 +404,17 @@ export default function ProposalDetailPage() {
   const repoPath = normalizedRepo === 'eip' ? 'EIPs' : normalizedRepo === 'erc' ? 'ERCs' : 'RIPs';
   const filePath = normalizedRepo === 'eip' ? 'EIPS' : normalizedRepo === 'erc' ? 'ERCS' : 'RIPS';
   const fileName = `${normalizedRepo}-${number}.md`;
-  const latestUpgrade = upgrades.find((upgrade) => upgrade.bucket.toLowerCase() === 'included') ?? upgrades[0] ?? null;
+  // The "current" upgrade for headline fields: the most active/advanced stage
+  // across all upgrades this EIP appears in (newest as tiebreak), so a DFI in an
+  // older fork doesn't mask a live PFI/CFI/SFI in a newer one.
+  const latestUpgrade =
+    [...upgrades].sort((a, b) => {
+      const rankDiff = bucketRank(b.bucket) - bucketRank(a.bucket);
+      if (rankDiff !== 0) return rankDiff;
+      const at = a.commit_date ? new Date(a.commit_date).getTime() : 0;
+      const bt = b.commit_date ? new Date(b.commit_date).getTime() : 0;
+      return bt - at;
+    })[0] ?? null;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -901,9 +932,20 @@ export default function ProposalDetailPage() {
                               <Link
                                 key={upgrade.upgrade_id}
                                 href={upgrade.slug ? `/upgrade/${upgrade.slug}` : '#'}
-                                className="inline-flex rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-primary hover:border-primary/40 hover:underline"
+                                title={`${upgrade.name}: ${formatInclusionBucket(upgrade.bucket)}`}
+                                className="inline-flex items-center overflow-hidden rounded-full border border-border text-[11px] font-medium transition-colors hover:border-primary/40"
                               >
-                                {upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
+                                <span className="bg-muted/60 px-2 py-0.5 text-primary">
+                                  {upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
+                                </span>
+                                <span
+                                  className={cn(
+                                    'border-l px-2 py-0.5',
+                                    getBucketBadgeClass(upgrade.bucket)
+                                  )}
+                                >
+                                  {formatInclusionBucket(upgrade.bucket)}
+                                </span>
                               </Link>
                             ))}
                           </div>

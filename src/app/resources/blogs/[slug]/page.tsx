@@ -246,7 +246,7 @@ export default function BlogPostPage() {
           Journal
         </Link>
 
-        <div className="max-w-3xl space-y-5">
+        <div className="max-w-4xl space-y-5">
           {/* Category */}
           {post.category && (
             <Link
@@ -264,7 +264,7 @@ export default function BlogPostPage() {
 
           {/* Excerpt */}
           {post.excerpt && (
-            <p className="max-w-2xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
+            <p className="max-w-3xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
               {post.excerpt}
             </p>
           )}
@@ -370,8 +370,9 @@ export default function BlogPostPage() {
       <div className="page-shell pt-12">
         <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
 
-          {/* Article */}
-          <article className="min-w-0 flex-1 max-w-3xl">
+          {/* Article — fills the width left of / beside the sidebar (no max cap,
+              so there's no dead space next to it). */}
+          <article className="min-w-0 flex-1 lg:order-2">
             <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none
               prose-headings:dec-title prose-headings:font-semibold prose-headings:tracking-tight
               prose-p:text-foreground/90 prose-p:leading-relaxed
@@ -443,8 +444,9 @@ export default function BlogPostPage() {
             </section>
           </article>
 
-          {/* ── Sidebar ── */}
-          <aside className="hidden w-64 shrink-0 lg:sticky lg:top-28 lg:block">
+          {/* ── Sidebar (left of the article on desktop; stays after it in DOM
+              order so mobile shows the article first) ── */}
+          <aside className="hidden w-64 shrink-0 lg:sticky lg:top-28 lg:order-1 lg:block">
             <div className="space-y-8">
 
               {/* Table of contents — a distinct live rail: accent header + icon,
