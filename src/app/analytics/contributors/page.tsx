@@ -96,6 +96,9 @@ function getTimeWindow(
     case "7d":
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
+    case "15d":
+      from = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+      break;
     case "30d":
       from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;

@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactECharts from "echarts-for-react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
+import { rangeToMonthWindow, type TimeRange } from "@/lib/analytics-range";
 import { client } from "@/lib/orpc";
 import {
   Loader2,
@@ -126,7 +127,6 @@ interface OpenIssueRow {
   numComments: number;
 }
 
-type TimeRange = "7d" | "30d" | "90d" | "1y" | "this_month" | "all" | "custom";
 type CrossTabMode = "process_x_state" | "state_x_process";
 type OpenPRDistributionMode = "process" | "participants";
 
@@ -149,25 +149,7 @@ const GOVERNANCE_COLORS: Record<string, string> = {
   Uncategorized: "#64748B",
 };
 
-function getMonthWindow(
-  range: TimeRange,
-  customFromMonth?: string,
-  customToMonth?: string,
-): { from?: string; to?: string } {
-  const now = new Date();
-  const to = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-  if (range === "all") return { from: undefined, to: undefined };
-  if (range === "custom") {
-    return {
-      from: customFromMonth || undefined,
-      to: customToMonth || undefined,
-    };
-  }
-  const monthsBack = range === "this_month" ? 1 : range === "7d" ? 1 : range === "30d" ? 3 : range === "90d" ? 6 : 12;
-  const fromDate = new Date(now.getFullYear(), now.getMonth() - (monthsBack - 1), 1);
-  const from = `${fromDate.getFullYear()}-${String(fromDate.getMonth() + 1).padStart(2, "0")}`;
-  return { from, to };
-}
+const getMonthWindow = rangeToMonthWindow;
 
 function Section({ title, icon, children, action, className, id }: {
   title: string;

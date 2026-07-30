@@ -119,6 +119,9 @@ function getTimeWindow(
     case "7d":
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
+    case "15d":
+      from = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+      break;
     case "30d":
       from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
@@ -131,7 +134,7 @@ function getTimeWindow(
     default:
       from = new Date(now.getFullYear(), now.getMonth(), 1);
   }
-  
+
   return { from: from.toISOString().split('T')[0], to };
 }
 
@@ -170,7 +173,7 @@ export default function ReviewersAnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const months = timeRange === "7d" ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
+        const months = (timeRange === "7d" || timeRange === "15d") ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
         
         const [leaderboardData, trendData, reviewedTrendData, cyclesDataRes, repoData, dailyData, actionDetails] = await Promise.all([
           client.analytics.getReviewersLeaderboard({
