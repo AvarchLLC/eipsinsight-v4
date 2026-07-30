@@ -262,7 +262,7 @@ export default function EditorialCommentaryPage() {
 
       <div className="w-full space-y-5 px-4 pb-12 sm:px-6 lg:px-8 xl:px-12">
         <div className="flex items-center justify-between">
-          <Link href="/insights/hub" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/insights" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />
             Back to Insights
           </Link>

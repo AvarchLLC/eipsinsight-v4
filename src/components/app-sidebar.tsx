@@ -221,9 +221,7 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "This Week in EIPs", href: "/insights/weekly" },
           { title: "Monthly Analysis", href: "/insights" },
-          { title: "Governance & Process", href: "/insights/governance" },
           { title: "Editorial Commentary", href: "/insights/commentary" },
-          { title: "Selection Hub", href: "/insights/hub" },
         ],
       },
     ],

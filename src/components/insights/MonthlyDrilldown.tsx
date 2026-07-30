@@ -717,10 +717,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         <SectionSeparator className="pb-2" />
 
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link href="/insights/hub" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> More Insights
-          </Link>
-
           <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">

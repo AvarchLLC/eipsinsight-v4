@@ -96,9 +96,7 @@ const mobileNavSections = [
       { title: "Authors", href: "/analytics/authors", icon: LineChart },
       { title: "Contributors", href: "/analytics/contributors", icon: LineChart },
       { title: "Monthly", href: "/insights", icon: Lightbulb },
-      { title: "Governance", href: "/insights/governance", icon: Lightbulb },
       { title: "Editorial", href: "/insights/commentary", icon: Lightbulb },
-      { title: "Hub", href: "/insights/hub", icon: Lightbulb },
     ],
   },
   {
