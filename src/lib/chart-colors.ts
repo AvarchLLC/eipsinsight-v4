@@ -31,6 +31,29 @@ export function chartColor(index: number): string {
   return CHART_SERIES[((index % CHART_SERIES.length) + CHART_SERIES.length) % CHART_SERIES.length];
 }
 
+/**
+ * Resolve the categorical palette to concrete colour strings.
+ *
+ * SVG charts (Recharts) can use the `var(--chart-*)` values directly, but
+ * canvas charts (ECharts) can't read CSS variables — they need the computed
+ * colour. Call this in the browser and re-run it when the theme changes (e.g.
+ * keyed on `resolvedTheme` in a useMemo) so canvas charts use the same palette
+ * and stay theme-aware. Returns [] during SSR.
+ */
+export function resolveChartSeries(): string[] {
+  if (typeof window === 'undefined') return [];
+  const styles = getComputedStyle(document.documentElement);
+  return [1, 2, 3, 4, 5, 6, 7, 8]
+    .map((n) => styles.getPropertyValue(`--chart-${n}`).trim())
+    .filter(Boolean);
+}
+
+/** Resolve a single design token (e.g. '--muted-foreground') to its value. */
+export function resolveToken(token: string): string {
+  if (typeof window === 'undefined') return '';
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim();
+}
+
 /** Semantic colours for up/down/neutral and the brand accent. */
 export const CHART_SEMANTIC = {
   positive: 'var(--chart-2)', // green
