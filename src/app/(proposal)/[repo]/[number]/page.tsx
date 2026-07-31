@@ -41,6 +41,7 @@ import { normalizeUpgradeBucket, stageAbbreviation, stageBadgeClass } from '@/li
 import { UpgradeStageSplitBadge } from '@/components/upgrade/stage-badge';
 import { useEffectivePersona } from '@/stores/personaStore';
 import { EnterpriseEIPBrief } from '@/components/enterprise-eip-brief';
+import { BrandLoader } from '@/components/brand-loader';
 
 // Status color mapping for timeline - richer colors
 const statusColors: Record<string, { 
@@ -618,8 +619,13 @@ export default function ProposalDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan-500 dark:border-cyan-400 border-t-transparent" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <BrandLoader
+          title="Loading Proposal Details"
+          description="Fetching EIP specifications, coordination status, and related resources..."
+          minHeight="min-h-[300px]"
+          className="w-full max-w-lg border border-border/40"
+        />
       </div>
     );
   }

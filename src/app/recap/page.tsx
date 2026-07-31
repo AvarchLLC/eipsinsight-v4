@@ -134,47 +134,136 @@ export default function DedicatedRecapPage() {
     });
 
     let md = `# Ethereum Standards Weekly Recap (${days} Days) - ${formattedDate}\n\n`;
-    md += `Source: [EIPsInsight Verifiable Audit Feed](https://eipsinsight.com/recap)\n\n---\n\n`;
+    md += `Source: [EIPsInsight Verifiable Audit Feed](https://eipsinsight.com/recap)\n\n`;
 
-    if (data.newProposals.length > 0) {
+    const filterDetails = [];
+    if (filter !== 'all') filterDetails.push(`Type: ${filter.replace('_', ' ')}`);
+    if (repoFilter !== 'all') filterDetails.push(`Repo: ${repoFilter.toUpperCase()}`);
+    if (searchQuery.trim()) filterDetails.push(`Search: "${searchQuery}"`);
+
+    if (filterDetails.length > 0) {
+      md += `*Filters Applied: ${filterDetails.join(', ')}*\n\n`;
+    }
+
+    md += `---\n\n`;
+
+    // Helper check for repo filter
+    const matchesRepo = (cat: string | null | undefined) => {
+      if (repoFilter === 'all') return true;
+      return cat?.toLowerCase() === repoFilter;
+    };
+
+    // 1. New Proposals
+    const filteredNewProposals = data.newProposals.filter((p) => {
+      if (filter !== 'all' && filter !== 'new_proposals') return false;
+      if (!matchesRepo(p.category)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = p.title.toLowerCase().includes(q);
+        const numberMatch = `EIP-${p.number}`.toLowerCase().includes(q) || String(p.number).includes(q);
+        if (!titleMatch && !numberMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredNewProposals.length > 0) {
       md += `### 🆕 New Proposals Introduced\n`;
-      data.newProposals.forEach((p) => {
+      filteredNewProposals.forEach((p) => {
         const typeStr = p.category ? `${p.category} ` : '';
         md += `- **[${p.status}] [${typeStr}EIP-${p.number}](https://eipsinsight.com/${p.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${p.number})**: ${p.title} *(Created ${formatDate(p.createdAt)})\*\n`;
       });
       md += `\n`;
     }
 
-    if (data.statusChanges.length > 0) {
+    // 2. Status Changes
+    const filteredStatusChanges = data.statusChanges.filter((sc) => {
+      if (filter !== 'all' && filter !== 'status_changes') return false;
+      if (!matchesRepo(sc.category)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = sc.title.toLowerCase().includes(q);
+        const numberMatch = `EIP-${sc.number}`.toLowerCase().includes(q) || String(sc.number).includes(q);
+        if (!titleMatch && !numberMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredStatusChanges.length > 0) {
       md += `### 🔄 Lifecycle & Status Changes\n`;
-      data.statusChanges.forEach((sc) => {
+      filteredStatusChanges.forEach((sc) => {
         const typeStr = sc.category ? `${sc.category} ` : '';
         md += `- **[${typeStr}EIP-${sc.number}](https://eipsinsight.com/${sc.category?.toLowerCase() === 'erc' ? 'erc' : 'eip'}s/${sc.number})**: \`${sc.from}\` ➔ \`${sc.to}\` *(Changed ${formatDate(sc.changedAt)})\*\n`;
       });
       md += `\n`;
     }
 
-    if (data.mergedPRs.length > 0) {
+    // 3. Merged PRs
+    const filteredMergedPRs = data.mergedPRs.filter((pr) => {
+      if (filter !== 'all' && filter !== 'merged_prs') return false;
+      const cat = pr.repoName?.includes('erc') ? 'erc' : pr.repoName?.includes('rip') ? 'rip' : 'eip';
+      if (!matchesRepo(cat)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = pr.title.toLowerCase().includes(q);
+        const numberMatch = `#${pr.number}`.includes(q) || String(pr.number).includes(q);
+        const authorMatch = pr.author?.toLowerCase().includes(q);
+        if (!titleMatch && !numberMatch && !authorMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredMergedPRs.length > 0) {
       md += `### 🪵 Recently Merged Pull Requests\n`;
-      data.mergedPRs.forEach((pr) => {
+      filteredMergedPRs.forEach((pr) => {
         const repoPath = normalizeRepoSegment(pr.repoName);
         md += `- **[PR #${pr.number}](https://eipsinsight.com/pr/${repoPath}/${pr.number})**: ${pr.title} *(Merged ${formatDate(pr.mergedAt)} by @${pr.author})\*\n`;
       });
       md += `\n`;
     }
 
-    if (data.editorActions && data.editorActions.length > 0) {
+    // 4. Editor Actions
+    const filteredEditorActions = (data.editorActions || []).filter((ea) => {
+      if (filter !== 'all' && filter !== 'editor_activity') return false;
+      const cat = ea.repoName?.includes('erc') ? 'erc' : ea.repoName?.includes('rip') ? 'rip' : 'eip';
+      if (!matchesRepo(cat)) return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = ea.title?.toLowerCase().includes(q);
+        const numberMatch = `#${ea.number}`.includes(q) || String(ea.number).includes(q);
+        const editorMatch = ea.editor?.toLowerCase().includes(q);
+        if (!titleMatch && !numberMatch && !editorMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredEditorActions.length > 0) {
       md += `### ✍️ Editor Review Activity\n`;
-      data.editorActions.forEach((ea) => {
+      filteredEditorActions.forEach((ea) => {
         const repoPath = normalizeRepoSegment(ea.repoName);
         md += `- **[PR #${ea.number}](https://eipsinsight.com/pr/${repoPath}/${ea.number})**: ${ea.title || 'Editor action'} *(Editor @${ea.editor} - ${ea.eventType} on ${formatDate(ea.actedAt)})\*\n`;
       });
       md += `\n`;
     }
 
-    if (data.recentCalls.length > 0) {
+    // 5. Recent Calls
+    const filteredRecentCalls = data.recentCalls.filter((c) => {
+      if (filter !== 'all' && filter !== 'calls_devnets') return false;
+      if (repoFilter !== 'all' && repoFilter !== 'eip') return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const shortName = callSeriesShort(c.series);
+        const callTitle = c.displayName || `${shortName} #${c.number ?? ''}`;
+        const titleMatch = callTitle.toLowerCase().includes(q);
+        const summaryText = extractTldrSummary(c.tldr);
+        const summaryMatch = summaryText.toLowerCase().includes(q);
+        if (!titleMatch && !summaryMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredRecentCalls.length > 0) {
       md += `### 🗣️ Core Dev Calls Highlights\n`;
-      data.recentCalls.forEach((c) => {
+      filteredRecentCalls.forEach((c) => {
         const shortName = callSeriesShort(c.series);
         const title = c.displayName || `${shortName} #${c.number ?? ''}`;
         const summary = extractTldrSummary(c.tldr);
@@ -184,20 +273,59 @@ export default function DedicatedRecapPage() {
       });
     }
 
-    if (data.devnets.length > 0) {
+    // 6. Devnets
+    const filteredDevnets = data.devnets.filter((d) => {
+      if (filter !== 'all' && filter !== 'calls_devnets') return false;
+      if (repoFilter !== 'all' && repoFilter !== 'eip') return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = d.title.toLowerCase().includes(q);
+        const seriesMatch = d.series.toLowerCase().includes(q);
+        if (!titleMatch && !seriesMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredDevnets.length > 0) {
       md += `### 🧪 Devnets Progression\n`;
-      data.devnets.forEach((d) => {
+      filteredDevnets.forEach((d) => {
         md += `- **[${d.active ? 'Active' : 'Closed'}] [${d.series.toUpperCase()} Devnet ${d.number}](https://eipsinsight.com/upgrade/devnets/${d.id})**: ${d.title}\n`;
       });
       md += `\n`;
     }
 
-    if (data.lastCallEIPs.length > 0) {
+    // 7. Last Call
+    const filteredLastCallEIPs = data.lastCallEIPs.filter((lc) => {
+      if (filter !== 'all' && filter !== 'last_call') return false;
+      if (repoFilter !== 'all' && repoFilter !== 'eip') return false;
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const titleMatch = lc.title.toLowerCase().includes(q);
+        const numberMatch = `EIP-${lc.number}`.toLowerCase().includes(q) || String(lc.number).includes(q);
+        if (!titleMatch && !numberMatch) return false;
+      }
+      return true;
+    });
+
+    if (filteredLastCallEIPs.length > 0) {
       md += `### 📢 Last Call Deadlines\n`;
-      data.lastCallEIPs.forEach((lc) => {
+      filteredLastCallEIPs.forEach((lc) => {
         md += `- **[EIP-${lc.number}](https://eipsinsight.com/eips/${lc.number})**: ${lc.title} *(Deadline: ${lc.deadline || 'Immediate'})\*\n`;
       });
       md += `\n`;
+    }
+
+    const totalFilteredCount =
+      filteredNewProposals.length +
+      filteredStatusChanges.length +
+      filteredMergedPRs.length +
+      filteredEditorActions.length +
+      filteredRecentCalls.length +
+      filteredDevnets.length +
+      filteredLastCallEIPs.length;
+
+    if (totalFilteredCount === 0) {
+      md += `*No entries matched the selected filters.*\n`;
     }
 
     return md;

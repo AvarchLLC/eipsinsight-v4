@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { client } from "@/lib/orpc";
+import { BrandLoader } from "@/components/brand-loader";
 import { VideoEditor } from "../../_components/video-editor";
 
 export default function EditVideoPage() {
@@ -30,8 +31,12 @@ export default function EditVideoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-cyan-600 dark:text-cyan-400" />
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <BrandLoader
+          title="Loading Video Data"
+          description="Retrieving media resources and metadata..."
+          className="w-full max-w-md border border-border/40"
+        />
       </div>
     );
   }

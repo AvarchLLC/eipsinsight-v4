@@ -6,7 +6,8 @@ import { cn } from "@/lib/utils";
 const LIGHT_LOGO_SRC = "/brand/logo/EIPsInsightsDark.gif";
 const DARK_LOGO_SRC = "/brand/logo/EIPsInsights.gif";
 
-type ThemedLogoGifProps = Omit<ImageProps, "src"> & {
+type ThemedLogoGifProps = Omit<ImageProps, "src" | "alt"> & {
+  alt?: string;
   lightSrc?: string;
   darkSrc?: string;
   lightClassName?: string;
@@ -14,7 +15,7 @@ type ThemedLogoGifProps = Omit<ImageProps, "src"> & {
 };
 
 export function ThemedLogoGif({
-  alt,
+  alt = "EIPsInsight",
   lightSrc = LIGHT_LOGO_SRC,
   darkSrc = DARK_LOGO_SRC,
   className,
