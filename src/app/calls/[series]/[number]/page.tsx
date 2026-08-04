@@ -32,6 +32,7 @@ import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-dec
 import { CallPlayer, CallVideoFallback } from '@/components/upgrade/call-player';
 import { CallChat } from '@/components/upgrade/call-chat';
 import { CallAskAi } from '@/components/upgrade/call-ask-ai';
+import { FEATURES } from '@/lib/features';
 import {
   getRemoteSeries,
   fetchTranscriptCues,
@@ -240,8 +241,10 @@ export default async function CallDetailPage({ params }: Props) {
         <CallVideoFallback videoUrl={call.video_url} />
       ) : null}
 
-      {/* Ask AI (only useful when there's summary/transcript to ground it) */}
-      {(call.tldr || transcriptCues) && (
+      {/* Ask AI (only useful when there's summary/transcript to ground it).
+          Hidden behind a flag while it's still being tested — re-enable with
+          NEXT_PUBLIC_FEATURE_CALL_ASK_AI=true. */}
+      {FEATURES.CALL_ASK_AI && (call.tldr || transcriptCues) && (
         <CallAskAi
           series={call.series}
           number={call.call_number ?? call.call_id}
