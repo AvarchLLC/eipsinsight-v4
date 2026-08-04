@@ -937,6 +937,10 @@ const results = await prisma.$queryRawUnsafe<Array<{
           JOIN eips e ON e.id = s.eip_id
           LEFT JOIN repositories r ON r.id = s.repository_id
           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+            -- Exclude "Moved" tombstones (e.g. EIP-7212 → RIP-7212, EIP-7651 →
+            -- ERC-7651): they live in another repo now, and counting the stub
+            -- here double-counts / mis-categorizes vs eips.ethereum.org.
+            AND COALESCE(NULLIF(s.status, ''), '') <> 'Moved'
           ${ripsBranch}
         )
         SELECT ${field} AS bucket, COUNT(*)::bigint AS count
