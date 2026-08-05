@@ -10,6 +10,7 @@ export const metadata: Metadata = buildMetadata({
     "Read analysis on Ethereum governance, upgrade execution, proposal velocity, and editorial commentary.",
   path: "/insights",
   keywords: ["Ethereum insights", "governance analysis", "EIP commentary"],
+  image: null,
 });
 
 export default function InsightsLayout({ children }: { children: React.ReactNode }) {
