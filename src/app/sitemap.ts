@@ -47,7 +47,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: path === "/" ? 1 : 0.7,
   }));
 
-  const [blogs, upgrades] = await Promise.all([
+  const [blogs, upgrades, dbEips, dbRips] = await Promise.all([
     prisma.blog
       .findMany({
         where: { published: true },
@@ -57,6 +57,31 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     prisma.upgrades
       .findMany({
         select: { slug: true, created_at: true },
+      })
+      .catch(() => []),
+    prisma.eips
+      .findMany({
+        select: {
+          eip_number: true,
+          created_at: true,
+          eip_snapshots: {
+            select: {
+              repositories: {
+                select: {
+                  name: true,
+                },
+              },
+            },
+          },
+        },
+      })
+      .catch(() => []),
+    prisma.rips
+      .findMany({
+        select: {
+          rip_number: true,
+          created_at: true,
+        },
       })
       .catch(() => []),
   ]);
@@ -77,5 +102,23 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.8,
     }));
 
-  return [...staticEntries, ...blogEntries, ...upgradeEntries];
+  const eipEntries: MetadataRoute.Sitemap = dbEips.map((eip) => {
+    const repoName = eip.eip_snapshots?.repositories?.name;
+    const folder = repoName?.toLowerCase().includes("erc") ? "ercs" : "eips";
+    return {
+      url: `${SITE_URL}/${folder}/${eip.eip_number}`,
+      lastModified: eip.created_at ?? now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    };
+  });
+
+  const ripEntries: MetadataRoute.Sitemap = dbRips.map((rip) => ({
+    url: `${SITE_URL}/rips/${rip.rip_number}`,
+    lastModified: rip.created_at ?? now,
+    changeFrequency: "weekly",
+    priority: 0.7,
+  }));
+
+  return [...staticEntries, ...blogEntries, ...upgradeEntries, ...eipEntries, ...ripEntries];
 }
