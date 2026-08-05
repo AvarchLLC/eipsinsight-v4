@@ -10,10 +10,11 @@ import {
 import { client } from "@/lib/orpc";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { CHART_SERIES } from "@/lib/chart-colors";
 
 type YearInReviewData = Awaited<ReturnType<typeof client.insights.getYearInReview>>;
 
-const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
+const COLORS = CHART_SERIES;
 
 export default function YearInReviewClient({ year }: { year: number }) {
   const [data, setData] = useState<YearInReviewData | null>(null);

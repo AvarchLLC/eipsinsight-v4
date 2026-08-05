@@ -710,15 +710,19 @@ const { repo, govState, search } = input;
         series: z.enum(['acde', 'acdc', 'acdt', 'acdtcl']).optional(),
         /** 'upcoming' = agendas for calls not yet held; 'all' includes past calls. */
         window: z.enum(['upcoming', 'all']).default('all'),
+        /** Restrict to PRs whose governance state is waiting on the editor / author. */
+        waitingOn: z.enum(['editor', 'author']).optional(),
         search: z.string().optional(),
         page: z.number().min(1).default(1),
         pageSize: z.number().min(1).max(100).default(25),
       })
     )
     .handler(async ({ input }) => {
-      const { series, window, search, page, pageSize } = input;
+      const { series, window, waitingOn, search, page, pageSize } = input;
       const offset = (page - 1) * pageSize;
       const q = search?.trim() ?? '';
+      const waitingState =
+        waitingOn === 'editor' ? 'WAITING_ON_EDITOR' : waitingOn === 'author' ? 'WAITING_ON_AUTHOR' : null;
 
       // pm_agenda_eips is created by a migration and filled by the scheduler, so
       // between deploying this code and running either one the table is simply
@@ -740,6 +744,7 @@ const { repo, govState, search } = input;
         eip_numbers: number[];
         mentions: unknown;
         next_call_on: string | null;
+        waiting_state: string | null;
         total_count: bigint;
       }>>(
         `
@@ -758,6 +763,7 @@ const { repo, govState, search } = input;
             p.author,
             LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
             TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at,
+            g.current_state AS waiting_state,
             pe.eip_number,
             a.issue_number, a.issue_title, a.issue_url, a.series, a.call_number,
             a.occurs_on, a.mentioned_by, a.snippet, a.source, a.source_url
@@ -766,14 +772,17 @@ const { repo, govState, search } = input;
           JOIN pull_requests p
             ON p.pr_number = pe.pr_number AND p.repository_id = pe.repository_id
           JOIN repositories r ON r.id = p.repository_id
+          LEFT JOIN pr_governance_state g
+            ON g.pr_number = p.pr_number AND g.repository_id = p.repository_id
           WHERE p.state = 'open'
+            AND ($6::text IS NULL OR g.current_state = $6)
             AND ($3::text = '' OR p.title ILIKE '%' || $3 || '%'
                  OR p.author ILIKE '%' || $3 || '%'
                  OR CAST(pe.eip_number AS text) ILIKE '%' || $3 || '%')
         ),
         grouped AS (
           SELECT
-            pr_number, title, author, repo_short, created_at,
+            pr_number, title, author, repo_short, created_at, waiting_state,
             ARRAY_AGG(DISTINCT eip_number) AS eip_numbers,
             -- TO_CHAR, not the bare DATE: node-postgres hydrates DATE columns into
             -- JS Date objects at local midnight, so a 2025-03-13 call comes back as
@@ -790,7 +799,7 @@ const { repo, govState, search } = input;
               'eip', eip_number
             )) AS mentions
           FROM matched
-          GROUP BY pr_number, title, author, repo_short, created_at
+          GROUP BY pr_number, title, author, repo_short, created_at, waiting_state
         )
         SELECT *, COUNT(*) OVER()::bigint AS total_count
         FROM grouped
@@ -802,7 +811,8 @@ const { repo, govState, search } = input;
         window,
         q,
         pageSize,
-        offset
+        offset,
+        waitingState
       );
 
       const total = rows.length > 0 ? Number(rows[0].total_count) : 0;
@@ -818,6 +828,7 @@ const { repo, govState, search } = input;
           createdAt: r.created_at,
           eipNumbers: r.eip_numbers ?? [],
           nextCallOn: r.next_call_on,
+          waitingOn: r.waiting_state,
           mentions: (r.mentions ?? []) as Array<{
             issueNumber: number;
             issueTitle: string | null;

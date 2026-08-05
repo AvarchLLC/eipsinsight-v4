@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import ReactECharts from "echarts-for-react";
 import { client } from "@/lib/orpc";
+import { CHART_SERIES } from "@/lib/chart-colors";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import {
   ArrowLeft,
@@ -42,16 +43,7 @@ function normalizeStatusLabel(raw: string | null | undefined): string {
   if (canonical) return canonical;
   return value;
 }
-const CATEGORY_LINE_COLORS = [
-  "#10b981",
-  "#60a5fa",
-  "#f59e0b",
-  "#f472b6",
-  "#a78bfa",
-  "#22d3ee",
-  "#fb923c",
-  "#94a3b8",
-];
+const CATEGORY_LINE_COLORS = CHART_SERIES;
 
 function csvEscape(v: string | number | null | undefined) {
   const s = String(v ?? "");
@@ -725,10 +717,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         <SectionSeparator className="pb-2" />
 
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link href="/insights/hub" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-            <ArrowLeft className="h-3.5 w-3.5" /> More Insights
-          </Link>
-
           <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">

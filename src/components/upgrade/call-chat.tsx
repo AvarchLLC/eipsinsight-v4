@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { MessagesSquare, Play, Search, X, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { classifyProposalRef, proposalRefHref } from '@/lib/proposal-ref';
 import type { ChatMessage } from '@/lib/call-artifacts';
 
 function toSeconds(ts: string): number {
@@ -33,10 +34,12 @@ function authorColor(name: string): string {
 function renderText(text: string) {
   return text.split(/(\bEIP-\d+\b|https?:\/\/[^\s]+)/g).map((part, i) => {
     if (/^EIP-\d+$/.test(part)) {
-      const n = part.slice(4);
+      const n = Number(part.slice(4));
+      // A too-large "EIP-N" is really a PR the message mislabeled (e.g. 11905).
+      const isPr = classifyProposalRef(n) === 'pr';
       return (
-        <a key={i} href={`/eip/${n}`} className="font-mono font-semibold text-primary hover:underline">
-          {part}
+        <a key={i} href={proposalRefHref(n)} className="font-mono font-semibold text-primary hover:underline">
+          {isPr ? `PR-${n}` : part}
         </a>
       );
     }

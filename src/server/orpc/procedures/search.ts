@@ -928,13 +928,19 @@ const searchTerm = `%${input.query}%`;
       const exactNumber = numericQuery ? parseInt(numericQuery, 10) : null;
       const exactTitle = input.query.trim().toLowerCase();
       const normalizedQuery = input.query.trim().toLowerCase();
-      const hintedRepo =
+      // Repo hint ("eip"/"erc"/"rip" in the query) is used ONLY to rank the
+      // right family first — never as a WHERE clause. Previously it was OR'd into
+      // the SQL as `LOWER(r.name) LIKE '%eip%'`, which matched EVERY EIP row; with
+      // the LIMIT and no ORDER BY, the real number/title match ("EIP-1559") got
+      // pushed out of the returned rows and then dropped by the score>0 filter,
+      // so "eip-1559" returned nothing while "1559" worked.
+      const repoHint: 'eip' | 'erc' | 'rip' | null =
         /\brips?\b/.test(normalizedQuery)
-          ? '%rip%'
+          ? 'rip'
           : /\bercs?\b/.test(normalizedQuery)
-            ? '%erc%'
+            ? 'erc'
             : /\beips?\b/.test(normalizedQuery)
-              ? '%eip%'
+              ? 'eip'
               : null;
 
       // Get all matching proposals first (EIP/ERC snapshots + RIP table)
@@ -966,9 +972,8 @@ const searchTerm = `%${input.query}%`;
           OR s.type ILIKE $1
           OR s.category ILIKE $1
           OR ($3::int IS NOT NULL AND e.eip_number = $3)
-          OR ($4::text IS NOT NULL AND LOWER(r.name) LIKE LOWER($4))
         LIMIT $2
-      `, searchTerm, input.limit * 2, exactNumber, hintedRepo); // Get more to score and filter
+      `, searchTerm, input.limit * 2, exactNumber); // Get more to score and filter
       const ripResults = await prisma.$queryRawUnsafe<Array<{
         eip_number: number;
         title: string | null;
@@ -993,9 +998,8 @@ const searchTerm = `%${input.query}%`;
           OR COALESCE(rp.author, '') ILIKE $1
           OR COALESCE(rp.status, '') ILIKE $1
           OR ($3::int IS NOT NULL AND rp.rip_number = $3)
-          OR ($4::text IS NOT NULL AND LOWER('ethereum/RIPs') LIKE LOWER($4))
         LIMIT $2
-      `, searchTerm, input.limit * 2, exactNumber, hintedRepo);
+      `, searchTerm, input.limit * 2, exactNumber);
 
       const allResults = [...eipLikeResults, ...ripResults];
 
@@ -1037,7 +1041,17 @@ const searchTerm = `%${input.query}%`;
         if (r.type && r.type.toLowerCase().includes(input.query.toLowerCase())) {
           score += 80;
         }
-        
+        // Repo-family hint ("erc-20" should rank ERC-20 above EIP-20 on ties).
+        if (repoHint) {
+          const repoLower = r.repo.toLowerCase();
+          const rowRepo = repoLower.includes('/ercs')
+            ? 'erc'
+            : repoLower.includes('/rips')
+              ? 'rip'
+              : 'eip';
+          if (rowRepo === repoHint && score > 0) score += 50;
+        }
+
         return { ...r, score };
       })
       .filter(r => r.score > 0);

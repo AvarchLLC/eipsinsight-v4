@@ -213,6 +213,10 @@ export const pairedUpgradeNames: Record<string, string> = {
 };
 
 export const rawData: UpgradeData[] = [
+  { date: "2025-12-03", upgrade: "Osaka", layer: "execution", type: "execution", blockNumber: 23935694, eips: ["EIP-7594", "EIP-7823", "EIP-7825", "EIP-7883", "EIP-7917", "EIP-7918", "EIP-7934", "EIP-7939", "EIP-7951"] },
+  { date: "2025-12-03", upgrade: "Fulu", layer: "consensus", type: "consensus", forkEpoch: 411392, eips: ["CONSENSUS"] },
+  { date: "2025-05-07", upgrade: "Prague", layer: "execution", type: "execution", blockNumber: 22431084, eips: ["EIP-2537", "EIP-2935", "EIP-6110", "EIP-7002", "EIP-7251", "EIP-7549", "EIP-7623", "EIP-7685", "EIP-7691", "EIP-7702"] },
+  { date: "2025-05-07", upgrade: "Electra", layer: "consensus", type: "consensus", forkEpoch: 364032, eips: ["CONSENSUS"] },
   { date: "2024-03-13", upgrade: "Cancun", layer: "execution", type: "execution", blockNumber: 19426587, eips: ["EIP-1153", "EIP-4788", "EIP-4844", "EIP-5656", "EIP-6780", "EIP-7516"] },
   { date: "2024-03-13", upgrade: "Deneb", layer: "consensus", type: "consensus", forkEpoch: 269568, eips: ["CONSENSUS", "EIP-7044", "EIP-7045", "EIP-7514"] },
   { date: "2023-04-12", upgrade: "Shanghai", layer: "execution", type: "execution", blockNumber: 17034870, eips: ["EIP-3651", "EIP-3855", "EIP-3860", "EIP-4895"] },
@@ -224,6 +228,7 @@ export const rawData: UpgradeData[] = [
   { date: "2021-10-27", upgrade: "Altair", layer: "consensus", type: "consensus", forkEpoch: 74240, eips: ["CONSENSUS"] },
   { date: "2021-08-05", upgrade: "London", layer: "execution", type: "execution", blockNumber: 12965000, eips: ["EIP-1559", "EIP-3198", "EIP-3529", "EIP-3541", "EIP-3554"] },
   { date: "2021-04-15", upgrade: "Berlin", layer: "execution", type: "execution", blockNumber: 12244000, eips: ["EIP-2565", "EIP-2929", "EIP-2718", "EIP-2930"] },
+  { date: "2020-12-01", upgrade: "Phase 0 (Genesis)", layer: "consensus", type: "beacon_genesis", forkEpoch: 0, eips: ["CONSENSUS"], sr_number: 0 },
   { date: "2020-01-02", upgrade: "Muir Glacier", layer: "execution", type: "execution", blockNumber: 9200000, eips: ["EIP-2384"] },
   { date: "2019-12-07", upgrade: "Istanbul", layer: "execution", type: "execution", blockNumber: 9069000, eips: ["EIP-152", "EIP-1108", "EIP-1344", "EIP-1884", "EIP-2028", "EIP-2200"] },
   { date: "2019-02-28", upgrade: "Petersburg", layer: "execution", type: "execution", blockNumber: 7280000, eips: ["EIP-1283-removed"] },

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ArrowUpRight, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getInProgressUpgrades, getLiveUpgrades } from '@/data/upgrade-registry';
 import { getCurrentPhase } from '@/data/fork-schedule';
@@ -31,6 +32,11 @@ export function UpgradeTimelineStrip({
           const showHereMarker =
             previous?.status === 'Live' && entry.status !== 'Live';
           const phase = entry.status !== 'Live' ? getCurrentPhase(entry.slug, today) : null;
+          // The connector into this node is "live" history while the node to its
+          // left has already shipped; everything past the marker is still ahead.
+          const liveConnector = previous?.status === 'Live';
+          const headliner = entry.headliners?.[0];
+          const headlinerCount = entry.headliners?.length ?? 0;
 
           return (
             <div key={entry.slug} className="flex items-stretch">
@@ -41,7 +47,12 @@ export function UpgradeTimelineStrip({
                     showHereMarker ? 'w-28' : 'w-12 sm:w-16'
                   )}
                 >
-                  <div className="h-0.5 w-full bg-border" />
+                  <div
+                    className={cn(
+                      'h-0.5 w-full',
+                      liveConnector ? 'bg-emerald-500/40' : 'bg-border'
+                    )}
+                  />
                   {showHereMarker && (
                     <div className="absolute left-1/2 top-1/2 flex -translate-x-1/2 -translate-y-[3px] flex-col items-center">
                       <span className="relative flex h-3 w-3">
@@ -58,21 +69,24 @@ export function UpgradeTimelineStrip({
               <Link
                 href={`/upgrade/${entry.slug}`}
                 className={cn(
-                  'flex min-w-40 flex-col gap-1.5 rounded-xl border px-4 py-3 transition-all',
+                  'group/card flex w-52 flex-col gap-2 rounded-xl border px-4 py-3 transition-all',
                   isCurrent
                     ? 'border-primary/50 bg-primary/10 shadow-lg shadow-primary/15'
                     : 'border-border bg-card/60 shadow-sm hover:border-primary/40 hover:bg-primary/5'
                 )}
               >
-                <span
-                  className={cn(
-                    'text-base font-semibold leading-tight',
-                    isCurrent ? 'text-primary' : 'text-foreground'
-                  )}
-                >
-                  {entry.name}
-                </span>
-                <span className="flex items-center gap-1.5">
+                <div className="flex items-start justify-between gap-1">
+                  <span
+                    className={cn(
+                      'text-base font-semibold leading-tight',
+                      isCurrent ? 'text-primary' : 'text-foreground'
+                    )}
+                  >
+                    {entry.name}
+                  </span>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/card:text-primary" />
+                </div>
+                <span className="flex flex-wrap items-center gap-1.5">
                   {phase ? (
                     <PhaseBadge phaseId={phase.id} label={phase.label} className="text-[10px]" />
                   ) : (
@@ -88,6 +102,20 @@ export function UpgradeTimelineStrip({
                     </span>
                   ) : null}
                 </span>
+                {entry.tagline && (
+                  <p className="line-clamp-2 text-xs leading-snug text-muted-foreground">
+                    {entry.tagline}
+                  </p>
+                )}
+                {headliner && (
+                  <span className="mt-auto inline-flex items-center gap-1 truncate text-[10px] font-medium text-muted-foreground/80">
+                    <Sparkles className="h-3 w-3 shrink-0 text-primary/70" />
+                    <span className="truncate">
+                      EIP-{headliner.eip}
+                      {headlinerCount > 1 ? ` +${headlinerCount - 1} more` : ''}
+                    </span>
+                  </span>
+                )}
               </Link>
             </div>
           );

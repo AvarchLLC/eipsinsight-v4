@@ -354,7 +354,7 @@ export function UpgradeTimelineChart({ data, upgradeName }: UpgradeTimelineChart
                             height={blockHeight}
                             rx={3}
                             fill={COLOR_SCHEME[d.type]}
-                            stroke="#1e293b"
+                            stroke="var(--border)"
                             strokeWidth={0.8}
                             className="transition-opacity hover:opacity-90"
                           />

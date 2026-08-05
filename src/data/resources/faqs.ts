@@ -110,7 +110,7 @@ export const faqs: FAQ[] = [
     answer:
       "There is no fixed duration. Simple proposals can move quickly, while technically complex or contentious proposals may take months or years. Review time depends on editorial feedback, community discussion, implementation readiness, and whether consensus has formed around the change.",
     relatedLinks: [
-      { label: "See governance trends", href: "/insights/governance" },
+      { label: "See governance trends", href: "/insights" },
       { label: "Explore by status", href: "/explore/status" },
     ],
   },

@@ -4,6 +4,7 @@ import { FlaskConical, Gavel, Star } from 'lucide-react';
 import { normalizeUpgradeBucket } from '@/lib/upgrade-stages';
 import { StageBadge } from '@/components/upgrade/stage-badge';
 import { DecisionTimestamp } from '@/components/upgrade/decision-timestamp';
+import { classifyProposalRef, proposalRefHref } from '@/lib/proposal-ref';
 
 export interface KeyDecision {
   original_text: string;
@@ -16,21 +17,36 @@ export interface KeyDecision {
   context?: string;
 }
 
-/** Render text with EIP-#### references linked to proposal pages. */
+/**
+ * Render text with EIP-#### references linked to proposal pages.
+ *
+ * A reference like "EIP-11905" whose number is too large to be a real EIP is a
+ * GitHub PR the call summary mislabeled (the EF's ACDbot tldr does this). Rather
+ * than link to a nonexistent /eip/11905, we relabel it "PR-11905" and point at the
+ * PR — calling it an EIP is what confused readers.
+ */
 export function EipLinkedText({ text }: { text: string }) {
-  const parts = text.split(/(EIP-\d+)/g);
+  // Also catch the "PR-" prefix in case the source ever uses it directly.
+  const parts = text.split(/((?:EIP|PR)-\d+)/g);
   return (
     <>
       {parts.map((part, index) => {
-        const match = part.match(/^EIP-(\d+)$/);
+        const match = part.match(/^(?:EIP|PR)-(\d+)$/);
         if (!match) return <Fragment key={index}>{part}</Fragment>;
+        const n = Number(match[1]);
+        const isPr = classifyProposalRef(n) === 'pr';
         return (
           <Link
             key={index}
-            href={`/eip/${match[1]}`}
+            href={proposalRefHref(n)}
+            title={
+              isPr
+                ? `Referenced as EIP-${n} in the call summary, but ${n} is a GitHub PR number, not an EIP.`
+                : undefined
+            }
             className="font-mono text-xs font-semibold text-primary hover:underline"
           >
-            {part}
+            {isPr ? `PR-${n}` : part}
           </Link>
         );
       })}
@@ -84,7 +100,9 @@ export function KeyDecisionsList({
               <div className="mt-1 flex flex-wrap items-center gap-2">
                 <DecisionTypeMarker decision={decision} />
                 {decision.context && (
-                  <span className="text-xs text-muted-foreground">{decision.context}</span>
+                  <span className="text-xs text-muted-foreground">
+                    <EipLinkedText text={decision.context} />
+                  </span>
                 )}
                 {decision.timestamp &&
                   (seekable ? (

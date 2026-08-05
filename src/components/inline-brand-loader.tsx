@@ -14,29 +14,38 @@ export function InlineBrandLoader({
   size = 'sm',
   className,
 }: InlineBrandLoaderProps) {
-  const dimension = size === 'sm' ? 28 : 36;
-  const frame = size === 'sm' ? 44 : 56;
-  const ring = size === 'sm' ? 52 : 66;
+  const dimension = size === 'sm' ? 24 : 32;
+  const outerSize = size === 'sm' ? 'w-14 h-14' : 'w-20 h-20';
+  const borderSize = size === 'sm' ? 'border-[2px]' : 'border-[3px]';
+  const innerBorderSize = size === 'sm' ? 'border-[1px]' : 'border-[2px]';
+  const insetOffset = size === 'sm' ? 'inset-2' : 'inset-3';
 
   return (
-    <div className={cn('flex flex-col items-center justify-center gap-2.5', className)}>
-      <div className="relative flex items-center justify-center" style={{ width: ring, height: ring }}>
-        <div className="absolute inset-0 rounded-full border border-primary/25 bg-primary/[0.03]" />
-        <div className="absolute inset-0 animate-spin rounded-full border-2 border-primary/20 border-t-primary/75 border-r-primary/55" />
-        <div
-          className="relative z-10 flex items-center justify-center rounded-full border border-border/80 bg-card/90 shadow-[0_0_20px_rgb(var(--persona-accent-rgb)/0.16)]"
-          style={{ width: frame, height: frame }}
-        >
+    <div className={cn('flex flex-col items-center justify-center gap-4 py-8', className)}>
+      <div className={cn('relative', outerSize)}>
+        {/* Glow ambient background */}
+        <div className="absolute inset-0 rounded-full bg-primary/5 blur-xs animate-pulse" />
+        
+        {/* Spinning Rings */}
+        <div className={cn("absolute inset-0 rounded-full border-primary/10", borderSize)} />
+        <div className={cn("absolute inset-0 rounded-full border-t-primary border-r-transparent border-b-transparent border-l-transparent animate-spin", borderSize)} />
+        <div className={cn("absolute rounded-full border-primary/5", insetOffset, innerBorderSize)} />
+        <div className={cn("absolute rounded-full border-t-transparent border-r-transparent border-b-primary border-l-transparent animate-spin [animation-duration:1.5s]", insetOffset, innerBorderSize)} />
+        
+        {/* Logo */}
+        <div className="absolute inset-0 flex items-center justify-center">
           <ThemedLogoGif
-            alt="EIPsInsight"
             width={dimension}
             height={dimension}
-            unoptimized
-            className="object-contain"
+            className="animate-pulse"
           />
         </div>
       </div>
-      <span className={cn('text-muted-foreground', size === 'sm' ? 'text-xs' : 'text-sm')}>{label}</span>
+      {label && (
+        <span className={cn('text-muted-foreground font-medium', size === 'sm' ? 'text-xs' : 'text-sm')}>
+          {label}
+        </span>
+      )}
     </div>
   );
 }

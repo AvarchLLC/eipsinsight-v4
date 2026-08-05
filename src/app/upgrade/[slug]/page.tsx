@@ -35,6 +35,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       'Track upgrade composition, timeline updates, and implementation progress for this Ethereum network upgrade.',
     path: `/upgrade/${slug}`,
     keywords: ['Ethereum upgrade', 'fork composition', 'EIP inclusion'],
+    // null so the route-level opengraph-image.tsx card is used, not the static logo.
+    image: null,
   });
 }
 

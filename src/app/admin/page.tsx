@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import {
   Shield,
   Plus,
@@ -422,8 +423,8 @@ export default function AdminPage() {
           </div>
 
           {blogsLoading ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-10 w-10 animate-spin text-cyan-600 dark:text-cyan-400" />
+            <div className="flex items-center justify-center py-10">
+              <InlineBrandLoader size="md" label="Loading posts..." />
             </div>
           ) : posts.length === 0 ? (
             <div className="text-center max-w-lg mx-auto py-16">
@@ -823,9 +824,8 @@ export default function AdminPage() {
           </div>
 
           {videosLoading ? (
-            <div className="flex flex-col items-center justify-center py-20 gap-4">
-              <Loader2 className="h-10 w-10 animate-spin text-cyan-600 dark:text-cyan-400" />
-              <p className="text-slate-600 dark:text-slate-400">Loading videos...</p>
+            <div className="flex items-center justify-center py-10">
+              <InlineBrandLoader size="md" label="Loading videos..." />
             </div>
           ) : videos.length === 0 ? (
             <div className="text-center py-20 max-w-2xl mx-auto">

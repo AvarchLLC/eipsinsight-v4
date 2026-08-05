@@ -78,6 +78,9 @@ function getTimeWindow(
     case "7d":
       from = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
       break;
+    case "15d":
+      from = new Date(now.getTime() - 15 * 24 * 60 * 60 * 1000);
+      break;
     case "30d":
       from = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
       break;
@@ -138,7 +141,7 @@ export default function AuthorsAnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const months = timeRange === "all" ? undefined : timeRange === "7d" ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
+        const months = timeRange === "all" ? undefined : (timeRange === "7d" || timeRange === "15d") ? 3 : timeRange === "30d" ? 6 : timeRange === "90d" ? 12 : 24;
 
         const [kpisData, cohortData, repoData, topData] = await Promise.all([
           client.analytics.getAuthorKPIs({

@@ -38,6 +38,12 @@ const nextConfig: NextConfig = {
         destination: '/upgrade/schedule',
         permanent: false,
       },
+      // Analytics merged into the main /upgrade page (#analytics section).
+      {
+        source: '/upgrade/analytics',
+        destination: '/upgrade#analytics',
+        permanent: true,
+      },
       // Calls moved out of the /upgrade tree to top-level /calls.
       // Keep the old paths working for existing links/bookmarks.
       {

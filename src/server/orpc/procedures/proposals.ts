@@ -572,7 +572,9 @@ export const proposalsProcedures = {
       number: z.number(),
     }))
     .handler(async ({ input }) => {
-const emptyState = {
+      const emptyState = {
+        pr_number: null as number | null,
+        pr_url: null as string | null,
         current_pr_state: null as string | null,
         waiting_on: null as string | null,
         days_since_last_action: null as number | null,
@@ -602,6 +604,17 @@ const emptyState = {
 
       if (!pr) return emptyState;
 
+      const repoPathMap: Record<string, string> = {
+        eip: 'EIPs',
+        erc: 'ERCs',
+        rip: 'RIPs',
+        eips: 'EIPs',
+        ercs: 'ERCs',
+        rips: 'RIPs',
+      };
+      const repoPath = repoPathMap[input.repo] || 'EIPs';
+      const pr_url = `https://github.com/ethereum/${repoPath}/pull/${pr.pr_number}`;
+
       // Fetch governance state
       const governanceState = pr.repository_id
         ? await prisma.pr_governance_state.findUnique({
@@ -616,6 +629,8 @@ const emptyState = {
 
       if (!governanceState) {
         return {
+          pr_number: pr.pr_number,
+          pr_url,
           current_pr_state: pr.state || null,
           waiting_on: null,
           days_since_last_action: pr.updated_at
@@ -626,6 +641,8 @@ const emptyState = {
       }
 
       return {
+        pr_number: pr.pr_number,
+        pr_url,
         current_pr_state: pr.state || null,
         waiting_on: governanceState.current_state || null,
         days_since_last_action: governanceState.waiting_since

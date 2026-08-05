@@ -48,8 +48,11 @@ type Row = {
   createdAt: string;
   eipNumbers: number[];
   nextCallOn: string | Date | null;
+  waitingOn: string | null;
   mentions: Mention[];
 };
+
+type WaitingFilter = '' | 'editor' | 'author';
 
 const SERIES = [
   { key: '', label: 'All ACD' },
@@ -99,6 +102,10 @@ export function AgendaPrsPanel() {
   const [window, setWindow] = useState<'upcoming' | 'all'>(() => {
     return searchParams.get('window') === 'upcoming' ? 'upcoming' : 'all';
   });
+  const [waitingOn, setWaitingOn] = useState<WaitingFilter>(() => {
+    const w = searchParams.get('waiting');
+    return w === 'editor' || w === 'author' ? w : '';
+  });
   const [search, setSearch] = useState(() => searchParams.get('acd_q') || '');
   const [debounced, setDebounced] = useState(() => searchParams.get('acd_q') || '');
   const [page, setPage] = useState(() => Math.max(1, Number(searchParams.get('acd_page')) || 1));
@@ -125,13 +132,15 @@ export function AgendaPrsPanel() {
     else p.delete('series');
     if (window !== 'all') p.set('window', window);
     else p.delete('window');
+    if (waitingOn) p.set('waiting', waitingOn);
+    else p.delete('waiting');
     if (debounced) p.set('acd_q', debounced);
     else p.delete('acd_q');
     if (page > 1) p.set('acd_page', String(page));
     else p.delete('acd_page');
     const qs = p.toString();
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [series, window, debounced, page, pathname, router, searchParams]);
+  }, [series, window, waitingOn, debounced, page, pathname, router, searchParams]);
 
   // Filter changes reset paging in the handlers rather than via an effect on
   // [series, window, debounced] — that effect would setState synchronously on
@@ -142,6 +151,10 @@ export function AgendaPrsPanel() {
   };
   const changeWindow = (next: 'upcoming' | 'all') => {
     setWindow(next);
+    setPage(1);
+  };
+  const changeWaitingOn = (next: WaitingFilter) => {
+    setWaitingOn(next);
     setPage(1);
   };
   const changeSearch = (next: string) => {
@@ -163,6 +176,7 @@ export function AgendaPrsPanel() {
         const res = await client.tools.getAgendaPRs({
           series: (series || undefined) as 'acde' | 'acdc' | 'acdt' | 'acdtcl' | undefined,
           window,
+          waitingOn: (waitingOn || undefined) as 'editor' | 'author' | undefined,
           search: debounced || undefined,
           page,
           pageSize: 25,
@@ -180,7 +194,7 @@ export function AgendaPrsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [series, window, debounced, page]);
+  }, [series, window, waitingOn, debounced, page]);
 
   const rows = useMemo(() => data?.rows ?? [], [data]);
 
@@ -219,6 +233,35 @@ export function AgendaPrsPanel() {
             <CalendarClock className="h-3.5 w-3.5" />
             Upcoming calls only
           </button>
+
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <span className="text-[11px] font-medium text-muted-foreground">Waiting on</span>
+          {([
+            ['', 'All'],
+            ['editor', 'Editors'],
+            ['author', 'Authors'],
+          ] as const).map(([value, label]) => (
+            <button
+              key={value || 'any'}
+              type="button"
+              onClick={() => changeWaitingOn(value)}
+              className={cn(
+                'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-medium transition-colors',
+                waitingOn === value
+                  ? 'border-primary/50 bg-primary/10 text-foreground'
+                  : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
+              )}
+              title={
+                value === 'editor'
+                  ? 'Only PRs currently waiting on an editor'
+                  : value === 'author'
+                    ? 'Only PRs currently waiting on the author'
+                    : 'All PRs regardless of who they wait on'
+              }
+            >
+              {label}
+            </button>
+          ))}
         </div>
 
         <div className="relative w-full sm:max-w-xs">
@@ -266,6 +309,19 @@ export function AgendaPrsPanel() {
           </p>
 
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+            {/* Column header (desktop) — the list is sorted by "Next call" ascending. */}
+            <div className="hidden items-center gap-x-3 border-b border-border bg-muted/50 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:flex">
+              <span className="shrink-0">PR</span>
+              <span className="min-w-0 flex-1">Title</span>
+              <span className="shrink-0">Author</span>
+              <span className="shrink-0">Status</span>
+              <span className="shrink-0">EIPs</span>
+              <span className="inline-flex shrink-0 items-center gap-1">
+                Next call
+                <ChevronDown className="h-3 w-3" aria-label="sorted ascending" />
+              </span>
+              <span className="shrink-0">Mentions</span>
+            </div>
             <ul className="divide-y divide-border/60">
               {rows.map((row) => {
                 const isOpen = expanded === row.prNumber;
@@ -286,6 +342,26 @@ export function AgendaPrsPanel() {
                       <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
                         @{row.author ?? 'unknown'}
                       </span>
+
+                      {row.waitingOn && (
+                        <span
+                          className={cn(
+                            'shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                            row.waitingOn === 'WAITING_ON_EDITOR'
+                              ? 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              : row.waitingOn === 'WAITING_ON_AUTHOR'
+                                ? 'border-sky-500/30 bg-sky-500/15 text-sky-700 dark:text-sky-300'
+                                : 'border-border bg-muted text-muted-foreground'
+                          )}
+                          title={`Governance: ${row.waitingOn.replace(/_/g, ' ').toLowerCase()}`}
+                        >
+                          {row.waitingOn === 'WAITING_ON_EDITOR'
+                            ? 'Waiting: editor'
+                            : row.waitingOn === 'WAITING_ON_AUTHOR'
+                              ? 'Waiting: author'
+                              : row.waitingOn.replace(/_/g, ' ').toLowerCase()}
+                        </span>
+                      )}
 
                       <span className="inline-flex shrink-0 flex-wrap items-center gap-1">
                         {row.eipNumbers.slice(0, 4).map((n) => (

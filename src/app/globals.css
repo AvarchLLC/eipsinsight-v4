@@ -48,6 +48,9 @@ html.persona-theme-transition *::after {
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+  --color-chart-8: var(--chart-8);
+  --color-chart-7: var(--chart-7);
+  --color-chart-6: var(--chart-6);
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
@@ -113,6 +116,9 @@ html.persona-theme-transition *::after {
   --chart-3: oklch(0.65 0.15 195);
   --chart-4: oklch(0.7 0.12 85);
   --chart-5: oklch(0.6 0.2 330);
+  --chart-6: oklch(0.55 0.2 300);
+  --chart-7: oklch(0.6 0.2 25);
+  --chart-8: oklch(0.55 0.02 260);
   --sidebar: oklch(0.99 0.002 250);
   --sidebar-foreground: oklch(0.2 0.02 260);
   --sidebar-primary: var(--persona-primary);
@@ -159,6 +165,9 @@ html.persona-theme-transition *::after {
   --chart-3: oklch(0.769 0.188 70.08);
   --chart-4: oklch(0.627 0.265 303.9);
   --chart-5: oklch(0.645 0.246 16.439);
+  --chart-6: oklch(0.62 0.25 300);
+  --chart-7: oklch(0.65 0.24 25);
+  --chart-8: oklch(0.7 0.03 260);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
   --sidebar-primary: var(--persona-primary);

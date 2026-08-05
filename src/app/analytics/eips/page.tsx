@@ -182,7 +182,7 @@ export default function EIPsAnalyticsPage() {
   const { resolvedTheme } = useTheme();
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const throughputMonths =
-    timeRange === "7d"
+    timeRange === "7d" || timeRange === "15d"
       ? 3
       : timeRange === "30d"
         ? 6
@@ -1050,8 +1050,8 @@ export default function EIPsAnalyticsPage() {
         <Link href="/explore/years" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
           Explore Yearly Patterns
         </Link>
-        <Link href="/insights/governance" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          View Governance Process Insights
+        <Link href="/insights" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
+          View Monthly Analysis Insights
         </Link>
       </div>
 

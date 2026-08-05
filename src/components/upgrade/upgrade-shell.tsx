@@ -154,7 +154,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
   ];
   const exploreLinks = [
     { href: '/upgrade/schedule', label: 'Schedule', icon: Calendar },
-    { href: '/upgrade/analytics', label: 'Analytics', icon: Activity },
+    { href: '/upgrade#analytics', label: 'Analytics', icon: Activity },
   ];
 
   return (
@@ -248,7 +248,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
             <NavPill href="/decisions" label="Decisions" active={pathname.startsWith('/decisions')} />
             <NavPill href="/upgrade/devnets" label="Devnets" active={pathname.startsWith('/upgrade/devnets')} />
             <NavPill href="/upgrade/schedule" label="Schedule" active={pathname.startsWith('/upgrade/schedule')} />
-            <NavPill href="/upgrade/analytics" label="Analytics" active={pathname.startsWith('/upgrade/analytics')} />
+            <NavPill href="/upgrade#analytics" label="Analytics" active={false} />
           </nav>
 
           {/* Desktop Right Side Accessories */}
@@ -394,7 +394,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
               <NavPill href="/decisions" label="Decisions" active={pathname.startsWith('/decisions')} onClick={closeMenus} />
               <NavPill href="/upgrade/devnets" label="Devnets" active={pathname.startsWith('/upgrade/devnets')} onClick={closeMenus} />
               <NavPill href="/upgrade/schedule" label="Schedule" active={pathname.startsWith('/upgrade/schedule')} onClick={closeMenus} />
-              <NavPill href="/upgrade/analytics" label="Analytics" active={pathname.startsWith('/upgrade/analytics')} onClick={closeMenus} />
+              <NavPill href="/upgrade#analytics" label="Analytics" active={false} onClick={closeMenus} />
             </div>
           </div>
         )}

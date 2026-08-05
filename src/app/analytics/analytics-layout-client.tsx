@@ -46,7 +46,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url);
 }
 
-type TimeRange = "7d" | "30d" | "90d" | "1y" | "this_month" | "all" | "custom";
+type TimeRange = "7d" | "15d" | "30d" | "90d" | "1y" | "this_month" | "all" | "custom";
 type RepoFilter = "all" | "eips" | "ercs" | "rips";
 type SnapshotMode = "live" | "snapshot";
 
@@ -125,6 +125,7 @@ export function useAnalyticsExport(
 const timeRangeOptions: { value: TimeRange; label: string }[] = [
   { value: "this_month", label: "This month" },
   { value: "7d", label: "Last 7 days" },
+  { value: "15d", label: "Last 15 days" },
   { value: "30d", label: "Last 30 days" },
   { value: "90d", label: "Last 90 days" },
   { value: "1y", label: "Last year" },
