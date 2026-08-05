@@ -9,9 +9,14 @@ import { CHART_SERIES } from "@/lib/chart-colors";
 import { PageHeader, SectionSeparator } from "@/components/header";
 import {
   ArrowLeft,
+  ArrowUpRight,
+  CalendarClock,
+  CircleDot,
   Download,
   ChevronLeft,
   ChevronRight,
+  GitPullRequest,
+  Gavel,
   TrendingUp,
 } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
@@ -145,6 +150,15 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const [rangeDays, setRangeDays] = useState<number | null>(null); // null = all time
   const tableSectionRef = useRef<HTMLDivElement>(null);
 
+  // "Month in review" — activity beyond EIP status changes for the selected
+  // month: PRs, Issues, and the protocol calls + decisions that landed that
+  // month. Fetched separately (keyed on month+repo) so it stays independent of
+  // the heavier drilldown/table query above.
+  const [prKpis, setPrKpis] = useState<Awaited<ReturnType<typeof client.analytics.getPRMonthHeroKPIs>> | null>(null);
+  const [issueKpis, setIssueKpis] = useState<Awaited<ReturnType<typeof client.analytics.getIssueMonthlySummary>> | null>(null);
+  const [monthCalls, setMonthCalls] = useState<Array<Awaited<ReturnType<typeof client.calls.listRecentCalls>>[number]>>([]);
+  const [monthDecisions, setMonthDecisions] = useState<Array<Awaited<ReturnType<typeof client.calls.listRecentDecisions>>[number]>>([]);
+
   useEffect(() => {
     client.insights.getAvailableMonths().then(setAvailableMonths).catch(console.error);
   }, []);
@@ -217,6 +231,33 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     };
     run();
   }, [repo, month, page, pageSize, tableStatusFilter, tableRepoFilter, changeFilter, sortFilter, globalSearch, historyFrom, historyTo, statusTrendStatus]);
+
+  // Month-in-review: PRs, Issues, Calls & Decisions for the selected month.
+  useEffect(() => {
+    let cancelled = false;
+    const [yearStr, monthStr] = month.split("-");
+    const year = Number(yearStr);
+    const monthNum = Number(monthStr);
+    if (!year || !monthNum) return;
+    const repoArg = repo === "all" ? undefined : repo;
+
+    Promise.all([
+      client.analytics.getPRMonthHeroKPIs({ year, month: monthNum, repo: repoArg }).catch(() => null),
+      client.analytics.getIssueMonthlySummary({ year, month: monthNum, repo: repoArg }).catch(() => null),
+      client.calls.listRecentCalls({ limit: 300 }).catch(() => []),
+      client.calls.listRecentDecisions({ limit: 300 }).catch(() => []),
+    ]).then(([pr, issue, calls, decisions]) => {
+      if (cancelled) return;
+      setPrKpis(pr);
+      setIssueKpis(issue);
+      // Both feeds are date-ordered; keep only the selected month (occurred_on = YYYY-MM-DD).
+      setMonthCalls((calls as typeof monthCalls).filter((c) => c.occurred_on.startsWith(month)));
+      setMonthDecisions((decisions as typeof monthDecisions).filter((d) => d.occurred_on.startsWith(month)));
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [repo, month]);
 
   useEffect(() => {
     setTableStatusFilter(null);
@@ -757,6 +798,17 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
             </div>
           ) : (
             <div className="flex flex-col gap-4">
+              {/* Month in review — the whole month across EIPs: PRs, issues,
+                  protocol calls and decisions, not just status changes. */}
+              <MonthInReview
+                month={month}
+                repo={repo}
+                prKpis={prKpis}
+                issueKpis={issueKpis}
+                calls={monthCalls}
+                decisions={monthDecisions}
+              />
+
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
                 <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">
@@ -1231,5 +1283,188 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         </div>
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// Month in review — cross-activity digest for the selected month
+// ============================================================================
+
+type PRKpis = Awaited<ReturnType<typeof client.analytics.getPRMonthHeroKPIs>>;
+type IssueKpis = Awaited<ReturnType<typeof client.analytics.getIssueMonthlySummary>>;
+type CallRow = Awaited<ReturnType<typeof client.calls.listRecentCalls>>[number];
+type DecisionRow = Awaited<ReturnType<typeof client.calls.listRecentDecisions>>[number];
+
+/**
+ * key_decisions is loosely-typed JSON. The stored shape is an object
+ * `{ meeting, key_decisions: [{ type, context, timestamp }] }`, but tolerate a
+ * bare array or flat objects too. Pull readable decision strings out of it.
+ */
+function decisionTexts(kd: unknown): string[] {
+  if (!kd) return [];
+  let list: unknown[] = [];
+  if (Array.isArray(kd)) {
+    list = kd;
+  } else if (typeof kd === "object") {
+    const o = kd as Record<string, unknown>;
+    list = Array.isArray(o.key_decisions) ? o.key_decisions : [kd];
+  }
+  return list
+    .map((d) => {
+      if (typeof d === "string") return d;
+      if (d && typeof d === "object") {
+        const o = d as Record<string, unknown>;
+        for (const f of ["context", "decision", "text", "summary", "title"]) {
+          if (typeof o[f] === "string" && o[f]) return o[f] as string;
+        }
+      }
+      return "";
+    })
+    .filter(Boolean);
+}
+
+function callHref(row: { series: string; call_number: string | null; call_id: string }): string {
+  return `/calls/${row.series}/${row.call_number ?? row.call_id}`;
+}
+
+function callTitle(row: { series: string; call_number: string | null; display_name: string | null }): string {
+  return row.display_name || `${row.series.toUpperCase()} #${row.call_number ?? ""}`.trim();
+}
+
+function MonthInReview({
+  month,
+  repo,
+  prKpis,
+  issueKpis,
+  calls,
+  decisions,
+}: {
+  month: string;
+  repo: "all" | "eips" | "ercs" | "rips";
+  prKpis: PRKpis | null;
+  issueKpis: IssueKpis | null;
+  calls: CallRow[];
+  decisions: DecisionRow[];
+}) {
+  const decisionCount = decisions.reduce((n, d) => n + decisionTexts(d.key_decisions).length, 0);
+
+  // Deep-link into an analytics page scoped to THIS month (and repo). The
+  // analytics shell reads range/fromMonth/toMonth/repo from the URL, so the
+  // target page opens filtered to the same month the card summarises.
+  const analyticsHref = (page: "prs" | "issues", extra?: Record<string, string>): string => {
+    const p = new URLSearchParams({ range: "custom", fromMonth: month, toMonth: month });
+    if (repo !== "all") p.set("repo", repo);
+    for (const [k, v] of Object.entries(extra ?? {})) p.set(k, v);
+    return `/analytics/${page}?${p.toString()}`;
+  };
+
+  return (
+    <section className="rounded-xl border border-border bg-card p-4">
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-foreground">Month in review</h3>
+          <p className="text-xs text-muted-foreground">
+            Everything that moved in {monthLabel(month)} — not just status changes.
+          </p>
+        </div>
+      </div>
+
+      {/* KPI band: PRs · Issues · Calls · Decisions — each opens its analytics
+          page scoped to this month. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+        <Kpi icon={GitPullRequest} accent="text-emerald-500" label="PRs merged" value={prKpis?.mergedPRs} href={analyticsHref("prs", { prState: "merged" })} />
+        <Kpi icon={GitPullRequest} accent="text-blue-500" label="PRs opened" value={prKpis?.newPRs} href={analyticsHref("prs", { prState: "created" })} />
+        <Kpi icon={GitPullRequest} accent="text-rose-500" label="PRs closed" value={prKpis?.closedUnmerged} href={analyticsHref("prs", { prState: "closed" })} />
+        <Kpi icon={CircleDot} accent="text-amber-500" label="Issues opened" value={issueKpis?.newIssues} href={analyticsHref("issues")} />
+        <Kpi icon={CalendarClock} accent="text-violet-500" label="Protocol calls" value={calls.length} href="/calls" />
+        <Kpi icon={Gavel} accent="text-cyan-500" label="Decisions" value={decisionCount} href="/decisions" />
+      </div>
+
+      {/* Calls & decisions detail for the month */}
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        <div className="rounded-lg border border-border/70 bg-background/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <CalendarClock className="h-3.5 w-3.5 text-violet-500" /> Protocol calls
+            </span>
+            <Link href="/calls" className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+              All calls <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {calls.length === 0 ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">No calls recorded this month.</p>
+          ) : (
+            <ul className="space-y-1">
+              {calls.slice(0, 8).map((c) => (
+                <li key={`${c.series}-${c.call_id}`}>
+                  <Link
+                    href={callHref(c)}
+                    className="flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs text-foreground/90 transition-colors hover:bg-muted/60"
+                  >
+                    <span className="min-w-0 truncate">{callTitle(c)}</span>
+                    <span className="shrink-0 text-[11px] text-muted-foreground">{c.occurred_on.slice(5)}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        <div className="rounded-lg border border-border/70 bg-background/40 p-3">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-foreground">
+              <Gavel className="h-3.5 w-3.5 text-cyan-500" /> Decisions
+            </span>
+            <Link href="/decisions" className="inline-flex items-center gap-0.5 text-[11px] text-primary hover:underline">
+              All decisions <ArrowUpRight className="h-3 w-3" />
+            </Link>
+          </div>
+          {decisions.length === 0 ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">No decisions recorded this month.</p>
+          ) : (
+            <ul className="space-y-1.5">
+              {decisions.slice(0, 5).flatMap((d) => {
+                const texts = decisionTexts(d.key_decisions).slice(0, 2);
+                return texts.map((t, i) => (
+                  <li key={`${d.series}-${d.call_id}-${i}`} className="flex gap-2 text-xs text-muted-foreground">
+                    <span className="mt-1 h-1 w-1 shrink-0 rounded-full bg-cyan-500" />
+                    <Link href={callHref(d)} className="min-w-0 hover:text-foreground">
+                      <span className="line-clamp-2">{t}</span>
+                    </Link>
+                  </li>
+                ));
+              })}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Kpi({
+  icon: Icon,
+  accent,
+  label,
+  value,
+  href,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+  label: string;
+  value: number | undefined;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-lg border border-border bg-background/40 p-2.5 transition-colors hover:border-primary/40"
+    >
+      <Icon className={`h-4 w-4 ${accent}`} />
+      <p className="mt-1.5 text-xl font-bold tracking-tight text-foreground">
+        {value == null ? "—" : value.toLocaleString()}
+      </p>
+      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+    </Link>
   );
 }
