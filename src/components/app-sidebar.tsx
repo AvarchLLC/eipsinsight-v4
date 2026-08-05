@@ -11,11 +11,9 @@ import {
   ClipboardList,
   Layers,
   LineChart,
-  Lightbulb,
   Package,
   Settings,
   ChevronRight,
-  Sparkles,
   ListTree,
   PanelLeft,
   PanelLeftOpen,
@@ -27,9 +25,6 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
-import { usePersonaStore } from "@/stores/personaStore";
-import { DEFAULT_PERSONA, type Persona } from "@/lib/persona";
-import { FEATURES } from "@/lib/features";
 import { cn } from "@/lib/utils";
 import { client } from "@/lib/orpc";
 import {
@@ -108,69 +103,9 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
-    id: "standards",
-    label: "Standards & Governance",
+    id: "explore",
+    label: "Explore",
     items: [
-      {
-        title: "Upgrades",
-        icon: Package,
-        href: "/upgrade",
-        items: [
-          { title: "Overview", href: "/upgrade" },
-          { title: "Upgrade EIP Directory", href: "/upgrade/eips" },
-          {
-            title: "Current Upgrades",
-            href: "/upgrade",
-            items: [
-              { title: "Hegotá", href: "/upgrade/hegota" },
-              { title: "Glamsterdam", href: "/upgrade/glamsterdam" },
-              { title: "Fusaka", href: "/upgrade/fusaka" },
-            ],
-          },
-          { title: "Previous Upgrades", href: "/upgrade/archive" },
-          { title: "Devnets", href: "/upgrade/devnets" },
-          { title: "Schedule", href: "/upgrade/schedule" },
-        ],
-      },
-      {
-        title: "Calls",
-        icon: CalendarClock,
-        href: "/calls",
-        items: [
-          { title: "All Calls", href: "/calls" },
-          {
-            title: "ACD Calls",
-            href: "/calls?series=acd#recent",
-            items: [
-              { title: "ACDE - Execution", href: "/calls?series=acd&acd=acde#recent" },
-              { title: "ACDC - Consensus", href: "/calls?series=acd&acd=acdc#recent" },
-              { title: "ACDT - Testing", href: "/calls?series=acd&acd=acdt#recent" },
-              { title: "ACDT-CL Breakout", href: "/calls?series=acd&acd=acdtcl#recent" },
-            ],
-          },
-          { title: "Breakout Calls", href: "/calls?series=breakouts#recent" },
-          {
-            title: "Decisions",
-            href: "/decisions",
-            items: [
-              { title: "All Decisions", href: "/decisions" },
-              { title: "From ACD", href: "/decisions?series=acd#decisions" },
-              { title: "From Breakouts", href: "/decisions?series=breakouts#decisions" },
-            ],
-          },
-          { title: "Lucid · Mempool", href: "/lucid" },
-        ],
-      },
-      {
-        title: "Open PR Board",
-        icon: ClipboardList,
-        href: "/board",
-        items: [
-          { title: "Open PR Board", href: "/board" },
-          { title: "Waiting on Editor", href: "/board?status=Waiting+on+Editor" },
-          { title: "Agenda Maker", href: "/board/agenda" },
-        ],
-      },
       {
         title: "Standards",
         icon: Layers,
@@ -197,46 +132,75 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
-    id: "analytics",
-    label: "Analytics & Insights",
+    id: "governance",
+    label: "Roadmap & Governance",
     items: [
       {
-        title: "Analytics",
-        icon: LineChart,
-        href: "/analytics",
+        title: "Upgrades",
+        icon: Package,
+        href: "/upgrade",
+        // Flattened to two levels — current forks sit alongside the other
+        // upgrade views instead of behind a "Current Upgrades" sub-tree.
         items: [
-          // Most-used first: PR and Editor analytics are the daily drivers.
-          { title: "PRs", href: "/analytics/prs" },
-          { title: "Editors Leadership Board", href: "/analytics/editors" },
-          { title: "EIPs", href: "/analytics/eips" },
-          { title: "Reviewers", href: "/analytics/reviewers" },
-          { title: "Authors", href: "/analytics/authors" },
-          { title: "Contributors", href: "/analytics/contributors" },
-          { title: "Issues", href: "/analytics/issues" },
+          { title: "Overview", href: "/upgrade" },
+          { title: "Upgrade EIP Directory", href: "/upgrade/eips" },
+          { title: "Hegotá", href: "/upgrade/hegota" },
+          { title: "Glamsterdam", href: "/upgrade/glamsterdam" },
+          { title: "Fusaka", href: "/upgrade/fusaka" },
+          { title: "Previous Upgrades", href: "/upgrade/archive" },
+          { title: "Devnets", href: "/upgrade/devnets" },
+          { title: "Schedule", href: "/upgrade/schedule" },
         ],
       },
       {
-        title: "Insights",
-        icon: Lightbulb,
-        href: "/insights",
+        title: "Protocol Calls",
+        icon: CalendarClock,
+        href: "/calls",
+        // Flattened — ACD sub-types and Decision filters are chosen in-page,
+        // not via a third sidebar level.
         items: [
-          { title: "This Week in EIPs", href: "/insights/weekly" },
-          { title: "Monthly Analysis", href: "/insights" },
-          { title: "Editorial Commentary", href: "/insights/commentary" },
+          { title: "All Calls", href: "/calls" },
+          { title: "ACD Calls", href: "/calls?series=acd#recent" },
+          { title: "Breakout Calls", href: "/calls?series=breakouts#recent" },
+          { title: "Decisions", href: "/decisions" },
+          { title: "Lucid · Mempool", href: "/lucid" },
+        ],
+      },
+      {
+        title: "Open PR Board",
+        icon: ClipboardList,
+        href: "/board",
+        items: [
+          { title: "Open PR Board", href: "/board" },
+          { title: "Waiting on Editor", href: "/board?status=Waiting+on+Editor" },
+          { title: "Agenda Maker", href: "/board/agenda" },
         ],
       },
     ],
   },
   {
-    id: "tools",
-    label: "Productivity",
+    id: "analytics",
+    label: "Analytics",
+    items: [
+      // One destination — the merged hub. Activity (PRs, Editors, EIPs…) and
+      // Insights (This Week, Monthly, Commentary) are switched via grouped
+      // tabs inside the page header, not the sidebar tree.
+      {
+        title: "Analytics & Insights",
+        icon: LineChart,
+        href: "/analytics/eips",
+      },
+    ],
+  },
+  {
+    id: "build",
+    label: "Build",
     items: [
       {
         title: "Tools",
         icon: Wrench,
         href: "/tools",
         items: [
-          // Board lives at top level as "EIP Board" — not duplicated here.
           { title: "EIP Builder", href: "/eip-builder" },
           { title: "Timeline", href: "/timeline" },
           { title: "Dependencies", href: "/dependencies" },
@@ -257,6 +221,8 @@ const sidebarSections: SidebarSection[] = [
           { title: "Blogs", href: "/resources/blogs" },
           { title: "Videos", href: "/resources/videos" },
           { title: "News", href: "/resources/news" },
+          { title: "FAQ", href: "/resources/faq" },
+          { title: "Milestones", href: "/resources/milestones" },
           { title: "About Us", href: "/about" },
         ],
       },
@@ -287,153 +253,13 @@ const sidebarSections: SidebarSection[] = [
 ];
 
 // ============================================================================
-// Persona-based section ordering
-// "main" is always first, "account" is always last.
-// Only the middle sections are reordered per persona.
-// ============================================================================
-
-const PERSONA_SECTION_ORDER: Record<Persona, string[]> = {
-  developer: ["standards", "analytics", "tools", "learn"],
-  editor: ["analytics", "tools", "standards", "learn"],
-  researcher: ["analytics", "standards", "tools", "learn"],
-  builder: ["tools", "standards", "learn", "analytics"],
-  enterprise: ["standards", "analytics", "learn", "tools"],
-  newcomer: ["learn", "standards", "analytics", "tools"],
-};
-
-const DEFAULT_SECTION_ORDER = ["standards", "analytics", "tools", "learn"];
-
-// ============================================================================
-// Persona-based visibility
-// "main" and "account" sections are always shown (pinned first/last).
-// Developer = all sections visible (baseline, ordering only).
-// ============================================================================
-
-const PERSONA_VISIBLE_SECTIONS: Record<Persona, string[]> = {
-  developer:  ["standards", "analytics", "tools", "learn"], // all - baseline
-  editor:     ["analytics", "standards"],                    // hide tools + learn
-  researcher: ["analytics", "standards", "tools", "learn"],
-  builder:    ["tools", "standards", "learn", "analytics"],
-  enterprise: ["standards", "analytics", "learn", "tools"],
-  newcomer:   ["learn", "standards", "analytics", "tools"],
-};
-
-// Sub-item allow-lists per persona. Keyed by SidebarItem title.
-// Undefined entry = allow all sub-items.
-const PERSONA_VISIBLE_SUBITEMS: Partial<Record<Persona, Record<string, string[]>>> = {
-  editor: {
-    // Authors and Contributors are not part of the editorial workflow.
-    // (Board moved out of Analytics to its own top-level "EIP Board" item.)
-    Analytics: ["PRs", "Editor Leadership Board", "EIPs", "Reviewers"],
-  },
-};
-
-// The four daily drivers — Upgrades, Calls & Decisions, EIP Board, Analytics/Insights —
-// are ranked first for the personas that actually use them.
-const PERSONA_ITEM_PRIORITY: Record<Persona, string[]> = {
-  developer: [
-    "Upgrades",
-    "Calls",
-    "EIP Board",
-    "Analytics",
-    "Insights",
-    "Standards",
-    "Explore",
-    "Tools",
-    "Resources",
-    "Search",
-    "Home",
-    "Dashboard",
-  ],
-  editor: [
-    "EIP Board",
-    "Calls",
-    "Analytics",
-    "Upgrades",
-    "Insights",
-    "Search",
-    "Standards",
-    "Tools",
-    "Explore",
-    "Resources",
-    "Home",
-    "Dashboard",
-  ],
-  researcher: [
-    "Analytics",
-    "Insights",
-    "Upgrades",
-    "Calls",
-    "Standards",
-    "EIP Board",
-    "Explore",
-    "Search",
-    "Tools",
-    "Resources",
-    "Home",
-    "Dashboard",
-  ],
-  builder: [
-    "Tools",
-    "Upgrades",
-    "Standards",
-    "EIP Board",
-    "Search",
-    "Explore",
-    "Resources",
-    "Calls",
-    "Insights",
-    "Analytics",
-    "Home",
-    "Dashboard",
-  ],
-  enterprise: [
-    "Upgrades",
-    "Calls",
-    "Insights",
-    "Standards",
-    "Analytics",
-    "Explore",
-    "Resources",
-    "EIP Board",
-    "Tools",
-    "Search",
-    "Home",
-    "Dashboard",
-  ],
-  newcomer: [
-    "Resources",
-    "Upgrades",
-    "Standards",
-    "Explore",
-    "Home",
-    "Dashboard",
-    "Insights",
-    "Calls",
-    "Analytics",
-    "EIP Board",
-    "Tools",
-    "Search",
-  ],
-};
-
-// ============================================================================
 // Helpers
 // ============================================================================
 
-function sortItemsByPersonaPriority(
-  items: SidebarItem[],
-  persona: Persona
-): SidebarItem[] {
-  const priority = PERSONA_ITEM_PRIORITY[persona];
-  const rank = new Map(priority.map((title, idx) => [title, idx]));
-  return [...items].sort((a, b) => {
-    const ar = rank.get(a.title) ?? Number.MAX_SAFE_INTEGER;
-    const br = rank.get(b.title) ?? Number.MAX_SAFE_INTEGER;
-    if (ar !== br) return ar - br;
-    return a.title.localeCompare(b.title);
-  });
-}
+// NOTE: The sidebar renders one canonical structure. It used to be reordered
+// and filtered per persona; that layer was removed (persona is being
+// deprecated) so `sidebarSections` is now the single source of truth for order
+// and visibility, with the only runtime gate being the Admin item (role-based).
 
 /**
  * Display-label overrides for "On this page", keyed by section id.
@@ -460,37 +286,6 @@ const SECTION_LABEL_OVERRIDES: Record<string, string> = {
   "upgrade-eip-details": "EIP Details",
 };
 
-function getOrderedSections(persona: Persona | null): SidebarSection[] {
-  const sectionMap = new Map(sidebarSections.map((s) => [s.id, s]));
-  const mainSection = sectionMap.get("main")!;
-  const accountSection = sectionMap.get("account")!;
-
-  // Respect the feature flag — if persona nav reordering is off, use default order
-  const effectivePersona = persona || DEFAULT_PERSONA;
-
-  if (!FEATURES.PERSONA_NAV_REORDER) {
-    const middleSections = DEFAULT_SECTION_ORDER
-      .map((id) => sectionMap.get(id))
-      .filter((s): s is SidebarSection => !!s);
-    return [mainSection, ...middleSections, accountSection].map((section) => ({
-      ...section,
-      items: sortItemsByPersonaPriority(section.items, effectivePersona),
-    }));
-  }
-
-  const order =
-    PERSONA_SECTION_ORDER[effectivePersona] || DEFAULT_SECTION_ORDER;
-
-  const middleSections = order
-    .map((id) => sectionMap.get(id))
-    .filter((s): s is SidebarSection => !!s);
-
-  return [mainSection, ...middleSections, accountSection].map((section) => ({
-    ...section,
-    items: sortItemsByPersonaPriority(section.items, effectivePersona),
-  }));
-}
-
 /**
  * Determine which collapsible menu item should be auto-expanded
  * based on the current pathname.
@@ -508,16 +303,24 @@ function getActiveItemTitle(pathname: string): string | null {
     return "Standards";
   if (pathname.startsWith("/explore")) return "Explore";
   if (pathname.startsWith("/upgrade")) return "Upgrades";
-  if (pathname.startsWith("/analytics")) return "Analytics";
+  // Analytics + Insights are one destination now.
+  if (pathname.startsWith("/analytics") || pathname.startsWith("/insights"))
+    return "Analytics & Insights";
+  // Protocol Calls covers calls, decisions and the Lucid mempool page.
   if (
-    pathname === "/board" ||
+    pathname.startsWith("/calls") ||
+    pathname.startsWith("/decisions") ||
+    pathname.startsWith("/lucid")
+  )
+    return "Protocol Calls";
+  if (pathname === "/board" || pathname.startsWith("/board")) return "Open PR Board";
+  if (
     pathname.startsWith("/eip-builder") ||
     pathname.startsWith("/timeline") ||
     pathname.startsWith("/dependencies") ||
     pathname.startsWith("/tools")
   )
     return "Tools";
-  if (pathname.startsWith("/insights")) return "Insights";
   if (pathname.startsWith("/resources")) return "Resources";
   if (pathname.startsWith("/profile")) return "Settings";
   if (pathname.startsWith("/settings")) return "Settings";
@@ -534,10 +337,6 @@ function AppSidebarContent() {
   const searchParams = useSearchParams();
   const { state, toggleSidebar: toggleSidebarUI } = useSidebar();
   const { isOpen, toggleSidebar } = useSidebarStore();
-  const persona = usePersonaStore((s) => s.persona);
-  const sidebarShowAllSections = usePersonaStore(
-    (s) => s.defaultView.sidebarShowAllSections ?? false
-  );
 
   // Accordion behavior: only one parent open at a time
   const [openItem, setOpenItem] = React.useState<string | null>(null);
@@ -673,51 +472,21 @@ function AppSidebarContent() {
     };
   }, []);
 
-  // Get persona-ordered sections
-  const orderedSections = React.useMemo(
-    () => getOrderedSections(persona),
-    [persona]
-  );
-
+  // One canonical structure (declared order). The only runtime gate left is the
+  // role-based Admin item in the account section.
   const visibleSections = React.useMemo(() => {
-    const effectivePersona = persona || DEFAULT_PERSONA;
-    const bypassFilter = sidebarShowAllSections || !FEATURES.PERSONA_NAV_VISIBILITY;
-
-    return orderedSections
-      .filter((section) => {
-        // main and account are always shown
-        if (section.id === "main" || section.id === "account") return true;
-        if (bypassFilter) return true;
-        return PERSONA_VISIBLE_SECTIONS[effectivePersona]?.includes(section.id) ?? true;
-      })
-      .map((section) => {
-        // account section: preserve existing Admin gate
-        if (section.id === "account") {
-          return {
-            ...section,
-            items: section.items.filter((item) => {
-              if (item.title === "Admin") return isAdmin;
-              return true;
-            }),
-          };
-        }
-        // sub-item filtering per persona
-        if (bypassFilter) return section;
-        const personaSubFilter = PERSONA_VISIBLE_SUBITEMS[effectivePersona];
-        if (!personaSubFilter) return section;
+    return sidebarSections.map((section) => {
+      if (section.id === "account") {
         return {
           ...section,
-          items: section.items.map((item) => {
-            const allowedSubs = personaSubFilter[item.title];
-            if (!allowedSubs || !item.items) return item;
-            return {
-              ...item,
-              items: item.items.filter((sub) => allowedSubs.includes(sub.title)),
-            };
-          }),
+          items: section.items.filter((item) =>
+            item.title === "Admin" ? isAdmin : true
+          ),
         };
-      });
-  }, [orderedSections, isAdmin, persona, sidebarShowAllSections]);
+      }
+      return section;
+    });
+  }, [isAdmin]);
 
   // ========================================================================
   // Collapsible management
@@ -1017,9 +786,6 @@ function AppSidebarContent() {
     const isItemOpen = openItem === item.title;
     const isChildActive = hasActiveChild([...staticItems, ...contextualSectionItems]);
     const isHighlighted = isActive || isChildActive;
-    const effectivePersona = persona ?? DEFAULT_PERSONA;
-    const personaPriority = PERSONA_ITEM_PRIORITY[effectivePersona] ?? [];
-    const isRecommended = personaPriority.slice(0, 2).includes(item.title);
 
     if (hasSubItems) {
       return (
@@ -1068,9 +834,6 @@ function AppSidebarContent() {
                     >
                       {item.title}
                     </span>
-                    {isRecommended && (
-                      <Sparkles className="mr-1 h-3.5 w-3.5 text-primary" aria-label="Recommended" />
-                    )}
                     <ChevronRight
                       className={cn(
                         "h-3.5 w-3.5 text-muted-foreground transition-all duration-300",

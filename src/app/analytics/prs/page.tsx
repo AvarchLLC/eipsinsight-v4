@@ -225,7 +225,12 @@ export default function PRsAnalyticsPage() {
   const [issuesCurrentPage, setIssuesCurrentPage] = useState(1);
   const [prSearchFilter, setPrSearchFilter] = useState<string>("");
   const [issuesSearchFilter, setIssuesSearchFilter] = useState<string>("");
-  const [prStateFilter, setPrStateFilter] = useState<"all" | "open" | "created" | "merged" | "closed">("all");
+  // Initial state tab can be deep-linked (?prState=merged) so cross-links from
+  // the Insights "Month in review" cards land on the right PR list.
+  const [prStateFilter, setPrStateFilter] = useState<"all" | "open" | "created" | "merged" | "closed">(() => {
+    const v = searchParams.get("prState");
+    return v === "open" || v === "created" || v === "merged" || v === "closed" ? v : "all";
+  });
   const [processCategories, setProcessCategories] = useState<ProcessCategory[]>([]);
   const [govWaitStates, setGovWaitStates] = useState<GovernanceWaitState[]>([]);
   const [crossTabRaw, setCrossTabRaw] = useState<Array<{ processType: string; govState: string; count: number }>>([]);
@@ -423,6 +428,10 @@ export default function PRsAnalyticsPage() {
     const to = trendToMonth ?? monthlySeries[monthlySeries.length - 1].month;
     return monthlySeries.filter((row) => row.month >= from && row.month <= to);
   }, [monthlySeries, trendFromMonth, trendToMonth]);
+
+  // Dropdown options list the months latest-first (the chart data itself stays
+  // chronological). Newest month is the one people pick most often.
+  const monthOptionsDesc = useMemo(() => [...monthlySeries].reverse(), [monthlySeries]);
 
   const monthlyOption = useMemo(() => {
     const months = rangeMonths.map((m) => m.month);
@@ -958,7 +967,7 @@ export default function PRsAnalyticsPage() {
               }}
               className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              {monthlySeries.map((m) => (
+              {monthOptionsDesc.map((m) => (
                 <option key={`from-${m.month}`} value={m.month}>
                   {m.month}
                 </option>
@@ -974,7 +983,7 @@ export default function PRsAnalyticsPage() {
               }}
               className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              {monthlySeries.map((m) => (
+              {monthOptionsDesc.map((m) => (
                 <option key={`to-${m.month}`} value={m.month}>
                   {m.month}
                 </option>
@@ -986,7 +995,7 @@ export default function PRsAnalyticsPage() {
               onChange={(e) => setSelectedMonth(e.target.value || null)}
               className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
             >
-              {monthlySeries.map((m) => (
+              {monthOptionsDesc.map((m) => (
                 <option key={`ctx-${m.month}`} value={m.month}>
                   {m.month}
                 </option>
@@ -1020,6 +1029,12 @@ export default function PRsAnalyticsPage() {
             />
           </div>
         )}
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Created</strong>, <strong className="text-foreground">Merged</strong> and{" "}
+          <strong className="text-foreground">Closed</strong> count PRs by what happened to them within each month.{" "}
+          <strong className="text-foreground">Open EOM</strong> = <em>Open at End of Month</em>: the number of PRs still open on the
+          last day of that month (the running backlog), not a per-month action.
+        </p>
         <GraphFooter nextUpdateAt={nextUpdateAt} />
       </Section>
 

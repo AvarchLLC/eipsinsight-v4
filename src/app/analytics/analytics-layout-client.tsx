@@ -1,9 +1,11 @@
 "use client";
 
 import React, { createContext, useContext, useState, useMemo, useCallback, Suspense } from "react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Calendar, Database, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 
 // ─── Export Helper Functions ─────────────────────────────────────
@@ -139,6 +141,85 @@ const repoOptions: { value: RepoFilter; label: string }[] = [
   { value: "ercs", label: "ERCs" },
   { value: "rips", label: "RIPs" },
 ];
+
+// ─── View switcher (grouped segmented tabs) ──────────────────────
+// "Activity" = the data-heavy /analytics/* views (time-range + repo aware).
+// "Insights" = the editorial /insights/* views (period-driven, no controls).
+type TabDef = { label: string; href: string };
+
+const ACTIVITY_TABS: TabDef[] = [
+  { label: "EIPs", href: "/analytics/eips" },
+  { label: "PRs", href: "/analytics/prs" },
+  { label: "Editors", href: "/analytics/editors" },
+  { label: "Reviewers", href: "/analytics/reviewers" },
+  { label: "Authors", href: "/analytics/authors" },
+  { label: "Contributors", href: "/analytics/contributors" },
+  { label: "Issues", href: "/analytics/issues" },
+];
+
+const INSIGHTS_TABS: TabDef[] = [
+  { label: "This Week", href: "/insights/weekly" },
+  { label: "Monthly", href: "/insights" },
+  { label: "Commentary", href: "/insights/commentary" },
+];
+
+function isInsightsPath(pathname: string | null): boolean {
+  return Boolean(pathname && pathname.startsWith("/insights"));
+}
+
+function tabActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
+  // "Monthly" owns the /insights root plus its dynamic drilldowns
+  // (/insights/[year]/[month], /insights/review/[year]) — but not the
+  // sibling weekly/commentary routes.
+  if (href === "/insights") {
+    return (
+      pathname === "/insights" ||
+      (pathname.startsWith("/insights/") &&
+        !pathname.startsWith("/insights/weekly") &&
+        !pathname.startsWith("/insights/commentary"))
+    );
+  }
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function TabGroup({
+  label,
+  tabs,
+  pathname,
+}: {
+  label: string;
+  tabs: TabDef[];
+  pathname: string | null;
+}) {
+  return (
+    <div className="flex items-center gap-1.5">
+      <span className="mr-0.5 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+        {label}
+      </span>
+      <div className="flex flex-wrap items-center gap-1">
+        {tabs.map((t) => {
+          const active = tabActive(pathname, t.href);
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "rounded-md px-2.5 py-1 text-xs font-medium transition-colors",
+                active
+                  ? "bg-primary text-primary-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              )}
+            >
+              {t.label}
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 function AnalyticsLayoutInner({
   children,
@@ -290,7 +371,14 @@ function AnalyticsLayoutInner({
     ]
   );
 
+  const onInsights = isInsightsPath(pathname);
+
   const pageTitle = useMemo(() => {
+    if (onInsights) {
+      if (pathname?.startsWith("/insights/weekly")) return "This Week in EIPs";
+      if (pathname?.startsWith("/insights/commentary")) return "Editorial Commentary";
+      return "Monthly Analysis";
+    }
     const seg = pathname?.split("/").filter(Boolean) || [];
     const last = seg[seg.length - 1];
     const titles: Record<string, string> = {
@@ -303,9 +391,12 @@ function AnalyticsLayoutInner({
       contributors: "Contributors",
     };
     return titles[last] || "Analytics";
-  }, [pathname]);
+  }, [pathname, onInsights]);
 
   const pageSubtitle = useMemo(() => {
+    if (pageTitle === "This Week in EIPs") return "The last seven days of EIP, ERC, and RIP activity.";
+    if (pageTitle === "Monthly Analysis") return "Month-by-month status movements, velocity, and highlights.";
+    if (pageTitle === "Editorial Commentary") return "Editor notes and analysis on governance and proposals.";
     if (pageTitle === "EIP Analytics")
       return "A high-level overview of Ethereum Standards by type, status, and lifecycle progress.";
     if (pageTitle === "PR Analytics") return "Pull request activity and merge trends.";
@@ -319,6 +410,10 @@ function AnalyticsLayoutInner({
         {/* Single merged header — not sticky */}
         <div className="border-b border-border bg-card/80">
           <div className="mx-auto w-full px-3 py-5 sm:px-4 lg:px-5 xl:px-6">
+            {/* Full header (title + controls) only on Activity views. Insights
+                pages render their own bespoke headers, so the shell shows just
+                the tab bar there to avoid a duplicate title. */}
+            {!onInsights && (
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               {/* Title + subtitle */}
               <div>
@@ -330,7 +425,8 @@ function AnalyticsLayoutInner({
                 </p>
               </div>
 
-              {/* Controls */}
+              {/* Controls — Activity views only (this block isn't rendered on
+                  Insights routes). Time-range + repo filters. */}
               <div className="flex flex-wrap items-center gap-3">
                 {/* Time Range */}
                 <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
@@ -395,6 +491,14 @@ function AnalyticsLayoutInner({
                 </div>
 
               </div>
+            </div>
+            )}
+
+            {/* View switcher — grouped segmented tabs (Activity · Insights) */}
+            <div className={cn("flex flex-wrap items-center gap-x-5 gap-y-2 overflow-x-auto", !onInsights && "mt-4")}>
+              <TabGroup label="Activity" tabs={ACTIVITY_TABS} pathname={pathname} />
+              <span className="hidden h-4 w-px shrink-0 bg-border sm:block" aria-hidden />
+              <TabGroup label="Insights" tabs={INSIGHTS_TABS} pathname={pathname} />
             </div>
           </div>
         </div>
