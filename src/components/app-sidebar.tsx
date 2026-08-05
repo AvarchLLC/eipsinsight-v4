@@ -158,6 +158,7 @@ const sidebarSections: SidebarSection[] = [
               { title: "From Breakouts", href: "/decisions?series=breakouts#decisions" },
             ],
           },
+          { title: "Lucid · Mempool", href: "/lucid" },
         ],
       },
       {

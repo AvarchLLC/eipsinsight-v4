@@ -38,6 +38,17 @@ const nextConfig: NextConfig = {
         destination: '/upgrade/schedule',
         permanent: false,
       },
+      // Aliases for the Lucid / encrypted-mempool project page.
+      {
+        source: '/mempool',
+        destination: '/lucid',
+        permanent: false,
+      },
+      {
+        source: '/encrypted-mempool',
+        destination: '/lucid',
+        permanent: false,
+      },
       // Analytics merged into the main /upgrade page (#analytics section).
       {
         source: '/upgrade/analytics',

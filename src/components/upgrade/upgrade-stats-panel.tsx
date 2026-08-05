@@ -502,6 +502,8 @@ export function UpgradeStatsPanel() {
         </motion.div>
       </section>
 
+      {/* Only rendered once a stat card is selected — no empty placeholder card. */}
+      {activeTable && (
       <section ref={detailsSectionRef} id="upgrade-eip-details">
         {activeTable && (
           <div className="mb-3">
@@ -690,6 +692,7 @@ export function UpgradeStatsPanel() {
           </motion.div>
         </div>
       </section>
+      )}
     </div>
   );
 }
