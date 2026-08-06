@@ -17,6 +17,12 @@ import {
   Network,
   ArrowRight,
   TrendingUp,
+  Landmark,
+  Coins,
+  Wallet,
+  ClipboardCheck,
+  Scale,
+  MessageSquarePlus,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -304,16 +310,75 @@ function formatInclusionBucket(bucket: string | null): string {
   return labels[normalized] || bucket.charAt(0).toUpperCase() + bucket.slice(1);
 }
 
+// ─── EEA enterprise framework (finance-audience lens) ────────────────────────
+// Heuristic mapping of a proposal to the EEA's five-point institutional
+// framework: Status · Affected organizations · Business impact · Risk &
+// readiness · Participation. Deliberately conservative — flags relevance and
+// what to review, not definitive advice.
+
+type Relevance = 'high' | 'medium' | 'low';
+const REL_META: Record<Relevance, { label: string; cls: string }> = {
+  high: { label: 'High', cls: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400' },
+  medium: { label: 'Medium', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  low: { label: 'Low', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+};
+
+function analyzeProposal(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
+  const isCore = proposal.category === 'Core';
+  const layer = upgrades.find((u) => u.layer)?.layer ?? null;
+  const t = `${proposal.title} ${proposal.category ?? ''} ${proposal.type ?? ''}`.toLowerCase();
+  const touchesAccounting = /\b(log|event|transfer|balance|receipt|trace|withdraw)/.test(t);
+  const touchesStaking = isCore && (layer === 'consensus' || /(validator|stake|withdraw|deposit|attest|proposer|builder|block)/.test(t));
+  const touchesCost = isCore && (layer === 'execution' || /(gas|calldata|blob|fee|data availability|throughput|access list)/.test(t));
+  const touchesCensorship = /(inclusion|censorship|focil|list)/.test(t);
+  return { isCore, layer, touchesAccounting, touchesStaking, touchesCost, touchesCensorship };
+}
+
+const rel = (high: boolean, med: boolean): Relevance => (high ? 'high' : med ? 'medium' : 'low');
+
+function getFinanceStakeholders(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
+  const a = analyzeProposal(proposal, upgrades);
+  return [
+    { role: 'Banks & payment providers', icon: Landmark, affected: rel(a.touchesCensorship, a.isCore || a.touchesCost), why: 'Settlement finality, transaction-inclusion guarantees, and processing costs.' },
+    { role: 'Auditors & accountants', icon: ClipboardCheck, affected: rel(a.touchesAccounting, !a.isCore), why: a.touchesAccounting ? 'Changes how on-chain movements are recorded/indexed — affects reconciliation & audit trails.' : 'May affect how assets and events are evidenced for reporting.' },
+    { role: 'Asset managers', icon: Coins, affected: rel(!a.isCore, a.touchesCost), why: 'Product/asset behavior, client offerings, and cost of on-chain operations.' },
+    { role: 'Custodians & wallets', icon: Wallet, affected: rel(!a.isCore || a.touchesStaking, a.isCore), why: 'Key management, account/withdrawal semantics, and asset handling.' },
+    { role: 'Staking providers', icon: ShieldCheck, affected: rel(a.touchesStaking, a.isCore), why: 'Validator operations, rewards, timing, and withdrawal flows.' },
+    { role: 'Infrastructure operators', icon: Server, affected: rel(a.isCore, false), why: 'Node/RPC software updates and operational readiness.' },
+    { role: 'L2-using companies', icon: Network, affected: rel(a.touchesCost, a.isCore), why: 'Data-availability and fee impacts flow into L2 transaction costs.' },
+    { role: 'Digital-asset advisors', icon: Users, affected: rel(false, true), why: 'Client guidance on roadmap, risk, and readiness.' },
+  ] as Array<{ role: string; icon: LucideIcon; affected: Relevance; why: string }>;
+}
+
+function getBusinessImpact(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
+  const a = analyzeProposal(proposal, upgrades);
+  return [
+    { label: 'Assets & client offerings', icon: Coins, note: a.isCore ? 'Indirect — capabilities and limits of on-chain products may shift.' : 'Direct — defines a new asset/account behavior clients may adopt.' },
+    { label: 'Costs & transaction processing', icon: TrendingUp, note: a.touchesCost ? 'May change gas / data-availability costs and throughput.' : 'Limited direct cost impact expected.' },
+    { label: 'Accounting & reporting', icon: ClipboardCheck, note: a.touchesAccounting ? 'Alters how movements/events are recorded and indexed on-chain.' : 'Minimal reporting change expected.' },
+    { label: 'Controls & compliance', icon: Scale, note: a.touchesCensorship ? 'Review inclusion/censorship assumptions and monitoring controls.' : 'Review internal controls and monitoring for the changed behavior.' },
+    { label: 'Operational procedures', icon: Server, note: a.isCore ? 'Runbooks for node, validator, or custody flows may need updates.' : 'Integration and testing work for engineering teams.' },
+  ] as Array<{ label: string; icon: LucideIcon; note: string }>;
+}
+
+function getParticipation(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
+  const included = upgrades.find((u) => u.bucket.toLowerCase() === 'included');
+  const sfi = upgrades.find((u) => ['scheduled', 'sfi'].includes(u.bucket.toLowerCase()));
+  const status = (proposal.status ?? '').toLowerCase();
+  if (included || status === 'final' || status === 'living') {
+    return { state: 'Settled', open: false, note: 'Shipped or finalized — feedback now is about implementation experience, not inclusion.' };
+  }
+  if (sfi) {
+    return { state: 'Scheduled — narrowing', open: true, note: `Scheduled for ${sfi.name}. Scope is largely set, but testing and readiness feedback is still valuable.` };
+  }
+  return { state: 'Open for feedback', open: true, note: 'Still proposed or under consideration — a meaningful window to shape the outcome.' };
+}
+
 export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires }: EnterpriseEIPBriefProps) {
   const enterpriseScore = computeEnterpriseImpactScore(proposal, upgrades);
   const enterpriseScoreMeta = getImpactScoreMeta(enterpriseScore);
   const enterpriseRisk = getEnterpriseRisk(proposal, upgrades);
   const enterpriseAction = getEnterpriseAction(proposal, upgrades);
-  const enterpriseImpactCards = getEnterpriseImpactCards(proposal, upgrades);
-  const enterpriseTechRows = getSimplifiedTechOverview(proposal, upgrades);
-  const stakeholders = getStakeholders(proposal);
-  const riskHeatmap = getRiskHeatmap(proposal);
-  const actionItems = getActionItemsByTeam(proposal, upgrades);
   const lifecycle = getGovernanceLifecycle(statusEvents, upgrades);
   
   const latestUpgrade = upgrades.find((u) => u.bucket.toLowerCase() === 'included') ?? upgrades[0] ?? null;
@@ -322,6 +387,12 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
   // Mark the "current" stage in lifecycle
   const currentIdx = lifecycle.reduce((acc, stage, idx) => stage.status === 'completed' ? idx : acc, 0);
   lifecycle[currentIdx].status = 'current';
+
+  // EEA five-point framework (finance-audience lens)
+  const financeStakeholders = getFinanceStakeholders(proposal, upgrades);
+  const businessImpact = getBusinessImpact(proposal, upgrades);
+  const participation = getParticipation(proposal, upgrades);
+  const currentBucket = latestUpgrade?.bucket ? formatInclusionBucket(latestUpgrade.bucket) : null;
 
   return (
     <motion.div
@@ -351,9 +422,86 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-2">
-          {/* Quick Snapshot table */}
-          <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
+        {/* EEA Enterprise Assessment — the five-point institutional framework */}
+        <div className="overflow-hidden rounded-xl border border-violet-500/25 bg-card/60 shadow-sm">
+          <div className="flex items-center gap-2 border-b border-border/60 bg-violet-500/5 px-5 py-3">
+            <Scale className="h-4 w-4 text-violet-500" />
+            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">EEA Enterprise Assessment</p>
+            <span className="ml-auto text-[10px] text-muted-foreground/70">Status · Affected orgs · Business impact · Risk &amp; readiness · Participation</span>
+          </div>
+          <div className="divide-y divide-border/50">
+            {/* 1. Status */}
+            <div className="px-5 py-3.5">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><CheckCircle2 className="h-3.5 w-3.5" /> 1 · Status</p>
+              <p className="text-sm text-foreground">
+                {currentBucket ? (
+                  <>Currently <span className="font-semibold">{currentBucket}</span>{latestUpgrade?.name ? <> in <span className="font-semibold">{latestUpgrade.name}</span></> : null} · proposal status <span className="font-semibold">{proposal.status}</span>.</>
+                ) : (
+                  <>Not yet assigned to a network upgrade · proposal status <span className="font-semibold">{proposal.status}</span>.</>
+                )}
+              </p>
+            </div>
+
+            {/* 2. Affected organizations */}
+            <div className="px-5 py-3.5">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 2 · Affected organizations</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {financeStakeholders.map((s) => {
+                  const meta = REL_META[s.affected];
+                  return (
+                    <div key={s.role} className="flex items-start gap-2 rounded-lg border border-border bg-background/40 p-2.5">
+                      <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-semibold text-foreground">{s.role}</span>
+                          <span className={cn('shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', meta.cls)}>{meta.label}</span>
+                        </div>
+                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{s.why}</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. Business impact */}
+            <div className="px-5 py-3.5">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><TrendingUp className="h-3.5 w-3.5" /> 3 · Business impact</p>
+              <ul className="space-y-1.5">
+                {businessImpact.map((b) => (
+                  <li key={b.label} className="flex items-start gap-2 text-xs">
+                    <b.icon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    <span><span className="font-semibold text-foreground">{b.label}:</span> <span className="text-muted-foreground">{b.note}</span></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* 4. Risk & readiness */}
+            <div className="px-5 py-3.5">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><AlertTriangle className="h-3.5 w-3.5" /> 4 · Risk &amp; readiness</p>
+              <p className="text-sm"><span className={cn('font-semibold', enterpriseRisk.color)}>{enterpriseRisk.level} risk</span> <span className="text-muted-foreground">— {enterpriseRisk.note}.</span></p>
+              <p className="mt-1 text-[11px] text-muted-foreground">
+                <span className="font-medium text-foreground/80">What to review internally:</span> {enterpriseAction} Track testing via the upgrade&apos;s <span className="text-foreground/80">test-complexity</span> and <span className="text-foreground/80">devnet-inclusion</span> pages, and client readiness under <span className="text-foreground/80">client-priority</span>.
+              </p>
+            </div>
+
+            {/* 5. Participation */}
+            <div className="px-5 py-3.5">
+              <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><MessageSquarePlus className="h-3.5 w-3.5" /> 5 · Participation</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-semibold', participation.open ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-border bg-muted/50 text-muted-foreground')}>{participation.state}</span>
+                <span className="text-xs text-muted-foreground">{participation.note}</span>
+              </div>
+              {participation.open && (
+                <p className="mt-1.5 text-[11px] text-muted-foreground">Institutions can route consolidated, anonymized feedback to the EIP authors and protocol contributors via the EEA.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Snapshot */}
+        <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
             <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
               <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
                 <Activity className="h-3.5 w-3.5" /> Quick Snapshot
@@ -368,11 +516,11 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
                   {
                     label: 'Layer',
                     value: isCore
-                      ? latestUpgrade?.layer
-                        ? latestUpgrade.layer === 'consensus'
-                          ? 'Consensus Layer (CL)'
-                          : 'Execution Layer (EL)'
-                        : 'Protocol Layer (Pending Assignment)'
+                      ? latestUpgrade?.layer === 'consensus'
+                        ? 'Consensus Layer (CL)'
+                        : latestUpgrade?.layer === 'execution'
+                          ? 'Execution Layer (EL)'
+                          : 'Core protocol'
                       : 'Application Layer',
                     colorClass: undefined
                   },
@@ -388,22 +536,6 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
             </table>
           </div>
 
-          {/* 2. Why This Matters (Impact Cards) */}
-          <div className="grid grid-cols-2 gap-3">
-            {enterpriseImpactCards.map((card, i) => {
-              const c = CARD_COLORS[card.color];
-              return (
-                <div key={i} className={cn("rounded-xl border p-4 shadow-sm transition-all hover:scale-[1.02]", c.border, c.bg)}>
-                  <div className="flex items-center gap-2 mb-2">
-                    <card.Icon className={cn("h-4 w-4", c.icon)} />
-                    <p className={cn("text-xs font-bold leading-snug tracking-wide", c.text)}>{card.title}</p>
-                  </div>
-                  <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground font-medium">{card.description}</p>
-                </div>
-              );
-            })}
-          </div>
-        </div>
       </div>
 
       {/* 3. Governance & Upgrade Lifecycle */}
@@ -468,144 +600,31 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
         </div>
       </div>
 
-      {/* 4 & 5. Technical Overview & Stakeholders */}
-      <div className="grid gap-3 lg:grid-cols-2">
-        <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
+      {/* Related dependencies (real — from the EIP's `requires`) */}
+      {proposalRequires.length > 0 && (
+        <div className="rounded-xl border border-border bg-card/60 shadow-sm overflow-hidden">
           <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Zap className="h-3.5 w-3.5" /> Technical Overview (Simplified)
+              <Package className="h-3.5 w-3.5" /> Related dependencies
             </p>
           </div>
-          <table className="w-full border-collapse">
-            <tbody className="divide-y divide-border/50">
-              {enterpriseTechRows.map(({ topic, explanation }) => (
-                <tr key={topic} className="hover:bg-muted/20 transition-colors">
-                  <td className="w-44 bg-muted/10 px-5 py-3 align-top text-[11px] font-semibold text-muted-foreground">{topic}</td>
-                  <td className="px-5 py-3 text-sm font-medium text-foreground">{explanation}</td>
-                </tr>
+          <div className="p-5">
+            <div className="flex flex-wrap gap-2">
+              {proposalRequires.map(r => (
+                <Link
+                  key={r}
+                  href={`/eips/${r}`}
+                  className="inline-flex items-center gap-1 rounded bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 text-[11px] font-mono font-bold text-violet-600 dark:text-violet-400 border border-violet-500/20 transition-colors"
+                >
+                  <Package className="h-2.5 w-2.5" />
+                  EIP-{r}
+                </Link>
               ))}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm flex flex-col">
-          <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Users className="h-3.5 w-3.5" /> Ecosystem Stakeholders
-            </p>
-          </div>
-          <div className="flex-1 p-5 grid gap-4 content-start">
-            {stakeholders.map((s, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="mt-0.5 rounded-md bg-primary/10 p-1.5 text-primary">
-                  <s.icon className="h-3.5 w-3.5" />
-                </div>
-                <div>
-                  <p className="text-xs font-bold text-foreground">{s.stakeholder}</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">{s.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 6 & 7. Risk Heatmap & Action Items */}
-      <div className="grid gap-3 lg:grid-cols-12">
-        <div className="lg:col-span-5 overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
-          <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <AlertTriangle className="h-3.5 w-3.5" /> Risk & Readiness
-            </p>
-          </div>
-          <div className="p-5 space-y-4">
-            {riskHeatmap.map((risk, i) => (
-              <div key={i} className="flex items-center justify-between">
-                <span className="text-xs font-semibold text-muted-foreground">{risk.area}</span>
-                <span className={cn("text-xs font-bold", risk.color)}>{risk.impact}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="lg:col-span-7 overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
-          <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Enterprise Action Items
-            </p>
-          </div>
-          <div className="p-5 grid gap-6 sm:grid-cols-3">
-            {actionItems.map((team, i) => (
-              <div key={i} className="space-y-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-foreground border-b border-border/50 pb-2">{team.team}</h4>
-                <ul className="space-y-2">
-                  {team.actions.map((act, j) => (
-                    <li key={j} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
-                      <ArrowRight className="h-3 w-3 mt-0.5 shrink-0 text-primary/60" />
-                      <span className="leading-tight">{act}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* 8, 9 & 10. Dashboard, Dependencies, Takeaway */}
-      <div className="rounded-xl border border-border bg-card/60 shadow-sm overflow-hidden">
-        <div className="border-b border-border/60 bg-muted/40 px-5 py-3 flex items-center justify-between">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-            <TrendingUp className="h-3.5 w-3.5" /> Upgrade Readiness Dashboard
-          </p>
-        </div>
-        <div className="p-5 lg:p-6 bg-gradient-to-b from-transparent to-muted/10">
-          <div className="grid gap-6 sm:grid-cols-3 mb-6">
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Spec Stability</p>
-              <p className="text-sm font-bold text-foreground">{proposal.status === 'Final' ? 'High (Finalized)' : proposal.status === 'Last Call' ? 'Medium-High' : 'Medium (In Review)'}</p>
             </div>
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Client Readiness</p>
-              <p className="text-sm font-bold text-foreground">{latestUpgrade?.bucket === 'included' ? 'High (Implemented)' : isCore ? 'Pending Devnets' : 'N/A (App Layer)'}</p>
-            </div>
-            <div className="space-y-1">
-              <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold">Related Dependencies</p>
-              <div className="flex flex-wrap gap-2 pt-1">
-                {proposalRequires.length > 0 ? (
-                  proposalRequires.map(r => (
-                    <Link 
-                      key={r} 
-                      href={`/eip/${r}`}
-                      className="inline-flex items-center gap-1 rounded bg-violet-500/10 hover:bg-violet-500/20 px-2 py-0.5 text-[10px] font-mono font-bold text-violet-600 dark:text-violet-400 border border-violet-500/20 transition-colors"
-                    >
-                      <Package className="h-2.5 w-2.5" />
-                      EIP-{r}
-                    </Link>
-                  ))
-                ) : (
-                  <span className="text-sm font-bold text-foreground">None</span>
-                )}
-              </div>
-              <p className="text-[9px] text-muted-foreground mt-1.5 leading-tight italic">
-                {proposalRequires.length > 0 ? "Prerequisites and foundational standards required for this EIP." : "No direct EIP dependencies identified."}
-              </p>
-            </div>
-          </div>
-          
-          <div className="rounded-lg bg-primary/5 border border-primary/15 p-4">
-            <p className="text-[10px] uppercase tracking-widest text-primary font-bold mb-1">Final Enterprise Takeaway</p>
-            <p className="text-sm text-foreground/90 leading-relaxed font-medium">
-              {proposal.title} is a <span className="font-bold text-primary">{enterpriseScoreMeta.label.toLowerCase()} priority</span> {isCore ? 'protocol' : 'application'} standard. 
-              {isCore && latestUpgrade 
-                ? ` As part of the upcoming ${latestUpgrade.name} network upgrade, infrastructure and engineering teams must validate compatibility.` 
-                : isCore 
-                  ? ` While not yet scheduled for a network upgrade, it represents a key shift in the protocol's evolution.`
-                  : ` Product and strategy teams should evaluate its capabilities for future roadmap integration, as its ${proposal.status.toLowerCase()} status indicates ${proposal.status === 'Final' ? 'high stability' : 'active community development'}.`}
-            </p>
+            <p className="mt-2 text-[11px] text-muted-foreground">Prerequisites and foundational standards this proposal builds on.</p>
           </div>
         </div>
-      </div>
+      )}
     </motion.div>
   );
 }

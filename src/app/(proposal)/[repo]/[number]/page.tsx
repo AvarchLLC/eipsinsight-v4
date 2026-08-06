@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
   TrendingUp,
@@ -39,7 +39,6 @@ import { RepositorySubscriptionCard } from '@/components/repository-subscription
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades';
 import { normalizeUpgradeBucket, stageAbbreviation, stageBadgeClass } from '@/lib/upgrade-stages';
 import { UpgradeStageSplitBadge } from '@/components/upgrade/stage-badge';
-import { useEffectivePersona } from '@/stores/personaStore';
 import { EnterpriseEIPBrief } from '@/components/enterprise-eip-brief';
 import { BrandLoader } from '@/components/brand-loader';
 
@@ -392,13 +391,20 @@ export default function ProposalDetailPage() {
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
   const [showAi, setShowAi] = useState(false);
-  const effectivePersona = useEffectivePersona();
-  const [showEnterpriseView, setShowEnterpriseView] = useState(effectivePersona === 'enterprise');
-  const [prevPersona, setPrevPersona] = useState(effectivePersona);
-  if (effectivePersona !== prevPersona) {
-    setPrevPersona(effectivePersona);
-    setShowEnterpriseView(effectivePersona === 'enterprise');
-  }
+  // Enterprise view is URL-driven (?enterprise=1) so the exact view is shareable.
+  const searchParams = useSearchParams();
+  const [showEnterpriseView, setShowEnterpriseView] = useState(() => searchParams.get('enterprise') === '1');
+  const toggleEnterprise = React.useCallback(() => {
+    setShowEnterpriseView((prev) => {
+      const next = !prev;
+      const p = new URLSearchParams(window.location.search);
+      if (next) p.set('enterprise', '1');
+      else p.delete('enterprise');
+      const qs = p.toString();
+      window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`);
+      return next;
+    });
+  }, []);
 
   // Normalize repo name
   const normalizedRepo = repo.toLowerCase().replace(/s$/, '');
@@ -671,18 +677,6 @@ export default function ProposalDetailPage() {
                     <Activity className="h-3.5 w-3.5" />
                     Timeline
                   </Link>
-                  <button
-                    onClick={() => setShowEnterpriseView(s => !s)}
-                    className={cn(
-                      "inline-flex h-7 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors",
-                      showEnterpriseView
-                        ? "border-violet-500/40 bg-violet-500/15 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20"
-                        : "border-border bg-card/70 text-muted-foreground hover:bg-muted hover:text-foreground"
-                    )}
-                  >
-                    <Building2 className="h-3.5 w-3.5" />
-                    Enterprise
-                  </button>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -848,6 +842,26 @@ export default function ProposalDetailPage() {
                 className="text-xs"
               />
             ))}
+
+            {/* Enterprise view switch — shareable via ?enterprise=1 */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showEnterpriseView}
+              onClick={toggleEnterprise}
+              className={cn(
+                'ml-auto inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
+                showEnterpriseView
+                  ? 'border-violet-500/40 bg-violet-500/12 text-violet-700 dark:text-violet-300'
+                  : 'border-border bg-card/70 text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Building2 className="h-3.5 w-3.5" />
+              Enterprise view
+              <span className={cn('relative h-4 w-7 shrink-0 rounded-full transition-colors', showEnterpriseView ? 'bg-violet-500' : 'bg-muted-foreground/30')}>
+                <span className={cn('absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform', showEnterpriseView && 'translate-x-3')} />
+              </span>
+            </button>
           </div>
 
           {/* Enterprise Brief Panel */}
