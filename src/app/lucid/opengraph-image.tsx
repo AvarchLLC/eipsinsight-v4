@@ -5,7 +5,7 @@ export const runtime = 'nodejs';
 export const revalidate = 300;
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
-export const alt = 'Lucid — Encrypted Mempool Tracker on EIPsInsight';
+export const alt = 'Lucid - Encrypted Mempool Tracker on EIPsInsight';
 
 export default function Image() {
   const rows = [
@@ -23,7 +23,7 @@ export default function Image() {
     ogCard({
       badge: 'LUCID',
       meta: 'eipsinsight.com/lucid',
-      title: 'Lucid — Encrypted Mempool Tracker',
+      title: 'Lucid - Encrypted Mempool Tracker',
       rows,
       chips,
     }),

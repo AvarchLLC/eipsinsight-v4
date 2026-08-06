@@ -35,7 +35,7 @@ import { cn } from '@/lib/utils';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 
 /**
- * Dedicated tracker for Lucid (EIP-8184) — Ethereum's encrypted mempool effort,
+ * Dedicated tracker for Lucid (EIP-8184) - Ethereum's encrypted mempool effort,
  * built with encryptedmempool.org. Pulls the "Encrypt The Mempool" (ETM) working
  * group call summaries/decisions we already ingest, alongside the EIP and the
  * research threads. Route aliases /mempool and /encrypted-mempool redirect here.
@@ -63,20 +63,20 @@ const RESOURCES = [
   {
     label: 'encryptedmempool.org',
     href: 'https://encryptedmempool.org/',
-    desc: 'Project hub — the partner site coordinating the encrypted-mempool effort.',
+    desc: 'Project hub - the partner site coordinating the encrypted-mempool effort.',
   },
   {
-    label: 'EIP-8184 — LUCID encrypted mempool',
+    label: 'EIP-8184 - LUCID encrypted mempool',
     href: 'https://eips.ethereum.org/EIPS/eip-8184',
     desc: 'The specification (Draft, Core / Standards Track).',
   },
   {
-    label: 'Ethereum Magicians — EIP-8184: Lucid',
+    label: 'Ethereum Magicians - EIP-8184: Lucid',
     href: 'https://ethereum-magicians.org/t/eip-8184-lucid-encrypted-mempool/28017',
     desc: 'Standards discussion thread.',
   },
   {
-    label: 'ethresear.ch — Lucid: encrypted mempool with distributed payload propagation',
+    label: 'ethresear.ch - Lucid: encrypted mempool with distributed payload propagation',
     href: 'https://ethresear.ch/t/lucid-encrypted-mempool-with-distributed-payload-propagation/24042',
     desc: 'The design & research writeup.',
   },
@@ -117,14 +117,14 @@ function parseHighlights(value: unknown): Array<{ topic: string; items: string[]
   return [];
 }
 
-/** Action items are [{owner, action, timestamp}] — render "action — owner". */
+/** Action items are [{owner, action, timestamp}] - render "action - owner". */
 function parseActionItems(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value
     .map((it) => {
       const action = textOf(it, ['action', 'item', 'text', 'decision']);
       const owner = it && typeof it === 'object' ? String((it as Record<string, unknown>).owner ?? '') : '';
-      return action ? (owner ? `${action} — ${owner}` : action) : '';
+      return action ? (owner ? `${action} - ${owner}` : action) : '';
     })
     .filter(Boolean);
 }
@@ -179,7 +179,7 @@ export default function LucidPage() {
               Lucid
             </h1>
             <p className="mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-              An encrypted mempool for Ethereum — encrypting transactions until they&apos;re included
+              An encrypted mempool for Ethereum - encrypting transactions until they&apos;re included
               so builders and relays can&apos;t reorder or censor them, mitigating harmful MEV.
               Tracked here with <strong className="text-foreground">encryptedmempool.org</strong>:
               every working-group meeting, decision, and the live spec in one place.
@@ -200,9 +200,9 @@ export default function LucidPage() {
 
       {/* Metrics */}
       <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Metric icon={Video} accent="text-violet-500" label="WG meetings" value={loading ? '—' : String(stats.meetings)} />
-        <Metric icon={CheckSquare} accent="text-emerald-500" label="Decisions logged" value={loading ? '—' : String(stats.decisions)} />
-        <Metric icon={CalendarClock} accent="text-amber-500" label="Latest meeting" value={stats.latest ? formatDate(stats.latest) : '—'} />
+        <Metric icon={Video} accent="text-violet-500" label="WG meetings" value={loading ? '-' : String(stats.meetings)} />
+        <Metric icon={CheckSquare} accent="text-emerald-500" label="Decisions logged" value={loading ? '-' : String(stats.decisions)} />
+        <Metric icon={CalendarClock} accent="text-amber-500" label="Latest meeting" value={stats.latest ? formatDate(stats.latest) : '-'} />
         <Metric icon={FileText} accent="text-blue-500" label="EIP status" value="Draft" sub="Core · Standards Track" />
       </section>
 
@@ -228,7 +228,7 @@ export default function LucidPage() {
         </div>
       </section>
 
-      {/* The MEV problem Lucid targets — live data from BlobLens */}
+      {/* The MEV problem Lucid targets - live data from BlobLens */}
       {mev && <MevSection mev={mev} />}
 
       {/* Meeting summaries */}
@@ -386,7 +386,7 @@ function MevSection({ mev }: { mev: MempoolMevStats }) {
       />
       <p className="mb-4 max-w-3xl text-pretty text-sm leading-relaxed text-muted-foreground">
         Because today&apos;s mempool is public, searchers can see pending swaps and{' '}
-        <strong className="text-foreground">sandwich</strong> them — front-running and back-running a
+        <strong className="text-foreground">sandwich</strong> them - front-running and back-running a
         victim&apos;s trade to skim value. This is the harm an encrypted mempool removes at the source.
         Measured since the Dencun upgrade (EIP-4844) across five major DEXs:
       </p>
@@ -417,7 +417,7 @@ function MevSection({ mev }: { mev: MempoolMevStats }) {
           icon={Crosshair}
           accent="text-violet-500"
           label="Blocks sandwiched"
-          value={pct != null ? `${pct}%` : '—'}
+          value={pct != null ? `${pct}%` : '-'}
           sub="of all blocks · last 30 days"
         />
       </div>
@@ -437,7 +437,7 @@ type WeekPoint = MempoolMevStats['weekly'][number] & { label: string };
 /**
  * The chart the working group actually reasons about: weekly sandwich frequency
  * (bars, left axis) against the dollar value extracted (line, right axis). The
- * two together show the "MEV payoff variance" the group debates — weeks where a
+ * two together show the "MEV payoff variance" the group debates - weeks where a
  * few large extractions dwarf a normal week of activity, i.e. exactly the payoff
  * distribution Lucid's key-reveal penalty has to deter.
  */
@@ -457,7 +457,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
 
   return (
     <div className="mt-3 grid gap-3 lg:grid-cols-2">
-      {/* Frequency — how often the mempool is exploited */}
+      {/* Frequency - how often the mempool is exploited */}
       <div className="rounded-xl border border-border bg-card/60 p-4">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           Weekly sandwich attacks
@@ -480,7 +480,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
         </div>
       </div>
 
-      {/* Payoff — the value being extracted (the "MEV payoff variance" the WG debates) */}
+      {/* Payoff - the value being extracted (the "MEV payoff variance" the WG debates) */}
       <div className="rounded-xl border border-border bg-card/60 p-4">
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
           {valueLabel} · weekly (USD)
