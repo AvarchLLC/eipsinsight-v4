@@ -33,6 +33,8 @@ const STATIC_PUBLIC_PATHS = [
   "/dependencies",
   "/eip-builder",
   "/timeline",
+  "/lucid",
+  "/office-hours",
   "/upgrade",
   "/upgrade/archive",
 ] as const;
