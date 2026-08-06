@@ -33,7 +33,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { usePersonaStore } from "@/stores/personaStore";
 import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
 import { PERSONAS, PERSONA_LIST, type Persona } from "@/lib/persona";
-import { FEATURES } from "@/lib/features";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,6 +172,8 @@ export default function Navbar() {
   const { data: session } = useSession();
   const { persona, setPersona, isHydrated } = usePersonaStore();
   const { syncPersonaToServer, isAuthenticated } = usePersonaSyncOnChange();
+  // Persona is being deprecated — the navbar switcher stays wired but hidden.
+  const SHOW_PERSONA_SWITCHER: boolean = false;
 
   const userName = session?.user?.name ?? session?.user?.email;
 
@@ -270,7 +271,8 @@ export default function Navbar() {
           <div className="hidden md:flex items-center justify-end gap-1.5 shrink-0 basis-[220px] min-w-[220px]">
             <ThemeToggle variant="switch" className="shrink-0" />
             {/* Compact Persona Switcher */}
-            {FEATURES.PERSONA_SWITCHER && isHydrated && (
+            {/* Persona switcher removed from navbar (persona is being deprecated). */}
+            {SHOW_PERSONA_SWITCHER && isHydrated && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="relative">
@@ -559,7 +561,8 @@ export default function Navbar() {
             {/* Mobile Persona + Auth Row */}
             <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
               {/* Persona */}
-              {FEATURES.PERSONA_SWITCHER && isHydrated && (
+              {/* Persona switcher removed from navbar (persona is being deprecated). */}
+            {SHOW_PERSONA_SWITCHER && isHydrated && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button 
