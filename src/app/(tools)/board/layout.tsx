@@ -6,6 +6,7 @@ export const metadata: Metadata = buildMetadata({
   description: "Visual board for managing and monitoring Ethereum proposal workflows.",
   path: "/board",
   keywords: ["proposal board", "Ethereum workflow board", "EIP management"],
+  image: null,
 });
 
 export default function BoardLayout({ children }: { children: React.ReactNode }) {

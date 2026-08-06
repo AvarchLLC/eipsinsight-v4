@@ -8,6 +8,7 @@ export const metadata: Metadata = buildMetadata({
     "Analyze Ethereum standards activity across EIPs, pull requests, editors, reviewers, authors, and contributors.",
   path: "/analytics",
   keywords: ["Ethereum analytics", "EIP analytics", "governance analytics"],
+  image: null,
 });
 
 export default function AnalyticsLayout({ children }: { children: React.ReactNode }) {
