@@ -20,12 +20,8 @@ import {
   Sparkles,
   BookOpen,
   Building2,
-  ShieldCheck,
-  Zap,
-  Server,
+  MessageSquare,
   Users,
-  Clock,
-  type LucideIcon,
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { Button } from '@/components/ui/button';
@@ -39,7 +35,7 @@ import { RepositorySubscriptionCard } from '@/components/repository-subscription
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades';
 import { normalizeUpgradeBucket, stageAbbreviation, stageBadgeClass } from '@/lib/upgrade-stages';
 import { UpgradeStageSplitBadge } from '@/components/upgrade/stage-badge';
-import { EnterpriseEIPBrief } from '@/components/enterprise-eip-brief';
+import { EnterpriseEIPBrief, type EipCuration } from '@/components/enterprise-eip-brief';
 import { BrandLoader } from '@/components/brand-loader';
 
 // Status color mapping for timeline - richer colors
@@ -371,7 +367,7 @@ export default function ProposalDetailPage() {
   const [proposal, setProposal] = useState<ProposalData | null>(null);
   const [statusEvents, setStatusEvents] = useState<StatusEvent[]>([]);
   const [governanceState, setGovernanceState] = useState<GovernanceState | null>(null);
-  const [stakeholderImpacts, setStakeholderImpacts] = useState<Record<string, { description?: string }> | null>(null);
+  const [curation, setCuration] = useState<EipCuration | null>(null);
   const [upgrades, setUpgrades] = useState<UpgradeInclusion[]>([]);
   const [resourceArticles, setResourceArticles] = useState<ResourceArticle[]>([]);
   const [resourceVideos, setResourceVideos] = useState<ResourceVideo[]>([]);
@@ -391,18 +387,35 @@ export default function ProposalDetailPage() {
   const [aiSummary, setAiSummary] = useState<string | null>(null);
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
   const [aiSummaryError, setAiSummaryError] = useState<string | null>(null);
+  const [aiSummaryReload, setAiSummaryReload] = useState(0);
   const [showAi, setShowAi] = useState(false);
-  // Enterprise view is URL-driven (?enterprise=1) so the exact view is shareable.
+  // Enterprise view is URL-driven (?enterprise=1) so the exact view is shareable,
+  // and remembered in localStorage so a user who prefers it keeps it across EIPs.
+  const ENTERPRISE_STORAGE_KEY = 'eip-enterprise-view';
   const searchParams = useSearchParams();
-  const [showEnterpriseView, setShowEnterpriseView] = useState(() => searchParams.get('enterprise') === '1');
-  const toggleEnterprise = React.useCallback(() => {
-    setShowEnterpriseView((prev) => {
-      const next = !prev;
+  const [showEnterpriseView, setShowEnterpriseView] = useState(() => {
+    if (searchParams.get('enterprise') === '1') return true;
+    if (typeof window !== 'undefined') {
+      try {
+        return localStorage.getItem(ENTERPRISE_STORAGE_KEY) === '1';
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  });
+  const setEnterprise = React.useCallback((next: boolean) => {
+    setShowEnterpriseView(() => {
       const p = new URLSearchParams(window.location.search);
       if (next) p.set('enterprise', '1');
       else p.delete('enterprise');
       const qs = p.toString();
       window.history.replaceState(null, '', `${window.location.pathname}${qs ? `?${qs}` : ''}${window.location.hash}`);
+      try {
+        localStorage.setItem(ENTERPRISE_STORAGE_KEY, next ? '1' : '0');
+      } catch {
+        /* ignore */
+      }
       return next;
     });
   }, []);
@@ -445,7 +458,7 @@ export default function ProposalDetailPage() {
         setProposal(proposalData);
         setStatusEvents(statusData);
         setGovernanceState(governanceData);
-        setStakeholderImpacts(curationData?.[0]?.stakeholder_impacts ?? null);
+        setCuration(curationData?.[0] ?? null);
         const historical = getHistoricalIncludedUpgrades(number);
         const mergedBySlug = new Map<string, UpgradeInclusion>();
         upgradesData.forEach((entry) => mergedBySlug.set(entry.slug || entry.name.toLowerCase(), entry));
@@ -587,12 +600,12 @@ export default function ProposalDetailPage() {
         if (res.ok && summary && !looksLikeNoise) {
           setAiSummary(summary);
         } else {
-          setAiSummaryError(data.error || 'AI summary is temporarily unavailable.');
+          setAiSummaryError("We couldn't generate a summary right now. Please try again in a moment.");
         }
       } catch (err) {
         // An abort is expected on cleanup — don't surface it as a failure.
         if ((err as Error)?.name !== 'AbortError') {
-          setAiSummaryError('Failed to generate summary');
+          setAiSummaryError("We couldn't generate a summary right now. Please try again in a moment.");
         }
       } finally {
         if (!controller.signal.aborted) setAiSummaryLoading(false);
@@ -602,7 +615,7 @@ export default function ProposalDetailPage() {
     fetchAiSummary();
 
     return () => controller.abort();
-  }, [markdownContent, number, repoDisplayName]);
+  }, [markdownContent, number, repoDisplayName, aiSummaryReload]);
 
 
 
@@ -655,6 +668,7 @@ export default function ProposalDetailPage() {
 
   const proposalId = `${repoDisplayName}-${proposal.number}`;
   const githubUrl = `https://github.com/ethereum/${repoPath}/blob/master/${filePath}/${fileName}`;
+  const discussionUrl = proposal.discussions_to || discussionsTo || null;
 
   // Determine urgency color for governance signals
   const getUrgencyColor = (days: number | null) => {
@@ -668,66 +682,159 @@ export default function ProposalDetailPage() {
     <div className="min-h-screen bg-background">
       <div className="w-full border-b border-border bg-card/40">
         <div className="mx-auto w-full px-3 pb-6 pt-10 sm:px-4 sm:pb-8 sm:pt-12 lg:px-5 xl:px-6">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex-1 space-y-3">
-                {/* Repo badge and copy link */}
-                <div className="flex items-center gap-3">
+            <div className="space-y-3">
+                {/* Repo badge + metadata chips */}
+                <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
                     {repoDisplayName}
                   </span>
-                  <Link
-                    href={`/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}
-                    className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+
+                  {/* Status chip — value only, no "Status:" prefix */}
+                  <span className={cn(
+                    'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+                    getStatusBadgeClass(proposal.status)
+                  )}>
+                    {proposal.status}
+                  </span>
+
+                  {/* Type/Category Chip */}
+                  {(proposal.type || proposal.category) && (
+                    <span className="inline-flex items-center rounded-full border border-border bg-muted/60 text-muted-foreground px-3 py-1 text-xs font-medium">
+                      {proposal.type && proposal.category
+                        ? `${proposal.type}: ${proposal.category}`
+                        : proposal.type || proposal.category}
+                    </span>
+                  )}
+
+                  {/* Layer Chip — only when we actually know it's EL or CL */}
+                  {proposal.category === 'Core' && (latestUpgrade?.layer === 'consensus' || latestUpgrade?.layer === 'execution') && (
+                    <span className={cn(
+                      'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
+                      latestUpgrade?.layer === 'consensus'
+                        ? 'border-violet-500/25 bg-violet-500/12 text-violet-700 dark:text-violet-300'
+                        : 'border-cyan-500/25 bg-cyan-500/12 text-cyan-700 dark:text-cyan-300'
+                    )}>
+                      {latestUpgrade?.layer === 'consensus'
+                        ? 'Consensus Layer (CL)'
+                        : 'Execution Layer (EL)'}
+                    </span>
+                  )}
+
+                  {/* Network upgrade chips */}
+                  {upgrades.length > 0 && upgrades.map((upgrade) => (
+                    <UpgradeStageSplitBadge
+                      key={upgrade.slug ?? upgrade.name}
+                      upgradeName={upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
+                      bucket={upgrade.bucket}
+                      className="text-xs"
+                    />
+                  ))}
+
+                  {/* Community / Enterprise view toggle — shareable via ?enterprise=1,
+                      remembered in localStorage. */}
+                  <div
+                    role="radiogroup"
+                    aria-label="View mode"
+                    className="ml-auto inline-flex items-center rounded-full border border-border bg-muted/40 p-0.5 text-xs font-medium"
                   >
-                    <Activity className="h-3.5 w-3.5" />
-                    Timeline
-                  </Link>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={!showEnterpriseView}
+                      onClick={() => setEnterprise(false)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors',
+                        !showEnterpriseView
+                          ? 'bg-background text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      Community
+                    </button>
+                    <button
+                      type="button"
+                      role="radio"
+                      aria-checked={showEnterpriseView}
+                      onClick={() => setEnterprise(true)}
+                      className={cn(
+                        'inline-flex items-center gap-1.5 rounded-full px-3 py-1 transition-colors',
+                        showEnterpriseView
+                          ? 'bg-violet-500/15 text-violet-700 shadow-sm dark:text-violet-300'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      <Building2 className="h-3.5 w-3.5" />
+                      Enterprise
+                    </button>
+                  </div>
+                </div>
+
+                {/* Title with action icons inline at the end */}
+                <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
+                  <h1 className="dec-title persona-title text-pretty text-2xl font-semibold tracking-tight text-foreground sm:text-3xl md:text-[2.5rem] md:leading-[1.1]">
+                    {proposalId}: {proposal.title}
+                  </h1>
                   <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <a
-                          href={githubUrl}
-                          target="_blank; noreferrer"
-                          rel="noopener noreferrer"
-                          className="inline-flex h-7 items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          <Github className="h-3.5 w-3.5" />
-                          <span>View on GitHub</span>
-                        </a>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">View specification on GitHub</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={handleCopyLink}
-                          className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-card/70 transition-colors hover:border-primary/40 hover:bg-primary/10"
-                        >
-                          {linkCopied ? (
-                            <Check className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
-                          )}
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Copy link to this proposal</p>
-                      </TooltipContent>
-                    </Tooltip>
+                    <div className="flex items-center gap-2 pb-1">
+                      {discussionUrl && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <a
+                              href={discussionUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label="Open discussion thread"
+                              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                            >
+                              <MessageSquare className="h-[18px] w-[18px]" />
+                            </a>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p className="text-xs">Discussion thread</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <a
+                            href={githubUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            aria-label="View specification on GitHub"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/70 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                          >
+                            <Github className="h-[18px] w-[18px]" />
+                          </a>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">View on GitHub</p>
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={handleCopyLink}
+                            aria-label="Copy link to this proposal"
+                            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card/70 text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
+                          >
+                            {linkCopied ? (
+                              <Check className="h-[18px] w-[18px] text-emerald-600 dark:text-emerald-400" />
+                            ) : (
+                              <Copy className="h-[18px] w-[18px]" />
+                            )}
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{linkCopied ? 'Copied!' : 'Copy link'}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
                   </TooltipProvider>
                 </div>
 
-                {/* Title */}
-                <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight text-foreground sm:text-4xl md:text-5xl">
-                  {proposalId}: {proposal.title}
-                </h1>
-
                 {/* Description */}
-                <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+                <p className="mt-3 max-w-5xl text-sm leading-relaxed text-muted-foreground sm:text-base">
                   Reference view for specification metadata, lifecycle transitions, governance signals, and linked upgrade context.
                 </p>
 
@@ -782,7 +889,16 @@ export default function ProposalDetailPage() {
                           <span>Generating summary...</span>
                         </div>
                       ) : aiSummaryError ? (
-                        <div className="text-sm text-muted-foreground">{aiSummaryError}</div>
+                        <div className="flex flex-wrap items-center gap-3">
+                          <span className="text-sm text-muted-foreground">{aiSummaryError}</span>
+                          <button
+                            onClick={() => setAiSummaryReload((n) => n + 1)}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card/70 px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" />
+                            Retry
+                          </button>
+                        </div>
                       ) : aiSummary ? (
                         <div
                           className="max-w-none text-sm [&_h4]:text-foreground [&_p]:text-foreground/90 [&_strong]:text-foreground"
@@ -794,81 +910,12 @@ export default function ProposalDetailPage() {
                     </div>
                   )}
                 </div>
-              </div>
             </div>
           </div>
       </div>
 
         <div className="mx-auto mt-6 w-full px-3 pb-10 sm:px-4 lg:px-5 xl:px-6">
           <div className="space-y-4">
-          {/* EIP Metadata Chips */}
-          <div className="flex flex-wrap gap-2">
-            {/* Status Chip */}
-            <span className={cn(
-              'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
-              getStatusBadgeClass(proposal.status)
-            )}>
-              Status: {proposal.status}
-            </span>
-
-            {/* Type/Category Chip */}
-            {(proposal.type || proposal.category) && (
-              <span className="inline-flex items-center rounded-full border border-border bg-muted/60 text-muted-foreground px-3 py-1 text-xs font-medium">
-                {proposal.type && proposal.category
-                  ? `${proposal.type}: ${proposal.category}`
-                  : proposal.type || proposal.category}
-              </span>
-            )}
-
-            {/* Layer Chip (EL/CL) */}
-            {proposal.category === 'Core' && (
-              <span className={cn(
-                'inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium',
-                latestUpgrade?.layer === 'consensus'
-                  ? 'border-violet-500/25 bg-violet-500/12 text-violet-700 dark:text-violet-300'
-                  : latestUpgrade?.layer === 'execution'
-                    ? 'border-cyan-500/25 bg-cyan-500/12 text-cyan-700 dark:text-cyan-300'
-                    : 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300'
-              )}>
-                {latestUpgrade?.layer === 'consensus'
-                  ? 'Consensus Layer (CL)'
-                  : latestUpgrade?.layer === 'execution'
-                    ? 'Execution Layer (EL)'
-                    : 'Protocol Layer (Core)'}
-              </span>
-            )}
-
-            {/* Network upgrade chips */}
-            {upgrades.length > 0 && upgrades.map((upgrade) => (
-              <UpgradeStageSplitBadge
-                key={upgrade.slug ?? upgrade.name}
-                upgradeName={upgrade.name || `Upgrade ${upgrade.upgrade_id}`}
-                bucket={upgrade.bucket}
-                className="text-xs"
-              />
-            ))}
-
-            {/* Enterprise view switch — shareable via ?enterprise=1 */}
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showEnterpriseView}
-              onClick={toggleEnterprise}
-              className={cn(
-                'ml-auto inline-flex items-center gap-2 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors',
-                showEnterpriseView
-                  ? 'border-violet-500/40 bg-violet-500/12 text-violet-700 dark:text-violet-300'
-                  : 'border-border bg-card/70 text-muted-foreground hover:text-foreground'
-              )}
-            >
-              <Building2 className="h-3.5 w-3.5" />
-              Enterprise view
-              <span className={cn('relative h-4 w-7 shrink-0 rounded-full transition-colors', showEnterpriseView ? 'bg-violet-500' : 'bg-muted-foreground/30')}>
-                <span className={cn('absolute top-0.5 left-0.5 h-3 w-3 rounded-full bg-white shadow transition-transform', showEnterpriseView && 'translate-x-3')} />
-              </span>
-            </button>
-          </div>
-
           {/* Enterprise Brief Panel */}
           {showEnterpriseView && (
             <EnterpriseEIPBrief
@@ -877,7 +924,7 @@ export default function ProposalDetailPage() {
               statusEvents={statusEvents}
               governanceState={governanceState}
               proposalRequires={proposalRequires}
-              stakeholderImpacts={stakeholderImpacts}
+              curation={curation}
             />
           )}
 

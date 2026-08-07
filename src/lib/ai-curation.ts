@@ -27,7 +27,12 @@ export const MACHINE_ACTORS = new Set([
 ]);
 
 export function isMachineAuthored(updatedBy: string | null | undefined): boolean {
-  return !updatedBy || MACHINE_ACTORS.has(updatedBy);
+  if (!updatedBy || MACHINE_ACTORS.has(updatedBy)) return true;
+  // The layer backfill is a mechanical script that only sets the `layer` flag
+  // (no prose); its actor carries a parenthetical suffix, e.g.
+  // "layer-backfill (unambiguous EL)". Treat any such row as machine-authored so
+  // the generator can fill the missing prose while preserving the layer flag.
+  return updatedBy.startsWith('layer-backfill');
 }
 
 export function currentAiActor(): 'ai:gemini' | 'ai:anthropic' | 'ai:groq' {
