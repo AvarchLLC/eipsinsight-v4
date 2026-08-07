@@ -68,6 +68,9 @@ interface EnterpriseEIPBriefProps {
   statusEvents: StatusEvent[];
   governanceState: GovernanceState | null;
   proposalRequires: number[];
+  /** Curated per-EIP ecosystem impacts (editable in admin). When present, they
+   *  ground the enterprise relevance instead of keyword inference. */
+  stakeholderImpacts?: Record<string, { description?: string }> | null;
 }
 
 interface EnterpriseImpactCard {
@@ -331,7 +334,10 @@ function analyzeProposal(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
   const touchesStaking = isCore && (layer === 'consensus' || /(validator|stake|withdraw|deposit|attest|proposer|builder|block)/.test(t));
   const touchesCost = isCore && (layer === 'execution' || /(gas|calldata|blob|fee|data availability|throughput|access list)/.test(t));
   const touchesCensorship = /(inclusion|censorship|focil|list)/.test(t);
-  return { isCore, layer, touchesAccounting, touchesStaking, touchesCost, touchesCensorship };
+  // Core proposal with no institutional hook (e.g. a niche opcode) → limited
+  // direct enterprise impact. Prevents "everything is Significant" inflation.
+  const lowImpact = isCore && !touchesAccounting && !touchesStaking && !touchesCost && !touchesCensorship;
+  return { isCore, layer, touchesAccounting, touchesStaking, touchesCost, touchesCensorship, lowImpact };
 }
 
 const rel = (high: boolean, med: boolean): Relevance => (high ? 'high' : med ? 'medium' : 'low');
@@ -339,15 +345,47 @@ const rel = (high: boolean, med: boolean): Relevance => (high ? 'high' : med ? '
 function getFinanceStakeholders(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
   const a = analyzeProposal(proposal, upgrades);
   return [
-    { role: 'Banks & payment providers', icon: Landmark, affected: rel(a.touchesCensorship, a.isCore || a.touchesCost), why: 'Settlement finality, transaction-inclusion guarantees, and processing costs.' },
+    { role: 'Banks & payment providers', icon: Landmark, affected: rel(a.touchesCensorship, a.touchesCost), why: 'Settlement finality, transaction-inclusion guarantees, and processing costs.' },
     { role: 'Auditors & accountants', icon: ClipboardCheck, affected: rel(a.touchesAccounting, !a.isCore), why: a.touchesAccounting ? 'Changes how on-chain movements are recorded/indexed — affects reconciliation & audit trails.' : 'May affect how assets and events are evidenced for reporting.' },
-    { role: 'Asset managers', icon: Coins, affected: rel(!a.isCore, a.touchesCost), why: 'Product/asset behavior, client offerings, and cost of on-chain operations.' },
-    { role: 'Custodians & wallets', icon: Wallet, affected: rel(!a.isCore || a.touchesStaking, a.isCore), why: 'Key management, account/withdrawal semantics, and asset handling.' },
-    { role: 'Staking providers', icon: ShieldCheck, affected: rel(a.touchesStaking, a.isCore), why: 'Validator operations, rewards, timing, and withdrawal flows.' },
-    { role: 'Infrastructure operators', icon: Server, affected: rel(a.isCore, false), why: 'Node/RPC software updates and operational readiness.' },
-    { role: 'L2-using companies', icon: Network, affected: rel(a.touchesCost, a.isCore), why: 'Data-availability and fee impacts flow into L2 transaction costs.' },
-    { role: 'Digital-asset advisors', icon: Users, affected: rel(false, true), why: 'Client guidance on roadmap, risk, and readiness.' },
+    { role: 'Asset managers', icon: Coins, affected: rel(!a.isCore, a.touchesStaking || a.touchesCost), why: 'Product/asset behavior, client offerings, and cost of on-chain operations.' },
+    { role: 'Custodians & wallets', icon: Wallet, affected: rel(a.touchesStaking, !a.isCore), why: 'Key management, account/withdrawal semantics, and asset handling.' },
+    { role: 'Staking providers', icon: ShieldCheck, affected: rel(a.touchesStaking, false), why: 'Validator operations, rewards, timing, and withdrawal flows.' },
+    { role: 'Infrastructure operators', icon: Server, affected: rel(a.touchesCost || a.touchesStaking, a.isCore), why: 'Node/RPC software updates and operational readiness.' },
+    { role: 'L2-using companies', icon: Network, affected: rel(a.touchesCost, false), why: 'Data-availability and fee impacts flow into L2 transaction costs.' },
+    { role: 'Digital-asset advisors', icon: Users, affected: rel(false, !a.lowImpact), why: 'Client guidance on roadmap, risk, and readiness.' },
   ] as Array<{ role: string; icon: LucideIcon; affected: Relevance; why: string }>;
+}
+
+// Grounded path: map the CURATED ecosystem impacts (editable in admin) onto
+// finance roles. Relevance comes from which ecosystem groups an editor marked as
+// affected — real analysis, not title keywords. "Client updates" (el/cl clients)
+// count as routine → medium, so a niche opcode doesn't read as high-impact.
+const FINANCE_ROLE_MAP: Array<{ role: string; icon: LucideIcon; map: Array<{ key: string; rel: Relevance }>; fallback: string }> = [
+  { role: 'Banks & payment providers', icon: Landmark, map: [{ key: 'endUsers', rel: 'medium' }], fallback: 'Settlement finality, transaction-inclusion guarantees, and processing costs.' },
+  { role: 'Auditors & accountants', icon: ClipboardCheck, map: [], fallback: 'May affect how assets and events are evidenced for reporting.' },
+  { role: 'Asset managers', icon: Coins, map: [{ key: 'endUsers', rel: 'medium' }, { key: 'appDevs', rel: 'medium' }], fallback: 'Product/asset behavior, client offerings, and cost of on-chain operations.' },
+  { role: 'Custodians & wallets', icon: Wallet, map: [{ key: 'walletDevs', rel: 'high' }, { key: 'stakersNodes', rel: 'medium' }], fallback: 'Key management, account/withdrawal semantics, and asset handling.' },
+  { role: 'Staking providers', icon: ShieldCheck, map: [{ key: 'stakersNodes', rel: 'high' }], fallback: 'Validator operations, rewards, timing, and withdrawal flows.' },
+  { role: 'Infrastructure operators', icon: Server, map: [{ key: 'toolingInfra', rel: 'high' }, { key: 'elClients', rel: 'medium' }, { key: 'clClients', rel: 'medium' }, { key: 'stakersNodes', rel: 'medium' }], fallback: 'Node/RPC software updates and operational readiness.' },
+  { role: 'L2-using companies', icon: Network, map: [{ key: 'layer2s', rel: 'high' }], fallback: 'Data-availability and fee impacts flow into L2 transaction costs.' },
+  { role: 'Digital-asset advisors', icon: Users, map: [{ key: 'endUsers', rel: 'medium' }, { key: 'appDevs', rel: 'medium' }], fallback: 'Client guidance on roadmap, risk, and readiness.' },
+];
+
+const REL_ORDER: Record<Relevance, number> = { low: 0, medium: 1, high: 2 };
+
+function getFinanceStakeholdersFromCuration(impacts: Record<string, { description?: string }>) {
+  return FINANCE_ROLE_MAP.map((r) => {
+    let best: Relevance = 'low';
+    let why: string | null = null;
+    for (const m of r.map) {
+      const imp = impacts[m.key];
+      if (imp && REL_ORDER[m.rel] >= REL_ORDER[best]) {
+        best = m.rel;
+        if (imp.description) why = imp.description;
+      }
+    }
+    return { role: r.role, icon: r.icon, affected: best, why: why ?? r.fallback };
+  }) as Array<{ role: string; icon: LucideIcon; affected: Relevance; why: string }>;
 }
 
 function getBusinessImpact(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
@@ -374,25 +412,75 @@ function getParticipation(proposal: ProposalData, upgrades: UpgradeInclusion[]) 
   return { state: 'Open for feedback', open: true, note: 'Still proposed or under consideration — a meaningful window to shape the outcome.' };
 }
 
-export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires }: EnterpriseEIPBriefProps) {
-  const enterpriseScore = computeEnterpriseImpactScore(proposal, upgrades);
-  const enterpriseScoreMeta = getImpactScoreMeta(enterpriseScore);
+type TrackStep = { label: string; description: string; status: 'completed' | 'current' | 'upcoming'; date: string | null; detail: string | null };
+
+/** Governance status — the EIP's own process (independent of any fork). */
+function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): TrackStep[] {
+  const order = ['Draft', 'Review', 'Last Call', 'Final'];
+  const descs = ['Submitted', 'Under review', 'Last call for comments', 'Finalized'];
+  const cur = (proposal.status ?? '').toLowerCase();
+  let curIdx = order.findIndex((s) => s.toLowerCase() === cur);
+  if (curIdx < 0 && cur === 'living') curIdx = 3;
+  const dateFor = (label: string) => statusEvents.find((e) => e.to?.toLowerCase() === label.toLowerCase())?.changed_at ?? null;
+  return order.map((label, i) => ({
+    label,
+    description: descs[i],
+    status: curIdx < 0 ? (i === 0 ? 'current' : 'upcoming') : i < curIdx ? 'completed' : i === curIdx ? 'current' : 'upcoming',
+    date: dateFor(label),
+    detail: null,
+  }));
+}
+
+/** Upgrade stage — inclusion in a network fork (independent of EIP status). */
+function getStageTrack(upgrades: UpgradeInclusion[]): TrackStep[] {
+  const steps = [
+    { label: 'Proposed', description: 'Proposed for inclusion (PFI)' },
+    { label: 'Considered', description: 'Considered for inclusion (CFI)' },
+    { label: 'Scheduled', description: 'Scheduled for inclusion (SFI)' },
+    { label: 'Included', description: 'Activated in a network upgrade' },
+  ];
+  const rank: Record<string, number> = { proposed: 0, pfi: 0, considered: 1, cfi: 1, scheduled: 2, sfi: 2, included: 3 };
+  let best = -1;
+  let bestUpgrade: UpgradeInclusion | null = null;
+  for (const u of upgrades) {
+    const r = rank[u.bucket.toLowerCase()];
+    if (r != null && r > best) { best = r; bestUpgrade = u; }
+  }
+  return steps.map((s, i) => ({
+    label: s.label,
+    description: s.description,
+    status: best < 0 ? 'upcoming' : i < best ? 'completed' : i === best ? 'current' : 'upcoming',
+    date: i === best ? bestUpgrade?.commit_date ?? null : null,
+    detail: i === best ? bestUpgrade?.name ?? null : null,
+  }));
+}
+
+export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires, stakeholderImpacts }: EnterpriseEIPBriefProps) {
   const enterpriseRisk = getEnterpriseRisk(proposal, upgrades);
   const enterpriseAction = getEnterpriseAction(proposal, upgrades);
-  const lifecycle = getGovernanceLifecycle(statusEvents, upgrades);
-  
+
   const latestUpgrade = upgrades.find((u) => u.bucket.toLowerCase() === 'included') ?? upgrades[0] ?? null;
   const isCore = proposal.category === 'Core';
 
-  // Mark the "current" stage in lifecycle
-  const currentIdx = lifecycle.reduce((acc, stage, idx) => stage.status === 'completed' ? idx : acc, 0);
-  lifecycle[currentIdx].status = 'current';
+  // Two independent axes — never mixed into one bar:
+  //   • Governance status = the EIP's own process (Draft → Review → Last Call → Final)
+  //   • Upgrade stage     = inclusion in a network fork (Proposed → Considered → Scheduled → Included)
+  const statusTrack = getStatusTrack(proposal, statusEvents);
+  const stageTrack = getStageTrack(upgrades);
 
-  // EEA five-point framework (finance-audience lens)
-  const financeStakeholders = getFinanceStakeholders(proposal, upgrades);
+  // EEA five-point framework (finance-audience lens). Prefer curated ecosystem
+  // impacts (grounded + editable in admin); fall back to keyword inference only
+  // when an EIP has no curation yet.
+  const hasCuration = !!stakeholderImpacts && Object.keys(stakeholderImpacts).length > 0;
+  const financeStakeholders = hasCuration
+    ? getFinanceStakeholdersFromCuration(stakeholderImpacts)
+    : getFinanceStakeholders(proposal, upgrades);
   const businessImpact = getBusinessImpact(proposal, upgrades);
   const participation = getParticipation(proposal, upgrades);
   const currentBucket = latestUpgrade?.bucket ? formatInclusionBucket(latestUpgrade.bucket) : null;
+  const lowImpact = hasCuration
+    ? !financeStakeholders.some((s) => s.affected === 'high')
+    : analyzeProposal(proposal, upgrades).lowImpact;
 
   return (
     <motion.div
@@ -414,12 +502,6 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
               <p className="text-xs text-violet-600/80 dark:text-violet-400/80">Business & Operational Impact Analysis</p>
             </div>
           </div>
-          <div className="flex items-center gap-2 bg-background/50 px-3 py-1.5 rounded-lg border border-violet-500/20">
-            <span className="text-xs text-muted-foreground font-medium">Enterprise Relevance:</span>
-            <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-bold shadow-sm", enterpriseScoreMeta.bgColor, enterpriseScoreMeta.textColor, enterpriseScoreMeta.borderColor, "border")}>
-              {enterpriseScoreMeta.label}
-            </span>
-          </div>
         </div>
 
         {/* EEA Enterprise Assessment — the five-point institutional framework */}
@@ -429,6 +511,11 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">EEA Enterprise Assessment</p>
             <span className="ml-auto text-[10px] text-muted-foreground/70">Status · Affected orgs · Business impact · Risk &amp; readiness · Participation</span>
           </div>
+          {lowImpact && (
+            <div className="border-b border-border/60 bg-muted/30 px-5 py-2.5 text-[11px] text-muted-foreground">
+              <span className="font-semibold text-foreground">Limited direct institutional impact.</span> This is primarily a protocol / developer-facing change — most organizations below are affected only indirectly (client updates), not in assets, controls, or reporting.
+            </div>
+          )}
           <div className="divide-y divide-border/50">
             {/* 1. Status */}
             <div className="px-5 py-3.5">
@@ -444,7 +531,10 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
 
             {/* 2. Affected organizations */}
             <div className="px-5 py-3.5">
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 2 · Affected organizations</p>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 2 · Affected organizations</p>
+                <span className={cn('rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide', hasCuration ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>{hasCuration ? 'Curated' : 'Auto-inferred'}</span>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {financeStakeholders.map((s) => {
                   const meta = REL_META[s.affected];
@@ -538,12 +628,12 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
 
       </div>
 
-      {/* 3. Governance & Upgrade Lifecycle */}
+      {/* Two separate axes — governance status and upgrade stage are never mixed. */}
       <div className="rounded-xl border border-border bg-card/60 shadow-sm overflow-hidden">
         <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
           <div className="flex items-center justify-between">
             <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Network className="h-3.5 w-3.5" /> Governance & Upgrade Lifecycle
+              <Network className="h-3.5 w-3.5" /> Status &amp; upgrade stage
             </p>
             {governanceState?.days_since_last_action && (
               <span className="text-[10px] text-muted-foreground font-medium">
@@ -552,51 +642,9 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
             )}
           </div>
         </div>
-        <div className="p-6">
-          <div className="relative flex justify-between">
-            {/* Connecting lines */}
-            <div className="absolute top-4 left-0 w-full h-0.5 bg-muted z-0" />
-            <div 
-              className="absolute top-4 left-0 h-0.5 bg-primary transition-all duration-500 z-0" 
-              style={{ width: `${(currentIdx / (lifecycle.length - 1)) * 100}%` }}
-            />
-            
-            {lifecycle.map((stage, i) => (
-              <div key={stage.id} className="relative z-10 flex flex-col items-center group">
-                <div className={cn(
-                  "h-8 w-8 rounded-full border-2 flex items-center justify-center transition-all duration-300 bg-background",
-                  stage.status === 'completed' && "border-primary bg-primary text-primary-foreground",
-                  stage.status === 'current' && "border-primary ring-4 ring-primary/20",
-                  stage.status === 'upcoming' && "border-muted text-muted-foreground"
-                )}>
-                  {stage.status === 'completed' ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    <span className="text-xs font-bold">{i + 1}</span>
-                  )}
-                </div>
-                <div className="mt-3 text-center">
-                  <p className={cn(
-                    "text-xs font-bold",
-                    stage.status === 'upcoming' ? "text-muted-foreground" : "text-foreground"
-                  )}>{stage.label}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 max-w-[80px] leading-tight opacity-0 group-hover:opacity-100 transition-opacity">
-                    {stage.description}
-                  </p>
-                  {stage.date && (
-                    <p className="text-[9px] text-primary font-mono mt-1 font-semibold">
-                      {new Date(stage.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}
-                    </p>
-                  )}
-                  {stage.detail && (
-                    <p className="text-[9px] text-violet-500 font-bold mt-0.5 uppercase tracking-tighter">
-                      {stage.detail}
-                    </p>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div className="divide-y divide-border/50">
+          <LifecycleTrack title="Governance status" subtitle="the EIP's own process — independent of any fork" steps={statusTrack} />
+          <LifecycleTrack title="Upgrade stage" subtitle="inclusion in a network fork — independent of EIP status" steps={stageTrack} />
         </div>
       </div>
 
@@ -626,6 +674,42 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** One progress bar for a single axis (status OR stage) — kept deliberately separate. */
+function LifecycleTrack({ title, subtitle, steps }: { title: string; subtitle: string; steps: TrackStep[] }) {
+  const reachedIdx = steps.reduce((acc, s, i) => (s.status === 'completed' || s.status === 'current' ? i : acc), -1);
+  const anyReached = reachedIdx >= 0;
+  return (
+    <div className="px-5 py-5">
+      <div className="mb-5 flex flex-wrap items-baseline gap-x-2">
+        <p className="text-xs font-bold text-foreground">{title}</p>
+        <p className="text-[10px] text-muted-foreground">— {subtitle}</p>
+      </div>
+      <div className="relative flex justify-between">
+        <div className="absolute top-4 left-0 z-0 h-0.5 w-full bg-muted" />
+        <div className="absolute top-4 left-0 z-0 h-0.5 bg-primary transition-all duration-500" style={{ width: anyReached ? `${(reachedIdx / (steps.length - 1)) * 100}%` : '0%' }} />
+        {steps.map((s, i) => (
+          <div key={s.label} className="group relative z-10 flex flex-col items-center">
+            <div className={cn(
+              "flex h-8 w-8 items-center justify-center rounded-full border-2 bg-background transition-all duration-300",
+              s.status === 'completed' && "border-primary bg-primary text-primary-foreground",
+              s.status === 'current' && "border-primary text-primary ring-4 ring-primary/20",
+              s.status === 'upcoming' && "border-muted text-muted-foreground",
+            )}>
+              {s.status === 'completed' ? <CheckCircle2 className="h-4 w-4" /> : <span className="text-xs font-bold">{i + 1}</span>}
+            </div>
+            <div className="mt-3 text-center">
+              <p className={cn("text-xs font-bold", s.status === 'upcoming' ? "text-muted-foreground" : "text-foreground")}>{s.label}</p>
+              <p className="mt-0.5 max-w-[96px] text-[10px] leading-tight text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100">{s.description}</p>
+              {s.date && <p className="mt-1 font-mono text-[9px] font-semibold text-primary">{new Date(s.date).toLocaleDateString(undefined, { month: 'short', year: '2-digit' })}</p>}
+              {s.detail && <p className="mt-0.5 text-[9px] font-bold uppercase tracking-tighter text-violet-500">{s.detail}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
