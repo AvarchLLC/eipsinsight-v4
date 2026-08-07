@@ -68,6 +68,9 @@ interface EnterpriseEIPBriefProps {
   statusEvents: StatusEvent[];
   governanceState: GovernanceState | null;
   proposalRequires: number[];
+  /** Curated per-EIP ecosystem impacts (editable in admin). When present, they
+   *  ground the enterprise relevance instead of keyword inference. */
+  stakeholderImpacts?: Record<string, { description?: string }> | null;
 }
 
 interface EnterpriseImpactCard {
@@ -353,6 +356,38 @@ function getFinanceStakeholders(proposal: ProposalData, upgrades: UpgradeInclusi
   ] as Array<{ role: string; icon: LucideIcon; affected: Relevance; why: string }>;
 }
 
+// Grounded path: map the CURATED ecosystem impacts (editable in admin) onto
+// finance roles. Relevance comes from which ecosystem groups an editor marked as
+// affected — real analysis, not title keywords. "Client updates" (el/cl clients)
+// count as routine → medium, so a niche opcode doesn't read as high-impact.
+const FINANCE_ROLE_MAP: Array<{ role: string; icon: LucideIcon; map: Array<{ key: string; rel: Relevance }>; fallback: string }> = [
+  { role: 'Banks & payment providers', icon: Landmark, map: [{ key: 'endUsers', rel: 'medium' }], fallback: 'Settlement finality, transaction-inclusion guarantees, and processing costs.' },
+  { role: 'Auditors & accountants', icon: ClipboardCheck, map: [], fallback: 'May affect how assets and events are evidenced for reporting.' },
+  { role: 'Asset managers', icon: Coins, map: [{ key: 'endUsers', rel: 'medium' }, { key: 'appDevs', rel: 'medium' }], fallback: 'Product/asset behavior, client offerings, and cost of on-chain operations.' },
+  { role: 'Custodians & wallets', icon: Wallet, map: [{ key: 'walletDevs', rel: 'high' }, { key: 'stakersNodes', rel: 'medium' }], fallback: 'Key management, account/withdrawal semantics, and asset handling.' },
+  { role: 'Staking providers', icon: ShieldCheck, map: [{ key: 'stakersNodes', rel: 'high' }], fallback: 'Validator operations, rewards, timing, and withdrawal flows.' },
+  { role: 'Infrastructure operators', icon: Server, map: [{ key: 'toolingInfra', rel: 'high' }, { key: 'elClients', rel: 'medium' }, { key: 'clClients', rel: 'medium' }, { key: 'stakersNodes', rel: 'medium' }], fallback: 'Node/RPC software updates and operational readiness.' },
+  { role: 'L2-using companies', icon: Network, map: [{ key: 'layer2s', rel: 'high' }], fallback: 'Data-availability and fee impacts flow into L2 transaction costs.' },
+  { role: 'Digital-asset advisors', icon: Users, map: [{ key: 'endUsers', rel: 'medium' }, { key: 'appDevs', rel: 'medium' }], fallback: 'Client guidance on roadmap, risk, and readiness.' },
+];
+
+const REL_ORDER: Record<Relevance, number> = { low: 0, medium: 1, high: 2 };
+
+function getFinanceStakeholdersFromCuration(impacts: Record<string, { description?: string }>) {
+  return FINANCE_ROLE_MAP.map((r) => {
+    let best: Relevance = 'low';
+    let why: string | null = null;
+    for (const m of r.map) {
+      const imp = impacts[m.key];
+      if (imp && REL_ORDER[m.rel] >= REL_ORDER[best]) {
+        best = m.rel;
+        if (imp.description) why = imp.description;
+      }
+    }
+    return { role: r.role, icon: r.icon, affected: best, why: why ?? r.fallback };
+  }) as Array<{ role: string; icon: LucideIcon; affected: Relevance; why: string }>;
+}
+
 function getBusinessImpact(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
   const a = analyzeProposal(proposal, upgrades);
   return [
@@ -420,7 +455,7 @@ function getStageTrack(upgrades: UpgradeInclusion[]): TrackStep[] {
   }));
 }
 
-export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires }: EnterpriseEIPBriefProps) {
+export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires, stakeholderImpacts }: EnterpriseEIPBriefProps) {
   const enterpriseRisk = getEnterpriseRisk(proposal, upgrades);
   const enterpriseAction = getEnterpriseAction(proposal, upgrades);
 
@@ -433,12 +468,19 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
   const statusTrack = getStatusTrack(proposal, statusEvents);
   const stageTrack = getStageTrack(upgrades);
 
-  // EEA five-point framework (finance-audience lens)
-  const financeStakeholders = getFinanceStakeholders(proposal, upgrades);
+  // EEA five-point framework (finance-audience lens). Prefer curated ecosystem
+  // impacts (grounded + editable in admin); fall back to keyword inference only
+  // when an EIP has no curation yet.
+  const hasCuration = !!stakeholderImpacts && Object.keys(stakeholderImpacts).length > 0;
+  const financeStakeholders = hasCuration
+    ? getFinanceStakeholdersFromCuration(stakeholderImpacts)
+    : getFinanceStakeholders(proposal, upgrades);
   const businessImpact = getBusinessImpact(proposal, upgrades);
   const participation = getParticipation(proposal, upgrades);
   const currentBucket = latestUpgrade?.bucket ? formatInclusionBucket(latestUpgrade.bucket) : null;
-  const lowImpact = analyzeProposal(proposal, upgrades).lowImpact;
+  const lowImpact = hasCuration
+    ? !financeStakeholders.some((s) => s.affected === 'high')
+    : analyzeProposal(proposal, upgrades).lowImpact;
 
   return (
     <motion.div
@@ -489,7 +531,10 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
 
             {/* 2. Affected organizations */}
             <div className="px-5 py-3.5">
-              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 2 · Affected organizations</p>
+              <div className="mb-2 flex items-center gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 2 · Affected organizations</p>
+                <span className={cn('rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide', hasCuration ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>{hasCuration ? 'Curated' : 'Auto-inferred'}</span>
+              </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {financeStakeholders.map((s) => {
                   const meta = REL_META[s.affected];

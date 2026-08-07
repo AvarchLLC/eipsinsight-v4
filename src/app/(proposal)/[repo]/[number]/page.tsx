@@ -371,6 +371,7 @@ export default function ProposalDetailPage() {
   const [proposal, setProposal] = useState<ProposalData | null>(null);
   const [statusEvents, setStatusEvents] = useState<StatusEvent[]>([]);
   const [governanceState, setGovernanceState] = useState<GovernanceState | null>(null);
+  const [stakeholderImpacts, setStakeholderImpacts] = useState<Record<string, { description?: string }> | null>(null);
   const [upgrades, setUpgrades] = useState<UpgradeInclusion[]>([]);
   const [resourceArticles, setResourceArticles] = useState<ResourceArticle[]>([]);
   const [resourceVideos, setResourceVideos] = useState<ResourceVideo[]>([]);
@@ -431,16 +432,20 @@ export default function ProposalDetailPage() {
         setLoading(true);
         setError(null);
 
-        const [proposalData, statusData, governanceData, upgradesData] = await Promise.all([
+        const [proposalData, statusData, governanceData, upgradesData, curationData] = await Promise.all([
           client.proposals.getProposal({ repo: proposalRepo, number }),
           client.proposals.getStatusEvents({ repo: proposalRepo, number }),
           client.proposals.getGovernanceState({ repo: proposalRepo, number }),
           client.proposals.getUpgrades({ repo: proposalRepo, number }),
+          // Curated per-EIP stakeholder impacts (editable in admin) ground the
+          // Enterprise view instead of keyword-guessing from the title.
+          client.curations.getEipCurations({ eipNumbers: [Number(number)] }).catch(() => []),
         ]);
 
         setProposal(proposalData);
         setStatusEvents(statusData);
         setGovernanceState(governanceData);
+        setStakeholderImpacts(curationData?.[0]?.stakeholder_impacts ?? null);
         const historical = getHistoricalIncludedUpgrades(number);
         const mergedBySlug = new Map<string, UpgradeInclusion>();
         upgradesData.forEach((entry) => mergedBySlug.set(entry.slug || entry.name.toLowerCase(), entry));
@@ -872,6 +877,7 @@ export default function ProposalDetailPage() {
               statusEvents={statusEvents}
               governanceState={governanceState}
               proposalRequires={proposalRequires}
+              stakeholderImpacts={stakeholderImpacts}
             />
           )}
 
