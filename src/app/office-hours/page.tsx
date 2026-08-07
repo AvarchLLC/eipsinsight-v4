@@ -197,18 +197,29 @@ export default function OfficeHoursPage() {
     return [...map.values()].sort((a, b) => (a.key < b.key ? -1 : 1)).map((v) => ({ ...v, label: mode === "day" ? v.key : prettyDate(v.key).replace(/, \d{4}$/, "") }));
   }, [byType, mode]);
 
+  // Only the proposal types that actually had activity in this window. A type
+  // with zero activity (often RIPs) is dropped entirely so it can't appear to
+  // have volume — the old stacked chart made the top series trace the running
+  // total, which read as activity even when it was flat zero.
+  const activeTypes = useMemo(
+    () => TYPE_META.filter((t) => typeSeries.some((d) => d[t.key] > 0)),
+    [typeSeries],
+  );
+
   const activityOption = useMemo(() => ({
     backgroundColor: "transparent",
     tooltip: { trigger: "axis", backgroundColor: "var(--background)", borderColor: "var(--border)", textStyle: { color: "var(--foreground)", fontSize: 12 } },
     grid: { left: 36, right: 10, top: 12, bottom: 22 },
     xAxis: { type: "category", data: typeSeries.map((d) => d.label), boundaryGap: false, axisLabel: { color: "var(--muted-foreground)", fontSize: 10 }, axisLine: { lineStyle: { color: "var(--border)" } }, splitLine: { show: false } },
     yAxis: { type: "value", minInterval: 1, axisLabel: { color: "var(--muted-foreground)", fontSize: 10 }, splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } } },
-    series: TYPE_META.map((t) => ({
-      name: t.label, type: "line", stack: "total", smooth: true, symbol: "none",
-      lineStyle: { width: 2, color: t.color }, itemStyle: { color: t.color }, areaStyle: { opacity: 0.22, color: t.color },
+    // Not stacked — each line shows that type's real count, so a flat/absent
+    // type reads correctly as "no activity".
+    series: activeTypes.map((t) => ({
+      name: t.label, type: "line", smooth: true, symbol: "none",
+      lineStyle: { width: 2, color: t.color }, itemStyle: { color: t.color }, areaStyle: { opacity: 0.14, color: t.color },
       data: typeSeries.map((d) => d[t.key]),
     })),
-  }), [typeSeries]);
+  }), [typeSeries, activeTypes]);
 
   const breakdownOption = useMemo(() => {
     const byStatus = new Map<string, number>();
@@ -385,7 +396,7 @@ export default function OfficeHoursPage() {
             <Card
               title={mode === "day" ? "Activity by hour (UTC)" : "Activity by day"}
               icon={<CalendarClock className="h-4 w-4 text-primary" />}
-              right={<span className="flex items-center gap-2 text-[11px] text-muted-foreground">{TYPE_META.map((t) => (<span key={t.key} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: t.color }} />{t.label}</span>))}</span>}
+              right={<span className="flex items-center gap-2 text-[11px] text-muted-foreground">{(activeTypes.length ? activeTypes : TYPE_META).map((t) => (<span key={t.key} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: t.color }} />{t.label}</span>))}</span>}
             >
               {typeSeries.length === 0 ? <Empty label="No activity in this window." /> : (
                 <div className="h-[300px] w-full"><ReactECharts option={activityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /></div>
