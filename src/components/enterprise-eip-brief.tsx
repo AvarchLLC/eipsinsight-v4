@@ -79,8 +79,17 @@ export interface EipCuration {
   benefits?: string[] | null;
   tradeoffs?: string[] | null;
   stakeholder_impacts?: Record<string, { description?: string }> | null;
+  enterprise_impact?: EnterpriseImpactData | null;
   headliner_of?: string | null;
   headliner_note?: string | null;
+}
+
+/** Dedicated, finance-audience curation (eip_curations.enterprise_impact). */
+export interface EnterpriseImpactData {
+  tier?: string | null;
+  summary?: string | null;
+  organizations?: Array<{ role?: string; level?: string; why?: string }> | null;
+  readiness?: string | null;
 }
 
 interface EnterpriseImpactCard {
@@ -336,6 +345,33 @@ const REL_META: Record<Relevance, { label: string; cls: string }> = {
   low: { label: 'Low', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
 };
 
+// Level styling incl. an explicit "Not affected" state for the dedicated
+// enterprise curation (which rates every organization, even the untouched ones).
+const LEVEL_META: Record<string, { label: string; cls: string }> = {
+  high: REL_META.high,
+  medium: REL_META.medium,
+  low: REL_META.low,
+  none: { label: 'Not affected', cls: 'border-border bg-muted/50 text-muted-foreground' },
+};
+
+// Map a curated enterprise role name to its icon (same set as the inferred path).
+const ENTERPRISE_ROLE_ICON: Record<string, LucideIcon> = {
+  'banks & payment providers': Landmark,
+  'auditors & accountants': ClipboardCheck,
+  'asset managers': Coins,
+  'custodians & wallets': Wallet,
+  'staking providers': ShieldCheck,
+  'infrastructure operators': Server,
+  'l2-using companies': Network,
+  'digital-asset advisors': Users,
+};
+
+const TIER_META: Record<'direct' | 'limited' | 'none', { label: string; note: string; cls: string }> = {
+  direct: { label: 'Direct impact', note: 'At least one institution type must plan or test before this ships.', cls: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400' },
+  limited: { label: 'Limited impact', note: 'Mostly indirect — monitor readiness; no major workstream expected.', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+  none: { label: 'No direct impact', note: 'Informational for institutions — no assets, controls, or operations change.', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+};
+
 function analyzeProposal(proposal: ProposalData, upgrades: UpgradeInclusion[]) {
   const isCore = proposal.category === 'Core';
   const layer = upgrades.find((u) => u.layer)?.layer ?? null;
@@ -489,23 +525,49 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
   const benefits = (curation?.benefits ?? []).filter((b) => b && b.trim().length > 0);
   const tradeoffs = (curation?.tradeoffs ?? []).filter((t) => t && t.trim().length > 0);
   const laymanSummary = curation?.layman_summary?.trim() || null;
-  const hasCuration = !!stakeholderImpacts && Object.keys(stakeholderImpacts).length > 0;
-  const financeStakeholders = hasCuration
-    ? getFinanceStakeholdersFromCuration(stakeholderImpacts)
-    : getFinanceStakeholders(proposal, upgrades);
   const participation = getParticipation(proposal, upgrades);
-  // Only fall back to the generic operational bullets when there's no curated
-  // benefits/trade-offs text to show.
   const businessImpact = getBusinessImpact(proposal, upgrades);
 
-  // Per-EIP impact category the user asked for: Direct / Limited / No direct.
+  // Three tiers of grounding, best first:
+  //   1. Dedicated enterprise curation (per-institution, finance-written)
+  //   2. Ecosystem stakeholder curation mapped onto finance roles
+  //   3. Conservative keyword inference (labelled "Auto-inferred")
+  const enterprise = curation?.enterprise_impact ?? null;
+  const enterpriseOrgs = (Array.isArray(enterprise?.organizations) ? enterprise!.organizations : [])
+    .filter((o) => o && o.role)
+    .map((o) => {
+      const level = (o.level ?? '').toLowerCase();
+      return {
+        role: o.role!,
+        icon: ENTERPRISE_ROLE_ICON[o.role!.toLowerCase()] ?? Building2,
+        affected: (['high', 'medium', 'low', 'none'].includes(level) ? level : 'none') as string,
+        why: o.why?.trim() || 'Not directly affected by this change.',
+      };
+    });
+  const hasEnterprise = enterpriseOrgs.length > 0;
+  const hasCuration = !!stakeholderImpacts && Object.keys(stakeholderImpacts).length > 0;
+
+  const financeStakeholders = hasEnterprise
+    ? enterpriseOrgs
+    : (hasCuration
+        ? getFinanceStakeholdersFromCuration(stakeholderImpacts)
+        : getFinanceStakeholders(proposal, upgrades)) as Array<{ role: string; icon: LucideIcon; affected: string; why: string }>;
+
+  const groundingLabel = hasEnterprise ? 'Enterprise-curated' : hasCuration ? 'Curated' : 'Auto-inferred';
+  const groundingCurated = hasEnterprise || hasCuration;
+  const summaryText = (hasEnterprise ? enterprise?.summary?.trim() : null) || laymanSummary;
+  const readinessText = hasEnterprise ? enterprise?.readiness?.trim() || null : null;
+
+  // Per-EIP impact category: Direct / Limited / No direct. Prefer the curated
+  // tier when present; otherwise derive it from the organization levels.
   const anyHigh = financeStakeholders.some((s) => s.affected === 'high');
   const anyMedium = financeStakeholders.some((s) => s.affected === 'medium');
-  const impactTier: { label: string; note: string; cls: string } = anyHigh
-    ? { label: 'Direct impact', note: 'At least one institution type must plan or test before this ships.', cls: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400' }
-    : anyMedium
-      ? { label: 'Limited impact', note: 'Mostly indirect — monitor readiness; no major workstream expected.', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' }
-      : { label: 'No direct impact', note: 'Informational for institutions — no assets, controls, or operations change.', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' };
+  const curatedTier = (hasEnterprise ? (enterprise?.tier ?? '').toLowerCase() : '') as 'direct' | 'limited' | 'none' | '';
+  const tierKey: 'direct' | 'limited' | 'none' =
+    curatedTier === 'direct' || curatedTier === 'limited' || curatedTier === 'none'
+      ? curatedTier
+      : anyHigh ? 'direct' : anyMedium ? 'limited' : 'none';
+  const impactTier = TIER_META[tierKey];
 
   return (
     <motion.div
@@ -530,8 +592,8 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
               <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide', impactTier.cls)}>{impactTier.label}</span>
               <span className="text-[11px] text-muted-foreground">{impactTier.note}</span>
             </div>
-            {laymanSummary && (
-              <p className="mt-2 text-xs leading-relaxed text-foreground/90">{laymanSummary}</p>
+            {summaryText && (
+              <p className="mt-2 text-xs leading-relaxed text-foreground/90">{summaryText}</p>
             )}
           </div>
 
@@ -540,11 +602,11 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
             <div className="px-5 py-3.5">
               <div className="mb-2 flex items-center gap-2">
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 1 · Affected organizations</p>
-                <span className={cn('rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide', hasCuration ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>{hasCuration ? 'Curated' : 'Auto-inferred'}</span>
+                <span className={cn('rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide', groundingCurated ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>{groundingLabel}</span>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 {financeStakeholders.map((s) => {
-                  const meta = REL_META[s.affected];
+                  const meta = LEVEL_META[s.affected] ?? LEVEL_META.none;
                   return (
                     <div key={s.role} className="flex items-start gap-2 rounded-lg border border-border bg-background/40 p-2.5">
                       <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
@@ -561,7 +623,7 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
               </div>
               {/* What the priority ratings mean — context on demand */}
               <details className="mt-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
-                <summary className="cursor-pointer text-[11px] font-semibold text-muted-foreground">What do High / Medium / Low mean?</summary>
+                <summary className="cursor-pointer text-[11px] font-semibold text-muted-foreground">What do the ratings mean?</summary>
                 <ul className="mt-2 space-y-1.5 text-[11px] text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className={cn('mt-px shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', REL_META.high.cls)}>High</span>
@@ -574,6 +636,10 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
                   <li className="flex items-start gap-2">
                     <span className={cn('mt-px shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', REL_META.low.cls)}>Low</span>
                     <span>Minimal direct impact — informational; no action anticipated.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className={cn('mt-px shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', LEVEL_META.none.cls)}>Not affected</span>
+                    <span>This organization type is not touched by the change.</span>
                   </li>
                 </ul>
               </details>
@@ -628,7 +694,12 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
               <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><AlertTriangle className="h-3.5 w-3.5" /> 3 · Risk &amp; readiness</p>
               <p className="text-sm"><span className={cn('font-semibold', enterpriseRisk.color)}>{enterpriseRisk.level} risk</span> <span className="text-muted-foreground">— {tradeoffs.length > 0 ? tradeoffs[0] : `${enterpriseRisk.note}.`}</span></p>
               <p className="mt-1 text-[11px] text-muted-foreground">
-                <span className="font-medium text-foreground/80">What to review internally:</span> {enterpriseAction} Track testing via the upgrade&apos;s <span className="text-foreground/80">test-complexity</span> and <span className="text-foreground/80">devnet-inclusion</span> pages, and client readiness under <span className="text-foreground/80">client-priority</span>.
+                <span className="font-medium text-foreground/80">What to review internally:</span>{' '}
+                {readinessText ?? (
+                  <>
+                    {enterpriseAction} Track testing via the upgrade&apos;s <span className="text-foreground/80">test-complexity</span> and <span className="text-foreground/80">devnet-inclusion</span> pages, and client readiness under <span className="text-foreground/80">client-priority</span>.
+                  </>
+                )}
               </p>
             </div>
 
