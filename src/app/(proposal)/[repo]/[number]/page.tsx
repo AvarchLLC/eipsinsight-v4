@@ -772,7 +772,34 @@ export default function ProposalDetailPage() {
                     </div>
                   </div>
                 )}
-                
+
+                {/* Created date + dependencies (the only preamble fields not already in the header) */}
+                {(proposal.created || proposalRequires.length > 0) && (
+                  <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
+                    {proposal.created && (
+                      <span>
+                        <span className="font-medium text-foreground/70">Created</span>{' '}
+                        {Number.isNaN(Date.parse(proposal.created))
+                          ? proposal.created
+                          : new Date(proposal.created).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </span>
+                    )}
+                    {proposalRequires.length > 0 && (
+                      <span className="flex flex-wrap items-center gap-1">
+                        <span className="font-medium text-foreground/70">Requires</span>
+                        {proposalRequires.map((r, i) => (
+                          <React.Fragment key={r}>
+                            <Link href={`/${normalizedRepo}s/${r}`} className="font-mono text-primary hover:underline">
+                              {repoDisplayName}-{r}
+                            </Link>
+                            {i < proposalRequires.length - 1 && <span>,</span>}
+                          </React.Fragment>
+                        ))}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 {/* AI Summary toggle (collapsible inline) */}
                 <div className="mt-4">
                   <button
@@ -839,59 +866,6 @@ export default function ProposalDetailPage() {
             repoPath={repoPath}
             normalizedRepo={normalizedRepo}
           />
-
-          {/* 2. Preamble Table (RFC-style, flat, authoritative) */}
-          <div id="preamble" className="scroll-mt-28">
-            <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-              <table className="w-full border-collapse">
-                <tbody className="divide-y divide-border/70">
-                  <tr>
-                    <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">EIP</td>
-                    <td className="px-6 py-4 font-mono text-sm text-foreground">{proposalId}</td>
-                  </tr>
-                  <tr>
-                    <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Title</td>
-                    <td className="px-6 py-4 text-sm text-foreground">{proposal.title}</td>
-                  </tr>
-                  {proposal.authors.length > 0 && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Author</td>
-                      <td className="px-6 py-4 text-sm text-foreground">{proposal.authors.join(', ')}</td>
-                    </tr>
-                  )}
-                  {proposal.created && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Created</td>
-                      <td className="px-6 py-4 text-sm text-foreground">{proposal.created}</td>
-                    </tr>
-                  )}
-                  {proposalRequires.length > 0 && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Requires</td>
-                      <td className="px-6 py-4 font-mono text-sm text-foreground">
-                        {proposalRequires.map(r => `${repoDisplayName}-${r}`).join(', ')}
-                      </td>
-                    </tr>
-                  )}
-                  {(proposal.discussions_to || discussionsTo) && (
-                    <tr>
-                      <td className="w-40 bg-muted/50 px-6 py-4 align-top text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Discussions-To</td>
-                      <td className="px-6 py-4 text-sm">
-                        <a 
-                          href={proposal.discussions_to || discussionsTo || '#'} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
-                          className="break-all text-primary transition-colors hover:text-primary/80"
-                        >
-                          {proposal.discussions_to || discussionsTo}
-                        </a>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
           <ProposalSubscriptionCard
             repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
