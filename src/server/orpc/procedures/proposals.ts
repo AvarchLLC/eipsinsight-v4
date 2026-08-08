@@ -349,6 +349,48 @@ export const proposalsProcedures = {
       }));
     }),
 
+  // B2. Upgrade stage history — the EIP's journey through fork buckets
+  // (proposed → considered → scheduled → included, plus declines/re-proposals).
+  // Each "added" event is one entry into a bucket; ordered oldest → newest.
+  getStageEvents: optionalAuthProcedure
+    .input(z.object({
+      repo: z.enum(['eip', 'erc', 'rip', 'eips', 'ercs', 'rips']),
+      number: z.number(),
+    }))
+    .handler(async ({ input }) => {
+      const events = await prisma.upgrade_composition_events.findMany({
+        where: {
+          eip_number: input.number,
+          event_type: 'added',
+          bucket: { in: ['included', 'considered', 'scheduled', 'proposed', 'declined'] },
+        },
+        orderBy: [{ commit_date: 'asc' }, { id: 'asc' }],
+        select: { upgrade_id: true, bucket: true, commit_sha: true, commit_date: true },
+      });
+      if (events.length === 0) return [];
+
+      const upgradeIds = Array.from(
+        new Set(events.map((e) => e.upgrade_id).filter((v): v is number => v != null)),
+      );
+      const upgrades = await prisma.upgrades.findMany({
+        where: { id: { in: upgradeIds } },
+        select: { id: true, name: true, slug: true },
+      });
+      const byId = new Map(upgrades.map((u) => [u.id, u]));
+
+      return events.map((e) => {
+        const u = e.upgrade_id != null ? byId.get(e.upgrade_id) : undefined;
+        return {
+          upgrade_id: e.upgrade_id,
+          upgrade: u?.name ?? '',
+          slug: u?.slug ?? '',
+          bucket: (e.bucket ?? '').toLowerCase(),
+          commit_sha: e.commit_sha && e.commit_sha.trim() !== '' ? e.commit_sha : null,
+          commit_date: e.commit_date?.toISOString() ?? null,
+        };
+      });
+    }),
+
   // C. Type Timeline
   getTypeEvents: optionalAuthProcedure
     .input(z.object({
