@@ -4,17 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useSearchParams } from 'next/navigation';
 import { motion } from 'motion/react';
 import {
-  TrendingUp,
   ExternalLink,
   AlertCircle,
-  ArrowRight,
   Github,
-  Activity,
-  Package,
   Copy,
   Check,
   FileCode,
-  ChevronRight,
   RefreshCw,
   Newspaper,
   Sparkles,
@@ -33,83 +28,12 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ProposalSubscriptionCard } from '@/components/proposal-subscription-card';
 import { RepositorySubscriptionCard } from '@/components/repository-subscription-card';
 import { rawData, pairedUpgradeNames } from '@/data/network-upgrades';
-import { normalizeUpgradeBucket, stageAbbreviation, stageBadgeClass } from '@/lib/upgrade-stages';
+import { normalizeUpgradeBucket } from '@/lib/upgrade-stages';
 import { UpgradeStageSplitBadge } from '@/components/upgrade/stage-badge';
 import { EnterpriseEIPBrief, type EipCuration } from '@/components/enterprise-eip-brief';
+import { ProposalTimeline } from '@/components/proposal-timeline';
 import { BrandLoader } from '@/components/brand-loader';
 
-// Status color mapping for timeline - richer colors
-const statusColors: Record<string, { 
-  bg: string; 
-  bgGradient: string;
-  text: string; 
-  border: string; 
-  leftBorder: string;
-  dot: string;
-  dotGlow: string;
-  cardBg: string;
-}> = {
-  'Draft': { 
-    bg: 'bg-cyan-500/10', 
-    bgGradient: 'bg-gradient-to-br from-cyan-500/15 via-cyan-500/8 to-transparent',
-    text: 'text-cyan-700 dark:text-cyan-200', 
-    border: 'border-cyan-400/40', 
-    leftBorder: 'border-l-cyan-500 dark:border-l-cyan-400',
-    dot: 'bg-cyan-500',
-    dotGlow: 'shadow-cyan-500/50',
-    cardBg: 'bg-gradient-to-br from-cyan-500/20 via-cyan-500/10 to-cyan-500/5 dark:from-cyan-500/20 dark:via-cyan-500/10 dark:to-cyan-500/5'
-  },
-  'Review': { 
-    bg: 'bg-blue-500/10', 
-    bgGradient: 'bg-gradient-to-br from-blue-500/15 via-blue-500/8 to-transparent',
-    text: 'text-blue-700 dark:text-blue-200', 
-    border: 'border-blue-400/40', 
-    leftBorder: 'border-l-blue-500 dark:border-l-blue-400',
-    dot: 'bg-blue-500',
-    dotGlow: 'shadow-blue-500/50',
-    cardBg: 'bg-gradient-to-br from-blue-500/20 via-blue-500/10 to-blue-500/5'
-  },
-  'Last Call': { 
-    bg: 'bg-amber-500/10', 
-    bgGradient: 'bg-gradient-to-br from-amber-500/15 via-amber-500/8 to-transparent',
-    text: 'text-amber-700 dark:text-amber-200', 
-    border: 'border-amber-400/40', 
-    leftBorder: 'border-l-amber-500 dark:border-l-amber-400',
-    dot: 'bg-amber-500',
-    dotGlow: 'shadow-amber-500/50',
-    cardBg: 'bg-gradient-to-br from-amber-500/20 via-amber-500/10 to-amber-500/5'
-  },
-  'Final': { 
-    bg: 'bg-emerald-500/10', 
-    bgGradient: 'bg-gradient-to-br from-emerald-500/15 via-emerald-500/8 to-transparent',
-    text: 'text-emerald-700 dark:text-emerald-200', 
-    border: 'border-emerald-400/40', 
-    leftBorder: 'border-l-emerald-500 dark:border-l-emerald-400',
-    dot: 'bg-emerald-500',
-    dotGlow: 'shadow-emerald-500/50',
-    cardBg: 'bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-emerald-500/5'
-  },
-  'Stagnant': { 
-    bg: 'bg-slate-500/10', 
-    bgGradient: 'bg-gradient-to-br from-slate-500/15 via-slate-500/8 to-transparent',
-    text: 'text-slate-700 dark:text-slate-300', 
-    border: 'border-slate-400/30', 
-    leftBorder: 'border-l-slate-500 dark:border-l-slate-400',
-    dot: 'bg-slate-500',
-    dotGlow: 'shadow-slate-500/30',
-    cardBg: 'bg-gradient-to-br from-slate-500/15 via-slate-500/8 to-slate-500/5'
-  },
-  'Withdrawn': { 
-    bg: 'bg-red-500/10', 
-    bgGradient: 'bg-gradient-to-br from-red-500/15 via-red-500/8 to-transparent',
-    text: 'text-red-700 dark:text-red-200', 
-    border: 'border-red-400/40', 
-    leftBorder: 'border-l-red-500 dark:border-l-red-400',
-    dot: 'bg-red-500',
-    dotGlow: 'shadow-red-500/50',
-    cardBg: 'bg-gradient-to-br from-red-500/20 via-red-500/10 to-red-500/5'
-  },
-};
 
 interface ProposalData {
   repo: string;
@@ -130,6 +54,15 @@ interface StatusEvent {
   to: string;
   changed_at: string;
   commit_sha?: string;
+}
+
+interface StageEvent {
+  upgrade_id: number | null;
+  upgrade: string;
+  slug: string;
+  bucket: string;
+  commit_sha: string | null;
+  commit_date: string | null;
 }
 
 interface GovernanceState {
@@ -253,15 +186,6 @@ type ProposalRepo = 'eip' | 'erc' | 'rip';
 // Helper functions
 // =============================================================================
 
-function formatInclusionBucket(bucket: string | null): string {
-  const normalized = normalizeUpgradeBucket(bucket);
-  return normalized ? stageAbbreviation(normalized) : 'Unknown';
-}
-
-function getBucketBadgeClass(bucket: string | null): string {
-  return stageBadgeClass(normalizeUpgradeBucket(bucket));
-}
-
 // Higher = more "active"/advanced. When an EIP sits in several upgrades (e.g.
 // declined in one, then re-proposed in a newer one), the headline inclusion
 // status should surface the live stage, not the dead-end DFI. Per-upgrade stages
@@ -294,26 +218,6 @@ function getStatusBadgeClass(status: string | null): string {
   if (norm === 'stagnant') return 'border-gray-500/25 bg-gray-500/12 text-gray-700 dark:text-gray-400';
   if (norm === 'withdrawn') return 'border-red-500/25 bg-red-500/12 text-red-700 dark:text-red-300';
   return 'border-slate-500/25 bg-slate-500/12 text-slate-700 dark:text-slate-300';
-}
-
-// Helper to format waiting_on state
-function formatWaitingOn(state: string | null): string {
-  if (!state) return '';
-  return state
-    .replace(/WAITING_ON_/g, 'Waiting on ')
-    .replace(/_/g, ' ')
-    .toLowerCase()
-    .replace(/\b\w/g, l => l.toUpperCase());
-}
-
-// Helper to calculate duration between events
-function calculateDuration(prevDate: string | null, currentDate: string): string | null {
-  if (!prevDate) return null;
-  const prev = new Date(prevDate);
-  const curr = new Date(currentDate);
-  const days = Math.floor((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
-  if (days === 0) return null;
-  return `${days} day${days !== 1 ? 's' : ''}`;
 }
 
 // Helper to get author initials
@@ -366,6 +270,7 @@ export default function ProposalDetailPage() {
 
   const [proposal, setProposal] = useState<ProposalData | null>(null);
   const [statusEvents, setStatusEvents] = useState<StatusEvent[]>([]);
+  const [stageEvents, setStageEvents] = useState<StageEvent[]>([]);
   const [governanceState, setGovernanceState] = useState<GovernanceState | null>(null);
   const [curation, setCuration] = useState<EipCuration | null>(null);
   const [upgrades, setUpgrades] = useState<UpgradeInclusion[]>([]);
@@ -445,9 +350,11 @@ export default function ProposalDetailPage() {
         setLoading(true);
         setError(null);
 
-        const [proposalData, statusData, governanceData, upgradesData, curationData] = await Promise.all([
+        const [proposalData, statusData, stageData, governanceData, upgradesData, curationData] = await Promise.all([
           client.proposals.getProposal({ repo: proposalRepo, number }),
           client.proposals.getStatusEvents({ repo: proposalRepo, number }),
+          // Historical stage journey (PFI → CFI → SFI, declines, re-proposals).
+          client.proposals.getStageEvents({ repo: proposalRepo, number }).catch(() => []),
           client.proposals.getGovernanceState({ repo: proposalRepo, number }),
           client.proposals.getUpgrades({ repo: proposalRepo, number }),
           // Curated per-EIP stakeholder impacts (editable in admin) ground the
@@ -457,6 +364,7 @@ export default function ProposalDetailPage() {
 
         setProposal(proposalData);
         setStatusEvents(statusData);
+        setStageEvents(stageData);
         setGovernanceState(governanceData);
         setCuration(curationData?.[0] ?? null);
         const historical = getHistoricalIncludedUpgrades(number);
@@ -669,14 +577,6 @@ export default function ProposalDetailPage() {
   const proposalId = `${repoDisplayName}-${proposal.number}`;
   const githubUrl = `https://github.com/ethereum/${repoPath}/blob/master/${filePath}/${fileName}`;
   const discussionUrl = proposal.discussions_to || discussionsTo || null;
-
-  // Determine urgency color for governance signals
-  const getUrgencyColor = (days: number | null) => {
-    if (!days) return 'text-muted-foreground';
-    if (days > 60) return 'text-red-600 dark:text-red-400';
-    if (days > 30) return 'text-amber-600 dark:text-amber-400';
-    return 'text-emerald-600 dark:text-emerald-300';
-  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -928,6 +828,18 @@ export default function ProposalDetailPage() {
             />
           )}
 
+          {/* Unified lifecycle, upgrade-stage & PR timeline — right after the
+              Enterprise Assessment so the journey reads before the raw preamble. */}
+          <ProposalTimeline
+            proposal={proposal}
+            statusEvents={statusEvents}
+            stageEvents={stageEvents}
+            upgrades={upgrades}
+            governanceState={governanceState}
+            repoPath={repoPath}
+            normalizedRepo={normalizedRepo}
+          />
+
           {/* 2. Preamble Table (RFC-style, flat, authoritative) */}
           <div id="preamble" className="scroll-mt-28">
             <div className="overflow-hidden rounded-xl border border-border bg-card/60">
@@ -981,108 +893,6 @@ export default function ProposalDetailPage() {
             </div>
           </div>
 
-          {/* 3. Lifecycle Timeline */}
-          {statusEvents.length > 0 && (
-            <motion.div
-              id="lifecycle"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6"
-            >
-              <div className="mb-6 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Lifecycle Timeline</h3>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Link href={`/timeline?repo=${normalizedRepo}s&number=${proposal.number}`}>
-                    <Button variant="outline" size="sm" className="h-8 border-border bg-muted/50 text-xs text-foreground hover:bg-muted">
-                      Show Full Timeline
-                    </Button>
-                  </Link>
-                  {proposal.status && (
-                    <span className={cn(
-                      "inline-flex items-center rounded-full border px-3 py-1 text-xs font-semibold",
-                      statusColors[proposal.status]?.bg || 'bg-slate-500/20',
-                      statusColors[proposal.status]?.text || 'text-slate-300',
-                      statusColors[proposal.status]?.border || 'border-slate-400/30'
-                    )}>
-                      {proposal.status}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="relative overflow-x-auto pb-2">
-                <div className="absolute left-6 right-6 top-3 h-px bg-border/80" />
-                <div className="relative flex min-w-max items-start gap-4 pr-4">
-                  {statusEvents.map((event, index) => {
-                    const prevEvent = index > 0 ? statusEvents[index - 1] : null;
-                    const duration = calculateDuration(prevEvent?.changed_at || null, event.changed_at);
-                    const eventColor = statusColors[event.to] || statusColors.Draft;
-                    const commitUrl = event.commit_sha && event.commit_sha.trim() !== ''
-                      ? `https://github.com/ethereum/${repoPath}/commit/${event.commit_sha}`
-                      : null;
-                    const isLatest = index === statusEvents.length - 1;
-
-                    return (
-                      <div key={`${event.changed_at}-${event.to}-${index}`} className="w-[280px] shrink-0">
-                        <div className="mb-3 flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "h-3 w-3 rounded-full ring-2 ring-background",
-                              eventColor.dot,
-                              isLatest && "shadow-md shadow-primary/30"
-                            )}
-                          />
-                          {index < statusEvents.length - 1 && (
-                            <div className="h-px flex-1 bg-border/70" />
-                          )}
-                        </div>
-
-                        <div className={cn("rounded-lg border border-border/70 bg-muted/30 p-4", isLatest && "border-primary/30 bg-primary/5")}>
-                          <div className="flex items-center gap-2">
-                            {event.from && (
-                              <>
-                                <span className={cn("rounded px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", statusColors[event.from]?.bg || "bg-muted", statusColors[event.from]?.text || "text-foreground")}>
-                                  {event.from}
-                                </span>
-                                <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
-                              </>
-                            )}
-                            <span className={cn("rounded border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide", eventColor.bg, eventColor.text, eventColor.border)}>
-                              {event.to}
-                            </span>
-                          </div>
-
-                          <div className="mt-2 text-xs text-muted-foreground">
-                            {new Date(event.changed_at).toLocaleString()}
-                          </div>
-
-                          <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                            {duration && prevEvent && <span>{duration} in {prevEvent.to}</span>}
-                            {event.commit_sha && <span className="font-mono">{event.commit_sha.slice(0, 8)}</span>}
-                            {commitUrl && (
-                              <a
-                                href={commitUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
-                              >
-                                <Github className="h-3.5 w-3.5" />
-                                View commit
-                              </a>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          )}
-
           <ProposalSubscriptionCard
             repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
             number={number}
@@ -1093,146 +903,7 @@ export default function ProposalDetailPage() {
             repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
           />
 
-          {/* 4. Editorial Review & PR Coordination */}
-          <div className="space-y-8">
-            {governanceState && (
-              <motion.div
-                id="coordination"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6"
-              >
-                <div className="flex items-center justify-between gap-3 mb-4">
-                  <div className="flex items-center gap-2">
-                    <Activity className="h-5 w-5 text-primary" />
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                      Editorial Review & PR Coordination
-                    </h3>
-                  </div>
-                  {governanceState.pr_number && (
-                    <span className={cn(
-                      'inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                      governanceState.current_pr_state === 'open'
-                        ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : governanceState.current_pr_state === 'merged'
-                          ? 'border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300'
-                          : 'border-slate-500/20 bg-slate-500/10 text-muted-foreground'
-                    )}>
-                      PR {governanceState.current_pr_state || 'unknown'}
-                    </span>
-                  )}
-                </div>
 
-                {governanceState.pr_number ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div>
-                      <p className="mb-1 text-xs text-muted-foreground font-medium">Active Pull Request</p>
-                      {governanceState.pr_url ? (
-                        <a
-                          href={governanceState.pr_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                        >
-                          <Github className="h-4 w-4 shrink-0" />
-                          PR #{governanceState.pr_number}
-                          <ExternalLink className="h-3 w-3 opacity-60" />
-                        </a>
-                      ) : (
-                        <p className="text-sm font-semibold text-foreground">#{governanceState.pr_number}</p>
-                      )}
-                    </div>
-
-                    {governanceState.waiting_on && (
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground font-medium">Review Stage / Waiting On</p>
-                        {(() => {
-                          const waitingStr = formatWaitingOn(governanceState.waiting_on);
-                          const isClosed = /closed/i.test(waitingStr);
-                          const valueClass = isClosed
-                            ? 'text-sm font-semibold text-slate-600 dark:text-slate-400'
-                            : 'text-sm font-semibold text-emerald-600 dark:text-emerald-400';
-                          return <p className={valueClass}>{waitingStr}</p>;
-                        })()}
-                      </div>
-                    )}
-
-                    {governanceState.days_since_last_action !== null && (
-                      <div>
-                        <p className="mb-1 text-xs text-muted-foreground font-medium">Last Queue Update</p>
-                        <p className={cn("text-sm font-semibold", getUrgencyColor(governanceState.days_since_last_action))}>
-                          {governanceState.days_since_last_action === 0
-                            ? 'Updated today'
-                            : `${governanceState.days_since_last_action} day${governanceState.days_since_last_action !== 1 ? 's' : ''} ago`}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm text-muted-foreground flex items-center gap-2 py-2">
-                    <AlertCircle className="h-4 w-4 shrink-0 opacity-70" />
-                    <span>No active editorial PRs are currently linked to this proposal in the tracking database.</span>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </div>
-
-          {/* 5. Upgrade Participation */}
-          {upgrades.length > 0 && (
-            <motion.div
-              id="upgrades"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6"
-            >
-              <div className="flex items-center gap-2 mb-4">
-                <Package className="h-5 w-5 text-primary" />
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Network Upgrades</h3>
-              </div>
-              <div className="space-y-3">
-                {upgrades.map((upgrade, index) => (
-                  <TooltipProvider key={index}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="flex cursor-help items-center justify-between rounded-lg border border-border/70 bg-muted/30 p-3 transition-colors hover:bg-muted/50">
-                          <div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-sm font-semibold text-foreground">
-                                {upgrade.name}
-                              </p>
-                              <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-medium', getBucketBadgeClass(upgrade.bucket))}>
-                                {formatInclusionBucket(upgrade.bucket)}
-                              </span>
-                            </div>
-                            {upgrade.commit_date && (
-                              <p className="mt-0.5 text-xs text-muted-foreground">
-                                {new Date(upgrade.commit_date).toLocaleDateString('en-US', {
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric'
-                                })}
-                              </p>
-                            )}
-                          </div>
-                          <Link href={upgrade.slug ? `/upgrade/${upgrade.slug}` : '#'}>
-                            <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                              View <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p className="text-xs">Source: {proposalId}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
-                ))}
-              </div>
-            </motion.div>
-          )}
 
           {/* 6. Proposal Body */}
           <motion.div

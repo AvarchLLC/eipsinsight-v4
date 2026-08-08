@@ -434,10 +434,10 @@ function getParticipation(proposal: ProposalData, upgrades: UpgradeInclusion[]) 
   return { state: 'Open for feedback', open: true, note: 'Still proposed or under consideration — a meaningful window to shape the outcome.' };
 }
 
-type TrackStep = { label: string; description: string; status: 'completed' | 'current' | 'upcoming'; date: string | null; detail: string | null };
+export type TrackStep = { label: string; description: string; status: 'completed' | 'current' | 'upcoming'; date: string | null; detail: string | null };
 
 /** Governance status — the EIP's own process (independent of any fork). */
-function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): TrackStep[] {
+export function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): TrackStep[] {
   const order = ['Draft', 'Review', 'Last Call', 'Final'];
   const descs = ['Submitted', 'Under review', 'Last call for comments', 'Finalized'];
   const cur = (proposal.status ?? '').toLowerCase();
@@ -454,7 +454,7 @@ function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): Tr
 }
 
 /** Upgrade stage — inclusion in a network fork (independent of EIP status). */
-function getStageTrack(upgrades: UpgradeInclusion[]): TrackStep[] {
+export function getStageTrack(upgrades: UpgradeInclusion[]): TrackStep[] {
   const steps = [
     { label: 'Proposed', description: 'Proposed for inclusion (PFI)' },
     { label: 'Considered', description: 'Considered for inclusion (CFI)' },
@@ -477,17 +477,9 @@ function getStageTrack(upgrades: UpgradeInclusion[]): TrackStep[] {
   }));
 }
 
-export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanceState, proposalRequires, curation }: EnterpriseEIPBriefProps) {
+export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curation }: EnterpriseEIPBriefProps) {
   const enterpriseRisk = getEnterpriseRisk(proposal, upgrades);
   const enterpriseAction = getEnterpriseAction(proposal, upgrades);
-
-  const latestUpgrade = upgrades.find((u) => u.bucket.toLowerCase() === 'included') ?? upgrades[0] ?? null;
-
-  // Two independent axes — never mixed into one bar:
-  //   • Governance status = the EIP's own process (Draft → Review → Last Call → Final)
-  //   • Upgrade stage     = inclusion in a network fork (Proposed → Considered → Scheduled → Included)
-  const statusTrack = getStatusTrack(proposal, statusEvents);
-  const stageTrack = getStageTrack(upgrades);
 
   // Every section below is grounded in the curated per-EIP record when present
   // (editable in admin), so the brief reads specific — not the same template on
@@ -655,25 +647,8 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
         </div>
       </div>
 
-      {/* Two separate axes — governance status and upgrade stage are never mixed. */}
-      <div className="rounded-xl border border-border bg-card/60 shadow-sm overflow-hidden">
-        <div className="border-b border-border/60 bg-muted/40 px-5 py-3">
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-              <Network className="h-3.5 w-3.5" /> Status &amp; upgrade stage
-            </p>
-            {governanceState?.days_since_last_action && (
-              <span className="text-[10px] text-muted-foreground font-medium">
-                Last activity: {governanceState.days_since_last_action} days ago
-              </span>
-            )}
-          </div>
-        </div>
-        <div className="divide-y divide-border/50">
-          <LifecycleTrack title="Governance status" subtitle="the EIP's own process — independent of any fork" steps={statusTrack} />
-          <LifecycleTrack title="Upgrade stage" subtitle="inclusion in a network fork — independent of EIP status" steps={stageTrack} />
-        </div>
-      </div>
+      {/* Governance status + upgrade stage are shown by the unified ProposalTimeline
+          on the page (not duplicated here). */}
 
       {/* Related dependencies (real — from the EIP's `requires`) */}
       {proposalRequires.length > 0 && (
@@ -705,7 +680,7 @@ export function EnterpriseEIPBrief({ proposal, upgrades, statusEvents, governanc
 }
 
 /** One progress bar for a single axis (status OR stage) — kept deliberately separate. */
-function LifecycleTrack({ title, subtitle, steps }: { title: string; subtitle: string; steps: TrackStep[] }) {
+export function LifecycleTrack({ title, subtitle, steps }: { title: string; subtitle: string; steps: TrackStep[] }) {
   const reachedIdx = steps.reduce((acc, s, i) => (s.status === 'completed' || s.status === 'current' ? i : acc), -1);
   const anyReached = reachedIdx >= 0;
   return (
