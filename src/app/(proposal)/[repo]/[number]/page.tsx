@@ -867,18 +867,6 @@ export default function ProposalDetailPage() {
             normalizedRepo={normalizedRepo}
           />
 
-          <ProposalSubscriptionCard
-            repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
-            number={number}
-            currentStatus={proposal.status}
-          />
-
-          <RepositorySubscriptionCard
-            repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
-          />
-
-
-
           {/* 6. Proposal Body */}
           <motion.div
             id="proposal-text"
@@ -1072,6 +1060,18 @@ export default function ProposalDetailPage() {
               </div>
             </div>
           </motion.section>
+
+          {/* Email updates — end-of-page CTA, two compact cards side by side */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <ProposalSubscriptionCard
+              repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
+              number={number}
+              currentStatus={proposal.status}
+            />
+            <RepositorySubscriptionCard
+              repo={normalizedRepo as 'eip' | 'erc' | 'rip'}
+            />
+          </div>
           </div>
         </div>
     </div>
