@@ -41,6 +41,7 @@ function serializeCuration(row: {
   tradeoffs: unknown
   stakeholder_impacts: unknown
   north_star: unknown
+  enterprise_impact: unknown
   headliner_of: string | null
   headliner_note: string | null
   layer: string | null
@@ -61,6 +62,15 @@ function serializeCuration(row: {
     north_star:
       row.north_star && typeof row.north_star === 'object'
         ? (row.north_star as Record<string, { description?: string }>)
+        : null,
+    enterprise_impact:
+      row.enterprise_impact && typeof row.enterprise_impact === 'object'
+        ? (row.enterprise_impact as {
+            tier?: string
+            summary?: string
+            organizations?: Array<{ role?: string; level?: string; why?: string }>
+            readiness?: string
+          })
         : null,
     headliner_of: row.headliner_of,
     headliner_note: row.headliner_note,

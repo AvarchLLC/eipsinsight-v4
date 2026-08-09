@@ -383,6 +383,9 @@ model eip_curations {
   layer               String?
   /// [{ question: string, answer: string }] — AI-generated FAQ
   faq                 Json?
+  /// { tier, summary, organizations: [{ role, level, why }], readiness } —
+  /// enterprise/institutional impact, curated for a finance audience
+  enterprise_impact   Json?
   updated_by          String?
   created_at          DateTime @default(now())
   updated_at          DateTime @default(now()) @updatedAt
