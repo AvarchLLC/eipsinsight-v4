@@ -22,6 +22,8 @@ import {
   ClipboardCheck,
   Scale,
   MessageSquarePlus,
+  ChevronDown,
+  ChevronRight,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -88,7 +90,8 @@ export interface EipCuration {
 export interface EnterpriseImpactData {
   tier?: string | null;
   summary?: string | null;
-  organizations?: Array<{ role?: string; level?: string; why?: string }> | null;
+  organizations?: Array<{ role?: string; level?: string; summary?: string; how?: string; why?: string; action?: string }> | null;
+  businessImpact?: Array<{ area?: string; summary?: string; detail?: string }> | null;
   readiness?: string | null;
 }
 
@@ -366,6 +369,9 @@ const ENTERPRISE_ROLE_ICON: Record<string, LucideIcon> = {
   'digital-asset advisors': Users,
 };
 
+/** Unified card shape across the curated / mapped / inferred paths. */
+type OrgItem = { role: string; icon: LucideIcon; affected: string; summary: string; how: string | null; why: string; action: string | null };
+
 const TIER_META: Record<'direct' | 'limited' | 'none', { label: string; note: string; cls: string }> = {
   direct: { label: 'Direct impact', note: 'At least one institution type must plan or test before this ships.', cls: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400' },
   limited: { label: 'Limited impact', note: 'Mostly indirect — monitor readiness; no major workstream expected.', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400' },
@@ -533,25 +539,36 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
   //   2. Ecosystem stakeholder curation mapped onto finance roles
   //   3. Conservative keyword inference (labelled "Auto-inferred")
   const enterprise = curation?.enterprise_impact ?? null;
-  const enterpriseOrgs = (Array.isArray(enterprise?.organizations) ? enterprise!.organizations : [])
+  const enterpriseOrgs: OrgItem[] = (Array.isArray(enterprise?.organizations) ? enterprise!.organizations : [])
     .filter((o) => o && o.role)
     .map((o) => {
       const level = (o.level ?? '').toLowerCase();
+      const why = o.why?.trim() || 'Not directly affected by this change.';
       return {
         role: o.role!,
         icon: ENTERPRISE_ROLE_ICON[o.role!.toLowerCase()] ?? Building2,
         affected: (['high', 'medium', 'low', 'none'].includes(level) ? level : 'none') as string,
-        why: o.why?.trim() || 'Not directly affected by this change.',
+        summary: o.summary?.trim() || why,
+        how: o.how?.trim() || null,
+        why,
+        action: o.action?.trim() || null,
       };
     });
   const hasEnterprise = enterpriseOrgs.length > 0;
   const hasCuration = !!stakeholderImpacts && Object.keys(stakeholderImpacts).length > 0;
 
-  const financeStakeholders = hasEnterprise
+  // Normalize the mapped/inferred fallback to the same card shape (no how/action).
+  const financeStakeholders: OrgItem[] = hasEnterprise
     ? enterpriseOrgs
     : (hasCuration
         ? getFinanceStakeholdersFromCuration(stakeholderImpacts)
-        : getFinanceStakeholders(proposal, upgrades)) as Array<{ role: string; icon: LucideIcon; affected: string; why: string }>;
+        : getFinanceStakeholders(proposal, upgrades)
+      ).map((s) => ({ role: s.role, icon: s.icon, affected: s.affected as string, summary: s.why, how: null, why: s.why, action: null }));
+
+  const enterpriseBusiness = (Array.isArray(enterprise?.businessImpact) ? enterprise!.businessImpact : [])
+    .filter((b) => b && b.area && (b.detail || b.summary))
+    .map((b) => ({ area: b.area!, summary: b.summary?.trim() || b.detail!.trim(), detail: b.detail?.trim() || b.summary!.trim() }));
+  const hasEnterpriseBusiness = enterpriseBusiness.length > 0;
 
   const groundingLabel = hasEnterprise ? 'Enterprise-curated' : hasCuration ? 'Curated' : 'Auto-inferred';
   const groundingCurated = hasEnterprise || hasCuration;
@@ -604,22 +621,11 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><Building2 className="h-3.5 w-3.5" /> 1 · Affected organizations</p>
                 <span className={cn('rounded-full border px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide', groundingCurated ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400')}>{groundingLabel}</span>
               </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {financeStakeholders.map((s) => {
-                  const meta = LEVEL_META[s.affected] ?? LEVEL_META.none;
-                  return (
-                    <div key={s.role} className="flex items-start gap-2 rounded-lg border border-border bg-background/40 p-2.5">
-                      <s.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-semibold text-foreground">{s.role}</span>
-                          <span className={cn('shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', meta.cls)}>{meta.label}</span>
-                        </div>
-                        <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{s.why}</p>
-                      </div>
-                    </div>
-                  );
-                })}
+              {/* Masonry columns so an expanded card doesn't stretch its row-mate. */}
+              <div className="gap-2 sm:columns-2 [column-gap:0.5rem]">
+                {financeStakeholders.map((s) => (
+                  <OrgImpactCard key={s.role} item={s} />
+                ))}
               </div>
               {/* What the priority ratings mean — context on demand */}
               <details className="mt-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-2">
@@ -645,16 +651,22 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
               </details>
             </div>
 
-            {/* 2. Business impact — curated benefits/trade-offs when available (per-EIP),
-                 otherwise the generic operational read. */}
+            {/* 2. Business impact — dedicated enterprise report (collapsible) when
+                 available, else curated benefits/trade-offs, else generic. */}
             <div className="px-5 py-3.5">
               <div className="mb-2 flex items-center gap-2">
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400"><TrendingUp className="h-3.5 w-3.5" /> 2 · Business impact</p>
-                {(benefits.length > 0 || tradeoffs.length > 0) && (
-                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">Curated</span>
+                {(hasEnterpriseBusiness || benefits.length > 0 || tradeoffs.length > 0) && (
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">{hasEnterpriseBusiness ? 'Enterprise-curated' : 'Curated'}</span>
                 )}
               </div>
-              {benefits.length > 0 || tradeoffs.length > 0 ? (
+              {hasEnterpriseBusiness ? (
+                <div className="space-y-1.5">
+                  {enterpriseBusiness.map((b) => (
+                    <BusinessAreaCard key={b.area} area={b.area} summary={b.summary} detail={b.detail} />
+                  ))}
+                </div>
+              ) : benefits.length > 0 || tradeoffs.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
                   {benefits.length > 0 && (
                     <div>
@@ -747,6 +759,86 @@ export function EnterpriseEIPBrief({ proposal, upgrades, proposalRequires, curat
         </div>
       )}
     </motion.div>
+  );
+}
+
+/** Collapsible per-organization impact card: headline collapsed, "Affected how? /
+ *  Why it matters / What to do" expanded. Only expandable when there's detail. */
+function OrgImpactCard({ item }: { item: OrgItem }) {
+  const [open, setOpen] = React.useState(false);
+  const meta = LEVEL_META[item.affected] ?? LEVEL_META.none;
+  const Icon = item.icon;
+  const hasDetail = !!(item.how || item.action || (item.why && item.why !== item.summary));
+  return (
+    <div className="mb-2 break-inside-avoid rounded-lg border border-border bg-background/40">
+      <button
+        type="button"
+        onClick={() => hasDetail && setOpen((o) => !o)}
+        aria-expanded={open}
+        className={cn('flex w-full items-start gap-2 rounded-lg p-2.5 text-left', hasDetail ? 'cursor-pointer transition-colors hover:bg-muted/40' : 'cursor-default')}
+      >
+        <Icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-semibold text-foreground">{item.role}</span>
+            <span className={cn('shrink-0 rounded-full border px-1.5 py-px text-[9px] font-bold uppercase', meta.cls)}>{meta.label}</span>
+          </div>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{item.summary}</p>
+        </div>
+        {hasDetail && (open
+          ? <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          : <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
+      </button>
+      {open && hasDetail && (
+        <div className="space-y-2 border-t border-border/60 px-2.5 py-2.5 pl-8">
+          {item.how && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">Affected how?</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{item.how}</p>
+            </div>
+          )}
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">Why it matters</p>
+            <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{item.why}</p>
+          </div>
+          {item.action && (
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-violet-600 dark:text-violet-400">What to do</p>
+              <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{item.action}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Collapsible business-impact area: headline collapsed, full detail expanded. */
+function BusinessAreaCard({ area, summary, detail }: { area: string; summary: string; detail: string }) {
+  const [open, setOpen] = React.useState(false);
+  const hasDetail = !!detail && detail !== summary;
+  return (
+    <div className="rounded-lg border border-border/60 bg-background/40">
+      <button
+        type="button"
+        onClick={() => hasDetail && setOpen((o) => !o)}
+        aria-expanded={open}
+        className={cn('flex w-full items-start gap-2 rounded-lg p-2.5 text-left', hasDetail ? 'cursor-pointer transition-colors hover:bg-muted/40' : 'cursor-default')}
+      >
+        <div className="min-w-0 flex-1">
+          <span className="text-xs font-semibold text-foreground">{area}</span>
+          <p className="mt-0.5 text-[11px] leading-snug text-muted-foreground">{summary}</p>
+        </div>
+        {hasDetail && (open
+          ? <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+          : <ChevronRight className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />)}
+      </button>
+      {open && hasDetail && (
+        <div className="border-t border-border/60 px-2.5 py-2.5">
+          <p className="text-[11px] leading-relaxed text-muted-foreground">{detail}</p>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -294,27 +294,44 @@ export type EnterpriseTier = 'direct' | 'limited' | 'none';
 export interface EnterpriseOrgImpact {
   role: string;
   level: EnterpriseLevel;
+  /** One-line headline shown when the card is collapsed. */
+  summary: string;
+  /** "Affected how?" — the concrete mechanism / what changes for them. */
+  how: string;
+  /** "Why it matters" — the business consequence, in institutional terms. */
   why: string;
+  /** "What to do" — optional action / monitoring guidance. */
+  action?: string;
+}
+export interface EnterpriseBusinessArea {
+  /** e.g. "Assets & client offerings", "Costs & processing", "Accounting & reporting". */
+  area: string;
+  /** One-line headline shown when the card is collapsed. */
+  summary: string;
+  /** The detailed explanation shown when expanded. */
+  detail: string;
 }
 export interface EnterpriseImpact {
   tier: EnterpriseTier;
   summary: string;
   organizations: EnterpriseOrgImpact[];
+  businessImpact?: EnterpriseBusinessArea[];
   readiness?: string;
 }
 
-const ENTERPRISE_SYSTEM_PROMPT = `You translate Ethereum protocol changes for an ENTERPRISE and INSTITUTIONAL audience: banks & payment providers, auditors & accountants, asset managers, custodians & wallets, staking providers, infrastructure operators, companies building on L2s, and digital-asset advisors.
+const ENTERPRISE_SYSTEM_PROMPT = `You write a DETAILED enterprise impact report on Ethereum protocol changes for an INSTITUTIONAL audience: banks & payment providers, auditors & accountants, asset managers, custodians & wallets, staking providers, infrastructure operators, companies building on L2s, and digital-asset advisors.
 
-Given the real text of one EIP, assess its concrete impact on each institution type. Rules:
+Given the real text of one EIP, assess its concrete impact. Rules:
 - Base everything ONLY on the EIP text. Never invent regulatory, accounting, or financial claims.
 - Be HONEST and specific. Most protocol/developer EIPs have NO direct institutional impact — when that is the case, say so plainly and set levels to "none". Do not inflate importance.
-- "high" = the institution must actively plan, test, or change operations before this ships. "medium" = indirect exposure worth monitoring (e.g. routine client/tooling updates). "low" = minimal, informational. "none" = not affected; explain in one short clause why not.
-- Write "why" for a non-technical institutional reader (settlement, custody, reporting, controls, operations), not for protocol engineers.
+- Levels: "high" = must actively plan/test/change operations before it ships. "medium" = indirect exposure worth monitoring (e.g. routine client/tooling updates). "low" = minimal, informational. "none" = not affected.
+- For EACH organization give "how" (the concrete mechanism — what actually changes for them) and "why" (the business consequence: settlement, custody, reporting, controls, operations). For "none", "how" states there is no operational change and "why" states nothing needs attention.
+- Write for a non-technical institutional reader, not protocol engineers.
 Return a single JSON object, nothing else.`;
 
 function buildEnterpriseUserPrompt(eipNumber: number, title: string, body: string): string {
   const trimmed = body.length > 5000 ? `${body.slice(0, 5000)}\n…(truncated)` : body;
-  const roleList = ENTERPRISE_ROLES.map((r) => `    { "role": "${r}", "level": "high|medium|low|none", "why": "1-2 sentences specific to this EIP; if none, one clause on why it's unaffected" }`).join(',\n');
+  const roleList = ENTERPRISE_ROLES.map((r) => `    { "role": "${r}", "level": "high|medium|low|none", "summary": "<=90 char headline", "how": "1-2 sentences: how this EIP concretely affects them (or that it does not)", "why": "1-2 sentences: why it matters to their business (or why it doesn't)", "action": "1 short sentence, or 'No action needed.'" }`).join(',\n');
   return `EIP-${eipNumber}: ${title}
 
 --- SPEC TEXT ---
@@ -328,9 +345,16 @@ Produce this exact JSON shape:
   "organizations": [
 ${roleList}
   ],
+  "businessImpact": [
+    { "area": "Assets & client offerings", "summary": "<=90 char headline", "detail": "1-3 sentences of specifics for this EIP" },
+    { "area": "Costs & transaction processing", "summary": "…", "detail": "…" },
+    { "area": "Accounting & reporting", "summary": "…", "detail": "…" },
+    { "area": "Controls & compliance", "summary": "…", "detail": "…" },
+    { "area": "Operational procedures", "summary": "…", "detail": "…" }
+  ],
   "readiness": "1-2 sentences on what institutions should do or monitor. Use 'No action needed.' when tier is none."
 }
-Include ALL eight organizations in the same order. tier "direct" if any organization is "high"; "limited" if the highest is "medium"; otherwise "none".`;
+Include ALL eight organizations in the same order. Include the five businessImpact areas. tier "direct" if any organization is "high"; "limited" if the highest is "medium"; otherwise "none".`;
 }
 
 const LEVELS: readonly EnterpriseLevel[] = ['high', 'medium', 'low', 'none'];
@@ -339,7 +363,13 @@ export async function generateEnterpriseImpact(eipNumber: number): Promise<Enter
   const spec = await fetchEipSpec(eipNumber);
   if (!spec) return null;
 
-  const raw = await callLLM(ENTERPRISE_SYSTEM_PROMPT, buildEnterpriseUserPrompt(eipNumber, spec.title, spec.body));
+  // The enterprise report is a large output. On GROQ's free tier the 70B model's
+  // token budget is easily exhausted, so use the high-throughput 8B model when
+  // GROQ is the active provider. Gemini/Anthropic use their own defaults.
+  const groqActive = !process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY;
+  const groqModel = groqActive ? process.env.ENTERPRISE_GROQ_MODEL || 'llama-3.1-8b-instant' : undefined;
+
+  const raw = await callLLM(ENTERPRISE_SYSTEM_PROMPT, buildEnterpriseUserPrompt(eipNumber, spec.title, spec.body), groqModel);
   if (!raw) return null;
   const json = extractJson(raw);
   if (!json) return null;
@@ -347,7 +377,8 @@ export async function generateEnterpriseImpact(eipNumber: number): Promise<Enter
   let parsed: {
     tier?: string;
     summary?: string;
-    organizations?: Array<{ role?: string; level?: string; why?: string }>;
+    organizations?: Array<{ role?: string; level?: string; summary?: string; how?: string; why?: string; action?: string }>;
+    businessImpact?: Array<{ area?: string; summary?: string; detail?: string }>;
     readiness?: string;
   };
   try {
@@ -356,20 +387,32 @@ export async function generateEnterpriseImpact(eipNumber: number): Promise<Enter
     return null;
   }
 
-  // Sanitize: one entry per canonical role, valid level, in canonical order.
-  const byRole = new Map<string, { level?: string; why?: string }>();
+  // Sanitize organizations: one entry per canonical role, valid level, canonical order.
+  const byRole = new Map<string, { level?: string; summary?: string; how?: string; why?: string; action?: string }>();
   for (const o of parsed.organizations ?? []) {
-    if (o?.role) byRole.set(o.role.trim().toLowerCase(), { level: o.level, why: o.why });
+    if (o?.role) byRole.set(o.role.trim().toLowerCase(), o);
   }
   const organizations: EnterpriseOrgImpact[] = ENTERPRISE_ROLES.map((role) => {
     const found = byRole.get(role.toLowerCase());
     const level = (found?.level ?? '').toLowerCase();
+    const why = found?.why?.trim() || 'Not directly affected by this change.';
     return {
       role,
       level: (LEVELS as readonly string[]).includes(level) ? (level as EnterpriseLevel) : 'none',
-      why: found?.why?.trim() || 'Not directly affected by this change.',
+      summary: found?.summary?.trim() || why,
+      how: found?.how?.trim() || 'No operational change for this organization type.',
+      why,
+      action: found?.action?.trim() || undefined,
     };
   });
+
+  const businessImpact: EnterpriseBusinessArea[] = (parsed.businessImpact ?? [])
+    .filter((b) => b?.area && (b.detail || b.summary))
+    .map((b) => ({
+      area: b.area!.trim(),
+      summary: b.summary?.trim() || b.detail!.trim(),
+      detail: b.detail?.trim() || b.summary!.trim(),
+    }));
 
   // Derive tier from levels so it can never contradict the per-org data.
   const tier: EnterpriseTier = organizations.some((o) => o.level === 'high')
@@ -385,6 +428,7 @@ export async function generateEnterpriseImpact(eipNumber: number): Promise<Enter
     tier,
     summary,
     organizations,
+    businessImpact: businessImpact.length > 0 ? businessImpact : undefined,
     readiness: parsed.readiness?.trim() || (tier === 'none' ? 'No action needed.' : undefined),
   };
 }
