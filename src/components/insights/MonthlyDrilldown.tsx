@@ -18,6 +18,8 @@ import {
   GitPullRequest,
   Gavel,
   TrendingUp,
+  Link2,
+  Check,
 } from "lucide-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
@@ -60,6 +62,32 @@ function monthLabel(yyyyMm: string) {
   return Number.isNaN(d.getTime())
     ? yyyyMm
     : d.toLocaleString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+/** Small icon button that copies a deep link to a section anchor on this page. */
+function CopyLinkButton({ anchor, label }: { anchor: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try {
+      const base = `${window.location.origin}${window.location.pathname}`;
+      navigator.clipboard.writeText(`${base}#${anchor}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={copy}
+      aria-label={`Copy link to ${label ?? "section"}`}
+      title={copied ? "Link copied" : "Copy link to this section"}
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-muted/40 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Link2 className="h-3.5 w-3.5" />}
+    </button>
+  );
 }
 
 function formatDateTime(value: string | null | undefined) {
@@ -239,6 +267,15 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     };
     run();
   }, [repo, month, page, pageSize, tableStatusFilter, tableRepoFilter, changeFilter, sortFilter, globalSearch, historyFrom, historyTo, statusTrendStatus]);
+
+  // Deep-link support: once content is loaded, scroll to the #section in the URL.
+  useEffect(() => {
+    if (loading) return;
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el) window.requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
+  }, [loading]);
 
   // Month-in-review: PRs, Issues, Calls & Decisions for the selected month.
   useEffect(() => {
@@ -791,10 +828,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
           ) : (
             <div className="flex flex-col gap-4">
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
-                <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
+                <div id="status-transition-summary" className="scroll-mt-24 xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">
                     <div className="mb-3 flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-foreground">Status Transition Summary</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-sm font-semibold text-foreground">Status Transition Summary</h3>
+                        <CopyLinkButton anchor="status-transition-summary" label="Status Transition Summary" />
+                      </div>
                       <button
                         onClick={exportCsv}
                         className="inline-flex h-8 items-center gap-1 rounded-md border border-primary/35 bg-primary/15 px-2.5 text-xs font-medium text-primary hover:bg-primary/20"
@@ -860,9 +900,12 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                   </div>
                 </div>
 
-                <div className="xl:col-span-7 flex flex-col rounded-xl border border-border bg-card p-4">
+                <div id="editors-leaderboard" className="scroll-mt-24 xl:col-span-7 flex flex-col rounded-xl border border-border bg-card p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
+                      <CopyLinkButton anchor="editors-leaderboard" label="Editors Leaderboard" />
+                    </div>
                     <div role="radiogroup" aria-label="Editors view" className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5 text-[11px] font-medium">
                       <button
                         type="button"
@@ -939,9 +982,12 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div id="change-timeline" className="scroll-mt-24 rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">Change Timeline</h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Change Timeline</h3>
+                    <CopyLinkButton anchor="change-timeline" label="Change Timeline" />
+                  </div>
                   <button
                     onClick={exportBreakdownCsv}
                     className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-muted px-2 text-[11px] text-foreground hover:bg-muted/70"
@@ -965,12 +1011,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div id="draft-vs-final-history" className="scroll-mt-24 rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="inline-flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-primary" />
                       <h3 className="text-sm font-semibold text-foreground">Draft vs Final History</h3>
+                      <CopyLinkButton anchor="draft-vs-final-history" label="Draft vs Final History" />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Monthly status transitions from {monthLabel(historyFrom)} to {monthLabel(historyTo)}.
@@ -1017,12 +1064,13 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 </div>
               </div>
 
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div id="category-trend-by-status" className="scroll-mt-24 rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="inline-flex items-center gap-2">
                       <TrendingUp className="h-4 w-4 text-primary" />
                       <h3 className="text-sm font-semibold text-foreground">Category Trend by Status</h3>
+                      <CopyLinkButton anchor="category-trend-by-status" label="Category Trend by Status" />
                     </div>
                     <p className="mt-1 text-xs text-muted-foreground">
                       Monthly proposals entering <span className="text-foreground">{statusTrendStatus}</span>, split by category from {monthLabel(historyFrom)} to {monthLabel(historyTo)}.
@@ -1089,12 +1137,15 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 decisions={monthDecisions}
               />
 
-              <div ref={tableSectionRef} className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
+              <div ref={tableSectionRef} id="proposal-changes" className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
-                  <h3 className="text-sm font-semibold text-foreground">
-                    Proposal Changes - {monthLabel(month)}
-                    {rangeDays != null ? ` · last ${rangeDays} days` : ""}
-                  </h3>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Proposal Changes - {monthLabel(month)}
+                      {rangeDays != null ? ` · last ${rangeDays} days` : ""}
+                    </h3>
+                    <CopyLinkButton anchor="proposal-changes" label="Proposal Changes" />
+                  </div>
                   <span className="text-xs text-muted-foreground">{rangeFilteredRows.length} shown</span>
                 </div>
                 {/* Filter bar — defaults to status changes, most recent first. */}
@@ -1372,13 +1423,16 @@ function MonthInReview({
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4">
+    <section id="month-in-review" className="scroll-mt-24 rounded-xl border border-border bg-card p-4">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Month in review</h3>
-          <p className="text-xs text-muted-foreground">
-            Everything that moved in {monthLabel(month)} — not just status changes.
-          </p>
+        <div className="flex items-center gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-foreground">Month in review</h3>
+            <p className="text-xs text-muted-foreground">
+              Everything that moved in {monthLabel(month)} — not just status changes.
+            </p>
+          </div>
+          <CopyLinkButton anchor="month-in-review" label="Month in review" />
         </div>
       </div>
 
