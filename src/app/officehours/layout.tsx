@@ -5,7 +5,7 @@ export const metadata: Metadata = buildMetadata({
   title: "EIP Editing Office Hours",
   description:
     "Editorial-activity dashboard for EIP Editing Office Hours — editor leaderboard, status changes, and proposals worked on, for any day or date range.",
-  path: "/office-hours",
+  path: "/officehours",
   keywords: ["EIP Editing Office Hour", "EIP editors", "editorial activity", "Ethereum"],
   image: null,
 });

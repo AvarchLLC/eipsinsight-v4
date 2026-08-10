@@ -264,6 +264,26 @@ const nextConfig: NextConfig = {
         destination: 'https://docs.eipsinsight.com/',
         permanent: true,
       },
+      {
+        source: '/office-hours',
+        destination: '/officehours',
+        permanent: true,
+      },
+            {
+        source: '/oh',
+        destination: '/officehours',
+        permanent: true,
+      },
+                  {
+        source: '/office-hour',
+        destination: '/officehours',
+        permanent: true,
+      },
+                        {
+        source: '/officehour',
+        destination: '/officehours',
+        permanent: true,
+      }
     ];
   },
 };
