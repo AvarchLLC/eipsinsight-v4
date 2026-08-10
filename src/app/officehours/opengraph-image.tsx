@@ -22,7 +22,7 @@ export default function Image() {
   return new ImageResponse(
     ogCard({
       badge: 'OFFICE HOURS',
-      meta: 'eipsinsight.com/office-hours',
+      meta: 'eipsinsight.com/officehours',
       title: 'EIP Editing Office Hours',
       rows,
       chips,
