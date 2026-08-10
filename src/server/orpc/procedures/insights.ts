@@ -175,6 +175,101 @@ export const insightsProcedures = {
       };
     }),
 
+  // Month-over-month change mix (the three types the single-month pie showed):
+  //   status   = distinct EIPs with a status transition   (eip_status_events)
+  //   content  = distinct EIPs with a merged PR            (pull_request_eips)
+  //   metadata = distinct EIPs with a category/deadline change
+  getMonthlyChangeMixTrend: optionalAuthProcedure
+    .input(z.object({
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      fromMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      toMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const repoIds = await getRepoIds(input.repo);
+      const toMonth = input.toMonth ?? new Date().toISOString().slice(0, 7);
+      const fromMonth = input.fromMonth ?? (() => {
+        const end = new Date(`${toMonth}-01T00:00:00.000Z`);
+        const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth() - 11, 1));
+        return `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, '0')}`;
+      })();
+      const fromDate = `${fromMonth}-01`;
+      const [toY, toM] = toMonth.split('-').map(Number);
+      const toExclusive = new Date(Date.UTC(toY, toM, 1)).toISOString().slice(0, 10);
+
+      const rows = await prisma.$queryRawUnsafe<Array<{
+        month: string;
+        status: bigint;
+        content: bigint;
+        metadata: bigint;
+        latest_changed_at: Date | null;
+      }>>(
+        `
+        WITH month_series AS (
+          SELECT TO_CHAR(month_start, 'YYYY-MM') AS month
+          FROM generate_series(TO_DATE($2 || '-01','YYYY-MM-DD'), TO_DATE($3 || '-01','YYYY-MM-DD'), '1 month'::interval) AS month_start
+        ),
+        st AS (
+          SELECT TO_CHAR(date_trunc('month', se.changed_at), 'YYYY-MM') AS month,
+                 COUNT(DISTINCT se.eip_id)::bigint AS c, MAX(se.changed_at) AS latest
+          FROM eip_status_events se
+          WHERE se.changed_at >= $4::date AND se.changed_at < $5::date
+            AND ($1::int[] IS NULL OR se.repository_id = ANY($1))
+          GROUP BY 1
+        ),
+        ct AS (
+          SELECT TO_CHAR(date_trunc('month', p.merged_at), 'YYYY-MM') AS month,
+                 COUNT(DISTINCT pre.eip_number)::bigint AS c
+          FROM pull_request_eips pre
+          JOIN pull_requests p ON p.pr_number = pre.pr_number AND p.repository_id = pre.repository_id
+          WHERE p.merged_at >= $4::date AND p.merged_at < $5::date
+            AND ($1::int[] IS NULL OR p.repository_id = ANY($1))
+          GROUP BY 1
+        ),
+        mt AS (
+          SELECT TO_CHAR(date_trunc('month', x.changed_at), 'YYYY-MM') AS month,
+                 COUNT(DISTINCT x.eip_id)::bigint AS c
+          FROM (
+            SELECT ce.eip_id, ce.changed_at, ce.repository_id FROM eip_category_events ce
+              WHERE ce.changed_at >= $4::date AND ce.changed_at < $5::date
+            UNION ALL
+            SELECT de.eip_id, de.changed_at, de.repository_id FROM eip_deadline_events de
+              WHERE de.changed_at >= $4::date AND de.changed_at < $5::date
+          ) x
+          WHERE ($1::int[] IS NULL OR x.repository_id = ANY($1))
+          GROUP BY 1
+        )
+        SELECT ms.month,
+               COALESCE(st.c, 0::bigint) AS status,
+               COALESCE(ct.c, 0::bigint) AS content,
+               COALESCE(mt.c, 0::bigint) AS metadata,
+               st.latest AS latest_changed_at
+        FROM month_series ms
+        LEFT JOIN st ON st.month = ms.month
+        LEFT JOIN ct ON ct.month = ms.month
+        LEFT JOIN mt ON mt.month = ms.month
+        ORDER BY ms.month ASC
+        `,
+        repoIds, fromMonth, toMonth, fromDate, toExclusive
+      );
+
+      const updatedAt = rows.reduce<Date | null>((latest, row) => {
+        if (!row.latest_changed_at) return latest;
+        if (!latest || row.latest_changed_at > latest) return row.latest_changed_at;
+        return latest;
+      }, null);
+
+      return {
+        rows: rows.map((row) => ({
+          month: row.month,
+          status: Number(row.status),
+          content: Number(row.content),
+          metadata: Number(row.metadata),
+        })),
+        updatedAt: updatedAt?.toISOString() ?? null,
+      };
+    }),
+
   getStatusCategoryTrend: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),

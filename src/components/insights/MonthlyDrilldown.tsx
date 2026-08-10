@@ -139,6 +139,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const [historyUpdatedAt, setHistoryUpdatedAt] = useState<string | null>(null);
   const [statusTrendStatus, setStatusTrendStatus] = useState<string>("Review");
   const [statusCategoryTrend, setStatusCategoryTrend] = useState<Array<{ month: string; category: string; count: number }>>([]);
+  const [changeMixTrend, setChangeMixTrend] = useState<Array<{ month: string; status: number; content: number; metadata: number }>>([]);
+  const [editorView, setEditorView] = useState<"chart" | "list">("chart");
   const [statusCategoryUpdatedAt, setStatusCategoryUpdatedAt] = useState<string | null>(null);
   const [columnSearch, setColumnSearch] = useState<Record<string, string>>({});
   const [tableStatusFilter, setTableStatusFilter] = useState<string | null>(null);
@@ -167,7 +169,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     const run = async () => {
       setLoading(true);
       try {
-        const [drilldown, summaryDrilldown, editorRows, draftFinalHistoryRes, statusCategoryTrendRes] = await Promise.all([
+        const [drilldown, summaryDrilldown, editorRows, draftFinalHistoryRes, statusCategoryTrendRes, changeMixTrendRes] = await Promise.all([
           client.insights.getMonthlyDrilldown({
             repo: tableRepoFilter ?? repo,
             month,
@@ -206,6 +208,11 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
             fromMonth: historyFrom,
             toMonth: historyTo,
           }),
+          client.insights.getMonthlyChangeMixTrend({
+            repo: repo === "all" ? undefined : repo,
+            fromMonth: historyFrom,
+            toMonth: historyTo,
+          }),
         ]);
 
         setData(drilldown);
@@ -222,6 +229,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         setHistoryUpdatedAt(draftFinalHistoryRes.updatedAt);
         setStatusCategoryTrend(statusCategoryTrendRes.rows);
         setStatusCategoryUpdatedAt(statusCategoryTrendRes.updatedAt);
+        setChangeMixTrend(changeMixTrendRes.rows);
         setDataUpdatedAt(draftFinalHistoryRes.updatedAt ? new Date(draftFinalHistoryRes.updatedAt) : new Date());
       } catch (err) {
         console.error("Monthly insight load failed", err);
@@ -363,65 +371,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     return [...STATUS_ORDER, ...dynamic];
   }, [statusRepoMatrix]);
 
-  const changeBreakdownOption = useMemo(() => {
-    const total = (summary?.statusChanges || 0) + (summary?.contentChanges || 0) + (summary?.metadataChanges || 0);
-    const chartData = [
-      { name: "Status Changes", value: summary?.statusChanges || 0, itemStyle: { color: "#f59e0b" } },
-      { name: "Content Changes", value: summary?.contentChanges || 0, itemStyle: { color: "#22d3ee" } },
-      { name: "Metadata Changes", value: summary?.metadataChanges || 0, itemStyle: { color: "#a78bfa" } },
-    ].filter((d) => d.value > 0);
-
-    return {
-      tooltip: chartTooltip({
-        trigger: "item",
-        formatter: (params: { name: string; value: number; percent: number }) =>
-          `${params.name}<br/><b>${params.value}</b> (${params.percent}%)`,
-      }),
-      legend: {
-        bottom: 0,
-        left: "center",
-        itemWidth: 14,
-        itemHeight: 9,
-        textStyle: { color: "#94a3b8", fontSize: 11 },
-      },
-      graphic: [
-        {
-          type: "text",
-          left: "center",
-          top: "39%",
-          style: {
-            text: String(total),
-            fill: "#e5e7eb",
-            fontSize: 24,
-            fontWeight: 700,
-            textAlign: "center",
-          },
-        },
-        {
-          type: "text",
-          left: "center",
-          top: "48%",
-          style: {
-            text: "changes",
-            fill: "#94a3b8",
-            fontSize: 11,
-            textAlign: "center",
-          },
-        },
-      ],
-      series: [
-        {
-          type: "pie",
-          radius: ["58%", "82%"],
-          center: ["50%", "44%"],
-          avoidLabelOverlap: true,
-          label: { show: false },
-          data: chartData,
-        },
-      ],
-    };
-  }, [summary]);
-
   const editorBarOption = useMemo(() => {
     const top = [...editors].slice(0, 10).reverse();
     return {
@@ -445,7 +394,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
           return lines.join("<br/>");
         },
       }),
-      grid: { left: 120, right: 18, top: 10, bottom: 24 },
+      grid: { left: 150, right: 22, top: 10, bottom: 24 },
       xAxis: {
         type: "value",
         axisLabel: { color: "#94a3b8", fontSize: 11 },
@@ -454,8 +403,29 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       yAxis: {
         type: "category",
         data: top.map((e) => e.editor),
-        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        axisTick: { show: false },
         axisLine: { lineStyle: { color: "#334155" } },
+        axisLabel: {
+          color: "#cbd5e1",
+          fontSize: 11,
+          margin: 10,
+          // Avatar (rich image) + username. Needs the canvas renderer.
+          formatter: (value: string) => {
+            const idx = top.findIndex((e) => e.editor === value);
+            return `{a${idx}|}  ${value}`;
+          },
+          rich: Object.fromEntries(
+            top.map((e, i) => [
+              `a${i}`,
+              {
+                height: 18,
+                width: 18,
+                borderRadius: 9,
+                backgroundColor: { image: `https://github.com/${e.editor}.png` },
+              },
+            ])
+          ),
+        },
       },
       series: [
         {
@@ -544,6 +514,47 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       ],
     };
   }, [draftFinalHistory]);
+
+  // Month-over-month change mix — the three types the single-month pie showed.
+  const changeMixOption = useMemo(() => {
+    const months = changeMixTrend.map((row) => {
+      const [y, m] = row.month.split("-");
+      return `${new Date(Date.UTC(Number(y), Number(m) - 1, 1)).toLocaleString("default", { month: "short" })} '${y.slice(2)}`;
+    });
+    const mk = (name: string, key: "status" | "content" | "metadata", color: string) => ({
+      name,
+      type: "line" as const,
+      smooth: true,
+      symbol: "circle",
+      symbolSize: 6,
+      data: changeMixTrend.map((row) => row[key]),
+      lineStyle: { width: 2.5, color },
+      itemStyle: { color },
+      areaStyle: { color: `${color}22` },
+    });
+    return {
+      tooltip: chartTooltip({ trigger: "axis" }),
+      legend: { top: 0, left: 0, textStyle: { color: "#94a3b8", fontSize: 11 } },
+      grid: { left: 36, right: 18, top: 40, bottom: 28 },
+      xAxis: {
+        type: "category",
+        data: months,
+        boundaryGap: false,
+        axisLabel: { color: "#94a3b8", fontSize: 11, rotate: months.length > 8 ? 35 : 0 },
+        axisLine: { lineStyle: { color: "#334155" } },
+      },
+      yAxis: {
+        type: "value",
+        axisLabel: { color: "#94a3b8", fontSize: 11 },
+        splitLine: { lineStyle: { color: "#1e293b", type: "dashed" } },
+      },
+      series: [
+        mk("Status Changes", "status", "#f59e0b"),
+        mk("Content Changes", "content", "#22d3ee"),
+        mk("Metadata Changes", "metadata", "#a78bfa"),
+      ],
+    };
+  }, [changeMixTrend]);
 
   const statusCategoryOption = useMemo(() => {
     const months = Array.from(new Set(statusCategoryTrend.map((row) => row.month))).sort();
@@ -695,25 +706,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     URL.revokeObjectURL(url);
   };
 
-  const exportEditorsDetailedCsv = async () => {
-    try {
-      const result = await client.analytics.exportMonthlyEditorLeaderboardDetailedCSV({
-        monthYear: month,
-        limit: 20,
-        repo: repo === "all" ? undefined : repo,
-      });
-      const blob = new Blob([result.csv], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = result.filename;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error("Editors detailed CSV export failed", err);
-    }
-  };
-
   const applySummaryFilter = (status: string, targetRepo: "eips" | "ercs" | "rips") => {
     tableSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTableStatusFilter(status);
@@ -798,17 +790,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
             </div>
           ) : (
             <div className="flex flex-col gap-4">
-              {/* Month in review — the whole month across EIPs: PRs, issues,
-                  protocol calls and decisions, not just status changes. */}
-              <MonthInReview
-                month={month}
-                repo={repo}
-                prKpis={prKpis}
-                issueKpis={issueKpis}
-                calls={monthCalls}
-                decisions={monthDecisions}
-              />
-
               <div className="grid items-stretch gap-3 xl:grid-cols-12">
                 <div className="xl:col-span-5 rounded-xl border border-border bg-card p-4">
                   <div className="mx-auto flex h-full w-full max-w-[860px] flex-col justify-center">
@@ -821,9 +802,15 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                         <Download className="h-3.5 w-3.5" /> Download Report
                       </button>
                     </div>
-                    <div className="mb-2 text-xs text-muted-foreground">
+                    <div className="mb-1 text-xs text-muted-foreground">
                       Monthly status-transition entries: <span className="font-semibold text-foreground">{summary?.statusChanges || 0}</span>
                     </div>
+                    <a
+                      href={`/insights/${month.slice(0, 4)}/${Number(month.slice(5, 7))}`}
+                      className="mb-2 inline-block text-xs font-medium text-primary hover:underline"
+                    >
+                      eipsinsight.com/insights/{month.slice(0, 4)}/{Number(month.slice(5, 7))}
+                    </a>
                     <div className="overflow-x-auto rounded-lg border border-border/80 bg-background/30">
                       <table className="w-full">
                       <thead>
@@ -873,93 +860,108 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                   </div>
                 </div>
 
-                <div className="xl:col-span-7 grid gap-4 lg:grid-cols-1">
-                  <div className="rounded-xl border border-border bg-card p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-foreground">Change Breakdown</h3>
+                <div className="xl:col-span-7 flex flex-col rounded-xl border border-border bg-card p-4">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
+                    <div role="radiogroup" aria-label="Editors view" className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5 text-[11px] font-medium">
                       <button
-                        onClick={exportBreakdownCsv}
-                        className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-muted px-2 text-[11px] text-foreground hover:bg-muted/70"
+                        type="button"
+                        role="radio"
+                        aria-checked={editorView === "chart"}
+                        onClick={() => setEditorView("chart")}
+                        className={`rounded px-2 py-0.5 transition-colors ${editorView === "chart" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
                       >
-                        <Download className="h-3 w-3" /> CSV
+                        Chart
+                      </button>
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={editorView === "list"}
+                        onClick={() => setEditorView("list")}
+                        className={`rounded px-2 py-0.5 transition-colors ${editorView === "list" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                      >
+                        List
                       </button>
                     </div>
-                    <div className="relative h-[280px] min-h-[280px]">
-                      <ReactECharts option={changeBreakdownOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-                      <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 backdrop-blur-sm">
-                        EIPsInsight.com
+                  </div>
+                  {editors.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No editor activity for this month.</p>
+                  ) : editorView === "chart" ? (
+                    <div className="min-h-[300px] flex-1 rounded-lg border border-border bg-background/50 p-2">
+                      <div className="relative h-full min-h-[280px]">
+                        <ReactECharts option={editorBarOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "canvas" }} />
+                        <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 backdrop-blur-sm">
+                          EIPsInsight.com
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
-                      <LastUpdated timestamp={dataUpdatedAt} prefix="Updated" showAbsolute className="bg-muted/40 text-xs" />
-                      <span className="text-xs text-muted-foreground">Monthly change mix</span>
+                  ) : (
+                    <div className="min-h-[300px] flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border/70 scrollbar-track-transparent">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                          {editors.slice(0, 8).map((ed, idx) => (
+                            <div
+                              key={ed.editor}
+                              className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 ${
+                                ed.editor.toLowerCase() === "abcoathup"
+                                  ? "border-amber-500/40 bg-amber-500/10"
+                                  : "border-border bg-background/60"
+                              }`}
+                            >
+                              <span className="w-5 text-right text-xs font-semibold text-muted-foreground">{idx + 1}</span>
+                              <img
+                                src={`https://github.com/${ed.editor}.png`}
+                                alt={ed.editor}
+                                onError={(ev) => {
+                                  (ev.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ed.editor)}&background=0f172a&color=f8fafc&size=48`;
+                                }}
+                                className="h-8 w-8 rounded-full border border-border object-cover"
+                              />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                  <p className="truncate text-sm font-medium text-foreground">{ed.editor}</p>
+                                  {ed.editor.toLowerCase() === "abcoathup" && (
+                                    <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                                      Associate Editor
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">{ed.totalActions} actions · {ed.prsTouched} PRs touched</p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
                     </div>
+                  )}
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+                    <LastUpdated timestamp={dataUpdatedAt} prefix="Updated" showAbsolute className="bg-muted/40 text-xs" />
+                    <span className="text-xs text-muted-foreground">Editorial activity snapshot</span>
                   </div>
                 </div>
               </div>
 
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
+                  <h3 className="text-sm font-semibold text-foreground">Change Timeline</h3>
                   <button
-                    onClick={exportEditorsDetailedCsv}
+                    onClick={exportBreakdownCsv}
                     className="inline-flex h-7 items-center gap-1 rounded-md border border-border bg-muted px-2 text-[11px] text-foreground hover:bg-muted/70"
                   >
-                    <Download className="h-3 w-3" /> Detailed CSV
+                    <Download className="h-3 w-3" /> CSV
                   </button>
                 </div>
-                {editors.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No editor activity for this month.</p>
+                {changeMixTrend.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No historical change data yet.</p>
                 ) : (
-                  <div className="grid gap-3 xl:grid-cols-[1.15fr_1fr]">
-                    <div className="h-[280px] rounded-lg border border-border bg-background/50 p-2">
-                      <div className="relative h-full">
-                        <ReactECharts option={editorBarOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-                        <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 backdrop-blur-sm">
-                          EIPsInsight.com
-                        </div>
-                      </div>
-                    </div>
-                    <div className="h-[280px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-border/70 scrollbar-track-transparent">
-                      <div className="space-y-2">
-        {editors.slice(0, 8).map((ed, idx) => (
-                          <div
-                            key={ed.editor}
-                            className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 ${
-                              ed.editor.toLowerCase() === "abcoathup"
-                                ? "border-amber-500/40 bg-amber-500/10"
-                                : "border-border bg-background/60"
-                            }`}
-                          >
-                            <span className="w-5 text-right text-xs font-semibold text-muted-foreground">{idx + 1}</span>
-                            <img
-                              src={`https://github.com/${ed.editor}.png`}
-                              alt={ed.editor}
-                              onError={(ev) => {
-                                (ev.currentTarget as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(ed.editor)}&background=0f172a&color=f8fafc&size=48`;
-                              }}
-                              className="h-8 w-8 rounded-full border border-border object-cover"
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2">
-                                <p className="truncate text-sm font-medium text-foreground">{ed.editor}</p>
-                                {ed.editor.toLowerCase() === "abcoathup" && (
-                                  <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                                    Associate Editor
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[11px] text-muted-foreground">{ed.totalActions} actions · {ed.prsTouched} PRs touched</p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  <div className="relative h-[300px] min-h-[300px] rounded-lg border border-border bg-background/50 p-2">
+                    <ReactECharts option={changeMixOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                    <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 backdrop-blur-sm">
+                      EIPsInsight.com
                     </div>
                   </div>
                 )}
                 <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
                   <LastUpdated timestamp={dataUpdatedAt} prefix="Updated" showAbsolute className="bg-muted/40 text-xs" />
-                  <span className="text-xs text-muted-foreground">Editorial activity snapshot</span>
+                  <span className="text-xs text-muted-foreground">Status · content · metadata changes over time</span>
                 </div>
               </div>
 
@@ -1075,6 +1077,17 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                   <span className="text-xs text-muted-foreground">Category-level historical view</span>
                 </div>
               </div>
+
+              {/* Month in review — the whole month across EIPs: PRs, issues,
+                  protocol calls and decisions. Sits right above the change table. */}
+              <MonthInReview
+                month={month}
+                repo={repo}
+                prKpis={prKpis}
+                issueKpis={issueKpis}
+                calls={monthCalls}
+                decisions={monthDecisions}
+              />
 
               <div ref={tableSectionRef} className="scroll-mt-24 overflow-hidden rounded-xl border border-border bg-card">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
