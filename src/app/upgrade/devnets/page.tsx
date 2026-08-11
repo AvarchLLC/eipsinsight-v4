@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, FlaskConical, Radio } from 'lucide-react';
+import { ArrowLeft, ArrowRight, FlaskConical, Radio } from 'lucide-react';
+import { ShareButtons } from '@/components/share-buttons';
 import '@/lib/orpc.server';
 import { buildMetadata } from '@/lib/seo';
 import { getCachedDevnetList } from '@/lib/upgrade-data.server';
@@ -48,15 +49,30 @@ export default async function DevnetsPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-12 pt-8 sm:px-6">
-      <header>
-        <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-          Devnets
-        </h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Developer test networks where upgrade features get implemented and broken first —
-          specs, EIP scope, and live status scraped automatically from ethpandaops.
-        </p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <Link
+            href="/upgrade"
+            className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary mb-3"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Go back to main upgrades page
+          </Link>
+          <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+            Devnets
+          </h1>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Developer test networks where upgrade features get implemented and broken first —
+            specs, EIP scope, and live status scraped automatically from ethpandaops.
+          </p>
+        </div>
+        <ShareButtons
+          text="Ethereum Devnets — Developer test networks where upgrade features get implemented on EIPsInsight"
+          hashtags={['Ethereum', 'EIPs', 'Devnets']}
+          className="shrink-0"
+        />
       </header>
+      <hr className="border-border/60" />
 
       {devnets.length === 0 && (
         <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
