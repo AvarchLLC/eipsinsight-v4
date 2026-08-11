@@ -250,17 +250,19 @@ export default function EditorialCommentaryPage() {
   }, [lifecycle]);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div>
       <PageHeader
         eyebrow="Insights"
         indicator={{ icon: "sparkles", label: "Editorial", pulse: !!timeline }}
         title="Editorial Commentary"
         description="Lifecycle intelligence report for a protocol proposal: stage durations, governance churn, and PR impact."
         sectionId="commentary"
+        padding="px-0"
+        paddingY="pt-4 pb-3"
       />
       <SectionSeparator />
 
-      <div className="w-full space-y-5 px-4 pb-12 sm:px-6 lg:px-8 xl:px-12">
+      <div className="w-full space-y-5 pb-8">
         <div className="flex items-center justify-between">
           <Link href="/insights" className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
             <ArrowLeft className="h-4 w-4" />

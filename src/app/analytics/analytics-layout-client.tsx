@@ -503,7 +503,7 @@ function AnalyticsLayoutInner({
           </div>
         </div>
 
-        <div className="mx-auto w-full px-3 py-6 sm:px-4 lg:px-5 xl:px-6">
+        <div className="mx-auto w-full px-3 pb-6 pt-1 sm:px-4 lg:px-5 xl:px-6">
           <main className="min-w-0">{children}</main>
         </div>
       </div>
