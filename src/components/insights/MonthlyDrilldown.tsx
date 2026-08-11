@@ -775,18 +775,20 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="w-full pb-10">
+    <div>
+      <div className="w-full pb-6">
         <PageHeader
           eyebrow="Insights"
           indicator={{ icon: "chart", label: "Monthly", pulse: (summary?.totalChanged || 0) > 50 }}
           title={`Monthly Insight - ${monthLabel(month)}`}
           description={`Monthly governance movement for ${monthLabel(month)} across EIPs, ERCs, and RIPs, with clear status distribution and change signals.`}
           sectionId="insights"
+          padding="px-0"
+          paddingY="pt-4 pb-3"
         />
         <SectionSeparator className="pb-2" />
 
-        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
+        <div className="w-full">
           <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -842,15 +844,9 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                         <Download className="h-3.5 w-3.5" /> Download Report
                       </button>
                     </div>
-                    <div className="mb-1 text-xs text-muted-foreground">
+                    <div className="mb-2 text-xs text-muted-foreground">
                       Monthly status-transition entries: <span className="font-semibold text-foreground">{summary?.statusChanges || 0}</span>
                     </div>
-                    <a
-                      href={`/insights/${month.slice(0, 4)}/${Number(month.slice(5, 7))}`}
-                      className="mb-2 inline-block text-xs font-medium text-primary hover:underline"
-                    >
-                      eipsinsight.com/insights/{month.slice(0, 4)}/{Number(month.slice(5, 7))}
-                    </a>
                     <div className="overflow-x-auto rounded-lg border border-border/80 bg-background/30">
                       <table className="w-full">
                       <thead>

@@ -72,7 +72,7 @@ export function UpgradeDetailHeader({
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          All upgrades
+          Go back to main upgrades page
         </Link>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">

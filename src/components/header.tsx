@@ -76,6 +76,9 @@ interface PageHeaderProps {
    * The decorative gradient stays full-bleed regardless; only the text inset changes.
    */
   padding?: string;
+  /** Vertical padding for the header content. Defaults to the tall full-page top
+   *  spacing; pass a smaller value when the header sits under a tab bar/shell. */
+  paddingY?: string;
   /** Extra classes for the description — e.g. widen or narrow its measure. */
   descriptionClassName?: string;
   /**
@@ -112,6 +115,7 @@ export function PageHeader({
   showCopyLink = true,
   titleAs = 'h1',
   padding = 'px-4 sm:px-6 lg:px-8 xl:px-12',
+  paddingY = 'pt-10 pb-5 sm:pt-12',
   descriptionClassName,
   shareText,
   sharePlatforms,
@@ -126,7 +130,7 @@ export function PageHeader({
         <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-primary/10 via-primary/0 to-transparent" />
       </div>
 
-      <div className={cn('w-full max-w-full pt-10 pb-5 sm:pt-12', padding)}>
+      <div className={cn('w-full max-w-full', paddingY, padding)}>
         <div className="flex items-start justify-between gap-4">
           <div className="min-w-0 flex-1 space-y-2">
             {(indicator || eyebrow) && (

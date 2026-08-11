@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, CalendarDays, FileText, GitBranch, Sparkles, Zap, List, Archive } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CalendarDays, FileText, GitBranch, Sparkles, Zap, List, Archive } from 'lucide-react';
+import { ShareButtons } from '@/components/share-buttons';
 import { PageHeader, CopyLinkButton } from '@/components/header';
 import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
@@ -237,16 +238,31 @@ export default function PreviousUpgradesPage() {
 
   return (
     <div className="bg-background mx-auto min-h-screen w-full max-w-6xl px-4 sm:px-6">
-      {/* padding="px-0": the wrapper pads, so the header lines up with the sections. */}
-      <PageHeader
-        eyebrow="Archive"
-        indicator={{ icon: 'chart', label: 'History', pulse: false }}
-        title="Previous Upgrades (2015–2024)"
-        description="Historical upgrade overview with timeline spacing, size comparison, and upgrade-level context."
-        sectionId="previous-upgrades-overview"
-        className="bg-background"
-        padding="px-0"
-      />
+      <header className="pt-8 pb-6">
+        <Link
+          href="/upgrade"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary mb-3"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Go back to main upgrades page
+        </Link>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Previous Upgrades (2015–2024)
+            </h1>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Historical upgrade overview with timeline spacing, size comparison, and upgrade-level context.
+            </p>
+          </div>
+          <ShareButtons
+            text="Previous Ethereum Upgrades (2015–2024) — Historical upgrade overview on EIPsInsight"
+            hashtags={['Ethereum', 'EIPs']}
+            className="shrink-0"
+          />
+        </div>
+      </header>
+      <hr className="border-border/60" />
 
       <div className="w-full pb-10">
         <div className="h-px w-full bg-border/60" />

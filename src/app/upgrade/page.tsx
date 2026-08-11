@@ -157,11 +157,11 @@ export default async function UpgradeIndexPage() {
     <div className="mx-auto w-full max-w-6xl divide-y divide-border/50 px-4 pb-12 pt-8 sm:px-6 [&>*:first-child]:pt-0 [&>*]:py-10">
       {/* Hero */}
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             Ethereum upgrades, tracked live
           </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
             there - parsed automatically from meta-EIP commits.
           </p>
