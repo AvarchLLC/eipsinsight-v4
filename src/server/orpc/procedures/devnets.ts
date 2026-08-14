@@ -73,6 +73,7 @@ export const devnetsProcedures = {
           series: true,
           devnet_number: true,
           active: true,
+          canceled: true,
           genesis_time: true,
           same_spec_as: true,
           eips: true,
@@ -92,6 +93,7 @@ export const devnetsProcedures = {
           series: row.series,
           devnet_number: row.devnet_number,
           active: row.active,
+          canceled: row.canceled,
           genesis_time: row.genesis_time != null ? Number(row.genesis_time) : null,
           eips: eips.map(eip => ({ number: eip.number, status: eip.status ?? null })),
         }

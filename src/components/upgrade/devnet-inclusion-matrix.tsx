@@ -12,7 +12,8 @@ export interface DevnetColumn {
   series: string;
   devnet_number: number | null;
   active: boolean;
-  /** Short display label, e.g. "BAL 7" or "Devnet 6". */
+  canceled?: boolean;
+  /** Short display label, e.g. "Devnet 8". */
   label: string;
 }
 
@@ -97,28 +98,28 @@ export function DevnetInclusionMatrix({
 
   const chip = (selected: boolean) =>
     cn(
-      'inline-flex h-7 items-center gap-1 rounded-full border px-2.5 text-xs font-medium transition-colors',
+      'inline-flex h-8 items-center gap-1 rounded-full border px-3 text-xs font-medium transition-colors',
       selected
-        ? 'border-primary/50 bg-primary/10 text-primary'
+        ? 'border-primary/50 bg-primary/10 text-primary font-semibold'
         : 'border-border bg-transparent text-muted-foreground hover:border-border hover:text-foreground'
     );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* How to read this — plain-English guide + legend, up front */}
-      <div className="rounded-xl border border-border bg-muted/20 p-4">
+      <div className="rounded-xl border border-border bg-card/60 p-4 shadow-sm">
         <p className="text-sm leading-relaxed text-foreground">
           <span className="font-semibold">How to read this:</span> every{' '}
           <span className="font-medium">row is an EIP</span>, every{' '}
-          <span className="font-medium">column is a devnet</span> (newest on the left). A{' '}
-          <span className="font-medium">✓ means the EIP ships in that devnet</span> - its color
+          <span className="font-medium">column is a devnet</span> (active & newest devnets prioritized on the left). A{' '}
+          <span className="font-medium text-emerald-600 dark:text-emerald-400">✓ means the EIP ships in that devnet</span> - its color
           tells you how it appears there:
         </p>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs">
           {LEGEND_KEYS.map((k) => (
             <span key={k} className="inline-flex items-center gap-1.5">
               <Check className={cn('h-4 w-4', STATUS_META[k].className)} />
-              <span className="text-foreground">{STATUS_META[k].label}</span>
+              <span className="font-medium text-foreground">{STATUS_META[k].label}</span>
             </span>
           ))}
           <span className="h-3.5 w-px bg-border" aria-hidden />
@@ -126,59 +127,73 @@ export function DevnetInclusionMatrix({
             <span className="w-4 text-center text-muted-foreground/40">·</span> not in that devnet
           </span>
           <span className="inline-flex items-center gap-1.5 text-muted-foreground">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" /> a live devnet
+            <span className="h-2 w-2 rounded-full bg-emerald-500" /> live devnet
           </span>
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col gap-2.5 sm:flex-row sm:flex-wrap sm:items-center">
-        <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search EIP # or title…"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-          />
-        </div>
+      {/* Filters & Checkbox controls */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center justify-between">
+        <div className="flex flex-wrap items-center gap-2.5">
+          <div className="relative w-full sm:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search EIP # or title…"
+              className="h-8 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-xs text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+            />
+          </div>
 
-        {hasLiveDevnet && (
-          <button type="button" onClick={() => setActiveOnly((v) => !v)} className={chip(activeOnly)}>
-            <Radio className="h-3.5 w-3.5" />
-            Live only
-          </button>
-        )}
+          {/* Checkbox Tick Mark to Filter Active Devnets */}
+          {hasLiveDevnet && (
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border/80 bg-card/80 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-primary/40 hover:bg-card">
+              <input
+                type="checkbox"
+                checked={activeOnly}
+                onChange={(e) => setActiveOnly(e.target.checked)}
+                className="h-4 w-4 rounded border-border text-primary accent-primary focus:ring-primary/30"
+              />
+              <span className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                Active devnets only
+              </span>
+            </label>
+          )}
 
-        {/* Layer filter */}
-        <div className="flex items-center gap-1">
-          {(['all', 'EL', 'CL'] as const).map((opt) => (
-            <button key={opt} type="button" onClick={() => setLayer(opt)} className={chip(layer === opt)}>
-              {opt === 'all' ? 'All layers' : opt}
-            </button>
-          ))}
-        </div>
-
-        {/* Stage filter — a compact dropdown instead of a row of buttons */}
-        {availableStages.length > 0 && (
-          <select
-            value={stage}
-            onChange={(e) => setStage(e.target.value as 'all' | UpgradeBucket)}
-            aria-label="Filter by inclusion stage"
-            className="h-7 rounded-full border border-border bg-background px-2.5 text-xs font-medium text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
-          >
-            <option value="all">All stages</option>
-            {availableStages.map((b) => (
-              <option key={b} value={b}>
-                {stageLabel(b)}
-              </option>
+          {/* Layer filter */}
+          <div className="flex items-center gap-1">
+            {(['all', 'EL', 'CL'] as const).map((opt) => (
+              <button key={opt} type="button" onClick={() => setLayer(opt)} className={chip(layer === opt)}>
+                {opt === 'all' ? 'All layers' : opt}
+              </button>
             ))}
-          </select>
-        )}
+          </div>
 
-        <span className="text-xs text-muted-foreground sm:ml-auto">
-          <span className="font-medium text-foreground">{visibleRows.length}</span> EIPs ·{' '}
-          <span className="font-medium text-foreground">{visibleColumns.length}</span> devnets
+          {/* Stage filter dropdown */}
+          {availableStages.length > 0 && (
+            <select
+              value={stage}
+              onChange={(e) => setStage(e.target.value as 'all' | UpgradeBucket)}
+              aria-label="Filter by inclusion stage"
+              className="h-8 rounded-full border border-border bg-background px-3 text-xs font-medium text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30"
+            >
+              <option value="all">All stages</option>
+              {availableStages.map((b) => (
+                <option key={b} value={b}>
+                  {stageLabel(b)}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        <span className="text-xs text-muted-foreground">
+          Showing <span className="font-semibold text-foreground">{visibleRows.length}</span> EIPs across{' '}
+          <span className="font-semibold text-foreground">{visibleColumns.length}</span> devnets
         </span>
       </div>
 
@@ -187,42 +202,55 @@ export function DevnetInclusionMatrix({
           No EIPs match these filters.
         </p>
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="overflow-hidden rounded-xl border border-border bg-card/60 shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border/70 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  <th className="sticky left-0 z-10 bg-card px-3 py-2.5">EIP</th>
-                  <th className="px-3 py-2.5">Stage</th>
-                  <th className="px-3 py-2.5 text-center">Layer</th>
+                <tr className="border-b border-border bg-muted/40 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <th className="sticky left-0 z-20 bg-card border-r border-border/60 px-3 py-3">EIP</th>
+                  <th className="px-3 py-3">Stage</th>
+                  <th className="px-3 py-3 text-center">Layer</th>
                   {visibleColumns.map((devnet) => (
-                    <th key={devnet.id} className="px-2 py-2.5 text-center">
+                    <th key={devnet.id} className="px-3 py-3 text-center min-w-[95px]">
                       <Link
                         href={`/upgrade/devnets/${devnet.id}`}
                         title={devnet.active ? `${devnet.id} - live` : devnet.id}
-                        className="inline-flex items-center justify-center gap-1 whitespace-nowrap hover:text-primary"
+                        className="group inline-flex flex-col items-center justify-center gap-0.5"
                       >
-                        {devnet.active && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
+                        <span className="inline-flex items-center gap-1 font-bold text-foreground transition-colors group-hover:text-primary">
+                          {devnet.label}
+                        </span>
+                        {devnet.active ? (
+                          <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-semibold tracking-normal text-emerald-700 dark:text-emerald-300">
+                            <Radio className="h-2 w-2" />
+                            live
+                          </span>
+                        ) : devnet.canceled ? (
+                          <span className="rounded-full bg-red-500/10 px-1.5 py-0.2 text-[9px] font-medium text-red-600 dark:text-red-400">
+                            retired
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-muted/60 px-1.5 py-0.2 text-[9px] font-medium text-muted-foreground">
+                            spec
+                          </span>
                         )}
-                        {devnet.label}
                       </Link>
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-border/50">
                 {visibleRows.map((row) => (
-                  <tr key={row.eip_number} className="border-b border-border/60 last:border-0 hover:bg-muted/30">
-                    <td className="sticky left-0 z-10 max-w-72 bg-card px-3 py-2.5">
+                  <tr key={row.eip_number} className="transition-colors hover:bg-muted/40">
+                    <td className="sticky left-0 z-10 max-w-72 bg-card border-r border-border/60 px-3 py-2.5">
                       <Link
                         href={`/eip/${row.eip_number}`}
-                        className="font-mono text-xs font-semibold text-primary hover:underline"
+                        className="font-mono text-xs font-bold text-primary hover:underline"
                       >
                         EIP-{row.eip_number}
                       </Link>
                       {(row.layman_title || row.title) && (
-                        <span className="ml-2 hidden max-w-[16rem] truncate align-middle text-xs text-muted-foreground lg:inline-block">
+                        <span className="ml-2 hidden max-w-[16rem] truncate align-middle text-xs font-normal text-muted-foreground lg:inline-block">
                           {row.layman_title || row.title}
                         </span>
                       )}
@@ -237,10 +265,10 @@ export function DevnetInclusionMatrix({
                       const status = row.inclusion[devnet.id];
                       const meta = status ? STATUS_META[status] ?? STATUS_META.included : null;
                       return (
-                        <td key={devnet.id} className="px-2 py-2.5 text-center">
+                        <td key={devnet.id} className="px-3 py-2.5 text-center">
                           {meta ? (
                             <span title={`${meta.label} - ${devnet.label}`}>
-                              <Check className={cn('mx-auto h-4 w-4', meta.className)} />
+                              <Check className={cn('mx-auto h-4 w-4 stroke-[2.5]', meta.className)} />
                             </span>
                           ) : (
                             <span className="text-muted-foreground/25" title={`Not in ${devnet.label}`}>
