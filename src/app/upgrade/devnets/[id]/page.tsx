@@ -5,6 +5,7 @@ import {
   ArrowLeft,
   CalendarDays,
   ExternalLink,
+  Info,
   Megaphone,
   Radio,
   Wrench,
@@ -50,18 +51,22 @@ const LIFECYCLE_CHIP: Record<string, string> = {
 };
 
 const SUPPORT_CELL: Record<string, { label: string; className: string }> = {
-  supported: { label: '✓', className: 'text-emerald-500' },
-  not_supported: { label: '✗', className: 'text-red-400' },
+  supported: { label: '✓', className: 'text-emerald-500 font-bold' },
+  not_supported: { label: '✗', className: 'text-red-400 font-bold' },
   in_progress: { label: '⚒', className: 'text-amber-400' },
   unknown: { label: '?', className: 'text-muted-foreground/60' },
+  not_applicable: { label: 'N/A', className: 'text-muted-foreground/50 text-xs font-normal' },
+  optional: { label: 'Opt', className: 'text-blue-400 font-semibold' },
 };
 
 function ClientSupportTable({
   title,
   support,
+  metaByEip,
 }: {
   title: string;
   support: { clients: string[]; matrix: Array<{ eipNumber: number; label: string; support: Record<string, string> }> };
+  metaByEip?: Map<number, { title?: string | null; layman_title?: string | null }>;
 }) {
   if (support.clients.length === 0 || support.matrix.length === 0) return null;
 
@@ -75,7 +80,7 @@ function ClientSupportTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border/70 text-left text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                <th className="px-3 py-2">Feature</th>
+                <th className="px-3 py-2">Feature / EIP Title</th>
                 {support.clients.map((clientName) => (
                   <th key={clientName} className="px-3 py-2 text-center">
                     {clientName}
@@ -84,35 +89,43 @@ function ClientSupportTable({
               </tr>
             </thead>
             <tbody>
-              {support.matrix.map((row) => (
-                <tr key={`${row.eipNumber}-${row.label}`} className="border-b border-border/60 last:border-0">
-                  <td className="px-3 py-2 text-xs font-medium text-foreground">
-                    {row.eipNumber > 0 ? (
-                      <Link href={`/eip/${row.eipNumber}`} className="text-primary hover:underline">
-                        {row.label}
-                      </Link>
-                    ) : (
-                      row.label
-                    )}
-                  </td>
-                  {support.clients.map((clientName) => {
-                    const value = row.support[clientName] ?? 'unknown';
-                    const cell = SUPPORT_CELL[value];
-                    return (
-                      <td
-                        key={clientName}
-                        title={`${clientName}: ${value.replace('_', ' ')}`}
-                        className={cn(
-                          'px-3 py-2 text-center text-sm font-semibold',
-                          cell?.className ?? 'text-muted-foreground'
-                        )}
-                      >
-                        {cell?.label ?? value}
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
+              {support.matrix.map((row) => {
+                const meta = row.eipNumber > 0 ? metaByEip?.get(row.eipNumber) : null;
+                let displayLabel = row.label;
+                if (!row.label.includes(':') && row.eipNumber > 0) {
+                  const eipTitle = meta?.layman_title || meta?.title;
+                  displayLabel = eipTitle ? `EIP-${row.eipNumber}: ${eipTitle}` : `EIP-${row.eipNumber}`;
+                }
+                return (
+                  <tr key={`${row.eipNumber}-${row.label}`} className="border-b border-border/60 last:border-0 hover:bg-muted/20">
+                    <td className="px-3 py-2 text-xs font-medium text-foreground">
+                      {row.eipNumber > 0 ? (
+                        <Link href={`/eip/${row.eipNumber}`} className="text-primary hover:underline">
+                          {displayLabel}
+                        </Link>
+                      ) : (
+                        displayLabel
+                      )}
+                    </td>
+                    {support.clients.map((clientName) => {
+                      const value = row.support[clientName] ?? 'unknown';
+                      const cell = SUPPORT_CELL[value];
+                      return (
+                        <td
+                          key={clientName}
+                          title={`${clientName}: ${value.replace('_', ' ')}`}
+                          className={cn(
+                            'px-3 py-2 text-center text-sm font-semibold',
+                            cell?.className ?? 'text-muted-foreground'
+                          )}
+                        >
+                          {cell?.label ?? value}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -267,7 +280,7 @@ export default async function DevnetDetailPage({ params }: Props) {
       {devnet.eips.length > 0 && (
         <section>
           <h2 className="dec-title mb-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            EIPs in scope
+            {devnet.eip_section_title || (devnet.id === 'glamsterdam-devnet-8' ? 'Glamsterdam EIPs in Platterburg Testnet scope' : 'EIPs in scope')}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-semibold text-muted-foreground">
               {devnet.eips.length}
             </span>
@@ -358,9 +371,19 @@ export default async function DevnetDetailPage({ params }: Props) {
         </section>
       )}
 
+      <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
+        <div className="flex items-center gap-2 font-semibold text-foreground mb-1">
+          <Info className="h-4 w-4 text-blue-500 shrink-0" />
+          Meta & Informational Proposals (e.g. EIP-8261)
+        </div>
+        <p>
+          <strong>EIP-8261 (In-Client Gas Limit Schedule)</strong> is an Informational/Meta proposal carrying no EVM execution state changes, so it has no Execution Fork Inclusion (EFI/SFI) stage. As agreed at recent ACDE calls, EIP-8261 moves forward as an optional Consensus Layer (CL) configuration parameter for validator node operators.
+        </p>
+      </div>
+
       <section className="space-y-6">
-        <ClientSupportTable title="Execution layer client support" support={devnet.el_client_support} />
-        <ClientSupportTable title="Consensus layer client support" support={devnet.cl_client_support} />
+        <ClientSupportTable title="Execution layer client support" support={devnet.el_client_support} metaByEip={metaByEip} />
+        <ClientSupportTable title="Consensus layer client support" support={devnet.cl_client_support} metaByEip={metaByEip} />
       </section>
 
       {devnet.scraped_at && (
