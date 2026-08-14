@@ -389,8 +389,8 @@ export function UpgradeDetailBody({
                               live
                             </span>
                           ) : (
-                            <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                              spec
+                            <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                              inactive
                             </span>
                           )}
                         </div>

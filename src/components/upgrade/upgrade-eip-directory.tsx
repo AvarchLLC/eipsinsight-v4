@@ -350,6 +350,16 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     (headlinerFilter !== 'all' ? 1 : 0) +
     (search.trim() ? 1 : 0);
 
+  const coreCount = useMemo(
+    () => filteredEips.filter((e) => e.category === 'Core' || e.category === 'core').length,
+    [filteredEips]
+  );
+
+  const otherCount = useMemo(
+    () => filteredEips.filter((e) => e.category !== 'Core' && e.category !== 'core').length,
+    [filteredEips]
+  );
+
   const headlinerCount = useMemo(
     () => filteredEips.filter((e) => e.is_headliner).length,
     [filteredEips]
@@ -527,20 +537,34 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
               className="h-10 w-full rounded-xl border border-border bg-card/60 pl-10 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
           </div>
-          <div className="flex shrink-0 items-center gap-2 text-xs">
-            <span className="rounded-full border border-border bg-card/60 px-2.5 py-1 font-medium text-muted-foreground">
-              <span className="text-foreground">{filteredEips.length}</span>
-              {filteredEips.length !== initialEips.length && (
-                <span className="text-muted-foreground/70"> / {initialEips.length}</span>
-              )}{' '}
-              EIPs
+          <div className="flex flex-wrap shrink-0 items-center gap-2 text-xs">
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 font-medium text-blue-700 dark:text-blue-300"
+              title="Core protocol EIPs"
+            >
+              <span className="font-bold text-foreground">{coreCount}</span> Core EIPs
+            </span>
+            <span
+              className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 font-medium text-purple-700 dark:text-purple-300"
+              title="Networking, Interface, ERC & other EIP categories"
+            >
+              <span className="font-bold text-foreground">{otherCount}</span> Other EIPs
             </span>
             {headlinerCount > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/10 px-2.5 py-1 font-medium text-primary">
-                <Star className="h-3 w-3 fill-primary text-primary" />
-                {headlinerCount} headliner{headlinerCount === 1 ? '' : 's'}
+              <span
+                className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-300"
+                title="Upgrade headliners"
+              >
+                <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
+                <span className="font-bold text-foreground">{headlinerCount}</span> Headliner{headlinerCount === 1 ? '' : 's'}
               </span>
             )}
+            <span className="rounded-full border border-border bg-card/60 px-2.5 py-1 font-medium text-muted-foreground">
+              <span className="font-semibold text-foreground">{filteredEips.length}</span> Total
+              {filteredEips.length !== initialEips.length && (
+                <span className="text-muted-foreground/70"> / {initialEips.length}</span>
+              )}
+            </span>
           </div>
         </div>
 
@@ -652,7 +676,25 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                             />
                           )}
                         </div>
-                        <div className="mt-0.5 text-[10px] text-muted-foreground">{eip.category}</div>
+                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={cn(
+                              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
+                              eip.category === 'Core' || eip.category === 'core'
+                                ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                : 'border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                            )}
+                          >
+                            {eip.category || eip.type || 'Other'}
+                          </span>
+                          {eip.type &&
+                            eip.type.toLowerCase() !== 'standards track' &&
+                            eip.type.toLowerCase() !== (eip.category || '').toLowerCase() && (
+                              <span className="text-[10px] font-medium text-muted-foreground/70">
+                                · {eip.type}
+                              </span>
+                            )}
+                        </div>
                       </td>
 
                       {/* Upgrade + year */}

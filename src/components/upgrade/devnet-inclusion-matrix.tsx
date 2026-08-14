@@ -226,12 +226,12 @@ export function DevnetInclusionMatrix({
                             live
                           </span>
                         ) : devnet.canceled ? (
-                          <span className="rounded-full bg-red-500/10 px-1.5 py-0.2 text-[9px] font-medium text-red-600 dark:text-red-400">
-                            retired
+                          <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.2 text-[9px] font-medium text-amber-700 dark:text-amber-300">
+                            canceled
                           </span>
                         ) : (
-                          <span className="rounded-full bg-muted/60 px-1.5 py-0.2 text-[9px] font-medium text-muted-foreground">
-                            spec
+                          <span className="rounded-full border border-red-500/30 bg-red-500/10 px-1.5 py-0.2 text-[9px] font-medium text-red-600 dark:text-red-400">
+                            inactive
                           </span>
                         )}
                       </Link>

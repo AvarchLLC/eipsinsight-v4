@@ -114,10 +114,14 @@ export default async function DevnetsPage() {
                         live
                       </span>
                     ) : devnet.canceled ? (
-                      <span className="ml-auto shrink-0 rounded-full border border-red-500/30 bg-red-500/15 px-2 py-0.5 text-[10px] font-medium text-red-700 dark:text-red-300">
+                      <span className="ml-auto shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
                         canceled
                       </span>
-                    ) : null}
+                    ) : (
+                      <span className="ml-auto shrink-0 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                        inactive
+                      </span>
+                    )}
                   </div>
                   <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
                     {genesisDate(devnet.genesis_time) && (
