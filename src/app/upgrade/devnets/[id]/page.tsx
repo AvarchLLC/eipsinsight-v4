@@ -175,15 +175,18 @@ export default async function DevnetDetailPage({ params }: Props) {
           <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             {devnet.title ?? devnet.id}
           </h1>
-          {devnet.active && (
+          {devnet.active ? (
             <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
               <Radio className="h-3 w-3" />
               live
             </span>
-          )}
-          {devnet.canceled && (
-            <span className="rounded-full border border-red-500/30 bg-red-500/15 px-2.5 py-1 text-xs font-medium text-red-700 dark:text-red-300">
+          ) : devnet.canceled ? (
+            <span className="rounded-full border border-amber-500/30 bg-amber-500/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-300">
               canceled
+            </span>
+          ) : (
+            <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-600 dark:text-red-400">
+              inactive
             </span>
           )}
         </div>

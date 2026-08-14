@@ -44,10 +44,12 @@ export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
   {
     slug: 'glamsterdam',
     mainnetTarget: '2026-09-16',
-    devnetCount: 8,
+    devnetCount: 9,
     lockedDates: {
       // ACDE #240 (2026-07-02): devnet-7 launch targeting week of July 7.
       'devnet-7': '2026-07-08',
+      // Platterburg Testnet scope / Glamsterdam Devnet-8
+      'devnet-8': '2026-08-12',
     },
   },
   {

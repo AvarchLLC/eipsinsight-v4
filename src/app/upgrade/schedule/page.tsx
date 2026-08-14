@@ -32,7 +32,7 @@ import { getCachedUpgradeComposition } from '@/lib/upgrade-data.server';
 import { UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { SchedulePlanner } from '@/components/upgrade/schedule-planner';
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export const metadata: Metadata = buildMetadata({
   title: 'Upgrade Schedule',
@@ -279,13 +279,17 @@ async function ForkScheduleCard({ slug, today }: { slug: string; today: string }
 export default async function UpgradeSchedulePage() {
   const today = new Date().toISOString().slice(0, 10);
   const allDevnets = await getCachedDevnetList();
-  // Live networks first, then the newest specs from in-progress series.
+  const seen = new Set<string>();
   const highlightedDevnets = [
-    ...allDevnets.filter((devnet) => devnet.active),
-    ...allDevnets.filter(
-      (devnet) => !devnet.active && ['glamsterdam', 'bal', 'epbs'].includes(devnet.series)
-    ),
-  ].slice(0, 6);
+    ...allDevnets.filter((d) => d.active),
+    ...allDevnets.filter((d) => !d.active && ['glamsterdam', 'bal', 'epbs'].includes(d.series)),
+  ]
+    .filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    })
+    .slice(0, 6);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-12 pt-8 sm:px-6">
@@ -363,9 +367,17 @@ export default async function UpgradeSchedulePage() {
                   <span className="truncate text-sm font-semibold text-foreground">
                     {devnet.title ?? devnet.id}
                   </span>
-                  {devnet.active && (
+                  {devnet.active ? (
                     <span className="ml-auto shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
                       live
+                    </span>
+                  ) : devnet.canceled ? (
+                    <span className="ml-auto shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                      canceled
+                    </span>
+                  ) : (
+                    <span className="ml-auto shrink-0 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                      inactive
                     </span>
                   )}
                 </div>
