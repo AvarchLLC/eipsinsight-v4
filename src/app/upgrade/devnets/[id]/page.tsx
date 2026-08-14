@@ -143,6 +143,16 @@ export default async function DevnetDetailPage({ params }: Props) {
   const eipMeta = await getCachedEipMeta(devnet.eips.map((eip) => eip.number));
   const metaByEip = new Map(eipMeta.map((m) => [m.eip_number, m]));
 
+  const infoEips = devnet.eips.filter((eip) => {
+    const meta = metaByEip.get(eip.number);
+    return (
+      meta?.type === 'Informational' ||
+      meta?.type === 'Meta' ||
+      eip.number === 8261 ||
+      eip.number === 7904
+    );
+  });
+
   const genesis = devnet.genesis_time
     ? new Date(devnet.genesis_time * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
     : null;
@@ -371,15 +381,34 @@ export default async function DevnetDetailPage({ params }: Props) {
         </section>
       )}
 
-      <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
-        <div className="flex items-center gap-2 font-semibold text-foreground mb-1">
-          <Info className="h-4 w-4 text-blue-500 shrink-0" />
-          Meta & Informational Proposals (e.g. EIP-8261)
+      {infoEips.length > 0 && (
+        <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
+          <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">
+            <Info className="h-4 w-4 text-blue-500 shrink-0" />
+            Meta & Informational Proposals in Scope ({infoEips.map((e) => `EIP-${e.number}`).join(', ')})
+          </div>
+          <p className="mb-2">
+            Informational and Meta proposals carry no EVM state transition rules and do not follow standard Execution Fork Inclusion (EFI/SFI) staging tracks.
+          </p>
+          <ul className="space-y-1 pl-4 list-disc text-foreground/90">
+            {infoEips.map((eip) => {
+              const meta = metaByEip.get(eip.number);
+              const title = meta?.layman_title || meta?.title || eip.title;
+              let note = 'Carries no EVM execution code; provides process, architectural, or configuration guidance.';
+              if (eip.number === 8261) {
+                note = 'Moves forward as an optional Consensus Layer (CL) configuration parameter for validator node operators.';
+              } else if (eip.number === 7904) {
+                note = 'Provides the analytical baseline assessing opcode throughput for gas cost updates.';
+              }
+              return (
+                <li key={eip.number}>
+                  <strong className="font-semibold">EIP-{eip.number} ({title})</strong>: {note}
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <p>
-          <strong>EIP-8261 (In-Client Gas Limit Schedule)</strong> is an Informational/Meta proposal carrying no EVM execution state changes, so it has no Execution Fork Inclusion (EFI/SFI) stage. As agreed at recent ACDE calls, EIP-8261 moves forward as an optional Consensus Layer (CL) configuration parameter for validator node operators.
-        </p>
-      </div>
+      )}
 
       <section className="space-y-6">
         <ClientSupportTable title="Execution layer client support" support={devnet.el_client_support} metaByEip={metaByEip} />

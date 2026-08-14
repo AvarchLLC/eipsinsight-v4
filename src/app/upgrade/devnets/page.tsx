@@ -17,10 +17,12 @@ export const metadata: Metadata = buildMetadata({
 });
 
 /** Series shown first; anything else (historical) follows alphabetically. */
-const FEATURED_SERIES = ['glamsterdam', 'bal', 'epbs'];
+const FEATURED_SERIES = ['glamsterdam', 'frames', 'focil', 'bal', 'epbs'];
 
 const SERIES_LABELS: Record<string, string> = {
   glamsterdam: 'Glamsterdam',
+  frames: 'Frame Transactions (EIP-8141)',
+  focil: 'Fork-choice Enforced Inclusion Lists (FOCIL)',
   bal: 'Block-Level Access Lists (BAL)',
   epbs: 'ePBS',
   blob: 'Blob scaling',
