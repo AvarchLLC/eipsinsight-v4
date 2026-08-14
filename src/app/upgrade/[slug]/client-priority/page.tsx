@@ -86,7 +86,7 @@ export default async function ClientPriorityPage({ params }: Props) {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-5 px-4 pb-12 pt-6 sm:px-6">
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        <p className="w-full text-sm leading-relaxed text-muted-foreground">
           Where each candidate EIP stands with client teams - sorted by overall support, so
           what&apos;s likely in floats to the top. Each team&apos;s own rating (tiers,
           support/oppose) is normalized to a 1–5 scale; the{' '}

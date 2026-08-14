@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ChevronDown, GitCommit, Search, Star, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, FlaskConical, GitCommit, Radio, Search, Star, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   STAGE_ORDER,
@@ -22,6 +22,7 @@ import type { UpgradeArticle } from '@/lib/upgrade-articles';
 import type {
   UpgradeCompositionEip,
   UpgradeCompositionEvent,
+  UpgradeDevnetSummary,
   UpgradeTimelinePoint,
 } from '@/components/upgrade/types';
 import { CopyLinkButton } from '@/components/header';
@@ -39,6 +40,7 @@ export function UpgradeDetailBody({
   composition,
   events,
   timelineData,
+  devnets = [],
 }: {
   slug: string;
   name: string;
@@ -46,6 +48,7 @@ export function UpgradeDetailBody({
   composition: UpgradeCompositionEip[];
   events: UpgradeCompositionEvent[];
   timelineData: UpgradeTimelinePoint[];
+  devnets?: UpgradeDevnetSummary[];
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [layerFilter, setLayerFilter] = useState<'all' | 'EL' | 'CL'>('all');
@@ -154,6 +157,7 @@ export function UpgradeDetailBody({
 
   const tocItems: TocItem[] = useMemo(() => {
     const items: TocItem[] = [{ id: 'about', label: `About ${name}` }];
+    if (devnets.length > 0) items.push({ id: 'devnets', label: 'Devnets & Testnets', count: devnets.length });
     if (headliners.length > 0) items.push({ id: 'headliners', label: 'Headliners' });
     for (const bucket of visibleStages) {
       items.push({
@@ -166,7 +170,7 @@ export function UpgradeDetailBody({
     if (showActivity) items.push({ id: 'activity', label: 'Recent changes' });
     if (articles.length > 0) items.push({ id: 'related-articles', label: 'Related articles' });
     return items;
-  }, [name, headliners.length, visibleStages, byStage, showTimelineChart, showActivity, articles.length]);
+  }, [name, devnets.length, headliners.length, visibleStages, byStage, showTimelineChart, showActivity, articles.length]);
 
   useEffect(() => {
     const sections = tocItems
@@ -324,6 +328,89 @@ export function UpgradeDetailBody({
                     {entry.nameOrigin}
                   </p>
                 )}
+              </div>
+            </section>
+          )}
+
+          {/* Devnets & Testnets section */}
+          {devnets.length > 0 && (
+            <section id="devnets" className="scroll-mt-28">
+              <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 sm:p-5">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <div className="flex items-center gap-2">
+                    <FlaskConical className="h-5 w-5 text-blue-500 shrink-0" />
+                    <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                      Devnets & Testnets
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href="/upgrade/devnets"
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                    >
+                      View all devnets
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                    <CopyLinkButton sectionId="devnets" className="h-7 w-7 rounded-md border border-border/40 bg-card/60 hover:border-primary/40 hover:bg-primary/10" />
+                  </div>
+                </div>
+
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                  {slug === 'glamsterdam' ? (
+                    <>
+                      Devnets and early testnets (such as the <strong>Platterburg Testnet</strong> scope in <strong>glamsterdam-devnet-8</strong>) are developer testbeds where upgrade features, client specs, and consensus parameters get battle-tested before public testnet rollouts. Discover all specifications, client support matrices, and live status on the <Link href="/upgrade/devnets" className="font-semibold text-primary underline underline-offset-2">full devnets directory</Link>.
+                    </>
+                  ) : slug === 'hegota' ? (
+                    <>
+                      Devnets and feature testnets (such as <strong>focil-devnet-0</strong> for FOCIL EIP-7805 and <strong>frames-devnet-0</strong> for Frame Transactions EIP-8141) are developer testbeds for the Hegotá upgrade (Heze consensus + Bogota execution). Discover all specifications and client support matrices on the <Link href="/upgrade/devnets" className="font-semibold text-primary underline underline-offset-2">full devnets directory</Link>.
+                    </>
+                  ) : (
+                    <>
+                      Developer test networks where upgrade features and client implementations get battle-tested before public testnets. View all specifications and client support matrices on the <Link href="/upgrade/devnets" className="font-semibold text-primary underline underline-offset-2">full devnets directory</Link>.
+                    </>
+                  )}
+                </p>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {devnets.slice(0, 4).map((devnet) => (
+                    <Link
+                      key={devnet.id}
+                      href={`/upgrade/devnets/${devnet.id}`}
+                      className="group flex flex-col justify-between rounded-xl border border-border/60 bg-card/80 p-3.5 transition-colors hover:border-blue-500/40 hover:bg-card"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-bold text-foreground">
+                            {devnet.title ?? devnet.id}
+                          </span>
+                          {devnet.active ? (
+                            <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
+                              <Radio className="h-2.5 w-2.5" />
+                              live
+                            </span>
+                          ) : (
+                            <span className="rounded-full bg-muted/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              spec
+                            </span>
+                          )}
+                        </div>
+                        {devnet.eip_section_title && (
+                          <p className="mt-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
+                            {devnet.eip_section_title}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
+                        <span>{devnet.eip_count} EIPs in scope</span>
+                        <span className="inline-flex items-center gap-1 font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
+                          View spec
+                          <ArrowRight className="h-3 w-3" />
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
               </div>
             </section>
           )}

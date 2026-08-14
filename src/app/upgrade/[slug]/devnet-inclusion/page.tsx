@@ -46,20 +46,31 @@ export default async function DevnetInclusionPage({ params }: Props) {
     series.length > 0 ? getCachedDevnetMatrix(series) : Promise.resolve([]),
   ]);
 
-  // Columns: devnets with any EIP data, most recent first, capped.
+  // Columns: devnets sorted with active/live & newest devnets FIRST, retired/canceled LAST.
   const devnets = matrix
     .filter((devnet) => devnet.eips.length > 0)
-    .sort(
-      (a, b) =>
-        a.series.localeCompare(b.series) || (b.devnet_number ?? 0) - (a.devnet_number ?? 0)
-    )
-    .slice(0, 12);
+    .sort((a, b) => {
+      // 1. Active/live devnets first
+      if (a.active !== b.active) return a.active ? -1 : 1;
+      // 2. Non-canceled before canceled/retired
+      if (a.canceled !== b.canceled) return a.canceled ? 1 : -1;
+      // 3. Primary upgrade series first (e.g. glamsterdam devnets on glamsterdam upgrade page)
+      const aIsPrimary = a.series === slug;
+      const bIsPrimary = b.series === slug;
+      if (aIsPrimary !== bIsPrimary) return aIsPrimary ? -1 : 1;
+      // 4. Higher devnet number first (e.g. devnet-8 before devnet-7)
+      const numA = a.devnet_number ?? 0;
+      const numB = b.devnet_number ?? 0;
+      if (numA !== numB) return numB - numA;
+      return a.series.localeCompare(b.series);
+    });
 
   const columns: DevnetColumn[] = devnets.map((devnet) => ({
     id: devnet.id,
     series: devnet.series,
     devnet_number: devnet.devnet_number,
     active: devnet.active,
+    canceled: devnet.canceled,
     label:
       devnet.series === slug
         ? `Devnet ${devnet.devnet_number}`
@@ -102,7 +113,7 @@ export default async function DevnetInclusionPage({ params }: Props) {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-12 pt-6 sm:px-6">
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        <p className="w-full text-sm leading-relaxed text-muted-foreground">
           Which EIPs each devnet actually ships - scraped from the ethpandaops spec pages. Each
           column is a devnet (newest first); colored marks show how the EIP appears in that
           devnet. Filter by layer, inclusion stage, or narrow to live devnets.
