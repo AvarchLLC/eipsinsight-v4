@@ -102,7 +102,7 @@ export default async function DevnetInclusionPage({ params }: Props) {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-12 pt-6 sm:px-6">
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        <p className="w-full text-sm leading-relaxed text-muted-foreground">
           Which EIPs each devnet actually ships - scraped from the ethpandaops spec pages. Each
           column is a devnet (newest first); colored marks show how the EIP appears in that
           devnet. Filter by layer, inclusion stage, or narrow to live devnets.

@@ -134,7 +134,7 @@ export function UpgradeDetailHeader({
         {/* Subtab bar — segmented pill control so the sections read clearly as tabs */}
         {subtabs.length > 0 && (
           <div className="mt-5 pb-4">
-            <nav className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-muted/50 p-1">
+            <nav className="flex w-full flex-wrap gap-1.5 rounded-xl border border-border bg-muted/50 p-1.5 sm:inline-flex sm:w-auto">
               {[{ id: 'overview' as const, label: 'Overview', href: `/upgrade/${slug}` }, ...subtabs].map(
                 (tab) => (
                   <Link

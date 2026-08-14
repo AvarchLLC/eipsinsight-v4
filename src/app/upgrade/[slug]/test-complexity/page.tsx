@@ -72,7 +72,7 @@ export default async function TestComplexityPage({ params }: Props) {
       />
 
       <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-12 pt-6 sm:px-6">
-        <p className="max-w-3xl text-sm leading-relaxed text-muted-foreground">
+        <p className="w-full text-sm leading-relaxed text-muted-foreground">
           How hard each EIP is to test, from the{' '}
           <a
             href="https://github.com/ethsteel/pm"
