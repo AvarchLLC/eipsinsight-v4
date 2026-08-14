@@ -34,12 +34,12 @@ export default async function UpgradeEipsPage() {
             Upgrade EIP Directory
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Every EIP included, scheduled, or considered across Ethereum&apos;s network upgrades —
-            from Frontier through the forks in progress - with the upgrade, year, and affected layer.
+            Every EIP included, scheduled, or considered across Ethereum&apos;s network upgrades,
+            from Frontier through the forks in progress, with the upgrade, year, and affected layer.
           </p>
         </div>
         <ShareButtons
-          text="Upgrade EIP Directory — Every EIP included, scheduled, or considered across Ethereum's network upgrades on EIPsInsight"
+          text="Upgrade EIP Directory: Every EIP included, scheduled, or considered across Ethereum's network upgrades on EIPsInsight"
           hashtags={['Ethereum', 'EIPs']}
           className="shrink-0"
         />
