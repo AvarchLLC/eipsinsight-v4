@@ -497,6 +497,7 @@ model devnet_specs {
   el_client_support Json?
   cl_client_support Json?
   spec_references   Json?
+  eip_section_title String?
   scraped_at        DateTime? @db.Timestamptz(6)
   updated_at        DateTime  @db.Timestamptz(6)
 

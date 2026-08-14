@@ -29,6 +29,10 @@ export const eipTitles: Record<string, EIPInfo> = {
   '7691': { title: 'Blob throughput increase', category: 'Core' },
   '7702': { title: 'Set EOA account code', category: 'Core' },
   '7840': { title: 'Add blob schedule to EL config files', category: 'Core' },
+  '7892': { title: 'Blob Parameter Only Hardforks', category: 'Informational' },
+  '7642': { title: 'eth/71 - Block Access List Exchange', category: 'Networking' },
+  '7910': { title: 'Consensus Layer Interoperability', category: 'Networking' },
+  '7935': { title: 'Blob Gas Accounting Alignment', category: 'Core' },
   '7594': { title: 'PeerDAS - Peer Data Availability Sampling', category: 'Core' },
   '7823': { title: 'Contract Code Size Limit Increase', category: 'Core' },
   '7825': { title: 'Gas Limit Cap for Network Stability', category: 'Core' },
@@ -213,7 +217,7 @@ export const pairedUpgradeNames: Record<string, string> = {
 };
 
 export const rawData: UpgradeData[] = [
-  { date: "2025-12-03", upgrade: "Osaka", layer: "execution", type: "execution", blockNumber: 23935694, eips: ["EIP-7594", "EIP-7823", "EIP-7825", "EIP-7883", "EIP-7917", "EIP-7918", "EIP-7934", "EIP-7939", "EIP-7951"] },
+  { date: "2025-12-03", upgrade: "Osaka", layer: "execution", type: "execution", blockNumber: 23935694, eips: ["EIP-7594", "EIP-7642", "EIP-7823", "EIP-7825", "EIP-7883", "EIP-7892", "EIP-7910", "EIP-7917", "EIP-7918", "EIP-7934", "EIP-7935", "EIP-7939", "EIP-7951"] },
   { date: "2025-12-03", upgrade: "Fulu", layer: "consensus", type: "consensus", forkEpoch: 411392, eips: ["CONSENSUS"] },
   { date: "2025-05-07", upgrade: "Prague", layer: "execution", type: "execution", blockNumber: 22431084, eips: ["EIP-2537", "EIP-2935", "EIP-6110", "EIP-7002", "EIP-7251", "EIP-7549", "EIP-7623", "EIP-7685", "EIP-7691", "EIP-7702"] },
   { date: "2025-05-07", upgrade: "Electra", layer: "consensus", type: "consensus", forkEpoch: 364032, eips: ["CONSENSUS"] },

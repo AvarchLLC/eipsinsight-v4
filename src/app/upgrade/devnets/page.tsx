@@ -17,10 +17,12 @@ export const metadata: Metadata = buildMetadata({
 });
 
 /** Series shown first; anything else (historical) follows alphabetically. */
-const FEATURED_SERIES = ['glamsterdam', 'bal', 'epbs'];
+const FEATURED_SERIES = ['glamsterdam', 'frames', 'focil', 'bal', 'epbs'];
 
 const SERIES_LABELS: Record<string, string> = {
   glamsterdam: 'Glamsterdam',
+  frames: 'Frame Transactions (EIP-8141)',
+  focil: 'Fork-choice Enforced Inclusion Lists (FOCIL)',
   bal: 'Block-Level Access Lists (BAL)',
   epbs: 'ePBS',
   blob: 'Blob scaling',
@@ -62,12 +64,12 @@ export default async function DevnetsPage() {
             Devnets
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Developer test networks where upgrade features get implemented and broken first —
+            Developer test networks where upgrade features get implemented and tested first, featuring
             specs, EIP scope, and live status scraped automatically from ethpandaops.
           </p>
         </div>
         <ShareButtons
-          text="Ethereum Devnets — Developer test networks where upgrade features get implemented on EIPsInsight"
+          text="Ethereum Devnets: Developer test networks where upgrade features get implemented on EIPsInsight"
           hashtags={['Ethereum', 'EIPs', 'Devnets']}
           className="shrink-0"
         />

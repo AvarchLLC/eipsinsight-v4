@@ -2,6 +2,7 @@ import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 import { rawData, pairedUpgradeNames, eipTitles } from '@/data/network-upgrades'
+import { getUpgradeTimelineData } from '@/data/upgrade-timelines'
 import { normalizeUpgradeBucket } from '@/lib/upgrade-stages'
 
 /**
@@ -754,6 +755,31 @@ export const upgradesProcedures = {
             slug,
             bucket: 'included',
             sourceLayer: item.layer === 'consensus' ? 'CL' : 'EL',
+          });
+        }
+      }
+
+      // 3. Upgrade timelines (including Networking, Informational, BPO, & Meta EIPs)
+      for (const upgrade of upgrades) {
+        const timeline = getUpgradeTimelineData(upgrade.slug);
+        if (!timeline || timeline.length === 0) continue;
+        const latest = timeline[timeline.length - 1];
+        const allTimelineEntries = [
+          ...latest.included.map((e) => ({ raw: e, bucket: 'included' })),
+          ...latest.scheduled.map((e) => ({ raw: e, bucket: 'scheduled' })),
+          ...latest.considered.map((e) => ({ raw: e, bucket: 'considered' })),
+        ];
+        for (const item of allTimelineEntries) {
+          const match = item.raw.match(/^EIP-(\d+)/);
+          if (!match) continue;
+          const eip_number = Number(match[1]);
+          const key = `${eip_number}:${upgrade.slug}`;
+          if (seen.has(key)) continue;
+          seen.add(key);
+          pairings.push({
+            eip_number,
+            slug: upgrade.slug,
+            bucket: item.bucket,
           });
         }
       }

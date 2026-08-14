@@ -256,7 +256,7 @@ export default function PreviousUpgradesPage() {
             </p>
           </div>
           <ShareButtons
-            text="Previous Ethereum Upgrades (2015–2024) — Historical upgrade overview on EIPsInsight"
+            text="Previous Ethereum Upgrades (2015–2024): Historical upgrade overview on EIPsInsight"
             hashtags={['Ethereum', 'EIPs']}
             className="shrink-0"
           />

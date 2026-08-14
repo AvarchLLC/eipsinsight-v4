@@ -163,11 +163,11 @@ export default async function UpgradeIndexPage() {
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
             What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
-            there - parsed automatically from meta-EIP commits.
+            there, parsed automatically from meta-EIP commits.
           </p>
         </div>
         <ShareButtons
-          text="Ethereum upgrades, tracked live — what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
+          text="Ethereum upgrades, tracked live: what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
           hashtags={['Ethereum', 'EIPs']}
           className="shrink-0"
         />
@@ -197,7 +197,7 @@ export default async function UpgradeIndexPage() {
           accent="violet"
           title="Network upgrades"
           sectionId="network-upgrades"
-          description="The last shipped fork, the one being built now, and what's next — where each stands today."
+          description="The last shipped fork, the one being built now, and what's next, showing where each stands today."
         />
         <UpgradeTimelineStrip liveCount={2} />
       </section>
@@ -407,7 +407,7 @@ export default async function UpgradeIndexPage() {
           accent="indigo"
           title="Upgrade analytics"
           sectionId="analytics"
-          description="The numbers behind the upgrades — click any card to see the EIPs, meta EIPs, or authors behind it."
+          description="The numbers behind the upgrades. Click any card to see the EIPs, meta EIPs, or authors behind it."
         />
         <UpgradeStatsPanel />
       </section>

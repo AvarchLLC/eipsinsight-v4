@@ -121,6 +121,7 @@ export const devnetsProcedures = {
           row.spec_references,
           null
         ),
+        eip_section_title: row.eip_section_title ?? null,
         scraped_at: row.scraped_at?.toISOString() ?? null,
       }
     }),

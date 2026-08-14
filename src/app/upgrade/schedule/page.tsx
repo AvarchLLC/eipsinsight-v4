@@ -302,12 +302,12 @@ export default async function UpgradeSchedulePage() {
             Upgrade schedule
           </h1>
           <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Where each in-progress upgrade stands - scoping, devnets, testnets, mainnet - with
-            confirmed dates pinned from AllCoreDevs decisions and the rest projected.
+            Where each in-progress upgrade stands across scoping, devnets, testnets, and mainnet, with
+            confirmed dates pinned from AllCoreDevs decisions and projections for remaining milestones.
           </p>
         </div>
         <ShareButtons
-          text="Ethereum Upgrade Schedule — Phase-by-phase timelines for upcoming Ethereum network upgrades on EIPsInsight"
+          text="Ethereum Upgrade Schedule: Phase-by-phase timelines for upcoming Ethereum network upgrades on EIPsInsight"
           hashtags={['Ethereum', 'EIPs']}
           className="shrink-0"
         />
