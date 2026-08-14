@@ -11,12 +11,14 @@ import {
   getCachedUpgradeComposition,
   getCachedUpgradeEvents,
   getCachedUpgradeTimeline,
+  getCachedDevnetList,
 } from '@/lib/upgrade-data.server';
 import { UpgradeDetailHeader } from '@/components/upgrade/upgrade-detail-header';
 import { UpgradeDetailBody } from '@/components/upgrade/upgrade-detail-body';
 import type {
   UpgradeCompositionEip,
   UpgradeTimelinePoint,
+  UpgradeDevnetSummary,
 } from '@/components/upgrade/types';
 
 export const revalidate = 300;
@@ -101,13 +103,24 @@ export default async function UpgradeDetailPage({ params }: Props) {
 
   const entry = getUpgradeRegistryEntry(slug);
 
-  const [dbComposition, events, dbTimeline] = await Promise.all([
+  const [dbComposition, events, dbTimeline, allDevnets] = await Promise.all([
     getCachedUpgradeComposition(slug),
     getCachedUpgradeEvents(slug, 50),
     getCachedUpgradeTimeline(slug),
+    getCachedDevnetList(),
   ]);
   let composition = dbComposition;
   let timeline = dbTimeline;
+
+  const devnets: UpgradeDevnetSummary[] = allDevnets
+    .filter((d) => {
+      if (d.series === slug) return true;
+      if (slug === 'hegota') {
+        return d.series === 'focil' || d.series === 'frames' || d.series === 'hegota' || d.series === 'heze' || d.series === 'bogota';
+      }
+      return false;
+    })
+    .sort((a, b) => (b.devnet_number ?? 0) - (a.devnet_number ?? 0));
 
   // Curations are attached to DB composition rows; static fallback covers
   // upgrades tracked before the scheduler pipeline existed.
@@ -136,6 +149,7 @@ export default async function UpgradeDetailPage({ params }: Props) {
         composition={composition}
         events={events}
         timelineData={timeline}
+        devnets={devnets}
       />
     </div>
   );

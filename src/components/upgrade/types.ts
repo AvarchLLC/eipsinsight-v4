@@ -41,3 +41,18 @@ export interface UpgradeTimelinePoint {
   considered: string[];
   proposed: string[];
 }
+
+export interface UpgradeDevnetSummary {
+  id: string;
+  series: string;
+  devnet_number: number | null;
+  title: string | null;
+  eip_section_title?: string | null;
+  source_url: string | null;
+  genesis_time: number | null;
+  active: boolean;
+  canceled: boolean;
+  same_spec_as?: string | null;
+  eip_count: number;
+  scraped_at: string | null;
+}
