@@ -351,12 +351,20 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     (search.trim() ? 1 : 0);
 
   const coreCount = useMemo(
-    () => filteredEips.filter((e) => e.category === 'Core' || e.category === 'core').length,
+    () =>
+      filteredEips.filter((e) => {
+        const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
+        return cat === 'core';
+      }).length,
     [filteredEips]
   );
 
   const otherCount = useMemo(
-    () => filteredEips.filter((e) => e.category !== 'Core' && e.category !== 'core').length,
+    () =>
+      filteredEips.filter((e) => {
+        const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
+        return cat !== 'core';
+      }).length,
     [filteredEips]
   );
 
@@ -676,25 +684,33 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                             />
                           )}
                         </div>
-                        <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                          <span
-                            className={cn(
-                              'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
-                              eip.category === 'Core' || eip.category === 'core'
-                                ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
-                                : 'border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300'
-                            )}
-                          >
-                            {eip.category || eip.type || 'Other'}
-                          </span>
-                          {eip.type &&
+                        {(() => {
+                          const displayCat = (eip.category?.trim() || eip.type?.trim() || 'Other');
+                          const showSubtype =
+                            eip.type &&
                             eip.type.toLowerCase() !== 'standards track' &&
-                            eip.type.toLowerCase() !== (eip.category || '').toLowerCase() && (
-                              <span className="text-[10px] font-medium text-muted-foreground/70">
-                                · {eip.type}
+                            eip.type.toLowerCase() !== displayCat.toLowerCase();
+
+                          return (
+                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                              <span
+                                className={cn(
+                                  'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
+                                  displayCat.toLowerCase() === 'core'
+                                    ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                    : 'border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                                )}
+                              >
+                                {displayCat}
                               </span>
-                            )}
-                        </div>
+                              {showSubtype && (
+                                <span className="text-[10px] font-medium text-muted-foreground/70">
+                                  · {eip.type}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
 
                       {/* Upgrade + year */}
