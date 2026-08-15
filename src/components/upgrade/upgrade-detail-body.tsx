@@ -18,6 +18,7 @@ import { UpgradeEipCard } from '@/components/upgrade/upgrade-eip-card';
 import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
 import { UpgradeSubscriptionCard } from '@/components/upgrade-subscription-card';
 import { UpgradeBlogCarousel } from '@/components/upgrade/upgrade-blog-carousel';
+import { UpgradeEipJumper } from '@/components/upgrade/upgrade-eip-jumper';
 import type { UpgradeArticle } from '@/lib/upgrade-articles';
 import type {
   UpgradeCompositionEip,
@@ -72,10 +73,41 @@ export function UpgradeDetailBody({
     };
   }, [slug]);
 
+  const handleJumpToEip = (eipNumber: number) => {
+    const targetEip = composition.find((e) => e.eip_number === eipNumber);
+    if (targetEip && targetEip.bucket === 'declined') {
+      setIsDeclinedExpanded(true);
+    }
+
+    setTimeout(() => {
+      const element = document.getElementById(`eip-${eipNumber}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-background');
+        setTimeout(() => {
+          element.classList.remove('ring-2', 'ring-primary', 'ring-offset-2', 'ring-offset-background');
+        }, 2500);
+      } else {
+        const stageElement = targetEip?.bucket ? document.getElementById(`stage-${targetEip.bucket}`) : null;
+        if (stageElement) {
+          stageElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+    }, 100);
+  };
+
   useEffect(() => {
     const handleHashScroll = () => {
       const hash = window.location.hash.toUpperCase();
       if (!hash) return;
+
+      // Handle direct EIP hash (e.g., #EIP-7732 or #7732)
+      const eipMatch = hash.match(/^#(?:EIP-?)?(\d+)$/i);
+      if (eipMatch && eipMatch[1]) {
+        const eipNum = parseInt(eipMatch[1], 10);
+        handleJumpToEip(eipNum);
+        return;
+      }
 
       const mapping: Record<string, string> = {
         '#DFI': 'stage-declined',
@@ -297,6 +329,15 @@ export function UpgradeDetailBody({
 
         {/* Main content */}
         <div ref={contentRef} className="min-w-0 flex-1 space-y-8">
+          {/* Quick EIP Finder & Jumper */}
+          {composition.length > 0 && (
+            <UpgradeEipJumper
+              upgradeName={name}
+              composition={composition}
+              onJumpToEip={handleJumpToEip}
+            />
+          )}
+
           {/* Mobile search */}
           <div className="lg:hidden">
             <div className="relative">

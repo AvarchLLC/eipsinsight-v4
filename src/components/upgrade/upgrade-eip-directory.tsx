@@ -253,7 +253,9 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
         String(e.eip_number).includes(q) ||
         e.title.toLowerCase().includes(q) ||
         e.category.toLowerCase().includes(q) ||
-        e.type.toLowerCase().includes(q)
+        e.type.toLowerCase().includes(q) ||
+        (e.upgrade_name && e.upgrade_name.toLowerCase().includes(q)) ||
+        (e.upgrade_slug && e.upgrade_slug.toLowerCase().includes(q))
       ) {
         slugs.add(e.upgrade_slug);
       }
@@ -282,7 +284,9 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
           String(e.eip_number).includes(q) ||
           e.title.toLowerCase().includes(q) ||
           e.category.toLowerCase().includes(q) ||
-          e.type.toLowerCase().includes(q)
+          e.type.toLowerCase().includes(q) ||
+          (e.upgrade_name && e.upgrade_name.toLowerCase().includes(q)) ||
+          (e.upgrade_slug && e.upgrade_slug.toLowerCase().includes(q))
       );
     }
 
