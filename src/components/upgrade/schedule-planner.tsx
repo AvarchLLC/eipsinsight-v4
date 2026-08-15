@@ -432,7 +432,7 @@ export function SchedulePlanner() {
                             />
                           )}
                           {/* Milestone dots */}
-                          {ms.map((m) => (
+                          {ms.slice().sort((a, b) => a.date.localeCompare(b.date)).map((m) => (
                             <div
                               key={m.id}
                               className="group absolute top-1/2 -translate-y-1/2"

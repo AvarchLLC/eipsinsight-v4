@@ -43,7 +43,7 @@ export interface ForkScheduleConfig {
 export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
   {
     slug: 'glamsterdam',
-    mainnetTarget: '2026-09-16',
+    mainnetTarget: '2026-11-04',
     devnetCount: 9,
     lockedDates: {
       // ACDE #240 (2026-07-02): devnet-7 launch targeting week of July 7.
@@ -54,7 +54,7 @@ export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
   },
   {
     slug: 'hegota',
-    mainnetTarget: '2027-04-01',
+    mainnetTarget: '2027-05-19',
     devnetCount: 5,
     lockedDates: {
       // ACDE #240 (2026-07-02): Hegotá EIP proposal deadline set to Aug 6, 2026.
@@ -192,6 +192,21 @@ export function calculateForkSchedule(
       date: addDays(lastDevnet, -durations.DEVNET_DURATION * (config.devnetCount - 1 - i)),
       kind: 'devnet',
     });
+  }
+
+  // Apply locked dates first so devnets before locked milestones chain backwards cleanly
+  for (let i = 0; i < devnets.length; i += 1) {
+    const locked = config.lockedDates?.[devnets[i].id];
+    if (locked) {
+      devnets[i] = { ...devnets[i], date: locked, locked: true };
+    }
+  }
+
+  // Ensure devnets are strictly monotonic (devnet i-1 precedes devnet i)
+  for (let i = devnets.length - 2; i >= 0; i -= 1) {
+    if (!devnets[i].locked && devnets[i].date >= devnets[i + 1].date) {
+      devnets[i].date = addDays(devnets[i + 1].date, -durations.DEVNET_DURATION);
+    }
   }
 
   const firstDevnet = devnets[0]?.date ?? lastDevnet;
