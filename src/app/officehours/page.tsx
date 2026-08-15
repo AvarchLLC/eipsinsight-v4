@@ -287,20 +287,20 @@ export default function OfficeHoursPage() {
   return (
     <div className="page-shell space-y-4 py-6">
       {/* Hero */}
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <CalendarClock className="h-5 w-5" />
-          </div>
-          <div>
+      <header className="space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <CalendarClock className="h-5 w-5" />
+            </div>
             <h1 className="dec-title persona-title text-2xl font-semibold tracking-tight sm:text-3xl">EIP Editing Office Hours</h1>
-            <p className="text-xs text-muted-foreground sm:text-sm">Editorial activity for any day or date range · editor reviews, status changes & proposals</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
+            <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
-          <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
-        </div>
+        <p className="w-full text-xs text-muted-foreground sm:text-sm">Editorial activity for any day or date range · editor reviews, status changes & proposals</p>
       </header>
 
       {/* Controls */}

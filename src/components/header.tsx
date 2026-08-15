@@ -215,7 +215,7 @@ export function PageHeader({
                 // text-pretty avoids orphans/short trailing lines; 4xl lets the sentence
                 // breathe on wide screens instead of wrapping halfway across the page.
                 className={cn(
-                  'max-w-4xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base',
+                  'w-full max-w-none text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base',
                   descriptionClassName
                 )}
               >

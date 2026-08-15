@@ -81,21 +81,16 @@ export default function DonatePage() {
 
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
         {/* Page Hero Header */}
-        <div className="mb-8 text-center sm:text-left border-b border-border/60 pb-6">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row sm:items-start">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Heart className="h-7 w-7 text-rose-500 fill-rose-500/20 shrink-0" />
-                <h1 className="dec-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                  Donate to Support Our Mission
-                </h1>
-                <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-xs">
-                  Public Good
-                </Badge>
-              </div>
-              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Your support keeps EIPsInsight free, open-source, and continuously improved. Every donation directly funds server infrastructure, real-time RPC data pipelines, and public Ethereum governance analytics tools.
-              </p>
+        <div className="mb-8 border-b border-border/60 pb-6 space-y-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="inline-flex flex-wrap items-center gap-2">
+              <Heart className="h-7 w-7 text-rose-500 fill-rose-500/20 shrink-0" />
+              <h1 className="dec-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                Donate to Support Our Mission
+              </h1>
+              <Badge variant="outline" className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/30 text-xs">
+                Public Good
+              </Badge>
             </div>
 
             <Link href="https://github.com/AvarchLLC/eipsinsight-v4" target="_blank" rel="noopener noreferrer">
@@ -106,6 +101,9 @@ export default function DonatePage() {
               </Button>
             </Link>
           </div>
+          <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Your support keeps EIPsInsight free, open-source, and continuously improved. Every donation directly funds server infrastructure, real-time RPC data pipelines, and public Ethereum governance analytics tools.
+          </p>
         </div>
 
         {/* Main Donation Container */}

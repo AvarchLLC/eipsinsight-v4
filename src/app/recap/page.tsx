@@ -554,21 +554,16 @@ export default function DedicatedRecapPage() {
       </div>
 
       {/* Main Page Header */}
-      <div className="mb-8 border-b border-border/60 pb-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Flame className="h-6 w-6 text-orange-500" />
-              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-                Weekly Standards Recap & Audit Feed
-              </h1>
-              <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
-                Verifiable Feed
-              </Badge>
-            </div>
-            <p className="mt-1.5 text-sm text-muted-foreground max-w-3xl">
-              Comprehensive, real-time audit log tracking all new EIP/ERC/RIP proposals, status transitions, merged pull requests, editor reviews, devnet progressions, and core developer meeting decisions across Ethereum standards.
-            </p>
+      <div className="mb-8 border-b border-border/60 pb-6 space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="inline-flex flex-wrap items-center gap-2">
+            <Flame className="h-6 w-6 text-orange-500" />
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              Weekly Standards Recap & Audit Feed
+            </h1>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-xs">
+              Verifiable Feed
+            </Badge>
           </div>
 
           {/* Action buttons */}
@@ -593,6 +588,9 @@ export default function DedicatedRecapPage() {
             </Button>
           </div>
         </div>
+        <p className="w-full text-sm text-muted-foreground">
+          Comprehensive, real-time audit log tracking all new EIP/ERC/RIP proposals, status transitions, merged pull requests, editor reviews, devnet progressions, and core developer meeting decisions across Ethereum standards.
+        </p>
       </div>
 
       {/* KPI Stats Overview Cards */}

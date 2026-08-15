@@ -298,7 +298,7 @@ export default function AssetsPage() {
         <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
           Brand Assets
         </h1>
-        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className="mt-2 w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
           Official logos, color system, typography, and component tokens. All assets are free to use with attribution to{' '}
           <span className="font-medium text-foreground">EIPsInsight</span>.
         </p>
