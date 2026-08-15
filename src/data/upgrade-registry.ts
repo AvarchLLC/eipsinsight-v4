@@ -47,9 +47,9 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     slug: 'glamsterdam',
     name: 'Glamsterdam',
     status: 'Upcoming',
-    tagline: 'The next major upgrade after Fusaka, with shorter slot times and block-level access lists in focus.',
+    tagline: 'The next major upgrade after Fusaka, featuring Enshrined Proposer-Builder Separation (ePBS) and Block-Level Access Lists (BALs).',
     statusNote:
-      'Scoping complete - implemented EIPs are being tested on devnets; devnet-7 is planned as the final devnet.',
+      'Devnet testing active; Sepolia & Hoodi testnet deployments projected for September 2026, with mainnet target shifted to Q4 2026.',
     description:
       'Ethereum developers are preparing for the next major network upgrade, Glamsterdam. It introduces key changes to both the Execution and Consensus layers on mainnet. Candidate EIPs are being fine-tuned, implemented, and tested on devnets as the scope firms up.',
     executionName: 'Amsterdam',
@@ -74,20 +74,25 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     slug: 'hegota',
     name: 'Hegotá',
     status: 'Planning',
-    tagline: 'Early-stage upgrade following Glamsterdam; headliner selection in progress.',
+    tagline: 'The network upgrade following Glamsterdam, anchored by FOCIL for consensus-layer censorship resistance and statelessness groundwork.',
     statusNote:
-      'Headliner selection underway - FOCIL leading; EIP proposals (PFI) open until Aug 6, 2026.',
+      'FOCIL (EIP-7805) locked as CL headliner (ACDC #175); PFI proposal deadline Aug 6, 2026 (ACDE #240). Mainnet target H1/Q2 2027.',
     description:
-      'Hegotá is in early planning. The headliner proposal window is opening, with fork-choice enforced inclusion lists (FOCIL) among the leading candidates. Check back for updates as the upgrade planning process progresses.',
+      'Hegotá is Ethereum\'s next planned hard fork following Glamsterdam. It combines consensus-layer Heze and execution-layer Bogotá. FOCIL (Fork-choice Enforced Inclusion Lists) is locked as the primary consensus headliner to strengthen censorship resistance, while execution-layer candidates focus on state efficiency (Verkle Trees) and advanced account abstraction.',
     executionName: 'Bogotá',
     consensusName: 'Heze',
     nameOrigin:
-      'Combines "Heze" (consensus layer, named after a star) and "Bogotá" (execution layer, named after a Devcon location).',
+      'Combines "Heze" (consensus layer star) and "Bogotá" (Devcon 6 location in Colombia).',
     headliners: [
       {
         eip: 7805,
-        title: 'Fork-choice enforced Inclusion Lists (FOCIL)',
-        note: 'Proposed headliner: strengthens censorship resistance by letting validators force transaction inclusion.',
+        title: 'Fork-choice Enforced Inclusion Lists (FOCIL)',
+        note: 'Confirmed CL headliner (ACDC #175): enables validators to enforce transaction inclusion to eliminate builder censorship.',
+      },
+      {
+        eip: 6800,
+        title: 'Verkle Trees & Statelessness',
+        note: 'Execution-layer candidate: replaces Merkle Patricia Tries to drastically lower node storage requirements.',
       },
     ],
   },

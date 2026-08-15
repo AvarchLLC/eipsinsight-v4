@@ -735,6 +735,20 @@ const { repo, govState, search } = input;
         return { ready: false as const, total: 0, totalPages: 1, rows: [] };
       }
 
+      // The CI columns land in a separate scheduler migration, so between
+      // deploying this code and running that migration they may not exist yet.
+      // Degrade gracefully (no CI flag) instead of 500ing the whole agenda.
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciSelect = has_ci_cols
+        ? `COALESCE(g.has_failing_required_checks, false) AS ci_failing, g.ci_state, g.failing_checks`
+        : `false AS ci_failing, NULL::text AS ci_state, NULL::text[] AS failing_checks`;
+
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
         title: string;
@@ -745,6 +759,9 @@ const { repo, govState, search } = input;
         mentions: unknown;
         next_call_on: string | null;
         waiting_state: string | null;
+        ci_failing: boolean;
+        ci_state: string | null;
+        failing_checks: string[] | null;
         total_count: bigint;
       }>>(
         `
@@ -764,6 +781,7 @@ const { repo, govState, search } = input;
             LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
             TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at,
             g.current_state AS waiting_state,
+            ${ciSelect},
             pe.eip_number,
             a.issue_number, a.issue_title, a.issue_url, a.series, a.call_number,
             a.occurs_on, a.mentioned_by, a.snippet, a.source, a.source_url
@@ -783,6 +801,7 @@ const { repo, govState, search } = input;
         grouped AS (
           SELECT
             pr_number, title, author, repo_short, created_at, waiting_state,
+            ci_failing, ci_state, failing_checks,
             ARRAY_AGG(DISTINCT eip_number) AS eip_numbers,
             -- TO_CHAR, not the bare DATE: node-postgres hydrates DATE columns into
             -- JS Date objects at local midnight, so a 2025-03-13 call comes back as
@@ -799,7 +818,8 @@ const { repo, govState, search } = input;
               'eip', eip_number
             )) AS mentions
           FROM matched
-          GROUP BY pr_number, title, author, repo_short, created_at, waiting_state
+          GROUP BY pr_number, title, author, repo_short, created_at, waiting_state,
+                   ci_failing, ci_state, failing_checks
         )
         SELECT *, COUNT(*) OVER()::bigint AS total_count
         FROM grouped
@@ -829,6 +849,9 @@ const { repo, govState, search } = input;
           eipNumbers: r.eip_numbers ?? [],
           nextCallOn: r.next_call_on,
           waitingOn: r.waiting_state,
+          ciFailing: r.ci_failing ?? false,
+          ciState: r.ci_state,
+          failingChecks: r.failing_checks ?? [],
           mentions: (r.mentions ?? []) as Array<{
             issueNumber: number;
             issueTitle: string | null;

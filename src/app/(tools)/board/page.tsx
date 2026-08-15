@@ -235,7 +235,12 @@ function BoardBrowser() {
       const p = new URLSearchParams(searchParams.toString());
       p.set("tab", "agenda");
       const qs = p.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      // Skip no-op replaces: otherwise this fires on its own searchParams churn
+      // (searchParams is a dep) and — together with the agenda panel's URL sync —
+      // spins an infinite /board navigation loop.
+      if (qs !== searchParams.toString()) {
+        router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+      }
       return;
     }
     const p = new URLSearchParams();
@@ -251,6 +256,7 @@ function BoardBrowser() {
     if (needsAttention) p.set("attn", "1");
     if (hasConflicts) p.set("conflict", "1");
     const qs = p.toString();
+    if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [tab, repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router, searchParams]);
 
