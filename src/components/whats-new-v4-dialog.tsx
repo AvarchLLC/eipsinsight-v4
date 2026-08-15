@@ -11,12 +11,11 @@ import {
   LayoutPanelLeft,
   Navigation,
   Sparkles,
-  UserRoundSearch,
 } from "lucide-react";
 
-const STORAGE_KEY = "eipsinsight_v4_whats_new_seen_v1";
+const STORAGE_KEY = "eipsinsight_whats_new_seen_v1";
 
-type TourTarget = "none" | "sidebar" | "navbar" | "persona";
+type TourTarget = "none" | "sidebar" | "navbar";
 
 type Slide = {
   icon: React.ComponentType<{ className?: string }>;
@@ -30,66 +29,53 @@ type Slide = {
 const SLIDES: Slide[] = [
   {
     icon: Sparkles,
-    eyebrow: "Major update",
-    title: "Welcome to EIPsInsight v4",
+    eyebrow: "Platform Update",
+    title: "Welcome to EIPsInsight",
     description:
-      "v4 is redesigned to make navigation, discovery, and contributor context much easier to use.",
+      "EIPsInsight is designed to make standard discovery, contributor metrics, and governance workflows intuitive and effortless.",
     points: [
-      "Clearer product structure across Explore, Insights, Tools, Resources, and People",
-      "More guided paths for different personas",
-      "Core workflows are still here, now better organized",
+      "Clear structure across Explore, Insights, Tools, Resources, and People",
+      "Fast search and instant access to Ethereum standards",
+      "Unified tools for board meetings, timelines, and proposal editing",
     ],
     target: "none",
   },
   {
     icon: LayoutPanelLeft,
     eyebrow: "Navigation",
-    title: "Use the sidebar as your command center",
+    title: "Sidebar Command Center",
     description:
-      "The sidebar now groups workflows by intent so you can jump quickly between standards, insights, tools, and resources.",
+      "The sidebar groups all platform workflows by intent so you can quickly jump between standards, insights, and tools.",
     points: [
-      "Start discovery in Explore",
-      "Open workflows in Tools",
-      "Use grouped sections to reduce context switching",
+      "Browse by status, category, and timeline in Explore",
+      "Access EIP Builder and Board meetings in Tools",
+      "Reduce context-switching with organized navigation",
     ],
     target: "sidebar",
   },
   {
     icon: Navigation,
-    eyebrow: "Top bar",
-    title: "Navbar is your quick-access lane",
+    eyebrow: "Quick Access",
+    title: "Streamlined Top Bar",
     description:
-      "Search, theme, account, and primary navigation controls are streamlined in one compact row.",
+      "Global search, theme toggle, account controls, and core actions are always at your fingertips.",
     points: [
-      "Search and jump faster",
-      "Quick access to profile and settings",
-      "Consistent top-level actions across pages",
+      "Instant global search for any EIP, ERC, or RIP",
+      "Fast access to settings, tokens, and profile",
+      "Consistent action bar across every page",
     ],
     target: "navbar",
   },
   {
-    icon: UserRoundSearch,
-    eyebrow: "Persona",
-    title: "Choose a persona to personalize your experience",
-    description:
-      "Pick editor, contributor, researcher, or ecosystem-oriented context and we adapt accents and discovery cues around your workflow.",
-    points: [
-      "Persona affects relevance cues and context",
-      "Better orientation for your role-specific tasks",
-      "You can switch anytime from the navbar",
-    ],
-    target: "persona",
-  },
-  {
     icon: Compass,
-    eyebrow: "All set",
-    title: "Everything you used before is still available",
+    eyebrow: "All Set",
+    title: "Everything in One Place",
     description:
-      "Some pages moved, but workflows are consolidated rather than removed. Use the What’s New page for the quick migration map.",
+      "Workflows and tools are consolidated for easier access. Explore the platform map for full details.",
     points: [
-      "Status-heavy pages now live under Explore",
-      "Board and builder workflows are grouped in Tools",
-      "Blogs and learning content are centralized in Resources",
+      "Status views live under Explore → Status",
+      "Developer & editor tools are grouped under Tools",
+      "Articles, documentation, and videos are under Resources",
     ],
     target: "none",
   },
@@ -109,7 +95,6 @@ function shouldSuppressDialog(pathname: string | null) {
 function selectorForTarget(target: TourTarget) {
   if (target === "sidebar") return '[data-tour="sidebar"]';
   if (target === "navbar") return '[data-tour="navbar"]';
-  if (target === "persona") return '[data-tour="persona-switch"]';
   return "";
 }
 
@@ -223,7 +208,7 @@ export function WhatsNewV4Dialog() {
           className="fixed inset-0 z-[120]"
           role="dialog"
           aria-modal="true"
-          aria-label="Welcome to EIPsInsight v4"
+          aria-label="Welcome to EIPsInsight"
         >
           <div className="absolute inset-0 bg-black/75 backdrop-blur-[2px]" />
 
@@ -241,7 +226,8 @@ export function WhatsNewV4Dialog() {
                   top: targetRect.top,
                   width: targetRect.width,
                   height: targetRect.height,
-                  boxShadow: "0 0 0 1px rgb(var(--persona-accent-rgb)/0.45), 0 0 28px rgb(var(--persona-accent-rgb)/0.28)",
+                  boxShadow:
+                    "0 0 0 1px rgb(var(--persona-accent-rgb)/0.45), 0 0 28px rgb(var(--persona-accent-rgb)/0.28)",
                 }}
               />
             ) : null}
@@ -260,7 +246,7 @@ export function WhatsNewV4Dialog() {
               <div className="relative p-5 sm:p-6">
                 <div className="mb-4 flex items-center justify-between gap-3">
                   <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-                    EIPsInsight v4 Tour
+                    Platform Tour
                   </span>
                   <span className="text-xs text-muted-foreground">
                     {activeSlide + 1} / {SLIDES.length}
@@ -304,7 +290,7 @@ export function WhatsNewV4Dialog() {
 
                     {slide.target !== "none" ? (
                       <p className="text-xs text-primary">
-                        Highlighted area shows where this workflow lives in v4.
+                        Highlighted area shows where this feature is located.
                       </p>
                     ) : null}
                   </motion.div>
@@ -363,7 +349,7 @@ export function WhatsNewV4Dialog() {
                       onClick={markSeenAndClose}
                       className="inline-flex items-center rounded-md persona-gradient px-3 py-2 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-90"
                     >
-                      Continue
+                      Get Started
                     </button>
                   </div>
                 </div>
@@ -375,4 +361,3 @@ export function WhatsNewV4Dialog() {
     </AnimatePresence>
   );
 }
-

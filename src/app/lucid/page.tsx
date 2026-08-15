@@ -168,23 +168,15 @@ export default function LucidPage() {
   return (
     <div className="page-shell space-y-10 py-8">
       {/* Hero */}
-      <header>
-        <div className="mb-3 inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
+      <header className="space-y-3">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-300">
           <Lock className="h-3.5 w-3.5" />
           Encrypted Mempool · Working Group
         </div>
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="dec-title persona-title text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-              Lucid
-            </h1>
-            <p className="mt-2 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-              An encrypted mempool for Ethereum - encrypting transactions until they&apos;re included
-              so builders and relays can&apos;t reorder or censor them, mitigating harmful MEV.
-              Tracked here with <strong className="text-foreground">encryptedmempool.org</strong>:
-              every working-group meeting, decision, and the live spec in one place.
-            </p>
-          </div>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h1 className="dec-title persona-title text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
+            Lucid
+          </h1>
           <Link
             href="/eip/8184"
             className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm font-medium text-foreground transition-colors hover:border-primary/60"
@@ -196,6 +188,12 @@ export default function LucidPage() {
             </span>
           </Link>
         </div>
+        <p className="w-full text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+          An encrypted mempool for Ethereum - encrypting transactions until they&apos;re included
+          so builders and relays can&apos;t reorder or censor them, mitigating harmful MEV.
+          Tracked here with <strong className="text-foreground">encryptedmempool.org</strong>:
+          every working-group meeting, decision, and the live spec in one place.
+        </p>
       </header>
 
       {/* Metrics */}

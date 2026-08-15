@@ -238,22 +238,19 @@ export default function PreviousUpgradesPage() {
 
   return (
     <div className="bg-background mx-auto min-h-screen w-full max-w-6xl px-4 sm:px-6">
-      <header className="pt-8 pb-6">
+      <header className="space-y-2.5 pt-8 pb-6">
         <Link
           href="/upgrade"
-          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary mb-3"
+          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary mb-1"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
           Go back to main upgrades page
         </Link>
         <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0">
             <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
               Previous Upgrades (2015–2024)
             </h1>
-            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Historical upgrade overview with timeline spacing, size comparison, and upgrade-level context.
-            </p>
           </div>
           <ShareButtons
             text="Previous Ethereum Upgrades (2015–2024): Historical upgrade overview on EIPsInsight"
@@ -261,6 +258,9 @@ export default function PreviousUpgradesPage() {
             className="shrink-0"
           />
         </div>
+        <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Historical upgrade overview with timeline spacing, size comparison, and upgrade-level context.
+        </p>
       </header>
       <hr className="border-border/60" />
 

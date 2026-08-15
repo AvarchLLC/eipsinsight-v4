@@ -29,25 +29,15 @@ export function EIPsPageHeader() {
   return (
     <section className="relative w-full">
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 space-y-1.5">
-            <motion.h1
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="dec-title persona-title text-balance text-2xl font-semibold tracking-tight leading-tight sm:text-4xl"
-            >
-              Track Ethereum Proposals and Governance
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-1.5 text-sm leading-relaxed text-muted-foreground"
-            >
-              Real-time view of proposal lifecycle, upgrade progress, and editorial activity across EIPs, ERCs, and RIPs.
-            </motion.p>
-          </div>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <motion.h1
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="dec-title persona-title text-balance text-2xl font-semibold tracking-tight leading-tight sm:text-4xl"
+          >
+            Track Ethereum Proposals and Governance
+          </motion.h1>
 
           <motion.button
             onClick={() => setIsOpen(!isOpen)}
@@ -71,6 +61,14 @@ export function EIPsPageHeader() {
             <span className="text-xs font-medium text-muted-foreground sm:hidden">{isOpen ? 'Hide' : 'Info'}</span>
           </motion.button>
         </div>
+        <motion.p
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="w-full text-sm leading-relaxed text-muted-foreground"
+        >
+          Real-time view of proposal lifecycle, upgrade progress, and editorial activity across EIPs, ERCs, and RIPs.
+        </motion.p>
 
         <AnimatePresence>
           {isOpen && (

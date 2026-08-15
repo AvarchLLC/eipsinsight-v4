@@ -13,6 +13,7 @@ import {
   Layers,
   Info,
   Loader2,
+  Package,
   Search as SearchIcon,
   Sparkles,
   UserRound,
@@ -22,6 +23,7 @@ import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { upgradeRegistry } from "@/data/upgrade-registry";
 
 type SearchKind = "all" | "proposals" | "prs" | "issues" | "people";
 type RepoFilter = "all" | "eip" | "erc" | "rip";
@@ -328,6 +330,24 @@ function SearchPageContent() {
     });
   }, [authorResults, repo]);
 
+  const matchedUpgrades = useMemo(() => {
+    if (!q.trim()) return [];
+    const queryLower = q.trim().toLowerCase();
+    return Object.values(upgradeRegistry).filter((entry) => {
+      return (
+        entry.name.toLowerCase().includes(queryLower) ||
+        entry.slug.toLowerCase().includes(queryLower) ||
+        (entry.executionName && entry.executionName.toLowerCase().includes(queryLower)) ||
+        (entry.consensusName && entry.consensusName.toLowerCase().includes(queryLower)) ||
+        (entry.tagline && entry.tagline.toLowerCase().includes(queryLower)) ||
+        (entry.headliners &&
+          entry.headliners.some(
+            (h) => h.title.toLowerCase().includes(queryLower) || String(h.eip).includes(queryLower)
+          ))
+      );
+    });
+  }, [q]);
+
   const visibleSections = useMemo(() => {
     const sections = [
       { key: "proposals" as const, count: filteredProposals.length },
@@ -339,7 +359,11 @@ function SearchPageContent() {
   }, [filteredIssues.length, filteredPeople.length, filteredProposals.length, filteredPrs.length, kind]);
 
   const totalResults =
-    filteredProposals.length + filteredPrs.length + filteredIssues.length + filteredPeople.length;
+    matchedUpgrades.length +
+    filteredProposals.length +
+    filteredPrs.length +
+    filteredIssues.length +
+    filteredPeople.length;
 
   const topProposalCategories = useMemo(() => {
     const buckets: Record<string, number> = {};
@@ -720,6 +744,57 @@ function SearchPageContent() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Network Upgrade match */}
+              {matchedUpgrades.length > 0 && (kind === "all" || kind === "proposals") && (
+                <div className="rounded-xl border border-violet-500/30 bg-violet-500/5 p-4 sm:p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="h-5 w-5 text-violet-500 shrink-0" />
+                      <h3 className="text-base font-semibold text-foreground">
+                        Network Upgrade Match ({matchedUpgrades.length})
+                      </h3>
+                    </div>
+                    <span className="text-xs text-muted-foreground uppercase font-mono tracking-wider">Upgrade Hub</span>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {matchedUpgrades.map((u) => (
+                      <Link
+                        key={u.slug}
+                        href={`/upgrade/${u.slug}`}
+                        className="group flex flex-col justify-between rounded-lg border border-border bg-card/80 p-4 transition-all hover:border-violet-500/50 hover:shadow-md"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-2 mb-1.5">
+                            <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">
+                              {u.name}
+                            </span>
+                            <span className="px-2 py-0.5 text-xs font-semibold rounded-full border border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-300">
+                              {u.status}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">
+                            {u.tagline}
+                          </p>
+                        </div>
+                        {u.headliners && u.headliners.length > 0 && (
+                          <div className="border-t border-border/60 pt-2.5 flex flex-wrap items-center gap-1.5">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase">Key EIPs:</span>
+                            {u.headliners.map((h) => (
+                              <span
+                                key={h.eip}
+                                className="inline-flex items-center rounded border border-border bg-muted/60 px-1.5 py-0.5 text-[11px] font-mono font-medium text-foreground"
+                              >
+                                EIP-{h.eip}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Top result: the exact proposal for a number query, shown first
                   and prominently. Secondary data (PRs, issues, people) follows. */}
               {showHero && bestMatch && <TopResultCard item={bestMatch} />}

@@ -13,8 +13,7 @@ export const FEATURES = {
    * Enable the persona onboarding flow at /p
    * When enabled, new users will be prompted to select their persona
    */
-  PERSONA_ONBOARDING:
-    process.env.NEXT_PUBLIC_FEATURE_PERSONA_ONBOARDING === "true",
+  PERSONA_ONBOARDING: false,
 
   /**
    * Enable the persona switcher dropdown in the navbar
