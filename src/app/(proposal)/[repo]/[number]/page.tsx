@@ -309,8 +309,10 @@ export default function ProposalDetailPage() {
     }
     return false;
   });
+
   const setEnterprise = React.useCallback((next: boolean) => {
-    setShowEnterpriseView(() => {
+    setShowEnterpriseView(next);
+    if (typeof window !== 'undefined') {
       const p = new URLSearchParams(window.location.search);
       if (next) p.set('enterprise', '1');
       else p.delete('enterprise');
@@ -321,8 +323,7 @@ export default function ProposalDetailPage() {
       } catch {
         /* ignore */
       }
-      return next;
-    });
+    }
   }, []);
 
   // Normalize repo name

@@ -47,7 +47,7 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { CopyLinkButton } from '@/components/header';
 import { LastUpdated } from '@/components/analytics/LastUpdated';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
-import { EIPsPageHeader } from './_components/eips-page-header';
+import { HomeHeroSection } from './_components/home-hero-section';
 import HomeFAQs from './_components/home-faqs';
 import SocialCommunityUpdates from './_components/social-community-updates';
 import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
@@ -2294,7 +2294,7 @@ export default function EIPsHomePage() {
   return (
     <div className="w-full overflow-x-clip px-2.5 py-6 sm:px-4 sm:py-7 lg:px-5 xl:px-6">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
-        <EIPsPageHeader />
+        <HomeHeroSection />
       </motion.div>
 
       <hr className="mb-6 border-border/70" />
