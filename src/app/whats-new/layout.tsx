@@ -2,15 +2,16 @@ import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
-  title: "What’s New in v4",
+  title: "What’s New",
   description:
-    "See what changed in EIPsInsight v4, where pages moved, and how to use the new experience faster.",
+    "Discover what's new in EIPsInsight, platform feature highlights, navigation guide, and workflow tools.",
   path: "/whats-new",
   keywords: [
-    "EIPsInsight v4",
+    "EIPsInsight",
     "what's new",
     "explore",
     "insights",
+    "ethereum standards",
     "people analytics",
   ],
 });
