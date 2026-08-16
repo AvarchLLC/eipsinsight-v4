@@ -1,9 +1,10 @@
 import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
-import { rawData, pairedUpgradeNames, eipTitles } from '@/data/network-upgrades'
+import { rawData, pairedUpgradeNames, eipTitles, upgradeMetaEIPs } from '@/data/network-upgrades'
 import { getUpgradeTimelineData } from '@/data/upgrade-timelines'
 import { normalizeUpgradeBucket } from '@/lib/upgrade-stages'
+import { getUpgradeRegistryEntry, upgradeRegistry } from '@/data/upgrade-registry'
 
 /**
  * Maps the fork names used in the static historical record (rawData) onto the
@@ -20,13 +21,13 @@ const HISTORICAL_UPGRADE_SLUG: Record<string, string> = {
   'Spurious Dragon': 'spurious-dragon',
   Byzantium: 'byzantium',
   Constantinople: 'constantinople',
-  Petersburg: 'constantinople',
+  Petersburg: 'petersburg',
   Istanbul: 'istanbul',
-  'Muir Glacier': 'istanbul',
+  'Muir Glacier': 'muir-glacier',
   Berlin: 'berlin',
-  'Arrow Glacier': 'london',
+  'Arrow Glacier': 'arrow-glacier',
   London: 'london',
-  'Gray Glacier': 'paris',
+  'Gray Glacier': 'gray-glacier',
   'Phase 0 (Genesis)': 'paris',
   Altair: 'paris',
   Bellatrix: 'paris',
@@ -39,7 +40,12 @@ const HISTORICAL_UPGRADE_SLUG: Record<string, string> = {
   Electra: 'pectra',
   Osaka: 'fusaka',
   Fulu: 'fusaka',
-}
+  BPO1: 'bpo-1',
+  BPO2: 'bpo-2',
+  BPO3: 'bpo-3',
+  BPO4: 'bpo-4',
+  BPO5: 'bpo-5',
+};
 
 const AUTHOR_CANONICAL_OVERRIDES: Record<string, string> = {
   vitalikbuterin: 'vbuterin',
@@ -314,7 +320,7 @@ export const upgradesProcedures = {
       const totalMap = new Map(totalCounts.map(r => [r.upgrade_id, Number(r.count)]));
       const coreMap = new Map(coreCounts.map(r => [r.upgrade_id, Number(r.count)]));
 
-      return upgrades.map(u => ({
+      const dbResult = upgrades.map(u => ({
         id: u.id,
         slug: u.slug,
         name: u.name || '',
@@ -327,6 +333,29 @@ export const upgradesProcedures = {
           coreEIPs: coreMap.get(u.id) || 0,
         },
       }));
+
+      const dbSlugs = new Set(upgrades.map((u) => u.slug));
+      const staticItems = Object.values(upgradeRegistry)
+        .filter((entry) => !dbSlugs.has(entry.slug))
+        .map((entry) => {
+          const metaEipStr = upgradeMetaEIPs[entry.name];
+          const meta_eip = metaEipStr ? Number.parseInt(metaEipStr.replace('EIP-', ''), 10) : null;
+          return {
+            id: 0,
+            slug: entry.slug,
+            name: entry.name,
+            meta_eip: Number.isNaN(meta_eip) ? null : meta_eip,
+            created_at: null,
+            stats: {
+              totalEIPs: 1,
+              executionLayer: 1,
+              consensusLayer: 0,
+              coreEIPs: 1,
+            },
+          };
+        });
+
+      return [...dbResult, ...staticItems];
     }),
 
   // Get aggregate statistics across all upgrades
@@ -376,11 +405,30 @@ export const upgradesProcedures = {
     .input(z.object({
       slug: z.string(),
     }))
-    .handler(async ({ context, input }) => {const upgrade = await prisma.upgrades.findUnique({
+    .handler(async ({ context, input }) => {
+      const upgrade = await prisma.upgrades.findUnique({
         where: { slug: input.slug },
       });
 
       if (!upgrade) {
+        const reg = getUpgradeRegistryEntry(input.slug);
+        const match = rawData.find(
+          (r) =>
+            r.upgrade.toLowerCase().replace(/[^a-z0-9]/g, '-') === input.slug.toLowerCase() ||
+            (reg && r.upgrade === reg.name)
+        );
+        if (reg || match) {
+          const name = reg?.name ?? match?.upgrade ?? input.slug;
+          const metaEipStr = upgradeMetaEIPs[name];
+          const meta_eip = metaEipStr ? Number.parseInt(metaEipStr.replace('EIP-', ''), 10) : null;
+          return {
+            id: 0,
+            slug: input.slug,
+            name,
+            meta_eip: Number.isNaN(meta_eip) ? null : meta_eip,
+            created_at: null,
+          };
+        }
         throw new ORPCError('NOT_FOUND', { 
           message: `Upgrade ${input.slug} not found` 
         });
@@ -784,6 +832,24 @@ export const upgradesProcedures = {
         }
       }
 
+      // 4. Meta EIPs (Hardfork tracking EIPs)
+      for (const [name, metaEipStr] of Object.entries(upgradeMetaEIPs)) {
+        const match = metaEipStr.match(/^EIP-(\d+)/);
+        if (!match) continue;
+        const eip_number = Number(match[1]);
+        const reg = Object.values(upgradeRegistry).find((r) => r.name === name || r.slug === name);
+        const slug = HISTORICAL_UPGRADE_SLUG[name] ?? reg?.slug ?? name.toLowerCase();
+        const key = `${eip_number}:${slug}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        pairings.push({
+          eip_number,
+          slug,
+          bucket: 'included',
+          sourceLayer: 'EL',
+        });
+      }
+
       const filtered = input.slug ? pairings.filter((p) => p.slug === input.slug) : pairings;
       if (filtered.length === 0) return [];
 
@@ -808,18 +874,21 @@ export const upgradesProcedures = {
         const upgrade = upgradeBySlug.get(p.slug);
         // Historical EIPs are final; live ones keep their real snapshot status.
         const status = snapshot?.status ?? (p.bucket === 'included' ? 'Final' : 'Draft');
+        const isMeta = eipTitles[String(p.eip_number)]?.category === 'Meta' || snapshot?.type?.toLowerCase() === 'meta' || snapshot?.category?.toLowerCase() === 'meta';
+        const category = isMeta ? 'Meta' : (snapshot?.category ?? eipTitles[String(p.eip_number)]?.category ?? 'Core');
+        const type = isMeta ? 'Meta' : (snapshot?.type ?? 'Standards Track');
 
         return {
           eip_number: p.eip_number,
           title: eip?.title ?? eipTitles[String(p.eip_number)]?.title ?? `EIP-${p.eip_number}`,
           bucket: p.bucket,
           status,
-          type: snapshot?.type ?? 'Standards Track',
-          category: snapshot?.category ?? eipTitles[String(p.eip_number)]?.category ?? 'Core',
+          type,
+          category,
           // Curated layer wins; otherwise fall back to the fork entry's own layer.
           layer: curation?.layer ?? p.sourceLayer ?? null,
           is_headliner: curation?.headliner_of === p.slug,
-          upgrade_name: upgrade?.name ?? p.slug,
+          upgrade_name: upgrade?.name ?? upgradeRegistry[p.slug]?.name ?? p.slug,
           upgrade_slug: p.slug,
         };
       });

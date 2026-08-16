@@ -27,9 +27,9 @@ const STATUS_CHIP: Record<string, string> = {
 /** Chronological fork order (oldest → newest); used to sort the upgrade filter newest-first. */
 const UPGRADE_CHRONOLOGY = [
   'frontier', 'homestead', 'dao-fork', 'tangerine-whistle', 'spurious-dragon',
-  'byzantium', 'constantinople', 'istanbul', 'muir-glacier', 'berlin', 'london',
-  'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'prague',
-  'pectra', 'fusaka', 'glamsterdam', 'hegota',
+  'byzantium', 'constantinople', 'petersburg', 'istanbul', 'muir-glacier', 'berlin', 'london',
+  'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'pectra', 'prague',
+  'fusaka', 'bpo-1', 'bpo-2', 'bpo-3', 'bpo-4', 'bpo-5', 'glamsterdam', 'hegota',
 ];
 const upgradeRank = (slug: string) => {
   const i = UPGRADE_CHRONOLOGY.indexOf(slug);
@@ -48,14 +48,23 @@ const UPGRADE_DATES: Record<string, string> = {
   'spurious-dragon': '2016-11-22',
   byzantium: '2017-10-16',
   constantinople: '2019-02-28',
+  petersburg: '2019-02-28',
   istanbul: '2019-12-07',
+  'muir-glacier': '2020-01-02',
   berlin: '2021-04-15',
   london: '2021-08-05',
+  'arrow-glacier': '2021-12-09',
+  'gray-glacier': '2022-06-30',
   paris: '2022-09-15',
   shanghai: '2023-04-12',
   cancun: '2024-03-13',
   pectra: '2025-05-07',
   fusaka: '2025-12-03',
+  'bpo-1': '2025-12-09',
+  'bpo-2': '2026-01-07',
+  'bpo-3': '2026-03-11',
+  'bpo-4': '2026-04-08',
+  'bpo-5': '2026-05-13',
 };
 
 const upgradeYear = (slug: string) => UPGRADE_DATES[slug]?.slice(0, 4) ?? null;
@@ -127,6 +136,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
   const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [headlinerFilter, setHeadlinerFilter] = useState<'all' | 'headliner' | 'standard'>('all');
+  const [includeMetaEips, setIncludeMetaEips] = useState<boolean>(false);
   
   // Sort state — default to newest proposals first.
   const [sortField, setSortField] = useState<SortField>('eip_number');
@@ -140,6 +150,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     const headlinerParam = searchParams.get('headliner');
     const statusParam = searchParams.get('status');
     const searchParam = searchParams.get('q');
+    const metaParam = searchParams.get('meta');
 
     if (upParam) setSelectedUpgrades(upParam.split(','));
     if (stageParam) setSelectedStages(stageParam.split(',') as UpgradeBucket[]);
@@ -147,6 +158,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     if (statusParam) setSelectedStatuses(statusParam.split(','));
     if (headlinerParam === 'true') setHeadlinerFilter('headliner');
     if (headlinerParam === 'false') setHeadlinerFilter('standard');
+    if (metaParam === 'true') setIncludeMetaEips(true);
     if (searchParam) setSearch(searchParam);
   }, [searchParams]);
 
@@ -157,7 +169,8 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     layers: string[],
     statuses: string[],
     headliner: typeof headlinerFilter,
-    q: string
+    q: string,
+    meta: boolean = includeMetaEips,
   ) => {
     const params = new URLSearchParams();
     if (up.length > 0) params.set('upgrade', up.join(','));
@@ -166,6 +179,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     if (statuses.length > 0) params.set('status', statuses.join(','));
     if (headliner === 'headliner') params.set('headliner', 'true');
     if (headliner === 'standard') params.set('headliner', 'false');
+    if (meta) params.set('meta', 'true');
     if (q.trim()) params.set('q', q.trim());
 
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -208,6 +222,11 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, filter, search);
   };
 
+  const handleIncludeMetaToggle = (checked: boolean) => {
+    setIncludeMetaEips(checked);
+    updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search, checked);
+  };
+
   const handleSearchChange = (val: string) => {
     setSearch(val);
     updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, val);
@@ -220,6 +239,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     setSelectedLayers([]);
     setSelectedStatuses([]);
     setHeadlinerFilter('all');
+    setIncludeMetaEips(false);
     router.replace(window.location.pathname, { scroll: false });
   };
 
@@ -320,6 +340,15 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       result = result.filter((e) => !e.is_headliner);
     }
 
+    // Meta EIPs filter (disabled by default across general list; included when a network upgrade filter is active or checkbox is checked)
+    if (!includeMetaEips && selectedUpgrades.length === 0) {
+      result = result.filter(
+        (e) =>
+          e.category?.toLowerCase() !== 'meta' &&
+          e.type?.toLowerCase() !== 'meta'
+      );
+    }
+
     // Sort — coerce each field to a comparable primitive (booleans → 1/0,
     // null/undefined → '').
     const toComparable = (value: string | number | boolean | null | undefined): string | number =>
@@ -335,14 +364,20 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     });
 
     return result;
-  }, [eips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, sortField, sortOrder]);
+  }, [eips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, includeMetaEips, sortField, sortOrder]);
 
-  // Upgrade filter options: only upgrades that actually have EIPs here,
+  // Upgrade filter options: all upgrades that have EIPs in the directory,
   // ordered newest-first (chronological, descending).
   const upgradeOptions = useMemo(() => {
-    const present = new Set(eips.map((e) => e.upgrade_slug));
-    return upgrades
-      .filter((u) => present.has(u.slug))
+    const map = new Map<string, string>();
+    for (const u of upgrades) map.set(u.slug, u.name);
+    for (const e of eips) {
+      if (e.upgrade_slug && !map.has(e.upgrade_slug)) {
+        map.set(e.upgrade_slug, e.upgrade_name || e.upgrade_slug);
+      }
+    }
+    return Array.from(map.entries())
+      .map(([slug, name]) => ({ slug, name }))
       .sort((a, b) => upgradeRank(b.slug) - upgradeRank(a.slug));
   }, [upgrades, eips]);
 
@@ -352,6 +387,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     selectedLayers.length +
     selectedStatuses.length +
     (headlinerFilter !== 'all' ? 1 : 0) +
+    (includeMetaEips ? 1 : 0) +
     (search.trim() ? 1 : 0);
 
   const coreCount = useMemo(
@@ -407,6 +443,13 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
           onRemove: () => handleHeadlinerChange('all'),
         }]
       : []),
+    ...(includeMetaEips
+      ? [{
+          key: 'meta-eips',
+          label: 'Include Meta EIPs',
+          onRemove: () => handleIncludeMetaToggle(false),
+        }]
+      : []),
   ];
 
   const pillClass = (isSelected: boolean) =>
@@ -439,7 +482,19 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
             )}
           </div>
 
-          <FilterSection title="Network upgrade">
+          <div className="pt-1 border-b border-border/50 pb-3">
+            <label className="flex items-center gap-2.5 text-xs font-medium text-foreground cursor-pointer select-none hover:text-primary transition-colors">
+              <input
+                type="checkbox"
+                checked={includeMetaEips}
+                onChange={(e) => handleIncludeMetaToggle(e.target.checked)}
+                className="h-4 w-4 rounded border-border/80 text-primary focus:ring-primary/40 accent-primary cursor-pointer"
+              />
+              <span>Include Meta EIPs</span>
+            </label>
+          </div>
+
+          <FilterSection title={`Network upgrade (${upgradeOptions.length})`}>
             <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
               {upgradeOptions.map((up) => {
                 const highlighted = matchedUpgradeSlugs.has(up.slug);
