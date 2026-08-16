@@ -18,6 +18,7 @@ interface HistoricalUpgrade {
   eipCount: number;
   type: UpgradeType;
   layer: LayerType;
+  metaEip?: string;
   summary: string;
   description: string;
   impact: string;
@@ -45,6 +46,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 3,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-606',
     summary: 'First planned protocol upgrade focused on stability and safety.',
     description:
       'Homestead introduced critical safety improvements including the DELEGATECALL opcode and fixes to the contract creation process.',
@@ -58,6 +60,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 1,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-779',
     summary: 'Emergency state transition to recover funds after The DAO exploit.',
     description:
       'Following the DAO hack, the community coordinated an irregular state change to recover stolen funds, establishing precedent for protocol governance.',
@@ -71,6 +74,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 1,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-608',
     summary: 'DoS mitigation via gas repricing of state-heavy operations.',
     description:
       'This upgrade addressed denial-of-service vulnerabilities by repricing gas for state-access operations, making attacks economically infeasible.',
@@ -84,6 +88,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 4,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-607',
     summary: 'Further anti-DoS hardening and state cleanup improvements.',
     description:
       'Spurious Dragon continued security improvements with EXP gas repricing, contract code size limits, and transaction replay protection via ChainID.',
@@ -97,6 +102,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 9,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-609',
     summary: 'Major Metropolis phase with privacy and VM upgrades.',
     description:
       'Byzantium was a significant upgrade introducing the REVERT opcode, zk-SNARKs precompiles, and block rewards reduction toward Proof-of-Stake.',
@@ -110,11 +116,26 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 5,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-1013',
     summary: 'EVM efficiency improvements and delayed difficulty bomb updates.',
     description:
       'Constantinople optimized EVM operations (SSTORE gas cost, CREATE2, bitwise shifting) and further delayed the difficulty bomb.',
     impact: 'Reduced smart contract deployment costs; improved EVM performance.',
     relatedLinks: [{ title: 'Constantinople Hard Fork', url: 'https://etherworld.co/tag/constantinople/' }],
+  },
+  {
+    name: 'Petersburg',
+    slug: 'petersburg',
+    date: '2019-02-28',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-1716',
+    summary: 'Hotfix fork disabling EIP-1283 SSTORE net gas metering.',
+    description:
+      'Petersburg (Constantinople Fix) disabled EIP-1283 net gas metering before activation to avoid reentrancy concerns.',
+    impact: 'Prevented smart contract vulnerabilities prior to mainnet execution.',
+    relatedLinks: [{ title: 'Petersburg Fork', url: 'https://etherworld.co/tag/petersburg/' }],
   },
   {
     name: 'Istanbul',
@@ -123,11 +144,26 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 6,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-1679',
     summary: 'Interoperability and gas model updates for scalability readiness.',
     description:
       'Istanbul introduced gas repricing for state-rent preparation (EIP-1679), privacy-enabling precompiles, and STATICCALL optimizations.',
     impact: 'Prepared network for scalability solutions; enhanced interoperability.',
     relatedLinks: [{ title: 'Istanbul Hard Fork', url: 'https://etherworld.co/tag/istanbul/' }],
+  },
+  {
+    name: 'Muir Glacier',
+    slug: 'muir-glacier',
+    date: '2020-01-02',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-2387',
+    summary: 'Parameter-only difficulty bomb delay upgrade.',
+    description:
+      'Muir Glacier was a parameter-only upgrade delaying the difficulty bomb by 4,000,000 blocks (~611 days).',
+    impact: 'Maintained predictable block times while PoS transition development continued.',
+    relatedLinks: [{ title: 'Muir Glacier Fork', url: 'https://eips.ethereum.org/EIPS/eip-2387' }],
   },
   {
     name: 'Berlin',
@@ -136,6 +172,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 4,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-7568',
     summary: 'Gas repricing and transaction format improvements.',
     description:
       'Berlin optimized gas accounting for state-access operations and introduced transaction access lists to enable more efficient L2 solutions.',
@@ -149,11 +186,40 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 5,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-7568',
     summary: 'Introduced EIP-1559 fee market and burn mechanism.',
     description:
       "London fundamentally reformed Ethereum's fee market with dynamic base fees, burn mechanics, and the BASEFEE opcode, improving UX and reducing inflation.",
     impact: 'Revolutionized fee market; began ETH deflation; improved predictability.',
     relatedLinks: [{ title: 'EIP-1559 & London Fork', url: 'https://etherworld.co/tag/eip-1559/' }],
+  },
+  {
+    name: 'Arrow Glacier',
+    slug: 'arrow-glacier',
+    date: '2021-12-09',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-7568',
+    summary: 'Parameter-only difficulty bomb delay upgrade.',
+    description:
+      'Arrow Glacier delayed the difficulty bomb until June 2022, keeping block times consistent.',
+    impact: 'Prevented Ice Age slow-down before Proof-of-Stake consensus ready.',
+    relatedLinks: [{ title: 'Arrow Glacier Fork', url: 'https://eips.ethereum.org/EIPS/eip-4345' }],
+  },
+  {
+    name: 'Gray Glacier',
+    slug: 'gray-glacier',
+    date: '2022-06-30',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-7568',
+    summary: 'Parameter-only difficulty bomb delay upgrade.',
+    description:
+      'Gray Glacier pushed back the difficulty bomb by 700,000 blocks to September 2022.',
+    impact: 'Final difficulty bomb delay prior to The Merge.',
+    relatedLinks: [{ title: 'Gray Glacier Fork', url: 'https://eips.ethereum.org/EIPS/eip-5133' }],
   },
   {
     name: 'Paris/Bellatrix (The Merge)',
@@ -162,6 +228,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 2,
     type: 'Merge',
     layer: 'execution',
+    metaEip: 'EIP-7568',
     summary: 'Transition from Proof-of-Work to Proof-of-Stake consensus.',
     description:
       "The Merge was Ethereum's highest-stakes upgrade, transitioning consensus from PoW to PoS, reducing energy consumption by 99.95% and establishing validator-based security.",
@@ -175,6 +242,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 4,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-6987',
     summary: 'Enabled staked ETH withdrawals and execution-layer refinements.',
     description:
       'Shanghai allowed validators to withdraw accrued staking rewards and exited stake, fulfilling a critical Proof-of-Stake requirement.',
@@ -188,6 +256,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 9,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-7569',
     summary: 'Delivered proto-danksharding groundwork for L2 scaling.',
     description:
       'Dencun introduced EIP-4844 (blobs), enabling Layer 2 solutions to post data more economically and reducing rollup costs by orders of magnitude. The Deneb consensus half shipped EIP-7044, EIP-7045 and EIP-7514.',
@@ -201,11 +270,96 @@ const previousUpgrades: HistoricalUpgrade[] = [
     eipCount: 11,
     type: 'Hard Fork',
     layer: 'execution',
+    metaEip: 'EIP-7600',
     summary: 'Account abstraction groundwork and a major staking overhaul.',
     description:
       'Pectra paired the Prague execution fork with the Electra consensus fork. It shipped EIP-7702 (set EOA account code), EIP-2537 (BLS precompiles) and EIP-2935 (historical block hashes) on the execution side, alongside EIP-7251 (raised MAX_EFFECTIVE_BALANCE), EIP-6110 (on-chain deposits) and EIP-7002 (execution-triggerable exits) for staking.',
     impact: 'Smart-account UX for EOAs; validator consolidation; simpler staking operations.',
     relatedLinks: [{ title: 'Pectra Upgrade', url: 'https://etherworld.co/tag/pectra/' }],
+  },
+  {
+    name: 'Fusaka',
+    slug: 'fusaka',
+    date: '2025-12-03',
+    eipCount: 13,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-7607',
+    summary: 'PeerDAS-powered blob scaling, a 60M gas limit, and BPO forks.',
+    description:
+      'Fusaka (Osaka + Fulu) introduced PeerDAS for blob scaling, raised the L1 gas limit to 60M, and enabled BPO parameter-only forks.',
+    impact: 'PeerDAS blob sampling, 60M L1 gas limit, BPO framework.',
+    relatedLinks: [{ title: 'Fusaka Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-7607' }],
+  },
+  {
+    name: 'BPO1',
+    slug: 'bpo-1',
+    date: '2025-12-09',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-8134',
+    summary: 'Blob Parameter Only 1: Raised blob target to 10 and max to 15.',
+    description:
+      'BPO1 was the first parameter-only hardfork under EIP-7892, increasing blob capacity for Layer 2 rollups.',
+    impact: 'Increased blob target to 10 and max limit to 15 blobs.',
+    relatedLinks: [{ title: 'BPO1 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8134' }],
+  },
+  {
+    name: 'BPO2',
+    slug: 'bpo-2',
+    date: '2026-01-07',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-8135',
+    summary: 'Blob Parameter Only 2: Raised blob target to 14 and max to 21.',
+    description:
+      'BPO2 was the second parameter-only hardfork under EIP-7892, expanding data availability capacity.',
+    impact: 'Increased blob target to 14 and max limit to 21 blobs.',
+    relatedLinks: [{ title: 'BPO2 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8135' }],
+  },
+  {
+    name: 'BPO3',
+    slug: 'bpo-3',
+    date: '2026-03-11',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-8138',
+    summary: 'Blob Parameter Only 3: Incremental blob throughput increase.',
+    description:
+      'BPO3 adjusted blob throughput parameters on mainnet as part of the staged EIP-7892 rollout.',
+    impact: 'Scaled data availability capacity.',
+    relatedLinks: [{ title: 'BPO3 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8138' }],
+  },
+  {
+    name: 'BPO4',
+    slug: 'bpo-4',
+    date: '2026-04-08',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-8139',
+    summary: 'Blob Parameter Only 4: Incremental blob throughput increase.',
+    description:
+      'BPO4 adjusted blob throughput parameters on mainnet.',
+    impact: 'Further scaled blob throughput.',
+    relatedLinks: [{ title: 'BPO4 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8139' }],
+  },
+  {
+    name: 'BPO5',
+    slug: 'bpo-5',
+    date: '2026-05-13',
+    eipCount: 1,
+    type: 'Hard Fork',
+    layer: 'execution',
+    metaEip: 'EIP-8140',
+    summary: 'Blob Parameter Only 5: Incremental blob throughput increase.',
+    description:
+      'BPO5 adjusted blob throughput parameters on mainnet.',
+    impact: 'Further scaled blob throughput.',
+    relatedLinks: [{ title: 'BPO5 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8140' }],
   },
 ];
 
@@ -249,11 +403,11 @@ export default function PreviousUpgradesPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-              Previous Upgrades (2015–2024)
+              Previous Upgrades (2015–2026)
             </h1>
           </div>
           <ShareButtons
-            text="Previous Ethereum Upgrades (2015–2024): Historical upgrade overview on EIPsInsight"
+            text="Previous Ethereum Upgrades (2015–2026): Historical upgrade overview on EIPsInsight"
             hashtags={['Ethereum', 'EIPs']}
             className="shrink-0"
           />
@@ -353,6 +507,7 @@ export default function PreviousUpgradesPage() {
                 <tr className="border-b border-border/70">
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Upgrade</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Date</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Meta EIP</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">EIPs</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Size Score</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Type</th>
@@ -378,6 +533,15 @@ export default function PreviousUpgradesPage() {
                           day: 'numeric',
                           year: 'numeric',
                         })}
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono text-xs text-primary">
+                        {upgrade.metaEip ? (
+                          <Link href={`/eip/${upgrade.metaEip.replace('EIP-', '')}`} className="hover:underline">
+                            {upgrade.metaEip}
+                          </Link>
+                        ) : (
+                          '—'
+                        )}
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground tabular-nums">{upgrade.eipCount}</td>
                       <td className="px-4 py-3 text-sm text-muted-foreground tabular-nums">{score}/10</td>
@@ -444,6 +608,14 @@ export default function PreviousUpgradesPage() {
                     year: 'numeric',
                   })}
                 </span>
+                {selected.metaEip && (
+                  <Link
+                    href={`/eip/${selected.metaEip.replace('EIP-', '')}`}
+                    className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-mono font-medium text-primary hover:underline"
+                  >
+                    {selected.metaEip}
+                  </Link>
+                )}
                 <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-muted-foreground">
                   <GitBranch className="h-3.5 w-3.5" />
                   {selected.eipCount} EIPs
@@ -467,8 +639,8 @@ export default function PreviousUpgradesPage() {
                 <p className="mt-1 text-2xl font-semibold text-foreground tabular-nums">{selected.eipCount}</p>
               </div>
               <div className="rounded-lg border border-border bg-background/40 p-3">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Size Score</p>
-                <p className="mt-1 text-2xl font-semibold text-foreground tabular-nums">{sizeScore(selected.eipCount)}/10</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Meta EIP</p>
+                <p className="mt-1 text-sm font-mono font-semibold text-primary">{selected.metaEip ?? '—'}</p>
               </div>
               <div className="rounded-lg border border-border bg-background/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</p>

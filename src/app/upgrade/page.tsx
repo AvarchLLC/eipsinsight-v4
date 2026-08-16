@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { statusBadgeClass } from '@/lib/proposal-status';
 import { getInProgressUpgrades, upgradeRegistry } from '@/data/upgrade-registry';
 import type { UpgradeRegistryEntry } from '@/data/upgrade-registry';
-import { rawData, pairedUpgradeNames, upgradeDescriptions } from '@/data/network-upgrades';
+import { rawData, pairedUpgradeNames, upgradeDescriptions, upgradeMetaEIPs } from '@/data/network-upgrades';
 import { STAGE_ORDER, stageDefinition, stageLabel } from '@/lib/upgrade-stages';
 import { getCachedRecentActivity } from '@/lib/upgrade-data.server';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
@@ -110,6 +110,7 @@ interface LiveUpgradeRow {
   date: string;
   name: string;
   slug?: string;
+  metaEip?: string;
   eipCount: number;
   tagline: string;
 }
@@ -139,7 +140,8 @@ function buildLiveUpgrades(): LiveUpgradeRow[] {
       (forkNames.length > 1 ? forkNames.join(' / ') : (reg?.name ?? forkNames[0]));
     const eipCount = new Set(entries.flatMap((e) => e.eips).filter(isRealEip)).size;
     const tagline = reg?.tagline ?? upgradeDescriptions[forkNames[0]] ?? '';
-    return { date, name, slug: reg?.slug, eipCount, tagline };
+    const metaEip = entries.map((e) => upgradeMetaEIPs[e.upgrade]).find(Boolean);
+    return { date, name, slug: reg?.slug, metaEip, eipCount, tagline };
   });
 
   rows.sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -341,7 +343,7 @@ export default async function UpgradeIndexPage() {
           accent="green"
           title="Live on mainnet"
           sectionId="live"
-          description="All 22 activated network upgrades, newest first."
+          description={`All ${liveUpgrades.length} activated network upgrades, newest first.`}
           action={
             <Link
               href="/upgrade/archive"
@@ -359,6 +361,7 @@ export default async function UpgradeIndexPage() {
                 <tr className="border-b border-border/70 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Upgrade</th>
                   <th className="px-4 py-3">Activated</th>
+                  <th className="px-4 py-3">Meta EIP</th>
                   <th className="hidden px-4 py-3 sm:table-cell">EIPs</th>
                   <th className="hidden px-4 py-3 md:table-cell">Highlights</th>
                   <th className="px-4 py-3" />
@@ -383,6 +386,18 @@ export default async function UpgradeIndexPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{entry.date}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {entry.metaEip ? (
+                        <Link
+                          href={`/eip/${entry.metaEip.replace('EIP-', '')}`}
+                          className="font-mono text-xs text-primary hover:underline"
+                        >
+                          {entry.metaEip}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                       {entry.eipCount || '—'}
                     </td>

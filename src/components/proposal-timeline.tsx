@@ -174,19 +174,16 @@ export function ProposalTimeline({
   repoPath,
   normalizedRepo,
 }: ProposalTimelineProps) {
-  const statusTrack = getStatusTrack(proposal as never, statusEvents as never);
   const stageTrack = getStageTrack(upgrades as never);
 
   const hasPr = !!governanceState?.pr_number;
   const stageDetailCount = stageEvents.length || upgrades.length;
-  const [openStatus, setOpenStatus] = useState(false);
   const [openStage, setOpenStage] = useState(false);
   const [openPr, setOpenPr] = useState(false);
 
-  const allOpen = openStatus && openStage && (hasPr ? openPr : true);
+  const allOpen = openStage && (hasPr ? openPr : true);
   const toggleAll = () => {
     const next = !allOpen;
-    setOpenStatus(next);
     setOpenStage(next);
     if (hasPr) setOpenPr(next);
   };
@@ -229,38 +226,66 @@ export function ProposalTimeline({
       </div>
 
       <div className="divide-y divide-border/50 p-3">
-        {/* Governance status track */}
-        <CollapsibleTrack
-          open={openStatus}
-          onToggle={() => setOpenStatus((o) => !o)}
-          detailLabel={`status history (${statusEvents.length})`}
-          stepper={<LifecycleTrack title="Governance status" subtitle="the EIP's own process — independent of any fork" steps={statusTrack} />}
-        >
+        {/* Governance status track — main uncollapsed view showing actual status event nodes */}
+        <div className="px-5 py-4">
+          <div className="mb-4 flex flex-wrap items-baseline gap-x-2">
+            <p className="text-xs font-bold text-foreground">Governance status</p>
+            <p className="text-[10px] text-muted-foreground">
+              — historical status transitions recorded from the specification repository
+            </p>
+          </div>
           {statusEvents.length > 0 ? (
             <HorizontalTimeline>
               {statusEvents.map((event, index) => {
                 const prev = index > 0 ? statusEvents[index - 1] : null;
                 const duration = durationBetween(prev?.changed_at ?? null, event.changed_at);
-                const commitUrl = event.commit_sha && event.commit_sha.trim() !== ''
-                  ? `https://github.com/ethereum/${repoPath}/commit/${event.commit_sha}`
-                  : null;
+                const commitUrl =
+                  event.commit_sha && event.commit_sha.trim() !== ''
+                    ? `https://github.com/ethereum/${repoPath}/commit/${event.commit_sha}`
+                    : null;
                 const isLatest = index === statusEvents.length - 1;
                 return (
-                  <TimelineNode key={`${event.changed_at}-${event.to}-${index}`} dot={statusStyle(event.to).dot} isLatest={isLatest} isLast={index === statusEvents.length - 1}>
+                  <TimelineNode
+                    key={`${event.changed_at}-${event.to}-${index}`}
+                    dot={statusStyle(event.to).dot}
+                    isLatest={isLatest}
+                    isLast={index === statusEvents.length - 1}
+                  >
                     <div className="flex flex-wrap items-center gap-1.5">
                       {event.from && (
                         <>
-                          <span className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase', statusStyle(event.from).badge)}>{event.from}</span>
+                          <span
+                            className={cn(
+                              'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
+                              statusStyle(event.from).badge
+                            )}
+                          >
+                            {event.from}
+                          </span>
                           <ChevronRight className="h-3 w-3 text-muted-foreground" />
                         </>
                       )}
-                      <span className={cn('rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase', statusStyle(event.to).badge)}>{event.to}</span>
+                      <span
+                        className={cn(
+                          'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
+                          statusStyle(event.to).badge
+                        )}
+                      >
+                        {event.to}
+                      </span>
                     </div>
-                    <div className="mt-2 text-[11px] text-muted-foreground">{new Date(event.changed_at).toLocaleString()}</div>
+                    <div className="mt-2 text-[11px] text-muted-foreground">
+                      {new Date(event.changed_at).toLocaleString()}
+                    </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                       {duration && prev && <span>{duration} in {prev.to}</span>}
                       {commitUrl && (
-                        <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+                        <a
+                          href={commitUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-primary hover:text-primary/80"
+                        >
                           <Github className="h-3 w-3" /> {event.commit_sha!.slice(0, 8)}
                         </a>
                       )}
@@ -270,9 +295,21 @@ export function ProposalTimeline({
               })}
             </HorizontalTimeline>
           ) : (
-            <p className="text-[11px] text-muted-foreground">No recorded status changes yet.</p>
+            <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/20 p-3">
+              <span
+                className={cn(
+                  'rounded border px-2 py-0.5 text-xs font-semibold uppercase',
+                  statusStyle(proposal.status).badge
+                )}
+              >
+                {proposal.status}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                Current recorded proposal status.
+              </span>
+            </div>
           )}
-        </CollapsibleTrack>
+        </div>
 
         {/* Upgrade stage track — historical bucket journey across forks */}
         <CollapsibleTrack
