@@ -478,26 +478,45 @@ function getParticipation(proposal: ProposalData, upgrades: UpgradeInclusion[]) 
 
 export type TrackStep = { label: string; description: string; status: 'completed' | 'current' | 'upcoming'; date: string | null; detail: string | null };
 
+const STATUS_DESCRIPTIONS: Record<string, string> = {
+  Draft: 'Submitted',
+  Review: 'Under review',
+  'Last Call': 'Last call for comments',
+  Final: 'Finalized',
+  Stagnant: 'Inactive for 6+ months',
+  Withdrawn: 'Withdrawn by author',
+  Living: 'Continuously updated standard',
+};
+
 /** Governance status — the EIP's own process (independent of any fork). */
 export function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): TrackStep[] {
   const cur = (proposal.status ?? '').toLowerCase();
+  const eventTargets = statusEvents.map((e) => (e.to ?? '').toLowerCase());
 
-  let order = ['Draft', 'Review', 'Last Call', 'Final'];
-  let descs = ['Submitted', 'Under review', 'Last call for comments', 'Finalized'];
+  let order: string[];
 
-  if (cur === 'stagnant') {
-    order = ['Draft', 'Review', 'Last Call', 'Stagnant'];
-    descs = ['Submitted', 'Under review', 'Last call for comments', 'Inactive for 6+ months'];
-  } else if (cur === 'withdrawn') {
-    order = ['Draft', 'Review', 'Last Call', 'Withdrawn'];
-    descs = ['Submitted', 'Under review', 'Last call for comments', 'Withdrawn by author'];
-  } else if (cur === 'living') {
-    order = ['Draft', 'Review', 'Living'];
-    descs = ['Submitted', 'Under review', 'Continuously updated standard'];
+  if (cur === 'stagnant' || cur === 'withdrawn' || cur === 'living') {
+    // Only include intermediate stages (Review, Last Call) if they actually occurred in history
+    order = ['Draft'];
+    if (eventTargets.includes('review')) {
+      order.push('Review');
+    }
+    if (eventTargets.includes('last call')) {
+      order.push('Last Call');
+    }
+    const terminalLabel =
+      cur === 'stagnant' ? 'Stagnant' : cur === 'withdrawn' ? 'Withdrawn' : 'Living';
+    if (!order.includes(terminalLabel)) {
+      order.push(terminalLabel);
+    }
+  } else {
+    // Standard active pipeline roadmap
+    order = ['Draft', 'Review', 'Last Call', 'Final'];
   }
 
   const curIdx = order.findIndex((s) => s.toLowerCase() === cur);
-  const dateFor = (label: string) => statusEvents.find((e) => e.to?.toLowerCase() === label.toLowerCase())?.changed_at ?? null;
+  const dateFor = (label: string) =>
+    statusEvents.find((e) => e.to?.toLowerCase() === label.toLowerCase())?.changed_at ?? null;
 
   return order.map((label, i) => {
     let status: 'completed' | 'current' | 'upcoming' = 'upcoming';
@@ -512,11 +531,14 @@ export function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent
     }
 
     const eventDate = dateFor(label);
-    const fallbackDate = i === curIdx && statusEvents.length > 0 ? statusEvents[statusEvents.length - 1].changed_at : null;
+    const fallbackDate =
+      i === curIdx && statusEvents.length > 0
+        ? statusEvents[statusEvents.length - 1].changed_at
+        : null;
 
     return {
       label,
-      description: descs[i],
+      description: STATUS_DESCRIPTIONS[label] ?? label,
       status,
       date: eventDate ?? fallbackDate,
       detail: null,
