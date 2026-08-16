@@ -480,19 +480,48 @@ export type TrackStep = { label: string; description: string; status: 'completed
 
 /** Governance status — the EIP's own process (independent of any fork). */
 export function getStatusTrack(proposal: ProposalData, statusEvents: StatusEvent[]): TrackStep[] {
-  const order = ['Draft', 'Review', 'Last Call', 'Final'];
-  const descs = ['Submitted', 'Under review', 'Last call for comments', 'Finalized'];
   const cur = (proposal.status ?? '').toLowerCase();
-  let curIdx = order.findIndex((s) => s.toLowerCase() === cur);
-  if (curIdx < 0 && cur === 'living') curIdx = 3;
+
+  let order = ['Draft', 'Review', 'Last Call', 'Final'];
+  let descs = ['Submitted', 'Under review', 'Last call for comments', 'Finalized'];
+
+  if (cur === 'stagnant') {
+    order = ['Draft', 'Review', 'Last Call', 'Stagnant'];
+    descs = ['Submitted', 'Under review', 'Last call for comments', 'Inactive for 6+ months'];
+  } else if (cur === 'withdrawn') {
+    order = ['Draft', 'Review', 'Last Call', 'Withdrawn'];
+    descs = ['Submitted', 'Under review', 'Last call for comments', 'Withdrawn by author'];
+  } else if (cur === 'living') {
+    order = ['Draft', 'Review', 'Living'];
+    descs = ['Submitted', 'Under review', 'Continuously updated standard'];
+  }
+
+  const curIdx = order.findIndex((s) => s.toLowerCase() === cur);
   const dateFor = (label: string) => statusEvents.find((e) => e.to?.toLowerCase() === label.toLowerCase())?.changed_at ?? null;
-  return order.map((label, i) => ({
-    label,
-    description: descs[i],
-    status: curIdx < 0 ? (i === 0 ? 'current' : 'upcoming') : i < curIdx ? 'completed' : i === curIdx ? 'current' : 'upcoming',
-    date: dateFor(label),
-    detail: null,
-  }));
+
+  return order.map((label, i) => {
+    let status: 'completed' | 'current' | 'upcoming' = 'upcoming';
+    if (curIdx >= 0) {
+      if (i < curIdx) {
+        status = 'completed';
+      } else if (i === curIdx) {
+        status = 'current';
+      }
+    } else {
+      if (i === 0) status = 'current';
+    }
+
+    const eventDate = dateFor(label);
+    const fallbackDate = i === curIdx && statusEvents.length > 0 ? statusEvents[statusEvents.length - 1].changed_at : null;
+
+    return {
+      label,
+      description: descs[i],
+      status,
+      date: eventDate ?? fallbackDate,
+      detail: null,
+    };
+  });
 }
 
 /** Upgrade stage — inclusion in a network fork (independent of EIP status). */
