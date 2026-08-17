@@ -108,7 +108,26 @@ function formatWaitingOn(state: string | null): string {
     .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+const fmtDate = (d: string) => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' UTC';
+};
+
+const fmtUtcDateTime = (d: string) => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return (
+    dt.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    }) + ' UTC'
+  );
+};
 
 /** Shared horizontal timeline shell — the original Lifecycle Timeline look. */
 function HorizontalTimeline({ children }: { children: React.ReactNode }) {
@@ -226,10 +245,10 @@ export function ProposalTimeline({
       </div>
 
       <div className="divide-y divide-border/50 p-3">
-        {/* Governance status track — main uncollapsed view showing actual status event nodes */}
+        {/* Proposal or EIP Status track — main uncollapsed view showing actual status event nodes */}
         <div className="px-5 py-4">
           <div className="mb-4 flex flex-wrap items-baseline gap-x-2">
-            <p className="text-xs font-bold text-foreground">Governance status</p>
+            <p className="text-xs font-bold text-foreground">Proposal or EIP Status</p>
             <p className="text-[10px] text-muted-foreground">
               — historical status transitions recorded from the specification repository
             </p>
@@ -252,19 +271,6 @@ export function ProposalTimeline({
                     isLast={index === statusEvents.length - 1}
                   >
                     <div className="flex flex-wrap items-center gap-1.5">
-                      {event.from && (
-                        <>
-                          <span
-                            className={cn(
-                              'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
-                              statusStyle(event.from).badge
-                            )}
-                          >
-                            {event.from}
-                          </span>
-                          <ChevronRight className="h-3 w-3 text-muted-foreground" />
-                        </>
-                      )}
                       <span
                         className={cn(
                           'rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase',
@@ -275,7 +281,7 @@ export function ProposalTimeline({
                       </span>
                     </div>
                     <div className="mt-2 text-[11px] text-muted-foreground">
-                      {new Date(event.changed_at).toLocaleString()}
+                      {fmtUtcDateTime(event.changed_at)}
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                       {duration && prev && <span>{duration} in {prev.to}</span>}
@@ -311,72 +317,72 @@ export function ProposalTimeline({
           )}
         </div>
 
-        {/* Upgrade stage track — historical bucket journey across forks */}
-        <CollapsibleTrack
-          open={openStage}
-          onToggle={() => setOpenStage((o) => !o)}
-          detailLabel={`stage history (${stageDetailCount})`}
-          stepper={<LifecycleTrack title="Upgrade stage" subtitle="inclusion in a network fork — independent of EIP status" steps={stageTrack} />}
-        >
-          {stageEvents.length > 0 ? (
-            <HorizontalTimeline>
-              {stageEvents.map((event, index) => {
-                const nb = normalizeUpgradeBucket(event.bucket);
-                const commitUrl = event.commit_sha ? `https://github.com/ethereum/${repoPath}/commit/${event.commit_sha}` : null;
-                const isLatest = index === stageEvents.length - 1;
-                return (
-                  <TimelineNode key={`${event.commit_date}-${event.bucket}-${index}`} dot={STAGE_DOT[event.bucket] ?? 'bg-slate-400'} isLatest={isLatest} isLast={index === stageEvents.length - 1}>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs font-semibold text-foreground">{event.upgrade || 'Upgrade'}</span>
-                      <span className={cn('rounded-full border px-1.5 py-px text-[10px] font-medium', stageBadgeClass(nb))}>
-                        {(nb && stageAbbreviation(nb)) || event.bucket}
-                      </span>
-                    </div>
-                    <div className="mt-2 text-[11px] text-muted-foreground">{event.commit_date ? fmtDate(event.commit_date) : 'date unknown'}</div>
-                    <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
-                      {event.slug && (
-                        <Link href={`/upgrade/${event.slug}`} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+        {/* Upgrade stage track — historical bucket journey across forks (only shown if assigned to a stage/fork) */}
+        {(stageEvents.length > 0 || upgrades.length > 0) && (
+          <CollapsibleTrack
+            open={openStage}
+            onToggle={() => setOpenStage((o) => !o)}
+            detailLabel={`stage history (${stageDetailCount})`}
+            stepper={<LifecycleTrack title="Upgrade stage" subtitle="inclusion in a network fork — independent of EIP status" steps={stageTrack} />}
+          >
+            {stageEvents.length > 0 ? (
+              <HorizontalTimeline>
+                {stageEvents.map((event, index) => {
+                  const nb = normalizeUpgradeBucket(event.bucket);
+                  const commitUrl = event.commit_sha ? `https://github.com/ethereum/${repoPath}/commit/${event.commit_sha}` : null;
+                  const isLatest = index === stageEvents.length - 1;
+                  return (
+                    <TimelineNode key={`${event.commit_date}-${event.bucket}-${index}`} dot={STAGE_DOT[event.bucket] ?? 'bg-slate-400'} isLatest={isLatest} isLast={index === stageEvents.length - 1}>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="text-xs font-semibold text-foreground">{event.upgrade || 'Upgrade'}</span>
+                        <span className={cn('rounded-full border px-1.5 py-px text-[10px] font-medium', stageBadgeClass(nb))}>
+                          {(nb && stageAbbreviation(nb)) || event.bucket}
+                        </span>
+                      </div>
+                      <div className="mt-2 text-[11px] text-muted-foreground">{event.commit_date ? fmtDate(event.commit_date) : 'date unknown'}</div>
+                      <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px]">
+                        {event.slug && (
+                          <Link href={`/upgrade/${event.slug}`} className="inline-flex items-center gap-1 text-primary hover:text-primary/80">
+                            View <ArrowRight className="h-3 w-3" />
+                          </Link>
+                        )}
+                        {commitUrl && (
+                          <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
+                            <Github className="h-3 w-3" /> {event.commit_sha!.slice(0, 8)}
+                          </a>
+                        )}
+                      </div>
+                    </TimelineNode>
+                  );
+                })}
+              </HorizontalTimeline>
+            ) : (
+              <div className="space-y-2">
+                {upgrades.map((upgrade) => {
+                  const nb = normalizeUpgradeBucket(upgrade.bucket);
+                  return (
+                    <div key={upgrade.slug || upgrade.upgrade_id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-xs font-semibold text-foreground">{upgrade.name}</p>
+                          <span className={cn('inline-flex rounded-full border px-1.5 py-px text-[10px] font-medium', stageBadgeClass(nb))}>
+                            {(nb && stageAbbreviation(nb)) || upgrade.bucket}
+                          </span>
+                        </div>
+                        {upgrade.commit_date && <p className="mt-0.5 text-[11px] text-muted-foreground">{fmtDate(upgrade.commit_date)}</p>}
+                      </div>
+                      {upgrade.slug && (
+                        <Link href={`/upgrade/${upgrade.slug}`} className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10">
                           View <ArrowRight className="h-3 w-3" />
                         </Link>
                       )}
-                      {commitUrl && (
-                        <a href={commitUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground">
-                          <Github className="h-3 w-3" /> {event.commit_sha!.slice(0, 8)}
-                        </a>
-                      )}
                     </div>
-                  </TimelineNode>
-                );
-              })}
-            </HorizontalTimeline>
-          ) : upgrades.length > 0 ? (
-            <div className="space-y-2">
-              {upgrades.map((upgrade) => {
-                const nb = normalizeUpgradeBucket(upgrade.bucket);
-                return (
-                  <div key={upgrade.slug || upgrade.upgrade_id} className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2.5">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-xs font-semibold text-foreground">{upgrade.name}</p>
-                        <span className={cn('inline-flex rounded-full border px-1.5 py-px text-[10px] font-medium', stageBadgeClass(nb))}>
-                          {(nb && stageAbbreviation(nb)) || upgrade.bucket}
-                        </span>
-                      </div>
-                      {upgrade.commit_date && <p className="mt-0.5 text-[11px] text-muted-foreground">{fmtDate(upgrade.commit_date)}</p>}
-                    </div>
-                    {upgrade.slug && (
-                      <Link href={`/upgrade/${upgrade.slug}`} className="inline-flex shrink-0 items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-primary transition-colors hover:bg-primary/10">
-                        View <ArrowRight className="h-3 w-3" />
-                      </Link>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-[11px] text-muted-foreground">Not assigned to any network upgrade yet.</p>
-          )}
-        </CollapsibleTrack>
+                  );
+                })}
+              </div>
+            )}
+          </CollapsibleTrack>
+        )}
 
         {/* Editorial PR & review */}
         {hasPr && (
