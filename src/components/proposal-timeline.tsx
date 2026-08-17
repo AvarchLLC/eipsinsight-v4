@@ -108,7 +108,26 @@ function formatWaitingOn(state: string | null): string {
     .replace(/\b\w/g, (l) => l.toUpperCase());
 }
 
-const fmtDate = (d: string) => new Date(d).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+const fmtDate = (d: string) => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return dt.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric', timeZone: 'UTC' }) + ' UTC';
+};
+
+const fmtUtcDateTime = (d: string) => {
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return d;
+  return (
+    dt.toLocaleString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'UTC',
+    }) + ' UTC'
+  );
+};
 
 /** Shared horizontal timeline shell — the original Lifecycle Timeline look. */
 function HorizontalTimeline({ children }: { children: React.ReactNode }) {
@@ -262,7 +281,7 @@ export function ProposalTimeline({
                       </span>
                     </div>
                     <div className="mt-2 text-[11px] text-muted-foreground">
-                      {new Date(event.changed_at).toLocaleString()}
+                      {fmtUtcDateTime(event.changed_at)}
                     </div>
                     <div className="mt-1.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
                       {duration && prev && <span>{duration} in {prev.to}</span>}

@@ -782,7 +782,7 @@ export default function ProposalDetailPage() {
                         <span className="font-medium text-foreground/70">Created</span>{' '}
                         {Number.isNaN(Date.parse(proposal.created))
                           ? proposal.created
-                          : new Date(proposal.created).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                          : new Date(proposal.created).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' }) + ' UTC'}
                       </span>
                     )}
                     {proposalRequires.length > 0 && (
