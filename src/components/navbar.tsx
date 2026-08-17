@@ -260,11 +260,21 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* CENTER: Search (Desktop) - Flex grow to center */}
+          {/* CENTER: full search bar when there's room (lg+); a clear search
+              icon-link on medium widths where the sidebar squeezes the header so
+              the field doesn't collapse into an ambiguous, "unresponsive" sliver. */}
           <div className="hidden md:flex min-w-0 flex-1 justify-center px-2 lg:px-4">
-            <div className="w-full max-w-xl">
+            <div className="hidden w-full max-w-xl xl:block">
               <SearchBar />
             </div>
+            <Link
+              href="/search"
+              aria-label="Search EIPs, ERCs, RIPs"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground xl:hidden"
+            >
+              <Search className="h-4 w-4" />
+              <span>Search</span>
+            </Link>
           </div>
 
           {/* RIGHT: Theme + Persona + Profile (Desktop) */}
@@ -447,19 +457,19 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="border-t border-border bg-background/98 backdrop-blur-xl md:hidden">
           <div className="space-y-3 px-4 py-4">
-            {/* Mobile Search */}
-            <div className="relative">
+            {/* Mobile Search — links to the full search page (the bare input here
+                had no handlers, so it did nothing when tapped). */}
+            <Link
+              href="/search"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "relative flex h-9 w-full items-center rounded-md border border-border bg-muted/60 px-10 text-sm text-muted-foreground",
+                "transition-colors hover:border-primary/40 hover:text-foreground"
+              )}
+            >
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Search EIPs, ERCs, RIPs, authors…"
-                className={cn(
-                  "h-9 w-full rounded-md border border-border bg-muted/60 px-10 text-sm text-foreground",
-                  "placeholder:text-muted-foreground",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                )}
-              />
-            </div>
+              Search EIPs, ERCs, RIPs, authors…
+            </Link>
 
             {/* Mobile Navigation (compact + expandable) */}
             <div className="space-y-3">
