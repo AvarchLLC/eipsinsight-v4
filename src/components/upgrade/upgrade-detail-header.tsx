@@ -6,6 +6,23 @@ import { getCurrentPhase } from '@/data/fork-schedule';
 import { PhaseBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
 
+function renderNameWithHighlight(fullStr: string, highlight: string) {
+  const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
+  if (index === -1) return <strong className="font-bold text-foreground">{fullStr}</strong>;
+
+  const before = fullStr.slice(0, index);
+  const match = fullStr.slice(index, index + highlight.length);
+  const after = fullStr.slice(index + highlight.length);
+
+  return (
+    <span className="font-medium text-foreground">
+      {before}
+      <strong className="font-bold text-primary underline decoration-primary/50 underline-offset-2">{match}</strong>
+      {after}
+    </span>
+  );
+}
+
 export type UpgradeSubtab =
   | 'overview'
   | 'stakeholders'
@@ -101,10 +118,10 @@ export function UpgradeDetailHeader({
           {metaEip && (
             <Link
               href={`/eip/${metaEip}`}
-              className="inline-flex items-center gap-1 text-primary transition-colors hover:text-primary/80"
+              className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/20 rounded-full px-2.5 py-0.5 text-xs transition-all"
             >
-              <FileText className="h-3.5 w-3.5" />
-              Meta EIP-{metaEip}
+              <FileText className="h-3.5 w-3.5 text-amber-500" />
+              <span>Meta EIP: <span className="font-semibold underline">EIP-{metaEip}</span></span>
             </Link>
           )}
           {entry?.mascot && (
@@ -122,6 +139,27 @@ export function UpgradeDetailHeader({
               )}
             </span>
           )}
+          {entry?.executionName && entry?.consensusName && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-purple-500/10 border border-purple-500/20 rounded-full px-2.5 py-0.5 text-xs">
+              <Layers className="h-3.5 w-3.5 text-purple-500" />
+              {entry.nameOriginDetails ? (
+                <span>
+                  {renderNameWithHighlight(entry.nameOriginDetails.clName, entry.nameOriginDetails.clHighlight)} (CL) + {renderNameWithHighlight(entry.nameOriginDetails.elName, entry.nameOriginDetails.elHighlight)} (EL)
+                </span>
+              ) : (
+                <span>{entry.executionName} (EL) + {entry.consensusName} (CL)</span>
+              )}
+              {entry.nameOriginDetails?.eip && (
+                <Link
+                  href={`/eip/${entry.nameOriginDetails.eip}`}
+                  className="text-primary hover:underline text-[11px] ml-0.5 font-medium"
+                  title="Naming convention per EIP-8133"
+                >
+                  (EIP-{entry.nameOriginDetails.eip})
+                </Link>
+              )}
+            </span>
+          )}
           {entry?.activationDate && (
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />
@@ -132,12 +170,6 @@ export function UpgradeDetailHeader({
             <span className="inline-flex items-center gap-1">
               <Box className="h-3.5 w-3.5" />
               Block {entry.activationBlock.toLocaleString()}
-            </span>
-          )}
-          {entry?.executionName && entry?.consensusName && (
-            <span className="inline-flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              {entry.executionName} (EL) + {entry.consensusName} (CL)
             </span>
           )}
         </div>

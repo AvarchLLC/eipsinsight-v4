@@ -22,7 +22,7 @@ export interface DevnetEipRow {
   title: string;
   layman_title: string | null;
   bucket: string | null;
-  layer: 'EL' | 'CL' | null;
+  layer: 'EL' | 'CL' | 'Both' | string | null;
   status: string | null;
   /** devnetId -> inclusion status ("new" | "updated" | "required" | "optional" | "included"). */
   inclusion: Record<string, string>;
@@ -40,15 +40,28 @@ const STATUS_META: Record<string, { className: string; label: string }> = {
 /** Legend order shown at the top (the change-types a ✓ can represent). */
 const LEGEND_KEYS = ['included', 'new', 'updated', 'required', 'optional'] as const;
 
-function LayerChip({ layer }: { layer: 'EL' | 'CL' | null }) {
+function LayerChip({ layer }: { layer: string | null }) {
   if (!layer) return <span className="text-xs text-muted-foreground/40">—</span>;
+  const isBoth = layer === 'Both' || layer === 'EL,CL' || layer === 'EL+CL';
+  if (isBoth) {
+    return (
+      <div className="flex items-center justify-center gap-1">
+        <span className="inline-flex items-center rounded-md border border-amber-500/30 bg-amber-500/10 px-1 py-0.5 text-[10px] font-semibold text-amber-600 dark:text-amber-300">
+          EL
+        </span>
+        <span className="inline-flex items-center rounded-md border border-teal-500/30 bg-teal-500/10 px-1 py-0.5 text-[10px] font-semibold text-teal-600 dark:text-teal-300">
+          CL
+        </span>
+      </div>
+    );
+  }
   return (
     <span
       className={cn(
         'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold',
         layer === 'EL'
           ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-300'
-          : 'border-indigo-500/30 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'
+          : 'border-teal-500/30 bg-teal-500/10 text-teal-600 dark:text-teal-300'
       )}
     >
       {layer}

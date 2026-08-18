@@ -136,6 +136,26 @@ function availableMonthsDefaultStart(toMonth: string) {
   return `${start.getUTCFullYear()}-${String(start.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
+function getPresetMonths(preset: "30d" | "90d" | "6m" | "1y" | "ytd", now: Date = new Date()): { from: string; to: string } {
+  const currentY = now.getFullYear();
+  const currentM = now.getMonth();
+  const toStr = `${currentY}-${String(currentM + 1).padStart(2, "0")}`;
+
+  if (preset === "ytd") {
+    return { from: `${currentY}-01`, to: toStr };
+  }
+
+  let monthsBack = 1;
+  if (preset === "30d") monthsBack = 1;
+  else if (preset === "90d") monthsBack = 3;
+  else if (preset === "6m") monthsBack = 6;
+  else if (preset === "1y") monthsBack = 12;
+
+  const startDate = new Date(Date.UTC(currentY, currentM - (monthsBack - 1), 1));
+  const fromStr = `${startDate.getUTCFullYear()}-${String(startDate.getUTCMonth() + 1).padStart(2, "0")}`;
+  return { from: fromStr, to: toStr };
+}
+
 export interface MonthlyDrilldownProps {
   initialMonth?: string;
   basePath?: string;
@@ -145,16 +165,39 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const now = new Date();
-  const defaultMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const now = useMemo(() => new Date(), []);
+  const defaultMonth = useMemo(() => `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`, [now]);
 
   const repo = (searchParams.get("repo") || "all") as "all" | "eips" | "ercs" | "rips";
   const month = initialMonth || searchParams.get("month") || defaultMonth;
-  const historyFrom = searchParams.get("from") || availableMonthsDefaultStart(defaultMonth);
-  const historyTo = searchParams.get("to") || month;
+
+  const rangeParam = searchParams.get("range");
+  const fromParam = searchParams.get("from");
+  const toParam = searchParams.get("to");
+
+  const [dateMode, setDateMode] = useState<"month" | "range">(
+    rangeParam || (fromParam && toParam && fromParam !== toParam) ? "range" : "month"
+  );
+  const [activePreset, setActivePreset] = useState<"30d" | "90d" | "6m" | "1y" | "ytd" | "custom">(
+    (rangeParam as "30d" | "90d" | "6m" | "1y" | "ytd" | "custom") || (fromParam ? "custom" : "90d")
+  );
+
+  const { effectiveFrom, effectiveTo } = useMemo(() => {
+    if (dateMode === "month") {
+      return { effectiveFrom: month, effectiveTo: month };
+    }
+    if (activePreset !== "custom") {
+      const preset = getPresetMonths(activePreset, now);
+      return { effectiveFrom: preset.from, effectiveTo: preset.to };
+    }
+    const f = fromParam || searchParams.get("fromMonth") || availableMonthsDefaultStart(defaultMonth);
+    const t = toParam || searchParams.get("toMonth") || month;
+    return { effectiveFrom: f, effectiveTo: t };
+  }, [dateMode, activePreset, month, fromParam, toParam, now, defaultMonth]);
+
+  const historyFrom = searchParams.get("from") || effectiveFrom;
+  const historyTo = searchParams.get("to") || effectiveTo;
   const page = Math.max(1, Number(searchParams.get("page") || "1"));
-  // Larger page so the client-side Week filter has the whole month's changes to work with
-  // (status-change-filtered months are well under this).
   const pageSize = 60;
 
   const [loading, setLoading] = useState(true);
@@ -200,7 +243,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         const [drilldown, summaryDrilldown, editorRows, draftFinalHistoryRes, statusCategoryTrendRes, changeMixTrendRes] = await Promise.all([
           client.insights.getMonthlyDrilldown({
             repo: tableRepoFilter ?? repo,
-            month,
+            fromMonth: effectiveFrom,
+            toMonth: effectiveTo,
             status: tableStatusFilter ? [tableStatusFilter] : [],
             change: changeFilter === "all" ? [] : [changeFilter],
             type: [],
@@ -211,7 +255,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
           }),
           client.insights.getMonthlyDrilldown({
             repo,
-            month,
+            fromMonth: effectiveFrom,
+            toMonth: effectiveTo,
             status: [],
             change: [],
             type: [],
@@ -221,7 +266,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
             pageSize: 2000,
           }),
           client.analytics.getMonthlyEditorLeaderboard({
-            monthYear: month,
+            fromMonth: effectiveFrom,
+            toMonth: effectiveTo,
             repo: repo === "all" ? undefined : repo,
             limit: 20,
           }),
@@ -266,7 +312,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       }
     };
     run();
-  }, [repo, month, page, pageSize, tableStatusFilter, tableRepoFilter, changeFilter, sortFilter, globalSearch, historyFrom, historyTo, statusTrendStatus]);
+  }, [repo, month, effectiveFrom, effectiveTo, page, pageSize, tableStatusFilter, tableRepoFilter, changeFilter, sortFilter, globalSearch, historyFrom, historyTo, statusTrendStatus]);
 
   // Deep-link support: once content is loaded, scroll to the #section in the URL.
   useEffect(() => {
@@ -277,10 +323,10 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     if (el) window.requestAnimationFrame(() => el.scrollIntoView({ behavior: "smooth", block: "start" }));
   }, [loading]);
 
-  // Month-in-review: PRs, Issues, Calls & Decisions for the selected month.
+  // Month-in-review: PRs, Issues, Calls & Decisions for the selected month or date range.
   useEffect(() => {
     let cancelled = false;
-    const [yearStr, monthStr] = month.split("-");
+    const [yearStr, monthStr] = effectiveTo.split("-");
     const year = Number(yearStr);
     const monthNum = Number(monthStr);
     if (!year || !monthNum) return;
@@ -295,14 +341,15 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       if (cancelled) return;
       setPrKpis(pr);
       setIssueKpis(issue);
-      // Both feeds are date-ordered; keep only the selected month (occurred_on = YYYY-MM-DD).
-      setMonthCalls((calls as typeof monthCalls).filter((c) => c.occurred_on.startsWith(month)));
-      setMonthDecisions((decisions as typeof monthDecisions).filter((d) => d.occurred_on.startsWith(month)));
+      const minDate = `${effectiveFrom}-01`;
+      const maxDate = `${effectiveTo}-31`;
+      setMonthCalls((calls as typeof monthCalls).filter((c) => c.occurred_on >= minDate && c.occurred_on <= maxDate));
+      setMonthDecisions((decisions as typeof monthDecisions).filter((d) => d.occurred_on >= minDate && d.occurred_on <= maxDate));
     });
     return () => {
       cancelled = true;
     };
-  }, [repo, month]);
+  }, [repo, month, effectiveFrom, effectiveTo]);
 
   useEffect(() => {
     setTableStatusFilter(null);
@@ -662,11 +709,17 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     URL.revokeObjectURL(url);
   };
 
+  const isSingleMonth = effectiveFrom === effectiveTo;
+  const displayPeriodLabel = isSingleMonth
+    ? monthLabel(effectiveFrom)
+    : `${monthLabel(effectiveFrom)} – ${monthLabel(effectiveTo)}`;
+
   const exportCsv = async () => {
     try {
       const full = await client.insights.getMonthlyDrilldown({
         repo,
-        month,
+        fromMonth: effectiveFrom,
+        toMonth: effectiveTo,
         status: [],
         change: [],
         type: [],
@@ -688,7 +741,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         "primary_pr_number",
         "primary_pr_url",
         "all_pr_numbers",
-        "month",
+        "period",
       ].join(",");
 
       const csvRows = full.rows.map((r) => [
@@ -703,7 +756,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
         r.primaryPrNumber || "",
         r.primaryPrUrl || "",
         r.allPrNumbers.join("|"),
-        month,
+        displayPeriodLabel,
       ].map(csvEscape).join(","));
 
       const csv = [header, ...csvRows].join("\n");
@@ -711,7 +764,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `monthly-insight-${repo}-${month}.csv`;
+      const dateRangeTag = isSingleMonth ? effectiveFrom : `${effectiveFrom}-to-${effectiveTo}`;
+      a.download = `insights-${repo}-${dateRangeTag}.csv`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
@@ -738,7 +792,8 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `monthly-change-breakdown-${repo}-${month}.csv`;
+    const dateRangeTag = isSingleMonth ? effectiveFrom : `${effectiveFrom}-to-${effectiveTo}`;
+    a.download = `change-breakdown-${repo}-${dateRangeTag}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -779,9 +834,9 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
       <div className="w-full pb-6">
         <PageHeader
           eyebrow="Insights"
-          indicator={{ icon: "chart", label: "Monthly", pulse: (summary?.totalChanged || 0) > 50 }}
-          title={`Monthly Insight - ${monthLabel(month)}`}
-          description={`Monthly governance movement for ${monthLabel(month)} across EIPs, ERCs, and RIPs, with clear status distribution and change signals.`}
+          indicator={{ icon: "chart", label: isSingleMonth ? "Monthly" : "Date Range", pulse: (summary?.totalChanged || 0) > 50 }}
+          title={isSingleMonth ? `Monthly Insight - ${displayPeriodLabel}` : `Governance Insight · ${displayPeriodLabel}`}
+          description={`Governance movement for ${displayPeriodLabel} across EIPs, ERCs, and RIPs, with clear status distribution and change signals.`}
           sectionId="insights"
           padding="px-0"
           paddingY="pt-4 pb-3"
@@ -792,30 +847,109 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
           <div className="space-y-4">
           <div className="rounded-xl border border-border bg-card p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="inline-flex items-center rounded-lg border border-border bg-muted p-0.5 text-xs">
-                {(["all", "eips", "ercs", "rips"] as const).map((r) => (
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted p-0.5 text-xs">
+                  {(["all", "eips", "ercs", "rips"] as const).map((r) => (
+                    <button
+                      key={r}
+                      onClick={() => setParams({ repo: r === "all" ? null : r })}
+                      className={`rounded-md px-2.5 py-1 transition-colors ${repo === r ? "bg-background text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                    >
+                      {r === "all" ? "All" : r.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted p-0.5 text-xs">
                   <button
-                    key={r}
-                    onClick={() => setParams({ repo: r === "all" ? null : r })}
-                    className={`rounded-md px-2.5 py-1 ${repo === r ? "bg-background text-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                    onClick={() => {
+                      setDateMode("month");
+                      setParams({ range: null, from: null, to: null });
+                    }}
+                    className={`rounded-md px-2.5 py-1 transition-colors ${dateMode === "month" ? "bg-background text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
                   >
-                    {r === "all" ? "All" : r.toUpperCase()}
+                    Single Month
                   </button>
-                ))}
+                  <button
+                    onClick={() => {
+                      setDateMode("range");
+                      setParams({ month: null, range: activePreset });
+                    }}
+                    className={`rounded-md px-2.5 py-1 transition-colors ${dateMode === "range" ? "bg-background text-foreground shadow-sm font-medium" : "text-muted-foreground hover:text-foreground"}`}
+                  >
+                    Date Range
+                  </button>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <select
-                  value={month}
-                  onChange={(e) => setParams({ month: e.target.value })}
-                  className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground"
-                >
-                  {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
-                  {!availableMonths.includes(month) && <option value={month}>{monthLabel(month)}</option>}
-                </select>
+              <div className="flex flex-wrap items-center gap-2">
+                {dateMode === "month" ? (
+                  <select
+                    value={month}
+                    onChange={(e) => setParams({ month: e.target.value })}
+                    className="h-8 rounded-md border border-border bg-muted px-2.5 text-xs font-medium text-foreground"
+                  >
+                    {availableMonths.map((m) => <option key={m} value={m}>{monthLabel(m)}</option>)}
+                    {!availableMonths.includes(month) && <option value={month}>{monthLabel(month)}</option>}
+                  </select>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="inline-flex items-center rounded-lg border border-border bg-muted/60 p-0.5 text-xs">
+                      {([
+                        { key: "30d", label: "30D" },
+                        { key: "90d", label: "90D" },
+                        { key: "6m", label: "6M" },
+                        { key: "1y", label: "1Y" },
+                        { key: "ytd", label: "YTD" },
+                        { key: "custom", label: "Custom" },
+                      ] as const).map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => {
+                            setActivePreset(p.key);
+                            if (p.key === "custom") {
+                              setParams({ range: "custom", from: effectiveFrom, to: effectiveTo });
+                            } else {
+                              const preset = getPresetMonths(p.key, now);
+                              setParams({ range: p.key, from: preset.from, to: preset.to });
+                            }
+                          }}
+                          className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${activePreset === p.key ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {activePreset === "custom" && (
+                      <div className="flex items-center gap-1.5 text-xs">
+                        <span className="text-muted-foreground text-[11px]">From:</span>
+                        <select
+                          value={effectiveFrom}
+                          onChange={(e) => setParams({ range: "custom", from: e.target.value, to: effectiveTo })}
+                          className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground font-medium"
+                        >
+                          {availableMonths.map((m) => (
+                            <option key={`from-${m}`} value={m}>{monthLabel(m)}</option>
+                          ))}
+                        </select>
+                        <span className="text-muted-foreground text-[11px]">To:</span>
+                        <select
+                          value={effectiveTo}
+                          onChange={(e) => setParams({ range: "custom", from: effectiveFrom, to: e.target.value })}
+                          className="h-8 rounded-md border border-border bg-muted px-2 text-xs text-foreground font-medium"
+                        >
+                          {availableMonths.map((m) => (
+                            <option key={`to-${m}`} value={m}>{monthLabel(m)}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <button
                   onClick={exportCsv}
-                  className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted px-2 text-xs text-foreground hover:bg-muted/70"
+                  className="inline-flex h-8 items-center gap-1 rounded-md border border-border bg-muted px-2.5 text-xs font-medium text-foreground hover:bg-muted/70"
                 >
                   <Download className="h-3.5 w-3.5" /> CSV
                 </button>
@@ -845,7 +979,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                       </button>
                     </div>
                     <div className="mb-2 text-xs text-muted-foreground">
-                      Monthly status-transition entries: <span className="font-semibold text-foreground">{summary?.statusChanges || 0}</span>
+                      Status-transition entries: <span className="font-semibold text-foreground">{summary?.statusChanges || 0}</span>
                     </div>
                     <div className="overflow-x-auto rounded-lg border border-border/80 bg-background/30">
                       <table className="w-full">
@@ -899,7 +1033,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 <div id="editors-leaderboard" className="scroll-mt-24 xl:col-span-7 flex flex-col rounded-xl border border-border bg-card p-4">
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {monthLabel(month)}</h3>
+                      <h3 className="text-sm font-semibold text-foreground">Editors Leaderboard - {displayPeriodLabel}</h3>
                       <CopyLinkButton anchor="editors-leaderboard" label="Editors Leaderboard" />
                     </div>
                     <div role="radiogroup" aria-label="Editors view" className="inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5 text-[11px] font-medium">
@@ -1126,6 +1260,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                   protocol calls and decisions. Sits right above the change table. */}
               <MonthInReview
                 month={month}
+                periodLabel={displayPeriodLabel}
                 repo={repo}
                 prKpis={prKpis}
                 issueKpis={issueKpis}
@@ -1137,7 +1272,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-3 py-2.5">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold text-foreground">
-                      Proposal Changes - {monthLabel(month)}
+                      Proposal Changes - {displayPeriodLabel}
                       {rangeDays != null ? ` · last ${rangeDays} days` : ""}
                     </h3>
                     <CopyLinkButton anchor="proposal-changes" label="Proposal Changes" />
@@ -1393,6 +1528,7 @@ function callTitle(row: { series: string; call_number: string | null; display_na
 
 function MonthInReview({
   month,
+  periodLabel,
   repo,
   prKpis,
   issueKpis,
@@ -1400,6 +1536,7 @@ function MonthInReview({
   decisions,
 }: {
   month: string;
+  periodLabel?: string;
   repo: "all" | "eips" | "ercs" | "rips";
   prKpis: PRKpis | null;
   issueKpis: IssueKpis | null;
@@ -1407,6 +1544,7 @@ function MonthInReview({
   decisions: DecisionRow[];
 }) {
   const decisionCount = decisions.reduce((n, d) => n + decisionTexts(d.key_decisions).length, 0);
+  const labelText = periodLabel || monthLabel(month);
 
   // Deep-link into an analytics page scoped to THIS month (and repo). The
   // analytics shell reads range/fromMonth/toMonth/repo from the URL, so the
@@ -1423,12 +1561,12 @@ function MonthInReview({
       <div className="mb-3 flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <div>
-            <h3 className="text-sm font-semibold text-foreground">Month in review</h3>
+            <h3 className="text-sm font-semibold text-foreground">Period in review</h3>
             <p className="text-xs text-muted-foreground">
-              Everything that moved in {monthLabel(month)} — not just status changes.
+              Everything that moved in {labelText} — not just status changes.
             </p>
           </div>
-          <CopyLinkButton anchor="month-in-review" label="Month in review" />
+          <CopyLinkButton anchor="month-in-review" label="Period in review" />
         </div>
       </div>
 

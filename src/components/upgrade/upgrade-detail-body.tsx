@@ -2,7 +2,24 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, FlaskConical, GitCommit, Radio, Search, Star, X } from 'lucide-react';
+import { ArrowRight, ChevronDown, FileText, FlaskConical, GitCommit, Layers, Radio, Search, Star, X } from 'lucide-react';
+
+function renderNameWithHighlight(fullStr: string, highlight: string) {
+  const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
+  if (index === -1) return <strong className="font-bold text-foreground">{fullStr}</strong>;
+
+  const before = fullStr.slice(0, index);
+  const match = fullStr.slice(index, index + highlight.length);
+  const after = fullStr.slice(index + highlight.length);
+
+  return (
+    <span className="font-medium text-foreground">
+      {before}
+      <strong className="font-bold text-primary underline decoration-primary/50 underline-offset-2">{match}</strong>
+      {after}
+    </span>
+  );
+}
 import { cn } from '@/lib/utils';
 import {
   STAGE_ORDER,
@@ -28,6 +45,38 @@ import type {
 } from '@/components/upgrade/types';
 import { CopyLinkButton } from '@/components/header';
 
+import { eipTitles } from '@/data/network-upgrades';
+
+function isCoreEip(eip: UpgradeCompositionEip): boolean {
+  const cat = (eip.category || eipTitles[String(eip.eip_number)]?.category || '').trim().toLowerCase();
+  if (
+    cat === 'networking' ||
+    cat === 'informational' ||
+    cat === 'meta' ||
+    cat === 'erc'
+  ) {
+    return false;
+  }
+  return cat === 'core' || !cat;
+}
+
+function coreStageLabel(bucket: UpgradeBucket): string {
+  switch (bucket) {
+    case 'scheduled':
+      return 'Core EIPs SFI';
+    case 'considered':
+      return 'Core EIPs CFI';
+    case 'proposed':
+      return 'Core EIPs PFI';
+    case 'declined':
+      return 'Core EIPs DFI';
+    case 'included':
+      return 'Core EIPs Included';
+    default:
+      return stageLabel(bucket);
+  }
+}
+
 interface TocItem {
   id: string;
   label: string;
@@ -37,6 +86,7 @@ interface TocItem {
 export function UpgradeDetailBody({
   slug,
   name,
+  metaEip,
   entry,
   composition,
   events,
@@ -45,6 +95,7 @@ export function UpgradeDetailBody({
 }: {
   slug: string;
   name: string;
+  metaEip?: number | null;
   entry: UpgradeRegistryEntry | null;
   composition: UpgradeCompositionEip[];
   events: UpgradeCompositionEvent[];
@@ -163,25 +214,34 @@ export function UpgradeDetailBody({
     );
   };
 
-  const byStage = useMemo(() => {
-    const grouped = new Map<UpgradeBucket, UpgradeCompositionEip[]>();
-    for (const bucket of STAGE_ORDER) grouped.set(bucket, []);
+  const { coreByStage, otherEips } = useMemo(() => {
+    const coreGrouped = new Map<UpgradeBucket, UpgradeCompositionEip[]>();
+    for (const bucket of STAGE_ORDER) coreGrouped.set(bucket, []);
+    const other: UpgradeCompositionEip[] = [];
+
     for (const eip of composition) {
-      if (eip.bucket) grouped.get(eip.bucket)?.push(eip);
+      if (isCoreEip(eip)) {
+        if (eip.bucket) coreGrouped.get(eip.bucket)?.push(eip);
+      } else {
+        other.push(eip);
+      }
     }
-    // Headliners first within each stage, then by EIP number.
-    for (const list of grouped.values()) {
+
+    for (const list of coreGrouped.values()) {
       list.sort((a, b) => {
         const aHeadliner = a.curation?.headliner_of === slug ? 0 : 1;
         const bHeadliner = b.curation?.headliner_of === slug ? 0 : 1;
         return aHeadliner - bHeadliner || a.eip_number - b.eip_number;
       });
     }
-    return grouped;
+
+    other.sort((a, b) => a.eip_number - b.eip_number);
+
+    return { coreByStage: coreGrouped, otherEips: other };
   }, [composition, slug]);
 
   const visibleStages = STAGE_ORDER.filter(
-    (bucket) => (byStage.get(bucket)?.length ?? 0) > 0
+    (bucket) => (coreByStage.get(bucket)?.length ?? 0) > 0
   );
   const headliners = entry?.headliners ?? [];
   const showTimelineChart = timelineData.length > 1;
@@ -194,15 +254,22 @@ export function UpgradeDetailBody({
     for (const bucket of visibleStages) {
       items.push({
         id: `stage-${bucket}`,
-        label: stageLabel(bucket),
-        count: byStage.get(bucket)?.length ?? 0,
+        label: coreStageLabel(bucket),
+        count: coreByStage.get(bucket)?.length ?? 0,
+      });
+    }
+    if (otherEips.length > 0) {
+      items.push({
+        id: 'other-eips',
+        label: 'Other EIPs',
+        count: otherEips.length,
       });
     }
     if (showTimelineChart) items.push({ id: 'timeline-chart', label: 'Scope over time' });
     if (showActivity) items.push({ id: 'activity', label: 'Recent changes' });
     if (articles.length > 0) items.push({ id: 'related-articles', label: 'Related articles' });
     return items;
-  }, [name, devnets.length, headliners.length, visibleStages, byStage, showTimelineChart, showActivity, articles.length]);
+  }, [name, devnets.length, headliners.length, visibleStages, coreByStage, otherEips.length, showTimelineChart, showActivity, articles.length]);
 
   useEffect(() => {
     const sections = tocItems
@@ -364,7 +431,52 @@ export function UpgradeDetailBody({
                 <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                   {entry.description}
                 </p>
-                {entry.nameOrigin && (
+                {metaEip && (
+                  <div className="mt-3.5 flex items-center gap-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3.5 py-2 text-xs text-foreground">
+                    <FileText className="h-4 w-4 shrink-0 text-amber-500" />
+                    <div>
+                      <span className="font-semibold text-foreground">Canonical Meta EIP:</span>{' '}
+                      <Link
+                        href={`/eip/${metaEip}`}
+                        className="font-mono font-bold text-amber-700 dark:text-amber-300 underline hover:text-primary"
+                      >
+                        EIP-{metaEip}
+                      </Link>
+                      <span className="ml-1.5 text-muted-foreground">
+                        — Official specification track & scope container for {name}.
+                      </span>
+                    </div>
+                  </div>
+                )}
+                {entry.nameOriginDetails && (
+                  <div className="mt-3.5 flex items-center gap-2.5 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3.5 py-2 text-xs text-foreground">
+                    <Layers className="h-4 w-4 shrink-0 text-purple-500" />
+                    <div>
+                      <span className="font-semibold text-foreground">Name Origin:</span>{' '}
+                      Derived from{' '}
+                      <span>
+                        {renderNameWithHighlight(entry.nameOriginDetails.clName, entry.nameOriginDetails.clHighlight)} (CL)
+                      </span>{' '}
+                      and{' '}
+                      <span>
+                        {renderNameWithHighlight(entry.nameOriginDetails.elName, entry.nameOriginDetails.elHighlight)} (EL)
+                      </span>
+                      {entry.nameOriginDetails.eip && (
+                        <span className="ml-1.5 text-muted-foreground">
+                          — per Hardfork Naming Conventions (
+                          <Link
+                            href={`/eip/${entry.nameOriginDetails.eip}`}
+                            className="text-primary underline font-medium"
+                          >
+                            EIP-{entry.nameOriginDetails.eip}
+                          </Link>
+                          )
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+                {!entry.nameOriginDetails && entry.nameOrigin && (
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground/80">
                     {entry.nameOrigin}
                   </p>
@@ -516,9 +628,9 @@ export function UpgradeDetailBody({
             </section>
           )}
 
-          {/* Stage sections */}
+          {/* Stage sections (Core EIPs) */}
           {visibleStages.map((bucket) => {
-            const allEips = byStage.get(bucket) ?? [];
+            const allEips = coreByStage.get(bucket) ?? [];
             const eips = allEips.filter(matchesQuery);
             const isDeclined = bucket === 'declined';
             const collapsed = isDeclined && !isDeclinedExpanded && !isFiltering;
@@ -527,7 +639,7 @@ export function UpgradeDetailBody({
               <section key={bucket} id={`stage-${bucket}`} className="scroll-mt-28">
                 <div className="mb-3 flex flex-wrap items-center gap-2">
                   <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                    {stageLabel(bucket)}
+                    {coreStageLabel(bucket)}
                   </h2>
                   <span
                     className={cn(
@@ -575,6 +687,34 @@ export function UpgradeDetailBody({
               </section>
             );
           })}
+
+          {/* Other EIPs section (Networking, Meta, Informational, ERCs) placed after DFI */}
+          {otherEips.length > 0 && (
+            <section id="other-eips" className="scroll-mt-28">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                  Other EIPs
+                </h2>
+                <span className="rounded-full border border-purple-500/30 bg-purple-500/15 px-2 py-0.5 text-xs font-semibold text-purple-700 dark:text-purple-300">
+                  {otherEips.length}
+                </span>
+                <CopyLinkButton sectionId="other-eips" className="h-6 w-6 rounded-md border border-border/40 bg-muted/40 hover:border-primary/40 hover:bg-primary/10" tooltipLabel="Copy link" />
+              </div>
+              <p className="mb-3 max-w-3xl text-sm text-muted-foreground">
+                Networking, Meta, Informational, and ERC standards associated with this upgrade.
+              </p>
+              <div className="space-y-3">
+                {otherEips.filter(matchesQuery).map((eip) => (
+                  <UpgradeEipCard key={eip.eip_number} eip={eip} upgradeSlug={slug} showStageBadge />
+                ))}
+                {otherEips.filter(matchesQuery).length === 0 && isFiltering && (
+                  <p className="rounded-lg border border-border bg-card/60 px-4 py-3 text-sm text-muted-foreground">
+                    No EIPs in this section match the current filters.
+                  </p>
+                )}
+              </div>
+            </section>
+          )}
 
           {composition.length === 0 && (
             <div className="rounded-xl border border-border bg-card/60 px-4 py-8 text-center text-sm text-muted-foreground">

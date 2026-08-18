@@ -6461,15 +6461,19 @@ export const analyticsProcedures = {
     .input(z.object({
       limit: z.number().optional().default(10),
       monthYear: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      fromMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      toMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
       const now = new Date();
-      const baseDate = input.monthYear
-        ? new Date(`${input.monthYear}-01T00:00:00.000Z`)
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-      const nextDate = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + 1, 1));
-      const monthStart = `${baseDate.getUTCFullYear()}-${String(baseDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const effectiveFrom = input.fromMonth ?? input.monthYear ?? defaultMonth;
+      const effectiveTo = input.toMonth ?? input.monthYear ?? defaultMonth;
+
+      const monthStart = `${effectiveFrom}-01`;
+      const [toYear, toMon] = effectiveTo.split('-').map(Number);
+      const nextDate = new Date(Date.UTC(toYear, toMon, 1));
       const nextMonth = `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
       const allEditors = Array.from(CANONICAL_EIP_EDITORS);

@@ -1073,7 +1073,9 @@ export const insightsProcedures = {
   getMonthlyDrilldown: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips', 'all']).optional().default('all'),
-      month: z.string().regex(/^\d{4}-\d{2}$/),
+      month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      fromMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      toMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
       status: z.array(z.string()).optional().default([]),
       type: z.array(z.string()).optional().default([]),
       change: z.array(z.enum(['status-change', 'content-change', 'metadata-change'])).optional().default([]),
@@ -1085,8 +1087,14 @@ export const insightsProcedures = {
     .handler(async ({ input }) => {
       const repoKey = input.repo === 'all' ? undefined : input.repo;
       const repoIds = await getRepoIds(repoKey);
-      const monthStart = `${input.month}-01`;
-      const [year, mon] = input.month.split('-').map(Number);
+
+      const now = new Date();
+      const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const effectiveFrom = input.fromMonth ?? input.month ?? defaultMonth;
+      const effectiveTo = input.toMonth ?? input.month ?? defaultMonth;
+
+      const monthStart = `${effectiveFrom}-01`;
+      const [year, mon] = effectiveTo.split('-').map(Number);
       const monthEnd = new Date(Date.UTC(year, mon, 1)).toISOString().slice(0, 10);
 
       const coreRows = await prisma.$queryRawUnsafe<Array<{
