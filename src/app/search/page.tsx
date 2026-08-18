@@ -353,8 +353,9 @@ function SearchPageContent() {
   }, [q]);
 
   const handleDownloadSearchResultsCsv = () => {
-    const headers = ["Kind", "Number", "Repo", "Title", "Status", "Category", "Type", "Author"];
-    const rows = filteredProposals.map((p) => [
+    const headers = ["Sr. No.", "Kind", "Number", "Repo", "Title", "Status", "Category", "Type", "Author"];
+    const rows = filteredProposals.map((p, index) => [
+      index + 1,
       p.kind,
       p.number,
       p.repo,
