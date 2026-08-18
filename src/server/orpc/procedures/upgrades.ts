@@ -43,8 +43,6 @@ const HISTORICAL_UPGRADE_SLUG: Record<string, string> = {
   BPO1: 'bpo-1',
   BPO2: 'bpo-2',
   BPO3: 'bpo-3',
-  BPO4: 'bpo-4',
-  BPO5: 'bpo-5',
 };
 
 const AUTHOR_CANONICAL_OVERRIDES: Record<string, string> = {

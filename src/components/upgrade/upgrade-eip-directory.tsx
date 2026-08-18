@@ -136,7 +136,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
   const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [headlinerFilter, setHeadlinerFilter] = useState<'all' | 'headliner' | 'standard'>('all');
-  const [includeMetaEips, setIncludeMetaEips] = useState<boolean>(false);
+  const [includeMetaEips, setIncludeMetaEips] = useState<boolean>(true);
   
   // Sort state — default to newest proposals first.
   const [sortField, setSortField] = useState<SortField>('eip_number');
@@ -159,6 +159,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     if (headlinerParam === 'true') setHeadlinerFilter('headliner');
     if (headlinerParam === 'false') setHeadlinerFilter('standard');
     if (metaParam === 'true') setIncludeMetaEips(true);
+    if (metaParam === 'false') setIncludeMetaEips(false);
     if (searchParam) setSearch(searchParam);
   }, [searchParams]);
 
@@ -179,7 +180,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     if (statuses.length > 0) params.set('status', statuses.join(','));
     if (headliner === 'headliner') params.set('headliner', 'true');
     if (headliner === 'standard') params.set('headliner', 'false');
-    if (meta) params.set('meta', 'true');
+    if (!meta) params.set('meta', 'false');
     if (q.trim()) params.set('q', q.trim());
 
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -239,7 +240,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     setSelectedLayers([]);
     setSelectedStatuses([]);
     setHeadlinerFilter('all');
-    setIncludeMetaEips(false);
+    setIncludeMetaEips(true);
     router.replace(window.location.pathname, { scroll: false });
   };
 
@@ -387,7 +388,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     selectedLayers.length +
     selectedStatuses.length +
     (headlinerFilter !== 'all' ? 1 : 0) +
-    (includeMetaEips ? 1 : 0) +
+    (!includeMetaEips ? 1 : 0) +
     (search.trim() ? 1 : 0);
 
   const coreCount = useMemo(
@@ -443,11 +444,11 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
           onRemove: () => handleHeadlinerChange('all'),
         }]
       : []),
-    ...(includeMetaEips
+    ...(!includeMetaEips
       ? [{
           key: 'meta-eips',
-          label: 'Include Meta EIPs',
-          onRemove: () => handleIncludeMetaToggle(false),
+          label: 'Excluding Meta EIPs',
+          onRemove: () => handleIncludeMetaToggle(true),
         }]
       : []),
   ];
