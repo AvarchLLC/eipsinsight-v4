@@ -72,7 +72,6 @@ const UPGRADE_DATES: Record<string, string> = {
   fusaka: '2025-12-03',
   'bpo-1': '2025-12-09',
   'bpo-2': '2026-01-07',
-  'bpo-3': '2026-03-11',
 };
 
 const upgradeYear = (slug: string) => UPGRADE_DATES[slug]?.slice(0, 4) ?? null;

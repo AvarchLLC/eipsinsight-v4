@@ -319,20 +319,6 @@ const previousUpgrades: HistoricalUpgrade[] = [
     impact: 'Increased blob target to 14 and max limit to 21 blobs.',
     relatedLinks: [{ title: 'BPO2 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8135' }],
   },
-  {
-    name: 'BPO3',
-    slug: 'bpo-3',
-    date: '2026-03-11',
-    eipCount: 1,
-    type: 'Hard Fork',
-    layer: 'execution',
-    metaEip: 'EIP-8138',
-    summary: 'Blob Parameter Only 3: Incremental blob throughput increase.',
-    description:
-      'BPO3 adjusted blob throughput parameters on mainnet as part of the staged EIP-7892 rollout.',
-    impact: 'Scaled data availability capacity.',
-    relatedLinks: [{ title: 'BPO3 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8138' }],
-  },
 ];
 
 const sortedUpgrades = [...previousUpgrades].sort(
