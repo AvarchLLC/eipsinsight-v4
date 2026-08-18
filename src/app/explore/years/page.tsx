@@ -12,6 +12,7 @@ import { YearOverviewPanel } from './_components/year-overview-panel';
 import { YearActivityChart } from './_components/year-activity-chart';
 import { YearEIPTable } from './_components/year-eip-table';
 import { SectionSeparator } from '@/components/header';
+import { ExploreTabsHeader } from '../_components/explore-tabs-header';
 
 interface YearData {
   year: number;
@@ -306,33 +307,7 @@ function YearsPageContent() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(var(--persona-accent-rgb),0.12),transparent_50%)]" />
       </div>
 
-      <section className="relative w-full pt-8 pb-4">
-        <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link
-            href="/explore"
-            className={cn(
-              "inline-flex items-center gap-2 mb-6",
-              "text-sm text-muted-foreground hover:text-foreground transition-colors"
-            )}
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Explore
-          </Link>
-
-          <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
-            <div className="inline-flex items-center gap-2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
-              <Calendar className="h-3.5 w-3.5" />
-              Explore
-            </div>
-            <h1 className="dec-title persona-title mt-3 text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-              Yearly Governance Intelligence
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              Interpretable annual activity for Ethereum proposals. Powered by <span className="text-foreground/80">EIPsInsight</span>.
-            </p>
-          </motion.header>
-        </div>
-      </section>
+      <ExploreTabsHeader />
 
       <section className="relative w-full py-4">
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">

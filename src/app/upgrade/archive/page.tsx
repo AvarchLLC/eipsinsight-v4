@@ -333,34 +333,6 @@ const previousUpgrades: HistoricalUpgrade[] = [
     impact: 'Scaled data availability capacity.',
     relatedLinks: [{ title: 'BPO3 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8138' }],
   },
-  {
-    name: 'BPO4',
-    slug: 'bpo-4',
-    date: '2026-04-08',
-    eipCount: 1,
-    type: 'Hard Fork',
-    layer: 'execution',
-    metaEip: 'EIP-8139',
-    summary: 'Blob Parameter Only 4: Incremental blob throughput increase.',
-    description:
-      'BPO4 adjusted blob throughput parameters on mainnet.',
-    impact: 'Further scaled blob throughput.',
-    relatedLinks: [{ title: 'BPO4 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8139' }],
-  },
-  {
-    name: 'BPO5',
-    slug: 'bpo-5',
-    date: '2026-05-13',
-    eipCount: 1,
-    type: 'Hard Fork',
-    layer: 'execution',
-    metaEip: 'EIP-8140',
-    summary: 'Blob Parameter Only 5: Incremental blob throughput increase.',
-    description:
-      'BPO5 adjusted blob throughput parameters on mainnet.',
-    impact: 'Further scaled blob throughput.',
-    relatedLinks: [{ title: 'BPO5 Meta EIP', url: 'https://eips.ethereum.org/EIPS/eip-8140' }],
-  },
 ];
 
 const sortedUpgrades = [...previousUpgrades].sort(

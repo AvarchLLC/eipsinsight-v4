@@ -107,6 +107,21 @@ export function UpgradeDetailHeader({
               Meta EIP-{metaEip}
             </Link>
           )}
+          {entry?.mascot && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-primary/10 border border-primary/20 rounded-full px-2.5 py-0.5 text-xs">
+              <span>{entry.mascot.emoji}</span>
+              <span>Mascot: {entry.mascot.name}</span>
+              {entry.mascot.eip && (
+                <Link
+                  href={`/eip/${entry.mascot.eip}`}
+                  className="text-primary hover:underline text-[11px] ml-0.5"
+                  title="Selected per EIP-8066 process"
+                >
+                  (EIP-{entry.mascot.eip})
+                </Link>
+              )}
+            </span>
+          )}
           {entry?.activationDate && (
             <span className="inline-flex items-center gap-1">
               <CalendarDays className="h-3.5 w-3.5" />

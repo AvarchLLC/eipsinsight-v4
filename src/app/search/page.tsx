@@ -7,6 +7,7 @@ import { AnimatePresence, motion } from "motion/react";
 import {
   ArrowRight,
   ChevronDown,
+  Download,
   ExternalLink,
   Filter,
   GitPullRequest,
@@ -342,11 +343,40 @@ function SearchPageContent() {
         (entry.tagline && entry.tagline.toLowerCase().includes(queryLower)) ||
         (entry.headliners &&
           entry.headliners.some(
-            (h) => h.title.toLowerCase().includes(queryLower) || String(h.eip).includes(queryLower)
+            (h) =>
+              h.title.toLowerCase().includes(queryLower) ||
+              String(h.eip).includes(queryLower) ||
+              (h.note && h.note.toLowerCase().includes(queryLower))
           ))
       );
     });
   }, [q]);
+
+  const handleDownloadSearchResultsCsv = () => {
+    const headers = ["Sr. No.", "Kind", "Number", "Repo", "Title", "Status", "Category", "Type", "Author"];
+    const rows = filteredProposals.map((p, index) => [
+      index + 1,
+      p.kind,
+      p.number,
+      p.repo,
+      `"${(p.title || "").replace(/"/g, '""')}"`,
+      p.status || "",
+      p.category || "",
+      p.type || "",
+      `"${(p.author || "").replace(/"/g, '""')}"`,
+    ]);
+
+    const csvContent = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `search_results_${q || "all"}_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const visibleSections = useMemo(() => {
     const sections = [
@@ -685,6 +715,18 @@ function SearchPageContent() {
               Filters
               <ChevronDown className={cn("h-4 w-4 transition-transform", advancedOpen && "rotate-180")} />
             </button>
+
+            {filteredProposals.length > 0 && (
+              <button
+                type="button"
+                onClick={handleDownloadSearchResultsCsv}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/20 hover:border-primary/60"
+                title="Download current search results as CSV"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export CSV</span>
+              </button>
+            )}
           </div>
 
           {advancedOpen && (

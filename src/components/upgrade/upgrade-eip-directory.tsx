@@ -2,7 +2,19 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal, ArrowUpDown, Star, Layers, RefreshCw, X } from 'lucide-react';
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowUpDown,
+  Star,
+  Layers,
+  RefreshCw,
+  X,
+  Download,
+  ChevronDown,
+  Calendar,
+  Tag,
+} from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -29,17 +41,15 @@ const UPGRADE_CHRONOLOGY = [
   'frontier', 'homestead', 'dao-fork', 'tangerine-whistle', 'spurious-dragon',
   'byzantium', 'constantinople', 'petersburg', 'istanbul', 'muir-glacier', 'berlin', 'london',
   'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'pectra', 'prague',
-  'fusaka', 'bpo-1', 'bpo-2', 'bpo-3', 'bpo-4', 'bpo-5', 'glamsterdam', 'hegota',
+  'fusaka', 'bpo-1', 'bpo-2', 'bpo-3', 'glamsterdam', 'hegota',
 ];
+
 const upgradeRank = (slug: string) => {
   const i = UPGRADE_CHRONOLOGY.indexOf(slug);
-  return i === -1 ? -1 : i; // unknown slugs sort last when descending
+  return i === -1 ? -1 : i;
 };
 
-/**
- * Mainnet activation date per upgrade slug (from src/data/network-upgrades.ts).
- * Upgrades still in progress (Glamsterdam, Hegotá) have no date yet.
- */
+/** Mainnet activation date per upgrade slug */
 const UPGRADE_DATES: Record<string, string> = {
   frontier: '2015-07-30',
   homestead: '2016-03-14',
@@ -63,8 +73,6 @@ const UPGRADE_DATES: Record<string, string> = {
   'bpo-1': '2025-12-09',
   'bpo-2': '2026-01-07',
   'bpo-3': '2026-03-11',
-  'bpo-4': '2026-04-08',
-  'bpo-5': '2026-05-13',
 };
 
 const upgradeYear = (slug: string) => UPGRADE_DATES[slug]?.slice(0, 4) ?? null;
@@ -77,20 +85,9 @@ const formatUpgradeDate = (iso: string | undefined) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 
-/**
- * Layer comes from the server: curated layer first, else the fork entry's own layer
- * (execution vs consensus). We deliberately do NOT guess from the upgrade slug — the slug map
- * folds CL forks into their EL pair (Deneb→cancun, Electra→pectra, Fulu→fusaka), so the slug
- * says nothing about the layer. Anything still unknown stays unknown rather than being mislabelled.
- */
 const deriveLayer = (layer: string | null): 'EL' | 'CL' | null =>
   layer === 'EL' || layer === 'CL' ? layer : null;
 
-/**
- * Combined EL/CL upgrades are stored with their full name — "Cancun/Deneb (Dencun)",
- * "Fulu/Osaka (Fusaka)". In compact chips we want just the meta name ("Dencun", "Fusaka");
- * single-layer upgrades ("London") are returned unchanged.
- */
 const shortUpgradeName = (name: string) => name.match(/\(([^)]+)\)\s*$/)?.[1] ?? name;
 
 interface EipRow {
@@ -114,17 +111,6 @@ interface UpgradeEipDirectoryProps {
 type SortField = 'eip_number' | 'status' | 'bucket' | 'layer' | 'is_headliner';
 type SortOrder = 'asc' | 'desc';
 
-function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-2.5">
-      <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-        {title}
-      </h3>
-      {children}
-    </div>
-  );
-}
-
 export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirectoryProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,12 +118,15 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
   // Search & Filter state
   const [search, setSearch] = useState('');
   const [selectedUpgrades, setSelectedUpgrades] = useState<string[]>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [selectedYears, setSelectedYears] = useState<string[]>([]);
   const [selectedStages, setSelectedStages] = useState<UpgradeBucket[]>([]);
   const [selectedLayers, setSelectedLayers] = useState<string[]>([]);
   const [selectedStatuses, setSelectedStatuses] = useState<string[]>([]);
   const [headlinerFilter, setHeadlinerFilter] = useState<'all' | 'headliner' | 'standard'>('all');
-  const [includeMetaEips, setIncludeMetaEips] = useState<boolean>(false);
-  
+  const [includeMetaEips, setIncludeMetaEips] = useState<boolean>(true);
+  const [filterPanelOpen, setFilterPanelOpen] = useState<boolean>(false);
+
   // Sort state — default to newest proposals first.
   const [sortField, setSortField] = useState<SortField>('eip_number');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
@@ -145,6 +134,8 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
   // Load state from URL parameters on mount
   useEffect(() => {
     const upParam = searchParams.get('upgrade');
+    const catParam = searchParams.get('category');
+    const yearParam = searchParams.get('year');
     const stageParam = searchParams.get('stage');
     const layerParam = searchParams.get('layer');
     const headlinerParam = searchParams.get('headliner');
@@ -153,33 +144,40 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     const metaParam = searchParams.get('meta');
 
     if (upParam) setSelectedUpgrades(upParam.split(','));
+    if (catParam) setSelectedCategories(catParam.split(','));
+    if (yearParam) setSelectedYears(yearParam.split(','));
     if (stageParam) setSelectedStages(stageParam.split(',') as UpgradeBucket[]);
     if (layerParam) setSelectedLayers(layerParam.split(','));
     if (statusParam) setSelectedStatuses(statusParam.split(','));
     if (headlinerParam === 'true') setHeadlinerFilter('headliner');
     if (headlinerParam === 'false') setHeadlinerFilter('standard');
     if (metaParam === 'true') setIncludeMetaEips(true);
+    if (metaParam === 'false') setIncludeMetaEips(false);
     if (searchParam) setSearch(searchParam);
   }, [searchParams]);
 
   // Sync state to URL parameters
   const updateUrl = (
     up: string[],
+    cats: string[],
+    years: string[],
     stages: string[],
     layers: string[],
     statuses: string[],
     headliner: typeof headlinerFilter,
     q: string,
-    meta: boolean = includeMetaEips,
+    meta: boolean = includeMetaEips
   ) => {
     const params = new URLSearchParams();
     if (up.length > 0) params.set('upgrade', up.join(','));
+    if (cats.length > 0) params.set('category', cats.join(','));
+    if (years.length > 0) params.set('year', years.join(','));
     if (stages.length > 0) params.set('stage', stages.join(','));
     if (layers.length > 0) params.set('layer', layers.join(','));
     if (statuses.length > 0) params.set('status', statuses.join(','));
     if (headliner === 'headliner') params.set('headliner', 'true');
     if (headliner === 'standard') params.set('headliner', 'false');
-    if (meta) params.set('meta', 'true');
+    if (!meta) params.set('meta', 'false');
     if (q.trim()) params.set('q', q.trim());
 
     router.replace(`?${params.toString()}`, { scroll: false });
@@ -190,7 +188,23 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       ? selectedUpgrades.filter((s) => s !== slug)
       : [...selectedUpgrades, slug];
     setSelectedUpgrades(next);
-    updateUrl(next, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search);
+    updateUrl(next, selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search);
+  };
+
+  const handleCategoryToggle = (category: string) => {
+    const next = selectedCategories.includes(category)
+      ? selectedCategories.filter((c) => c !== category)
+      : [...selectedCategories, category];
+    setSelectedCategories(next);
+    updateUrl(selectedUpgrades, next, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search);
+  };
+
+  const handleYearToggle = (year: string) => {
+    const next = selectedYears.includes(year)
+      ? selectedYears.filter((y) => y !== year)
+      : [...selectedYears, year];
+    setSelectedYears(next);
+    updateUrl(selectedUpgrades, selectedCategories, next, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search);
   };
 
   const handleStageToggle = (stage: UpgradeBucket) => {
@@ -198,7 +212,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       ? selectedStages.filter((s) => s !== stage)
       : [...selectedStages, stage];
     setSelectedStages(next);
-    updateUrl(selectedUpgrades, next, selectedLayers, selectedStatuses, headlinerFilter, search);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, next, selectedLayers, selectedStatuses, headlinerFilter, search);
   };
 
   const handleLayerToggle = (layer: string) => {
@@ -206,7 +220,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       ? selectedLayers.filter((l) => l !== layer)
       : [...selectedLayers, layer];
     setSelectedLayers(next);
-    updateUrl(selectedUpgrades, selectedStages, next, selectedStatuses, headlinerFilter, search);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, selectedStages, next, selectedStatuses, headlinerFilter, search);
   };
 
   const handleStatusToggle = (status: string) => {
@@ -214,32 +228,34 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       ? selectedStatuses.filter((s) => s !== status)
       : [...selectedStatuses, status];
     setSelectedStatuses(next);
-    updateUrl(selectedUpgrades, selectedStages, selectedLayers, next, headlinerFilter, search);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, selectedStages, selectedLayers, next, headlinerFilter, search);
   };
 
   const handleHeadlinerChange = (filter: typeof headlinerFilter) => {
     setHeadlinerFilter(filter);
-    updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, filter, search);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, filter, search);
   };
 
   const handleIncludeMetaToggle = (checked: boolean) => {
     setIncludeMetaEips(checked);
-    updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search, checked);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search, checked);
   };
 
   const handleSearchChange = (val: string) => {
     setSearch(val);
-    updateUrl(selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, val);
+    updateUrl(selectedUpgrades, selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, val);
   };
 
   const clearFilters = () => {
     setSearch('');
     setSelectedUpgrades([]);
+    setSelectedCategories([]);
+    setSelectedYears([]);
     setSelectedStages([]);
     setSelectedLayers([]);
     setSelectedStatuses([]);
     setHeadlinerFilter('all');
-    setIncludeMetaEips(false);
+    setIncludeMetaEips(true);
     router.replace(window.location.pathname, { scroll: false });
   };
 
@@ -252,6 +268,46 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     }
   };
 
+  const handleDownloadCsv = () => {
+    const headers = [
+      'Sr. No.',
+      'EIP Number',
+      'Title',
+      'Category',
+      'Type',
+      'Status',
+      'Stage',
+      'Layer',
+      'Upgrade Name',
+      'Upgrade Slug',
+      'Is Headliner',
+    ];
+    const rows = filteredEips.map((e, index) => [
+      index + 1,
+      e.eip_number,
+      `"${(e.title || '').replace(/"/g, '""')}"`,
+      e.category || '',
+      e.type || '',
+      e.status || '',
+      e.bucket || '',
+      e.layer || '',
+      `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
+      e.upgrade_slug || '',
+      e.is_headliner ? 'Yes' : 'No',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `eips_search_results_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Normalise every row once: fill EL/CL layer and stamp the upgrade year.
   const eips = useMemo(
     () =>
@@ -262,6 +318,26 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       })),
     [initialEips]
   );
+
+  // Extract unique categories (excluding ERCs since ERCs are not hardfork upgrades)
+  const uniqueCategories = useMemo(() => {
+    const cats = new Set<string>();
+    eips.forEach((e) => {
+      const cat = e.category?.trim() || e.type?.trim();
+      if (cat && cat.toLowerCase() !== 'erc') cats.add(cat);
+    });
+    return Array.from(cats).sort();
+  }, [eips]);
+
+  const uniqueYears = useMemo(() => {
+    const years = new Set<string>();
+    eips.forEach((e) => {
+      const y = upgradeYear(e.upgrade_slug);
+      if (y) years.add(y);
+      else years.add('Unscheduled');
+    });
+    return Array.from(years).sort().reverse();
+  }, [eips]);
 
   // Which upgrades the current search text touches — used to auto-highlight those filter chips.
   const matchedUpgradeSlugs = useMemo(() => {
@@ -283,7 +359,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     return slugs;
   }, [eips, search]);
 
-  // Extract unique statuses and layers for filters
+  // Extract unique statuses
   const uniqueStatuses = useMemo(() => {
     const statuses = new Set<string>();
     eips.forEach((e) => {
@@ -315,6 +391,22 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       result = result.filter((e) => selectedUpgrades.includes(e.upgrade_slug));
     }
 
+    // Category filter
+    if (selectedCategories.length > 0) {
+      result = result.filter((e) => {
+        const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
+        return selectedCategories.some((c) => c.toLowerCase() === cat);
+      });
+    }
+
+    // Year filter
+    if (selectedYears.length > 0) {
+      result = result.filter((e) => {
+        const y = upgradeYear(e.upgrade_slug) ?? 'Unscheduled';
+        return selectedYears.includes(y);
+      });
+    }
+
     // Stage filter
     if (selectedStages.length > 0) {
       result = result.filter((e) => selectedStages.includes(e.bucket));
@@ -323,8 +415,8 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     // Layer filter
     if (selectedLayers.length > 0) {
       result = result.filter((e) => {
-        const lyr = e.layer || 'unset';
-        return selectedLayers.includes(lyr);
+        if (selectedLayers.includes('unset') && !e.layer) return true;
+        return e.layer ? selectedLayers.includes(e.layer) : false;
       });
     }
 
@@ -340,7 +432,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       result = result.filter((e) => !e.is_headliner);
     }
 
-    // Meta EIPs filter (disabled by default across general list; included when a network upgrade filter is active or checkbox is checked)
+    // Meta EIPs filter
     if (!includeMetaEips && selectedUpgrades.length === 0) {
       result = result.filter(
         (e) =>
@@ -349,8 +441,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       );
     }
 
-    // Sort — coerce each field to a comparable primitive (booleans → 1/0,
-    // null/undefined → '').
+    // Sort
     const toComparable = (value: string | number | boolean | null | undefined): string | number =>
       typeof value === 'boolean' ? (value ? 1 : 0) : (value ?? '');
 
@@ -364,10 +455,8 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     });
 
     return result;
-  }, [eips, search, selectedUpgrades, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, includeMetaEips, sortField, sortOrder]);
+  }, [eips, search, selectedUpgrades, selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, includeMetaEips, sortField, sortOrder]);
 
-  // Upgrade filter options: all upgrades that have EIPs in the directory,
-  // ordered newest-first (chronological, descending).
   const upgradeOptions = useMemo(() => {
     const map = new Map<string, string>();
     for (const u of upgrades) map.set(u.slug, u.name);
@@ -383,11 +472,13 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
   const activeFilterCount =
     selectedUpgrades.length +
+    selectedCategories.length +
+    selectedYears.length +
     selectedStages.length +
     selectedLayers.length +
     selectedStatuses.length +
     (headlinerFilter !== 'all' ? 1 : 0) +
-    (includeMetaEips ? 1 : 0) +
+    (!includeMetaEips ? 1 : 0) +
     (search.trim() ? 1 : 0);
 
   const coreCount = useMemo(
@@ -399,11 +490,20 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     [filteredEips]
   );
 
+  const metaCount = useMemo(
+    () =>
+      filteredEips.filter((e) => {
+        const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
+        return cat === 'meta';
+      }).length,
+    [filteredEips]
+  );
+
   const otherCount = useMemo(
     () =>
       filteredEips.filter((e) => {
         const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
-        return cat !== 'core';
+        return cat !== 'core' && cat !== 'meta';
       }).length,
     [filteredEips]
   );
@@ -414,12 +514,22 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
   );
   const upgradeName = (slug: string) => upgrades.find((u) => u.slug === slug)?.name ?? slug;
 
-  // Chips summarising every active filter, each individually removable.
+  // Active filter chips
   const activeChips: Array<{ key: string; label: string; onRemove: () => void }> = [
     ...selectedUpgrades.map((s) => ({
       key: `up-${s}`,
       label: upgradeName(s),
       onRemove: () => handleUpgradeToggle(s),
+    })),
+    ...selectedCategories.map((c) => ({
+      key: `cat-${c}`,
+      label: `Category: ${c}`,
+      onRemove: () => handleCategoryToggle(c),
+    })),
+    ...selectedYears.map((y) => ({
+      key: `year-${y}`,
+      label: `Year: ${y}`,
+      onRemove: () => handleYearToggle(y),
     })),
     ...selectedStages.map((s) => ({
       key: `stage-${s}`,
@@ -443,425 +553,699 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
           onRemove: () => handleHeadlinerChange('all'),
         }]
       : []),
-    ...(includeMetaEips
+    ...(!includeMetaEips
       ? [{
           key: 'meta-eips',
-          label: 'Include Meta EIPs',
-          onRemove: () => handleIncludeMetaToggle(false),
+          label: 'Excluding Meta EIPs',
+          onRemove: () => handleIncludeMetaToggle(true),
         }]
       : []),
   ];
 
   const pillClass = (isSelected: boolean) =>
     cn(
-      'inline-flex h-7 items-center justify-center gap-1.5 rounded-full border px-2.5 text-xs transition-all',
+      'inline-flex h-7 items-center justify-center gap-1.5 rounded-full border px-3 text-xs transition-all cursor-pointer select-none',
       isSelected
-        ? 'border-primary/50 bg-primary/10 text-primary font-medium shadow-[0_0_0_1px] shadow-primary/10'
-        : 'border-border/60 bg-transparent text-muted-foreground hover:border-border hover:bg-muted/60'
+        ? 'border-primary/50 bg-primary/10 text-primary font-semibold shadow-sm'
+        : 'border-border/60 bg-card/60 text-muted-foreground hover:border-border hover:bg-muted/80 hover:text-foreground'
     );
 
   return (
-    <div className="grid gap-6 lg:grid-cols-4">
-      {/* 1. Sidebar Filters */}
-      <aside className="lg:col-span-1">
-        <div className="lg:sticky lg:top-20 space-y-4 rounded-2xl border border-border bg-card/70 p-5 backdrop-blur-sm">
-          <div className="flex items-center justify-between border-b border-border/50 pb-3">
-            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
-              <SlidersHorizontal className="h-4 w-4 text-primary" />
-              Filters
-            </div>
-            {activeFilterCount > 0 && (
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="flex items-center gap-1 text-xs text-primary transition-colors hover:text-primary/80"
-              >
-                <RefreshCw className="h-3 w-3" />
-                Reset
-              </button>
-            )}
-          </div>
-
-          <div className="pt-1 border-b border-border/50 pb-3">
-            <label className="flex items-center gap-2.5 text-xs font-medium text-foreground cursor-pointer select-none hover:text-primary transition-colors">
-              <input
-                type="checkbox"
-                checked={includeMetaEips}
-                onChange={(e) => handleIncludeMetaToggle(e.target.checked)}
-                className="h-4 w-4 rounded border-border/80 text-primary focus:ring-primary/40 accent-primary cursor-pointer"
-              />
-              <span>Include Meta EIPs</span>
-            </label>
-          </div>
-
-          <FilterSection title={`Network upgrade (${upgradeOptions.length})`}>
-            <div className="flex flex-wrap gap-1.5 max-h-40 overflow-y-auto pr-1">
-              {upgradeOptions.map((up) => {
-                const highlighted = matchedUpgradeSlugs.has(up.slug);
-                return (
-                  <button
-                    key={up.slug}
-                    type="button"
-                    onClick={() => handleUpgradeToggle(up.slug)}
-                    title={highlighted ? 'Matches your search' : undefined}
-                    className={cn(
-                      pillClass(selectedUpgrades.includes(up.slug)),
-                      // Auto-highlight upgrades that the current search touches.
-                      highlighted && !selectedUpgrades.includes(up.slug) && 'ring-2 ring-primary/50 ring-offset-1 ring-offset-background',
-                    )}
-                  >
-                    <span title={up.name}>{shortUpgradeName(up.name)}</span>
-                    {upgradeYear(up.slug) ? <span className="ml-1 opacity-60">’{upgradeYear(up.slug)!.slice(2)}</span> : null}
-                  </button>
-                );
-              })}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Upgrade stage">
-            <div className="grid grid-cols-2 gap-1.5">
-              {STAGE_ORDER.map((stage) => (
-                <button
-                  key={stage}
-                  type="button"
-                  onClick={() => handleStageToggle(stage)}
-                  className={cn(pillClass(selectedStages.includes(stage)), 'justify-start')}
-                >
-                  <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', stageBadgeClass(stage))} />
-                  <span className="truncate">{stageLabel(stage)}</span>
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Layer">
-            <div className="flex flex-wrap gap-1.5">
-              {['EL', 'CL', 'unset'].map((lyr) => (
-                <button
-                  key={lyr}
-                  type="button"
-                  onClick={() => handleLayerToggle(lyr)}
-                  className={pillClass(selectedLayers.includes(lyr))}
-                >
-                  {lyr === 'EL' ? 'Execution (EL)' : lyr === 'CL' ? 'Consensus (CL)' : 'Unspecified'}
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Status">
-            <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
-              {uniqueStatuses.map((st) => (
-                <button
-                  key={st}
-                  type="button"
-                  onClick={() => handleStatusToggle(st)}
-                  className={pillClass(selectedStatuses.includes(st))}
-                >
-                  {st}
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-
-          <FilterSection title="Headliner tier">
-            <div className="flex rounded-lg border border-border/70 bg-muted/40 p-0.5">
-              {([
-                { key: 'all', label: 'All' },
-                { key: 'headliner', label: 'Headliners' },
-                { key: 'standard', label: 'Standard' },
-              ] as const).map((opt) => (
-                <button
-                  key={opt.key}
-                  type="button"
-                  onClick={() => handleHeadlinerChange(opt.key)}
-                  className={cn(
-                    'flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-xs transition-colors',
-                    headlinerFilter === opt.key
-                      ? 'bg-card font-medium text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  )}
-                >
-                  {opt.key === 'headliner' && <Star className="h-3 w-3 fill-primary/20 text-primary" />}
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </FilterSection>
-        </div>
-      </aside>
-
-      {/* 2. Main EIP Directory */}
-      <div className="space-y-4 lg:col-span-3">
-        {/* Search + stats */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:max-w-sm">
+    <div className="w-full space-y-5">
+      {/* 1. Header Toolbar: Search + Quick Stats + Actions */}
+      <div className="flex flex-col gap-4 rounded-2xl border border-border/80 bg-card/70 p-4 backdrop-blur-md shadow-xs sm:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          {/* Search Input */}
+          <div className="relative w-full lg:max-w-md">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <input
               value={search}
               onChange={(e) => handleSearchChange(e.target.value)}
-              placeholder="Search by EIP #, title, or type…"
-              className="h-10 w-full rounded-xl border border-border bg-card/60 pl-10 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+              placeholder="Search by EIP #, title, type, category, or upgrade..."
+              className="h-10 w-full rounded-xl border border-border bg-background/80 pl-10 pr-9 text-sm text-foreground outline-none transition-all focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => handleSearchChange('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-          <div className="flex flex-wrap shrink-0 items-center gap-2 text-xs">
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2.5 py-1 font-medium text-blue-700 dark:text-blue-300"
-              title="Core protocol EIPs"
+
+          {/* Quick Stats Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <button
+              type="button"
+              onClick={() => handleCategoryToggle('Core')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
+                selectedCategories.includes('Core')
+                  ? 'border-blue-500/60 bg-blue-500/25 text-blue-700 dark:text-blue-200 font-bold'
+                  : 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20'
+              )}
+              title="Filter by Core category"
             >
-              <span className="font-bold text-foreground">{coreCount}</span> Core EIPs
-            </span>
-            <span
-              className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 font-medium text-purple-700 dark:text-purple-300"
-              title="Networking, Interface, ERC & other EIP categories"
+              <span className="font-bold text-foreground">{coreCount}</span> Core
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleCategoryToggle('Meta')}
+              className={cn(
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
+                selectedCategories.includes('Meta')
+                  ? 'border-emerald-500/60 bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 font-bold'
+                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
+              )}
+              title="Filter by Meta category"
             >
-              <span className="font-bold text-foreground">{otherCount}</span> Other EIPs
+              <span className="font-bold text-foreground">{metaCount}</span> Meta
+            </button>
+
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 font-medium text-purple-700 dark:text-purple-300"
+              title="Networking, Interface, ERC & other categories"
+            >
+              <span className="font-bold text-foreground">{otherCount}</span> Other
             </span>
+
             {headlinerCount > 0 && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 font-medium text-amber-700 dark:text-amber-300"
-                title="Upgrade headliners"
+              <button
+                type="button"
+                onClick={() => handleHeadlinerChange(headlinerFilter === 'headliner' ? 'all' : 'headliner')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
+                  headlinerFilter === 'headliner'
+                    ? 'border-amber-500/60 bg-amber-500/25 text-amber-700 dark:text-amber-200 font-bold'
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
+                )}
+                title="Filter by Upgrade Headliners"
               >
                 <Star className="h-3 w-3 fill-amber-500 text-amber-500" />
-                <span className="font-bold text-foreground">{headlinerCount}</span> Headliner{headlinerCount === 1 ? '' : 's'}
-              </span>
+                <span className="font-bold text-foreground">{headlinerCount}</span> Headliners
+              </button>
             )}
-            <span className="rounded-full border border-border bg-card/60 px-2.5 py-1 font-medium text-muted-foreground">
+
+            <span className="rounded-full border border-border bg-background/80 px-3 py-1 font-medium text-muted-foreground">
               <span className="font-semibold text-foreground">{filteredEips.length}</span> Total
               {filteredEips.length !== initialEips.length && (
                 <span className="text-muted-foreground/70"> / {initialEips.length}</span>
               )}
             </span>
+
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 font-semibold text-primary shadow-2xs transition-all hover:bg-primary/20 hover:border-primary/60 cursor-pointer"
+              title="Download filtered EIP search results as CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Export CSV</span>
+            </button>
           </div>
         </div>
 
-        {/* Active filter chips */}
-        {activeChips.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            {activeChips.map((chip) => (
-              <button
-                key={chip.key}
-                type="button"
-                onClick={chip.onRemove}
-                className="group inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
-              >
-                {chip.label}
-                <X className="h-3 w-3 opacity-60 transition-opacity group-hover:opacity-100" />
-              </button>
-            ))}
+        {/* 2. Prominent Network Upgrade Quick Filter Bar (FIRST) */}
+        <div className="flex flex-col gap-2 pt-3 border-t border-border/50">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider shrink-0 mr-1">
+              Network Upgrade:
+            </span>
             <button
               type="button"
-              onClick={clearFilters}
-              className="ml-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              onClick={() => {
+                setSelectedUpgrades([]);
+                updateUrl([], selectedCategories, selectedYears, selectedStages, selectedLayers, selectedStatuses, headlinerFilter, search);
+              }}
+              className={cn(
+                'inline-flex h-7 shrink-0 items-center justify-center rounded-full border px-3 text-xs font-semibold transition-all cursor-pointer select-none',
+                selectedUpgrades.length === 0
+                  ? 'border-primary/60 bg-primary text-primary-foreground shadow-xs'
+                  : 'border-border/70 bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+              )}
             >
-              Clear all
+              All Upgrades
             </button>
+            {upgradeOptions.map((up) => {
+              const isSelected = selectedUpgrades.includes(up.slug);
+              const highlighted = matchedUpgradeSlugs.has(up.slug);
+              return (
+                <button
+                  key={`quick-${up.slug}`}
+                  type="button"
+                  onClick={() => handleUpgradeToggle(up.slug)}
+                  className={cn(
+                    'inline-flex h-7 shrink-0 items-center justify-center gap-1 rounded-full border px-3 text-xs font-semibold transition-all cursor-pointer select-none',
+                    isSelected
+                      ? 'border-primary/60 bg-primary/20 text-primary shadow-xs font-bold'
+                      : 'border-border/70 bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+                    highlighted && !isSelected && 'ring-2 ring-primary/50'
+                  )}
+                >
+                  <span>{shortUpgradeName(up.name)}</span>
+                  {upgradeYear(up.slug) && (
+                    <span className="opacity-60 text-[10px]">’{upgradeYear(up.slug)!.slice(2)}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
 
-        {/* EIP table */}
-        <div className="overflow-hidden rounded-2xl border border-border bg-card/40">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/30 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground select-none">
-                  {([
-                    { field: 'eip_number', label: 'Proposal', width: '' },
-                    { field: null, label: 'Title', width: 'w-full' },
-                    { field: null, label: 'Upgrade', width: '' },
-                    { field: null, label: 'Upgrade Date', width: '' },
-                    { field: 'bucket', label: 'Stage', width: '' },
-                    { field: 'status', label: 'Status', width: '' },
-                    { field: 'layer', label: 'Layer', width: '' },
-                  ] as const).map((col) => (
-                    <th
-                      key={col.label}
-                      onClick={col.field ? () => handleSort(col.field as SortField) : undefined}
+          {/* Secondary Quick Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setFilterPanelOpen((prev) => !prev)}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all cursor-pointer',
+                  filterPanelOpen || activeFilterCount > 0
+                    ? 'border-primary/50 bg-primary/10 text-primary shadow-xs'
+                    : 'border-border bg-background/80 text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                )}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span>More Filters</span>
+                {activeFilterCount > 0 && (
+                  <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+                    {activeFilterCount}
+                  </span>
+                )}
+                <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', filterPanelOpen && 'rotate-180')} />
+              </button>
+
+              {/* Quick Layer Filter Pills */}
+              <div className="flex items-center gap-1 rounded-xl border border-border/70 bg-background/50 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => handleLayerToggle('EL')}
+                  className={cn(
+                    'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
+                    selectedLayers.includes('EL')
+                      ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Execution (EL)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleLayerToggle('CL')}
+                  className={cn(
+                    'rounded-lg px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer',
+                    selectedLayers.includes('CL')
+                      ? 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300 font-semibold'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Consensus (CL)
+                </button>
+              </div>
+
+              {/* Meta EIPs Checkbox */}
+              <label className="inline-flex items-center gap-2 rounded-xl border border-border/70 bg-background/50 px-3 py-1.5 text-xs font-medium text-foreground cursor-pointer select-none hover:text-primary transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeMetaEips}
+                  onChange={(e) => handleIncludeMetaToggle(e.target.checked)}
+                  className="h-3.5 w-3.5 rounded border-border/80 text-primary focus:ring-primary/40 accent-primary cursor-pointer"
+                />
+                <span>Include Meta EIPs</span>
+              </label>
+            </div>
+
+            {activeFilterCount > 0 && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline cursor-pointer"
+              >
+                <RefreshCw className="h-3 w-3" />
+                Reset all
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* 3. Expandable Filter Panel */}
+        {filterPanelOpen && (
+          <div className="grid gap-4 rounded-xl border border-border/80 bg-background/90 p-4 sm:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-top-2 duration-200">
+            {/* Network Upgrade Selection (FIRST in panel) */}
+            <div className="space-y-2 lg:col-span-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Network Upgrade ({upgradeOptions.length})
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {upgradeOptions.map((up) => {
+                  const highlighted = matchedUpgradeSlugs.has(up.slug);
+                  return (
+                    <button
+                      key={up.slug}
+                      type="button"
+                      onClick={() => handleUpgradeToggle(up.slug)}
+                      title={highlighted ? 'Matches search' : undefined}
                       className={cn(
-                        'px-4 py-3',
-                        col.width,
-                        col.field && 'cursor-pointer transition-colors hover:text-foreground'
+                        pillClass(selectedUpgrades.includes(up.slug)),
+                        highlighted && !selectedUpgrades.includes(up.slug) && 'ring-2 ring-primary/50'
                       )}
                     >
+                      <span>{shortUpgradeName(up.name)}</span>
+                      {upgradeYear(up.slug) && (
+                        <span className="opacity-60 text-[10px]">’{upgradeYear(up.slug)!.slice(2)}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Category Filter */}
+            <div className="space-y-2">
+              <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Tag className="h-3 w-3 text-primary" />
+                Category
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {uniqueCategories.map((cat) => (
+                  <button
+                    key={cat}
+                    type="button"
+                    onClick={() => handleCategoryToggle(cat)}
+                    className={pillClass(selectedCategories.includes(cat))}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Era / Mainnet Year Filter */}
+            <div className="space-y-2">
+              <span className="flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                <Calendar className="h-3 w-3 text-primary" />
+                Activation Year
+              </span>
+              <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto pr-1">
+                {uniqueYears.map((yr) => (
+                  <button
+                    key={yr}
+                    type="button"
+                    onClick={() => handleYearToggle(yr)}
+                    className={pillClass(selectedYears.includes(yr))}
+                  >
+                    {yr}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Status & Tier Selection */}
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Status & Stage
+                </span>
+                <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto pr-1">
+                  {uniqueStatuses.map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => handleStatusToggle(st)}
+                      className={pillClass(selectedStatuses.includes(st))}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Tier
+                </span>
+                <div className="flex rounded-lg border border-border bg-card/60 p-0.5">
+                  {([
+                    { key: 'all', label: 'All' },
+                    { key: 'headliner', label: 'Headliners' },
+                    { key: 'standard', label: 'Standard' },
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => handleHeadlinerChange(opt.key)}
+                      className={cn(
+                        'flex flex-1 items-center justify-center gap-1 rounded-md py-1 text-xs transition-colors cursor-pointer',
+                        headlinerFilter === opt.key
+                          ? 'bg-background font-semibold text-foreground shadow-xs'
+                          : 'text-muted-foreground hover:text-foreground'
+                      )}
+                    >
+                      {opt.key === 'headliner' && <Star className="h-3 w-3 fill-amber-500 text-amber-500" />}
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 4. Active Filter Chips */}
+      {activeChips.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs font-semibold text-muted-foreground mr-1">Active filters:</span>
+          {activeChips.map((chip) => (
+            <button
+              key={chip.key}
+              type="button"
+              onClick={chip.onRemove}
+              className="group inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 py-1 pl-2.5 pr-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 cursor-pointer"
+            >
+              {chip.label}
+              <X className="h-3 w-3 opacity-60 transition-opacity group-hover:opacity-100" />
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="ml-1 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline cursor-pointer"
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
+      {/* 5. Main Content: Responsive Table for Desktop (sm+) & Card Grid for Mobile (< sm) */}
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card/60 shadow-xs">
+        {/* Desktop / Tablet Table View (sm+) */}
+        <div className="hidden sm:block overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <thead>
+              <tr className="border-b border-border bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground select-none">
+                {([
+                  { field: null, label: '#', width: 'w-10 text-center' },
+                  { field: 'eip_number', label: 'Proposal', width: 'w-32' },
+                  { field: null, label: 'Title & Category', width: 'w-auto' },
+                  { field: null, label: 'Upgrade', width: 'w-36' },
+                  { field: null, label: 'Mainnet Date', width: 'w-36' },
+                  { field: 'bucket', label: 'Stage', width: 'w-24' },
+                  { field: 'status', label: 'Status', width: 'w-28' },
+                  { field: 'layer', label: 'Layer', width: 'w-24' },
+                ] as const).map((col) => (
+                  <th
+                    key={col.label}
+                    onClick={col.field ? () => handleSort(col.field as SortField) : undefined}
+                    className={cn(
+                      'px-3 py-3.5',
+                      col.width,
+                      col.field && 'cursor-pointer transition-colors hover:text-foreground'
+                    )}
+                  >
+                    <div className={cn("flex items-center gap-1.5", col.label === '#' && "justify-center")}>
+                      {col.label}
+                      {col.field && (
+                        <ArrowUpDown
+                          className={cn(
+                            'h-3 w-3 transition-opacity',
+                            sortField === col.field ? 'opacity-100 text-primary font-bold' : 'opacity-40'
+                          )}
+                        />
+                      )}
+                    </div>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/40">
+              {filteredEips.map((eip, index) => {
+                const isErc = eip.type?.toLowerCase() === 'erc';
+                const isRip = eip.type?.toLowerCase() === 'rip';
+                const routeSegment = isErc ? 'erc' : isRip ? 'rip' : 'eip';
+
+                return (
+                  <tr
+                    key={`${eip.upgrade_slug}-${eip.eip_number}`}
+                    className={cn(
+                      'group transition-colors hover:bg-muted/50',
+                      eip.is_headliner && 'bg-amber-500/[0.03]'
+                    )}
+                  >
+                    {/* Sr. No. */}
+                    <td className="whitespace-nowrap px-3 py-3.5 text-center align-middle font-mono text-xs font-medium text-muted-foreground/70">
+                      {index + 1}
+                    </td>
+                    {/* Proposal Badge */}
+                    <td className="whitespace-nowrap py-3.5 pl-4 pr-2 align-middle">
+                      <Link
+                        href={`/${routeSegment}/${eip.eip_number}`}
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 font-mono text-xs font-semibold transition-all',
+                          eip.is_headliner
+                            ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:border-amber-500/60'
+                            : 'border-border/80 bg-background/80 text-foreground group-hover:border-primary/40 group-hover:text-primary'
+                        )}
+                      >
+                        {routeSegment.toUpperCase()}-{eip.eip_number}
+                      </Link>
+                    </td>
+
+                    {/* Title & Category */}
+                    <td className="px-4 py-3.5 align-middle">
                       <div className="flex items-center gap-1.5">
-                        {col.label}
-                        {col.field && (
-                          <ArrowUpDown
-                            className={cn(
-                              'h-3 w-3 transition-opacity',
-                              sortField === col.field ? 'opacity-100 text-primary' : 'opacity-40'
-                            )}
+                        <Link
+                          href={`/${routeSegment}/${eip.eip_number}`}
+                          className="line-clamp-1 min-w-0 text-sm font-semibold text-foreground transition-colors hover:text-primary"
+                        >
+                          {eip.title}
+                        </Link>
+                        {eip.is_headliner && (
+                          <Star
+                            className="h-3.5 w-3.5 shrink-0 fill-amber-500 text-amber-500"
+                            aria-label="Headliner Proposal"
                           />
                         )}
                       </div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/50">
-                {filteredEips.map((eip) => {
-                  const isErc = eip.type?.toLowerCase() === 'erc';
-                  const isRip = eip.type?.toLowerCase() === 'rip';
-                  const routeSegment = isErc ? 'erc' : isRip ? 'rip' : 'eip';
+                      {(() => {
+                        const displayCat = eip.category?.trim() || eip.type?.trim() || 'Other';
+                        const showSubtype =
+                          eip.type &&
+                          eip.type.toLowerCase() !== 'standards track' &&
+                          eip.type.toLowerCase() !== displayCat.toLowerCase();
 
-                  return (
-                    <tr
-                      key={`${eip.upgrade_slug}-${eip.eip_number}`}
-                      className={cn(
-                        'group transition-colors hover:bg-muted/40',
-                        eip.is_headliner && 'bg-primary/[0.04]'
-                      )}
-                    >
-                      {/* Proposal */}
-                      <td className="whitespace-nowrap py-3.5 pl-4 pr-2 align-middle">
-                        <Link
-                          href={`/${routeSegment}/${eip.eip_number}`}
-                          className={cn(
-                            'inline-flex items-center rounded-md border px-2 py-1 font-mono text-xs font-semibold transition-colors',
-                            eip.is_headliner
-                              ? 'border-primary/30 bg-primary/10 text-primary'
-                              : 'border-border/60 bg-muted/40 text-foreground/80 group-hover:border-primary/30 group-hover:text-primary'
-                          )}
-                        >
-                          {routeSegment.toUpperCase()}-{eip.eip_number}
-                        </Link>
-                      </td>
-
-                      {/* Title */}
-                      <td className="w-full px-4 py-3.5 align-middle">
-                        <div className="flex items-center gap-1.5">
-                          <Link
-                            href={`/${routeSegment}/${eip.eip_number}`}
-                            className="line-clamp-1 min-w-0 text-xs font-medium text-foreground transition-colors hover:text-primary sm:text-sm"
-                          >
-                            {eip.title}
-                          </Link>
-                          {eip.is_headliner && (
-                            <Star
-                              className="h-3 w-3 shrink-0 fill-primary text-primary"
-                              aria-label="Headliner"
-                            />
-                          )}
-                        </div>
-                        {(() => {
-                          const displayCat = (eip.category?.trim() || eip.type?.trim() || 'Other');
-                          const showSubtype =
-                            eip.type &&
-                            eip.type.toLowerCase() !== 'standards track' &&
-                            eip.type.toLowerCase() !== displayCat.toLowerCase();
-
-                          return (
-                            <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                              <span
-                                className={cn(
-                                  'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-semibold tracking-wide',
-                                  displayCat.toLowerCase() === 'core'
-                                    ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                        return (
+                          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                            <span
+                              className={cn(
+                                'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold tracking-wide uppercase',
+                                displayCat.toLowerCase() === 'core'
+                                  ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                                  : displayCat.toLowerCase() === 'meta'
+                                    ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
                                     : 'border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300'
-                                )}
-                              >
-                                {displayCat}
-                              </span>
-                              {showSubtype && (
-                                <span className="text-[10px] font-medium text-muted-foreground/70">
-                                  · {eip.type}
-                                </span>
                               )}
-                            </div>
-                          );
-                        })()}
-                      </td>
+                            >
+                              {displayCat}
+                            </span>
+                            {showSubtype && (
+                              <span className="text-[11px] font-medium text-muted-foreground/80">
+                                · {eip.type}
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </td>
 
-                      {/* Upgrade + year */}
-                      <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                        <Link
-                          href={`/upgrade/${eip.upgrade_slug}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-                        >
-                          <span title={eip.upgrade_name}>{shortUpgradeName(eip.upgrade_name)}</span>
-                        </Link>
-                      </td>
+                    {/* Upgrade Link */}
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                      <Link
+                        href={`/upgrade/${eip.upgrade_slug}`}
+                        className="inline-flex items-center gap-1 rounded-lg border border-border/80 bg-background/80 px-2.5 py-1 text-xs font-semibold text-foreground/80 transition-colors hover:border-primary/40 hover:text-primary"
+                      >
+                        <span title={eip.upgrade_name}>{shortUpgradeName(eip.upgrade_name)}</span>
+                      </Link>
+                    </td>
 
-                      {/* Upgrade date — full mainnet activation date */}
-                      <td className="whitespace-nowrap px-4 py-3.5 align-middle text-sm text-muted-foreground">
-                        {formatUpgradeDate(eip.upgradeDate ?? undefined) ?? (
-                          <span className="text-muted-foreground/50" title="Not yet scheduled">—</span>
-                        )}
-                      </td>
+                    {/* Mainnet Activation Date */}
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle text-xs font-medium text-muted-foreground">
+                      {formatUpgradeDate(eip.upgradeDate ?? undefined) ?? (
+                        <span className="text-muted-foreground/40 italic">In planning / devnet</span>
+                      )}
+                    </td>
 
-                      {/* Stage */}
-                      <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                    {/* Stage */}
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                      <span
+                        title={stageLabel(eip.bucket)}
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background/80 px-2.5 py-0.5 text-xs font-semibold text-foreground"
+                      >
+                        <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', stageBadgeClass(eip.bucket))} />
+                        {stageAbbreviation(eip.bucket)}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                      {eip.status ? (
                         <span
-                          title={stageLabel(eip.bucket)}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card/60 px-2 py-0.5 text-xs font-semibold text-foreground"
+                          className={cn(
+                            'inline-flex rounded-full border px-2.5 py-0.5 text-[10px] font-bold tracking-wide uppercase',
+                            STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
+                          )}
                         >
-                          <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', stageBadgeClass(eip.bucket))} />
-                          {stageAbbreviation(eip.bucket)}
+                          {eip.status}
                         </span>
-                      </td>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                      )}
+                    </td>
 
-                      {/* Status */}
-                      <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                        {eip.status ? (
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                              STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
-                            )}
-                          >
-                            {eip.status}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-muted-foreground/40">—</span>
-                        )}
-                      </td>
-
-                      {/* Layer */}
-                      <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                        {eip.layer ? (
-                          <span
-                            className={cn(
-                              'inline-flex items-center gap-1 rounded border px-2 py-0.5 text-[10px] font-semibold',
-                              eip.layer === 'EL'
-                                ? 'border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-300'
-                                : 'border-indigo-500/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-300'
-                            )}
-                          >
-                            <Layers className="h-3 w-3 shrink-0" />
-                            {eip.layer}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] italic text-muted-foreground/50">—</span>
-                        )}
-                      </td>
-
-                      {/* headliner tier column removed — headliners are marked by the ★ next to the title */}
-                    </tr>
-                  );
-                })}
-
-                {filteredEips.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-16 text-center">
-                      <div className="mx-auto flex max-w-xs flex-col items-center gap-2 text-muted-foreground">
-                        <Search className="h-6 w-6 opacity-40" />
-                        <p className="text-sm">No EIPs matched these filters.</p>
-                        {activeFilterCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={clearFilters}
-                            className="text-xs text-primary hover:underline"
-                          >
-                            Clear filters
-                          </button>
-                        )}
-                      </div>
+                    {/* Layer */}
+                    <td className="whitespace-nowrap px-4 py-3.5 align-middle">
+                      {eip.layer ? (
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold',
+                            eip.layer === 'EL'
+                              ? 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                              : 'border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                          )}
+                        >
+                          <Layers className="h-3 w-3 shrink-0" />
+                          {eip.layer}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] italic text-muted-foreground/40">—</span>
+                      )}
                     </td>
                   </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+                );
+              })}
+
+              {filteredEips.length === 0 && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-16 text-center">
+                    <div className="mx-auto flex max-w-xs flex-col items-center gap-2 text-muted-foreground">
+                      <Search className="h-8 w-8 opacity-30" />
+                      <p className="text-sm font-semibold">No EIPs matched your search or filters.</p>
+                      {activeFilterCount > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearFilters}
+                          className="text-xs text-primary font-medium hover:underline cursor-pointer mt-1"
+                        >
+                          Reset all filters
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Mobile List/Card View (< sm) */}
+        <div className="sm:hidden divide-y divide-border/40">
+          {filteredEips.map((eip) => {
+            const isErc = eip.type?.toLowerCase() === 'erc';
+            const isRip = eip.type?.toLowerCase() === 'rip';
+            const routeSegment = isErc ? 'erc' : isRip ? 'rip' : 'eip';
+            const displayCat = eip.category?.trim() || eip.type?.trim() || 'Other';
+
+            return (
+              <div
+                key={`mobile-${eip.upgrade_slug}-${eip.eip_number}`}
+                className={cn('p-4 space-y-2.5', eip.is_headliner && 'bg-amber-500/[0.03]')}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    href={`/${routeSegment}/${eip.eip_number}`}
+                    className={cn(
+                      'inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 font-mono text-xs font-bold transition-all',
+                      eip.is_headliner
+                        ? 'border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                        : 'border-border bg-background text-primary'
+                    )}
+                  >
+                    {routeSegment.toUpperCase()}-{eip.eip_number}
+                  </Link>
+
+                  <div className="flex items-center gap-1.5">
+                    {eip.layer && (
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold',
+                          eip.layer === 'EL'
+                            ? 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                            : 'border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                        )}
+                      >
+                        {eip.layer}
+                      </span>
+                    )}
+
+                    <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] font-bold">
+                      <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', stageBadgeClass(eip.bucket))} />
+                      {stageAbbreviation(eip.bucket)}
+                    </span>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/${routeSegment}/${eip.eip_number}`}
+                  className="block text-sm font-semibold text-foreground hover:text-primary leading-snug"
+                >
+                  {eip.title}
+                </Link>
+
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={cn(
+                        'inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-bold uppercase',
+                        displayCat.toLowerCase() === 'core'
+                          ? 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300'
+                          : displayCat.toLowerCase() === 'meta'
+                            ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+                            : 'border-purple-500/30 bg-purple-500/15 text-purple-700 dark:text-purple-300'
+                      )}
+                    >
+                      {displayCat}
+                    </span>
+
+                    <Link
+                      href={`/upgrade/${eip.upgrade_slug}`}
+                      className="text-xs font-semibold text-muted-foreground hover:text-primary"
+                    >
+                      {shortUpgradeName(eip.upgrade_name)}
+                    </Link>
+                  </div>
+
+                  {eip.status && (
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase',
+                        STATUS_CHIP[eip.status] ?? 'border-border bg-muted text-muted-foreground'
+                      )}
+                    >
+                      {eip.status}
+                    </span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {filteredEips.length === 0 && (
+            <div className="p-8 text-center text-muted-foreground">
+              <p className="text-sm font-semibold">No EIPs matched your search or filters.</p>
+            </div>
+          )}
         </div>
       </div>
     </div>

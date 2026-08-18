@@ -16,6 +16,13 @@ export interface UpgradeHeadliner {
   note?: string;
 }
 
+export interface UpgradeMascot {
+  name: string;
+  emoji: string;
+  eip?: number;
+  processNote?: string;
+}
+
 export interface UpgradeRegistryEntry {
   slug: string;
   name: string;
@@ -31,6 +38,8 @@ export interface UpgradeRegistryEntry {
   consensusName?: string;
   /** Where the fork name comes from — shown in the simple view. */
   nameOrigin?: string;
+  /** Official or community mascot per EIP-8066 Upgrade Mascots process. */
+  mascot?: UpgradeMascot;
   /** Selected or leading headliner features, curated manually. */
   headliners?: UpgradeHeadliner[];
   /** Devnet series (devnet_specs.series values) that belong to this fork. */
@@ -56,6 +65,12 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     consensusName: 'Gloas',
     nameOrigin:
       'Combines "Gloas" (consensus layer, named after a star) and "Amsterdam" (execution layer, named after a Devconnect location).',
+    mascot: {
+      name: 'Polar Bear',
+      emoji: '🐻❄️',
+      eip: 8066,
+      processNote: 'Mascot selected under the EIP-8066 Upgrade Mascots process.',
+    },
     devnetSeries: ['glamsterdam', 'bal', 'epbs'],
     headliners: [
       {
@@ -176,24 +191,6 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
       "London fundamentally reformed Ethereum's fee market with EIP-1559, introducing dynamic base fees and a burn mechanism. It revolutionized how transaction fees work, improved user experience, and began Ethereum's deflationary phase.",
     activationDate: '2021-08-05',
     activationBlock: 12965000,
-  },
-  'bpo-5': {
-    slug: 'bpo-5',
-    name: 'BPO5',
-    status: 'Live',
-    tagline: 'Blob Parameter Only 5: Incremental blob throughput increase.',
-    description: 'BPO5 is a Blob-Parameter-Only network upgrade under EIP-7892, adjusting blob target and max limits.',
-    activationDate: '2026-05-13',
-    executionName: 'BPO5',
-  },
-  'bpo-4': {
-    slug: 'bpo-4',
-    name: 'BPO4',
-    status: 'Live',
-    tagline: 'Blob Parameter Only 4: Incremental blob throughput increase.',
-    description: 'BPO4 is a Blob-Parameter-Only network upgrade under EIP-7892, adjusting blob target and max limits.',
-    activationDate: '2026-04-08',
-    executionName: 'BPO4',
   },
   'bpo-3': {
     slug: 'bpo-3',

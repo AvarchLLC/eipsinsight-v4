@@ -11,6 +11,7 @@ import { RoleTabSwitcher } from './_components/role-tab-switcher';
 import { RoleLeaderboard } from './_components/role-leaderboard';
 import { RoleActivityTimeline } from './_components/role-activity-timeline';
 import { RoleAuthorsTable } from './_components/role-authors-table';
+import { ExploreTabsHeader } from '../_components/explore-tabs-header';
 
 type Role = 'EDITOR' | 'REVIEWER' | 'CONTRIBUTOR' | 'AUTHOR' | null;
 type RepoFilter = 'all' | 'eips' | 'ercs' | 'rips';
@@ -507,29 +508,9 @@ function RolesPageContent() {
 
   return (
     <div className="relative min-h-screen w-full bg-background">
-      <section className="w-full pb-2 pt-4">
+      <ExploreTabsHeader />
+      <section className="w-full pb-2 pt-2">
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link
-            href="/explore"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to Explore
-          </Link>
-
-          <motion.header
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.35 }}
-            className="mb-4 mt-3"
-          >
-            <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
-              Explore by Roles
-            </h1>
-            <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-              See who is driving proposal progress, how they contribute, and where activity is concentrated across EIPs, ERCs, and RIPs.
-            </p>
-          </motion.header>
 
           {!countsLoading && (
             <RoleTabSwitcher

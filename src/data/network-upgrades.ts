@@ -33,8 +33,8 @@ export const eipTitles: Record<string, EIPInfo> = {
   '8134': { title: 'Hardfork Meta - BPO1', category: 'Meta' },
   '8135': { title: 'Hardfork Meta - BPO2', category: 'Meta' },
   '8138': { title: 'Hardfork Meta - BPO3', category: 'Meta' },
-  '8139': { title: 'Hardfork Meta - BPO4', category: 'Meta' },
-  '8140': { title: 'Hardfork Meta - BPO5', category: 'Meta' },
+  '7773': { title: 'Hardfork Meta - Glamsterdam', category: 'Meta' },
+  '8066': { title: 'Upgrade Mascots', category: 'Meta' },
   '7607': { title: 'Hardfork Meta - Fusaka', category: 'Meta' },
   '7600': { title: 'Hardfork Meta - Pectra', category: 'Meta' },
   '7569': { title: 'Hardfork Meta - Dencun', category: 'Meta' },
@@ -150,8 +150,6 @@ export const executionSpecsLinks: Record<string, string> = {
   'BPO1': 'https://github.com/ethereum/execution-specs/tree/master/network-upgrades/mainnet-upgrades',
   'BPO2': 'https://github.com/ethereum/execution-specs/tree/master/network-upgrades/mainnet-upgrades',
   'BPO3': 'https://github.com/ethereum/execution-specs/tree/master/network-upgrades/mainnet-upgrades',
-  'BPO4': 'https://github.com/ethereum/execution-specs/tree/master/network-upgrades/mainnet-upgrades',
-  'BPO5': 'https://github.com/ethereum/execution-specs/tree/master/network-upgrades/mainnet-upgrades',
 };
 
 export const upgradeMetaEIPs: Record<string, string> = {
@@ -179,16 +177,14 @@ export const upgradeMetaEIPs: Record<string, string> = {
   'Electra': 'EIP-7600',
   'Osaka': 'EIP-7607',
   'Fulu': 'EIP-7607',
+  'Glamsterdam': 'EIP-7773',
+  'glamsterdam': 'EIP-7773',
   'BPO1': 'EIP-8134',
   'BPO2': 'EIP-8135',
   'BPO3': 'EIP-8138',
-  'BPO4': 'EIP-8139',
-  'BPO5': 'EIP-8140',
 };
 
 export const upgradeDescriptions: Record<string, string> = {
-  "BPO5": "Blob Parameter Only 5: Incremental blob throughput increase",
-  "BPO4": "Blob Parameter Only 4: Incremental blob throughput increase",
   "BPO3": "Blob Parameter Only 3: Incremental blob throughput increase",
   "BPO2": "Blob Parameter Only 2: Raised blob target to 14 and max to 21",
   "BPO1": "Blob Parameter Only 1: Raised blob target to 10 and max to 15",
@@ -220,8 +216,6 @@ export const upgradeDescriptions: Record<string, string> = {
 };
 
 export const professionalColorMap: Record<string, string> = {
-  "BPO5": "#155E75",
-  "BPO4": "#0C4A6E",
   "BPO3": "#075985",
   "BPO2": "#0369A1",
   "BPO1": "#0284C7",
@@ -260,8 +254,6 @@ export const pairedUpgradeNames: Record<string, string> = {
 };
 
 export const rawData: UpgradeData[] = [
-  { date: "2026-05-13", upgrade: "BPO5", layer: "execution", type: "execution", eips: ["EIP-7892"] },
-  { date: "2026-04-08", upgrade: "BPO4", layer: "execution", type: "execution", eips: ["EIP-7892"] },
   { date: "2026-03-11", upgrade: "BPO3", layer: "execution", type: "execution", eips: ["EIP-7892"] },
   { date: "2026-01-07", upgrade: "BPO2", layer: "execution", type: "execution", eips: ["EIP-7892"] },
   { date: "2025-12-09", upgrade: "BPO1", layer: "execution", type: "execution", eips: ["EIP-7892"] },

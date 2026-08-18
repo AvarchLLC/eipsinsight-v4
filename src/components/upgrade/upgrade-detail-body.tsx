@@ -369,6 +369,24 @@ export function UpgradeDetailBody({
                     {entry.nameOrigin}
                   </p>
                 )}
+                {entry.mascot && (
+                  <div className="mt-3.5 flex items-center gap-2.5 rounded-lg border border-sky-500/30 bg-sky-500/10 px-3.5 py-2 text-xs text-foreground">
+                    <span className="text-lg">{entry.mascot.emoji}</span>
+                    <div>
+                      <span className="font-semibold text-foreground">Upgrade Mascot: {entry.mascot.name}</span>
+                      {entry.mascot.processNote && (
+                        <span className="ml-1.5 text-muted-foreground">
+                          — {entry.mascot.processNote}
+                          {entry.mascot.eip && (
+                            <Link href={`/eip/${entry.mascot.eip}`} className="ml-1 text-primary underline">
+                              (EIP-{entry.mascot.eip})
+                            </Link>
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           )}

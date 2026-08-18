@@ -859,6 +859,7 @@ export const exploreProcedures = {
   // Get EIPs by status with filters (supports multi-category and multi-type)
   getEIPsByStatus: optionalAuthProcedure
     .input(z.object({
+      q: z.string().optional(),
       status: z.string().optional(),
       categories: z.array(z.string()).optional(),
       types: z.array(z.string()).optional(),
@@ -874,6 +875,11 @@ export const exploreProcedures = {
       const includesRipCategory = (input.categories ?? []).some((category) => category.toLowerCase() === 'rip' || category.toLowerCase() === 'rips');
       const ripEnabled = (!input.types || input.types.length === 0) && (!input.categories || input.categories.length === 0 || includesRipCategory);
 
+      if (input.q && input.q.trim()) {
+        paramIdx++;
+        filters.push(`AND (e.title ILIKE $${paramIdx} OR CAST(e.eip_number AS text) ILIKE $${paramIdx} OR e.author ILIKE $${paramIdx})`);
+        params.push(`%${input.q.trim()}%`);
+      }
       if (input.status) {
         paramIdx++;
         filters.push(`AND s.status = $${paramIdx}`);
