@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Search, SlidersHorizontal, ArrowUpDown, Star, Layers, RefreshCw, X } from 'lucide-react';
+import { Search, SlidersHorizontal, ArrowUpDown, Star, Layers, RefreshCw, X, Download } from 'lucide-react';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import {
@@ -253,6 +253,33 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     }
   };
 
+  const handleDownloadCsv = () => {
+    const headers = ['EIP Number', 'Title', 'Category', 'Type', 'Status', 'Stage', 'Layer', 'Upgrade Name', 'Upgrade Slug', 'Is Headliner'];
+    const rows = filteredEips.map((e) => [
+      e.eip_number,
+      `"${(e.title || '').replace(/"/g, '""')}"`,
+      e.category || '',
+      e.type || '',
+      e.status || '',
+      e.bucket || '',
+      e.layer || '',
+      `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
+      e.upgrade_slug || '',
+      e.is_headliner ? 'Yes' : 'No',
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `eips_search_results_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   // Normalise every row once: fill EL/CL layer and stamp the upgrade year.
   const eips = useMemo(
     () =>
@@ -400,11 +427,20 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     [filteredEips]
   );
 
+  const metaCount = useMemo(
+    () =>
+      filteredEips.filter((e) => {
+        const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
+        return cat === 'meta';
+      }).length,
+    [filteredEips]
+  );
+
   const otherCount = useMemo(
     () =>
       filteredEips.filter((e) => {
         const cat = (e.category?.trim() || e.type?.trim() || '').toLowerCase();
-        return cat !== 'core';
+        return cat !== 'core' && cat !== 'meta';
       }).length,
     [filteredEips]
   );
@@ -613,6 +649,12 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
               <span className="font-bold text-foreground">{coreCount}</span> Core EIPs
             </span>
             <span
+              className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 font-medium text-emerald-700 dark:text-emerald-300"
+              title="Hardfork Meta & process EIPs"
+            >
+              <span className="font-bold text-foreground">{metaCount}</span> Meta EIPs
+            </span>
+            <span
               className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 font-medium text-purple-700 dark:text-purple-300"
               title="Networking, Interface, ERC & other EIP categories"
             >
@@ -633,6 +675,15 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                 <span className="text-muted-foreground/70"> / {initialEips.length}</span>
               )}
             </span>
+            <button
+              type="button"
+              onClick={handleDownloadCsv}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-primary/40 bg-primary/10 px-3 py-1.5 font-semibold text-primary shadow-sm transition-all hover:bg-primary/20 hover:border-primary/60"
+              title="Download current search & filter results as CSV"
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>Download CSV</span>
+            </button>
           </div>
         </div>
 
