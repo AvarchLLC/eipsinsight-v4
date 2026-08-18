@@ -475,6 +475,7 @@ export const upgradesProcedures = {
               select: {
                 status: true,
                 category: true,
+                type: true,
                 updated_at: true,
               },
             },
@@ -496,7 +497,8 @@ export const upgradesProcedures = {
           bucket: normalizeUpgradeBucket(comp.bucket),
           title: eip?.title || '',
           status: eip?.eip_snapshots?.status || null,
-          category: eip?.eip_snapshots?.category || null,
+          category: eip?.eip_snapshots?.category || eip?.eip_snapshots?.type || null,
+          type: eip?.eip_snapshots?.type || null,
           author: eip?.author || null,
           created_at: eip?.created_at?.toISOString() || null,
           updated_at: comp.updated_at?.toISOString() || null,
@@ -865,6 +867,49 @@ export const upgradesProcedures = {
       const eipMap = new Map(eips.map((e) => [e.eip_number, e]));
       const curationMap = new Map(curations.map((c) => [c.eip_number, c]));
 
+const BOTH_EIP_NUMBERS = new Set([
+  3675, 4399, 4788, 4844, 6110, 7002, 7251, 7549, 7569, 7594, 7600, 7607, 7685, 7702, 7732, 7773, 7805, 7840, 7928, 8133
+]);
+
+const CL_EIP_NUMBERS = new Set([
+  2537, 8045, 8061
+]);
+
+function resolveEipLayer(
+  eipNumber: number,
+  curatedLayer?: string | null,
+  title?: string | null,
+  category?: string | null,
+  type?: string | null,
+  sourceLayer?: 'EL' | 'CL' | null
+): 'EL' | 'CL' | 'Both' {
+  if (curatedLayer === 'Both' || curatedLayer === 'EL,CL' || curatedLayer === 'EL+CL' || curatedLayer === 'EL/CL') {
+    return 'Both';
+  }
+  if (BOTH_EIP_NUMBERS.has(eipNumber)) {
+    return 'Both';
+  }
+  if (curatedLayer === 'CL' || CL_EIP_NUMBERS.has(eipNumber) || sourceLayer === 'CL') {
+    return 'CL';
+  }
+  if (curatedLayer === 'EL') {
+    return 'EL';
+  }
+
+  const titleStr = (title || eipTitles[String(eipNumber)]?.title || '').toLowerCase();
+  if (
+    titleStr.includes('beacon chain') ||
+    titleStr.includes('consensus layer') ||
+    titleStr.includes('slashed validator') ||
+    titleStr.includes('attestation')
+  ) {
+    if (titleStr.includes('execution') || titleStr.includes('evm')) return 'Both';
+    return 'CL';
+  }
+
+  return 'EL';
+}
+
       return filtered.map((p) => {
         const eip = eipMap.get(p.eip_number);
         const curation = curationMap.get(p.eip_number);
@@ -883,8 +928,14 @@ export const upgradesProcedures = {
           status,
           type,
           category,
-          // Curated layer wins; otherwise fall back to the fork entry's own layer.
-          layer: curation?.layer ?? p.sourceLayer ?? null,
+          layer: resolveEipLayer(
+            p.eip_number,
+            curation?.layer,
+            eip?.title,
+            snapshot?.category,
+            snapshot?.type,
+            p.sourceLayer
+          ),
           is_headliner: curation?.headliner_of === p.slug,
           upgrade_name: upgrade?.name ?? upgradeRegistry[p.slug]?.name ?? p.slug,
           upgrade_slug: p.slug,

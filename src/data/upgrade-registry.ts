@@ -23,6 +23,14 @@ export interface UpgradeMascot {
   processNote?: string;
 }
 
+export interface UpgradeNameOriginDetails {
+  elName: string;
+  elHighlight: string;
+  clName: string;
+  clHighlight: string;
+  eip?: number;
+}
+
 export interface UpgradeRegistryEntry {
   slug: string;
   name: string;
@@ -38,6 +46,8 @@ export interface UpgradeRegistryEntry {
   consensusName?: string;
   /** Where the fork name comes from — shown in the simple view. */
   nameOrigin?: string;
+  /** Structured portmanteau derivation details per EIP-8133. */
+  nameOriginDetails?: UpgradeNameOriginDetails;
   /** Official or community mascot per EIP-8066 Upgrade Mascots process. */
   mascot?: UpgradeMascot;
   /** Selected or leading headliner features, curated manually. */
@@ -65,11 +75,18 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     consensusName: 'Gloas',
     nameOrigin:
       'Combines "Gloas" (consensus layer, named after a star) and "Amsterdam" (execution layer, named after a Devconnect location).',
+    nameOriginDetails: {
+      clName: 'Gloas',
+      clHighlight: 'Gl',
+      elName: 'Amsterdam',
+      elHighlight: 'erdam',
+      eip: 8133,
+    },
     mascot: {
       name: 'Polar Bear',
-      emoji: '🐻❄️',
-      eip: 8066,
-      processNote: 'Mascot selected under the EIP-8066 Upgrade Mascots process.',
+      emoji: '🐻‍❄️',
+      eip: 7773,
+      processNote: 'Mascot specified in the EIP-7773 Glamsterdam Meta EIP.',
     },
     devnetSeries: ['glamsterdam', 'bal', 'epbs'],
     headliners: [
@@ -98,6 +115,13 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     consensusName: 'Heze',
     nameOrigin:
       'Combines "Heze" (consensus layer star) and "Bogotá" (Devcon 6 location in Colombia).',
+    nameOriginDetails: {
+      clName: 'Heze',
+      clHighlight: 'He',
+      elName: 'Bogotá',
+      elHighlight: 'gotá',
+      eip: 8133,
+    },
     headliners: [
       {
         eip: 7805,
@@ -123,6 +147,13 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     forkEpoch: 411392,
     executionName: 'Osaka',
     consensusName: 'Fulu',
+    nameOriginDetails: {
+      clName: 'Fulu',
+      clHighlight: 'Fu',
+      elName: 'Osaka',
+      elHighlight: 'saka',
+      eip: 8133,
+    },
     headliners: [
       {
         eip: 7594,
@@ -143,6 +174,13 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     forkEpoch: 364032,
     executionName: 'Prague',
     consensusName: 'Electra',
+    nameOriginDetails: {
+      elName: 'Prague',
+      elHighlight: 'P',
+      clName: 'Electra',
+      clHighlight: 'ectra',
+      eip: 8133,
+    },
   },
   cancun: {
     slug: 'cancun',
@@ -156,6 +194,13 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     forkEpoch: 269568,
     executionName: 'Cancun',
     consensusName: 'Deneb',
+    nameOriginDetails: {
+      clName: 'Deneb',
+      clHighlight: 'Den',
+      elName: 'Cancún',
+      elHighlight: 'cún',
+      eip: 8133,
+    },
   },
   shanghai: {
     slug: 'shanghai',
@@ -169,6 +214,13 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     forkEpoch: 194048,
     executionName: 'Shanghai',
     consensusName: 'Capella',
+    nameOriginDetails: {
+      elName: 'Shanghai',
+      elHighlight: 'Sha',
+      clName: 'Capella',
+      clHighlight: 'pella',
+      eip: 8133,
+    },
   },
   paris: {
     slug: 'paris',

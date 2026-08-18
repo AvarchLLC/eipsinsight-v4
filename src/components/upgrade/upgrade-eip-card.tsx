@@ -7,6 +7,9 @@ import { cn } from '@/lib/utils';
 import type { UpgradeCompositionEip } from '@/components/upgrade/types';
 import { STAKEHOLDER_LABEL } from '@/lib/stakeholders';
 
+import { StageBadge } from '@/components/upgrade/stage-badge';
+import { eipTitles } from '@/data/network-upgrades';
+
 function statusChipClass(status: string | null): string {
   const normalized = (status ?? '').toLowerCase();
   if (normalized === 'draft') return 'bg-slate-500/15 text-slate-700 dark:text-slate-300';
@@ -33,14 +36,17 @@ const NORTH_STAR_LABELS: Record<string, string> = {
 export function UpgradeEipCard({
   eip,
   upgradeSlug,
+  showStageBadge = false,
 }: {
   eip: UpgradeCompositionEip;
   upgradeSlug: string;
+  showStageBadge?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
 
   const isHeadliner = eip.curation?.headliner_of === upgradeSlug;
   const displayTitle = eip.curation?.layman_title || eip.title || `EIP-${eip.eip_number}`;
+  const category = eip.category || eipTitles[String(eip.eip_number)]?.category || null;
   const summary = eip.curation?.layman_summary;
   const benefits = eip.curation?.benefits ?? [];
   const tradeoffs = eip.curation?.tradeoffs ?? [];
@@ -86,22 +92,54 @@ export function UpgradeEipCard({
                 Headliner
               </span>
             )}
-            {eip.curation?.layer && (
+            {category && category !== 'Core' && (
               <span
-                title={
-                  eip.curation.layer === 'EL'
-                    ? 'Primarily impacts the Execution Layer'
-                    : 'Primarily impacts the Consensus Layer'
-                }
-                className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                  eip.curation.layer === 'EL'
-                    ? 'border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
-                    : 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300'
-                )}
+                className="rounded-full border border-purple-500/30 bg-purple-500/15 px-2 py-0.5 text-[10px] font-semibold text-purple-700 dark:text-purple-300"
               >
-                {eip.curation.layer}
+                {category}
               </span>
+            )}
+            {eip.curation?.layer && (() => {
+              const layer = eip.curation.layer;
+              const isBoth = layer === 'Both' || layer === 'EL,CL' || layer === 'EL+CL';
+              if (isBoth) {
+                return (
+                  <div className="flex items-center gap-1">
+                    <span
+                      title="Primarily impacts the Execution Layer"
+                      className="rounded-full border border-indigo-500/30 bg-indigo-500/15 px-2 py-0.5 text-[10px] font-semibold text-indigo-700 dark:text-indigo-300"
+                    >
+                      EL
+                    </span>
+                    <span
+                      title="Primarily impacts the Consensus Layer"
+                      className="rounded-full border border-teal-500/30 bg-teal-500/15 px-2 py-0.5 text-[10px] font-semibold text-teal-700 dark:text-teal-300"
+                    >
+                      CL
+                    </span>
+                  </div>
+                );
+              }
+              return (
+                <span
+                  title={
+                    layer === 'EL'
+                      ? 'Primarily impacts the Execution Layer'
+                      : 'Primarily impacts the Consensus Layer'
+                  }
+                  className={cn(
+                    'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
+                    layer === 'EL'
+                      ? 'border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
+                      : 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300'
+                  )}
+                >
+                  {layer}
+                </span>
+              );
+            })()}
+            {showStageBadge && eip.bucket && (
+              <StageBadge bucket={eip.bucket} abbreviated />
             )}
             {eip.status && (
               <span

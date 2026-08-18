@@ -7,6 +7,7 @@ export interface UpgradeCompositionEip {
   title: string;
   status: string | null;
   category: string | null;
+  type?: string | null;
   author: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -19,7 +20,7 @@ export interface UpgradeCompositionEip {
     north_star: Record<string, { description?: string }> | null;
     headliner_of: string | null;
     headliner_note: string | null;
-    layer: 'EL' | 'CL' | null;
+    layer: 'EL' | 'CL' | 'Both' | string | null;
   } | null;
 }
 

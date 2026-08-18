@@ -84,8 +84,17 @@ const formatUpgradeDate = (iso: string | undefined) => {
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 };
 
-const deriveLayer = (layer: string | null): 'EL' | 'CL' | null =>
-  layer === 'EL' || layer === 'CL' ? layer : null;
+const deriveLayer = (layer: string | null): 'EL' | 'CL' | 'Both' | null => {
+  if (!layer) return null;
+  const normalized = layer.trim();
+  if (normalized === 'Both' || normalized === 'EL,CL' || normalized === 'EL+CL' || normalized === 'EL/CL') {
+    return 'Both';
+  }
+  if (normalized === 'EL' || normalized === 'CL') {
+    return normalized;
+  }
+  return null;
+};
 
 const shortUpgradeName = (name: string) => name.match(/\(([^)]+)\)\s*$/)?.[1] ?? name;
 
@@ -415,7 +424,11 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
     if (selectedLayers.length > 0) {
       result = result.filter((e) => {
         if (selectedLayers.includes('unset') && !e.layer) return true;
-        return e.layer ? selectedLayers.includes(e.layer) : false;
+        if (!e.layer) return false;
+        const isBoth = e.layer === 'Both';
+        return selectedLayers.some(
+          (l) => l === e.layer || (isBoth && (l === 'EL' || l === 'CL'))
+        );
       });
     }
 
@@ -1105,21 +1118,43 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
                     {/* Layer */}
                     <td className="whitespace-nowrap px-4 py-3.5 align-middle">
-                      {eip.layer ? (
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold',
-                            eip.layer === 'EL'
-                              ? 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'
-                              : 'border-indigo-500/30 bg-indigo-500/15 text-indigo-700 dark:text-indigo-300'
-                          )}
-                        >
-                          <Layers className="h-3 w-3 shrink-0" />
-                          {eip.layer}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] italic text-muted-foreground/40">—</span>
-                      )}
+                      {(() => {
+                        if (!eip.layer) return <span className="text-[10px] italic text-muted-foreground/40">—</span>;
+                        const isBoth = eip.layer === 'Both';
+                        if (isBoth) {
+                          return (
+                            <div className="flex items-center gap-1">
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-md border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300"
+                                title="Impacts Execution Layer"
+                              >
+                                <Layers className="h-3 w-3 shrink-0 text-amber-500" />
+                                EL
+                              </span>
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-md border border-teal-500/30 bg-teal-500/15 px-1.5 py-0.5 text-[10px] font-bold text-teal-700 dark:text-teal-300"
+                                title="Impacts Consensus Layer"
+                              >
+                                <Layers className="h-3 w-3 shrink-0 text-teal-500" />
+                                CL
+                              </span>
+                            </div>
+                          );
+                        }
+                        return (
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-bold',
+                              eip.layer === 'EL'
+                                ? 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-amber-300'
+                                : 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300'
+                            )}
+                          >
+                            <Layers className="h-3 w-3 shrink-0" />
+                            {eip.layer}
+                          </span>
+                        );
+                      })()}
                     </td>
                   </tr>
                 );

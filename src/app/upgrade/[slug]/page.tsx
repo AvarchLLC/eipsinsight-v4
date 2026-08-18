@@ -145,6 +145,7 @@ export default async function UpgradeDetailPage({ params }: Props) {
       <UpgradeDetailBody
         slug={slug}
         name={upgrade.name || entry?.name || slug}
+        metaEip={upgrade.meta_eip}
         entry={entry}
         composition={composition}
         events={events}
