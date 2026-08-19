@@ -265,7 +265,7 @@ export function UpgradeDetailBody({
         count: otherEips.length,
       });
     }
-    if (showTimelineChart) items.push({ id: 'timeline-chart', label: 'Scope over time' });
+    if (showTimelineChart) items.push({ id: 'timeline-chart', label: 'Composition Timeline' });
     if (showActivity) items.push({ id: 'activity', label: 'Recent changes' });
     if (articles.length > 0) items.push({ id: 'related-articles', label: 'Related articles' });
     return items;
@@ -722,7 +722,7 @@ export function UpgradeDetailBody({
             </div>
           )}
 
-          {/* Scope over time */}
+          {/* Composition Timeline */}
           {showTimelineChart && (
             <section id="timeline-chart" className="scroll-mt-28">
               <UpgradeTimelineChart data={timelineData} upgradeName={name} />
