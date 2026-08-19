@@ -423,6 +423,16 @@ export default async function DevnetDetailPage({ params }: Props) {
           Scraped from ethpandaops {devnet.scraped_at.slice(0, 10)} · re-checked every 12 hours.
         </p>
       )}
+
+      <div className="pt-6 border-t border-border/60 flex items-center justify-between">
+        <Link
+          href="/upgrade"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Go back to main upgrades page
+        </Link>
+      </div>
     </div>
   );
 }

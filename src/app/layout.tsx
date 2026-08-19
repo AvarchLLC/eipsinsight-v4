@@ -55,6 +55,8 @@ export const metadata: Metadata = {
 };
 
 
+import { ScrollToTopButton } from "@/components/ui/scroll-to-top-button";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -89,6 +91,7 @@ export default function RootLayout({
           <SiteAssistant />
           <WhatsNewV4Dialog />
           <CookieConsentBanner />
+          <ScrollToTopButton />
           <Toaster />
         </Providers>
       </body>

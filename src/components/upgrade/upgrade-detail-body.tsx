@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, ChevronDown, FileText, FlaskConical, GitCommit, Layers, Radio, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, FileText, FlaskConical, GitCommit, Layers, Radio, Search, Star, X } from 'lucide-react';
 
 function renderNameWithHighlight(fullStr: string, highlight: string) {
   const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
@@ -265,7 +265,7 @@ export function UpgradeDetailBody({
         count: otherEips.length,
       });
     }
-    if (showTimelineChart) items.push({ id: 'timeline-chart', label: 'Scope over time' });
+    if (showTimelineChart) items.push({ id: 'timeline-chart', label: 'Composition Timeline' });
     if (showActivity) items.push({ id: 'activity', label: 'Recent changes' });
     if (articles.length > 0) items.push({ id: 'related-articles', label: 'Related articles' });
     return items;
@@ -722,7 +722,7 @@ export function UpgradeDetailBody({
             </div>
           )}
 
-          {/* Scope over time */}
+          {/* Composition Timeline */}
           {showTimelineChart && (
             <section id="timeline-chart" className="scroll-mt-28">
               <UpgradeTimelineChart data={timelineData} upgradeName={name} />
@@ -785,6 +785,16 @@ export function UpgradeDetailBody({
           {/* Subscription card for small screens (sidebar hidden) */}
           <div className="lg:hidden">
             <UpgradeSubscriptionCard slug={slug} name={name} />
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-border/60 flex items-center justify-between">
+            <Link
+              href="/upgrade"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Go back to main upgrades page
+            </Link>
           </div>
         </div>
       </div>

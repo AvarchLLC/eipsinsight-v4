@@ -10,7 +10,32 @@ import { Loader2, BarChart2, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { eipTitles, rawData, upgradeMetaEIPs, pairedUpgradeNames } from '@/data/network-upgrades';
+import { upgradeRegistry } from '@/data/upgrade-registry';
 import { TOTAL_NETWORK_UPGRADES } from '@/data/upgrade-timeline-stats';
+
+const UPGRADE_DATES: Record<string, string> = {
+  frontier: '2015-07-30',
+  homestead: '2016-03-14',
+  'dao-fork': '2016-07-20',
+  'tangerine-whistle': '2016-10-18',
+  'spurious-dragon': '2016-11-22',
+  byzantium: '2017-10-16',
+  constantinople: '2019-02-28',
+  petersburg: '2019-02-28',
+  istanbul: '2019-12-07',
+  'muir-glacier': '2020-01-02',
+  berlin: '2021-04-15',
+  london: '2021-08-05',
+  'arrow-glacier': '2021-12-09',
+  'gray-glacier': '2022-06-30',
+  paris: '2022-09-15',
+  shanghai: '2023-04-12',
+  cancun: '2024-03-13',
+  pectra: '2025-05-07',
+  fusaka: '2025-12-03',
+  'bpo-1': '2025-12-09',
+  'bpo-2': '2026-01-07',
+};
 
 /**
  * The stats-and-tables half of the old /upgrade/analytics page, extracted so it
@@ -50,65 +75,98 @@ export function UpgradeStatsPanel() {
   const [authorPage, setAuthorPage] = useState(1);
   const detailsSectionRef = useRef<HTMLDivElement>(null);
   const authorsSectionRef = useRef<HTMLDivElement>(null);
-  // Distinct activation dates (22) — same-date EL/CL pairs and the
-  // Constantinople/Petersburg hotfix count once. The old getDisplayUpgradeName
-  // recount left Constantinople/Petersburg as two, giving 23.
-  const totalUpgradeCount = TOTAL_NETWORK_UPGRADES;
-  const coreEipRows = useMemo(() => {
-    return rawData
-      .flatMap((item) =>
-        item.eips
-          // Exclude placeholders and '-removed' entries so the row count equals
-          // the "EIPs deployed" stat (a removed EIP was not actually deployed).
-          .filter(
-            (eip) => eip !== 'NO-EIP' && eip !== 'CONSENSUS' && !eip.endsWith('-removed')
-          )
-          .map((eip) => {
-            const eipNumber = eip.replace('EIP-', '').replace('-removed', '');
-            const eipInfo = eipTitles[eipNumber];
+  const [directoryEips, setDirectoryEips] = useState<Array<{
+    eip_number: number;
+    title: string;
+    bucket: string;
+    status: string;
+    type: string;
+    category: string;
+    layer: 'EL' | 'CL' | 'Both';
+    is_headliner: boolean;
+    upgrade_name: string;
+    upgrade_slug: string;
+  }>>([]);
 
-            return {
-              id: `${item.upgrade}-${eip}`,
-              eipNumber,
-              title: eipInfo?.title ?? `EIP-${eipNumber}`,
-              upgrade: getDisplayUpgradeName(item.upgrade, item.date),
-              upgradeHref: getUpgradeHref(item.upgrade, item.date),
-              layer: item.layer === 'consensus' ? 'Consensus' : 'Execution',
-              date: item.date,
-            };
-          })
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, []);
-
-  const metaEipRows = useMemo(() => {
-    return rawData
-      .filter((item) => upgradeMetaEIPs[item.upgrade])
-      .map((item) => {
-        const metaEip = upgradeMetaEIPs[item.upgrade];
-        const eipNumber = metaEip.replace('EIP-', '');
-        const eipInfo = eipTitles[eipNumber];
+  const directoryEipRows = useMemo(() => {
+    if (directoryEips.length > 0) {
+      return directoryEips.map((item) => {
+        const eipNumber = String(item.eip_number);
+        const layerStr = item.layer === 'Both' ? 'Execution / Consensus' : item.layer === 'CL' ? 'Consensus' : 'Execution';
+        const dateStr = UPGRADE_DATES[item.upgrade_slug] ?? 'Upcoming';
 
         return {
-          id: `${item.upgrade}-${metaEip}`,
+          id: `${item.upgrade_slug}-${item.eip_number}`,
           eipNumber,
-          title: eipInfo?.title ?? `Meta EIP for ${item.upgrade}`,
-          upgrade: getDisplayUpgradeName(item.upgrade, item.date),
-          upgradeHref: getUpgradeHref(item.upgrade, item.date),
-          layer: item.layer === 'consensus' ? 'Consensus' : 'Execution',
-          date: item.date,
+          title: item.title,
+          upgrade: item.upgrade_name,
+          upgradeHref: getUpgradeHref(item.upgrade_name, item.upgrade_slug) ?? `/upgrade/${item.upgrade_slug}`,
+          layer: layerStr,
+          rawLayer: item.layer,
+          category: item.category,
+          date: dateStr,
+          slug: item.upgrade_slug,
         };
-      })
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, []);
+      });
+    }
+
+    return rawData.flatMap((item) =>
+      item.eips
+        .filter((eip) => eip !== 'NO-EIP' && eip !== 'CONSENSUS' && !eip.endsWith('-removed'))
+        .map((eip) => {
+          const eipNumber = eip.replace('EIP-', '').replace('-removed', '');
+          const eipInfo = eipTitles[eipNumber];
+          const isMeta = eipInfo?.category === 'Meta';
+          return {
+            id: `${item.upgrade}-${eip}`,
+            eipNumber,
+            title: eipInfo?.title ?? `EIP-${eipNumber}`,
+            upgrade: getDisplayUpgradeName(item.upgrade, item.date),
+            upgradeHref: getUpgradeHref(item.upgrade, item.date),
+            layer: item.layer === 'consensus' ? 'Consensus' : 'Execution',
+            rawLayer: item.layer === 'consensus' ? ('CL' as const) : ('EL' as const),
+            category: isMeta ? 'Meta' : (eipInfo?.category ?? 'Core'),
+            date: item.date,
+            slug: item.upgrade,
+          };
+        })
+    );
+  }, [directoryEips]);
+
+  const coreEipRows = useMemo(() => {
+    return directoryEipRows.filter((r) => r.category === 'Core');
+  }, [directoryEipRows]);
+
+  const totalUpgradeCount = useMemo(() => {
+    if (directoryEipRows.length > 0) {
+      return new Set(directoryEipRows.map((r) => r.slug)).size;
+    }
+    return TOTAL_NETWORK_UPGRADES;
+  }, [directoryEipRows]);
+
+  const executionEipCount = useMemo(() => {
+    return coreEipRows.filter((r) => r.rawLayer === 'EL' || r.rawLayer === 'Both').length;
+  }, [coreEipRows]);
+
+  const consensusEipCount = useMemo(() => {
+    return coreEipRows.filter((r) => r.rawLayer === 'CL' || r.rawLayer === 'Both').length;
+  }, [coreEipRows]);
+
+  const totalEipsCount = useMemo(() => {
+    return coreEipRows.length;
+  }, [coreEipRows]);
+
+  const metaEipCount = useMemo(() => {
+    return directoryEipRows.filter((r) => r.category === 'Meta').length || Object.keys(upgradeMetaEIPs).length;
+  }, [directoryEipRows]);
 
   const activeRows = useMemo(() => {
     if (activeTable === 'authors') return [];
-    if (activeTable === 'meta') return metaEipRows;
-    if (activeTable === 'execution') return coreEipRows.filter((row) => row.layer === 'Execution');
-    if (activeTable === 'consensus') return coreEipRows.filter((row) => row.layer === 'Consensus');
+    if (activeTable === 'meta') return directoryEipRows.filter((row) => row.category === 'Meta');
+    if (activeTable === 'execution') return coreEipRows.filter((row) => row.rawLayer === 'EL' || row.rawLayer === 'Both');
+    if (activeTable === 'consensus') return coreEipRows.filter((row) => row.rawLayer === 'CL' || row.rawLayer === 'Both');
     return coreEipRows;
-  }, [activeTable, coreEipRows, metaEipRows]);
+  }, [activeTable, coreEipRows, directoryEipRows]);
   const filteredRows = useMemo(() => {
     if (activeTable === 'authors') return [];
     return activeRows.filter((row) =>
@@ -286,6 +344,8 @@ export function UpgradeStatsPanel() {
     }
   }, [activeTable]);
 
+
+
   useEffect(() => {
     // Loads author leaderboard data for the tables below the stat cards.
     async function fetchData() {
@@ -293,12 +353,14 @@ export function UpgradeStatsPanel() {
         setLoading(true);
         setError(null);
 
-        const [upgradeStats, independentAuthors] = await Promise.all([
+        const [upgradeStats, independentAuthors, eipList] = await Promise.all([
           client.upgrades.getUpgradeStats({}).catch(() => null),
           client.upgrades.getIndependentIncludedAuthors({}).catch(() => []),
+          client.upgrades.listUpgradeEips({}).catch(() => []),
         ]);
 
         setIndependentIncludedAuthors(upgradeStats?.independentIncludedAuthors ?? 0);
+        setDirectoryEips(eipList as any);
         setIndependentAuthorRows(
           independentAuthors.map((row) => ({
             id: `${row.authorKey}-${row.sampleEip ?? 'none'}`,
@@ -341,6 +403,10 @@ export function UpgradeStatsPanel() {
       <section id="stats">
         <UpgradeStatsCards
           totalUpgrades={totalUpgradeCount}
+          executionEipCount={executionEipCount}
+          consensusEipCount={consensusEipCount}
+          totalEipsDeployed={totalEipsCount}
+          metaEipCount={metaEipCount}
           independentIncludedAuthors={independentIncludedAuthors}
           activeTable={activeTable}
           onSelectTable={handleSelectTable}
@@ -722,6 +788,11 @@ function getUpgradeHref(upgrade: string, date: string): string | null {
     Electra: '/upgrade/pectra',
     Osaka: '/upgrade/fusaka',
     Fulu: '/upgrade/fusaka',
+    Glamsterdam: '/upgrade/glamsterdam',
+    Hegotá: '/upgrade/hegota',
+    BPO1: '/upgrade/bpo-1',
+    BPO2: '/upgrade/bpo-2',
+    BPO3: '/upgrade/bpo-3',
   };
 
   if (directMap[upgrade]) return directMap[upgrade];
