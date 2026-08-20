@@ -244,15 +244,6 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     activationDate: '2021-08-05',
     activationBlock: 12965000,
   },
-  'bpo-3': {
-    slug: 'bpo-3',
-    name: 'BPO3',
-    status: 'Upcoming',
-    tagline: 'Blob Parameter Only 3: Incremental blob throughput increase.',
-    statusNote: 'Planned parameter-only fork following BPO2, adjusting blob target and max limits.',
-    description: 'BPO3 is a Blob-Parameter-Only network upgrade under EIP-7892, adjusting blob target and max limits.',
-    executionName: 'BPO3',
-  },
   'bpo-2': {
     slug: 'bpo-2',
     name: 'BPO2',

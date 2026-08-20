@@ -41,7 +41,7 @@ const UPGRADE_CHRONOLOGY = [
   'frontier', 'homestead', 'dao-fork', 'tangerine-whistle', 'spurious-dragon',
   'byzantium', 'constantinople', 'petersburg', 'istanbul', 'muir-glacier', 'berlin', 'london',
   'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'pectra', 'prague',
-  'fusaka', 'bpo-1', 'bpo-2', 'bpo-3', 'glamsterdam', 'hegota',
+  'fusaka', 'bpo-1', 'bpo-2', 'glamsterdam', 'hegota',
 ];
 
 const upgradeRank = (slug: string) => {
@@ -281,28 +281,32 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       'Sr. No.',
       'EIP Number',
       'Title',
-      'Category',
       'Type',
+      'Category',
       'Status',
       'Stage',
       'Layer',
       'Upgrade Name',
-      'Upgrade Slug',
       'Is Headliner',
     ];
-    const rows = filteredEips.map((e, index) => [
-      index + 1,
-      e.eip_number,
-      `"${(e.title || '').replace(/"/g, '""')}"`,
-      e.category || '',
-      e.type || '',
-      e.status || '',
-      e.bucket || '',
-      e.layer || '',
-      `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
-      e.upgrade_slug || '',
-      e.is_headliner ? 'Yes' : 'No',
-    ]);
+    const rows = filteredEips.map((e, index) => {
+      const typeVal = e.type || '';
+      const categoryVal = (e.category && e.category.trim()) ? e.category : typeVal;
+      const stageVal = stageAbbreviation(e.bucket as UpgradeBucket) || e.bucket || '';
+
+      return [
+        index + 1,
+        e.eip_number,
+        `"${(e.title || '').replace(/"/g, '""')}"`,
+        `"${typeVal.replace(/"/g, '""')}"`,
+        `"${categoryVal.replace(/"/g, '""')}"`,
+        e.status || '',
+        stageVal,
+        e.layer || '',
+        `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
+        e.is_headliner ? 'Yes' : 'No',
+      ];
+    });
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });

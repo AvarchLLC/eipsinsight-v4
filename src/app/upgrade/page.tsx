@@ -203,7 +203,7 @@ export default async function UpgradeIndexPage() {
           sectionId="network-upgrades"
           description="The last shipped fork, the one being built now, and what's next, showing where each stands today."
         />
-        <UpgradeTimelineStrip liveCount={2} />
+        <UpgradeTimelineStrip liveCount={4} />
       </section>
 
       {/* Timeline View — schedule preview */}
