@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
+import { AIDisclaimerBox } from '@/components/ai-disclaimer-box';
 
 /**
  * The default app chrome: sidebar + top navbar + footer. Extracted verbatim
@@ -24,6 +25,7 @@ export function MainAppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <GlobalPageFeedback />
+          <AIDisclaimerBox />
           <Footer />
         </div>
       </SidebarInset>
