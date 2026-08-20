@@ -248,6 +248,8 @@ export const pairedUpgradeNames: Record<string, string> = {
   "2025-05-07": "Pectra",
   "2024-03-13": "Dencun",
   "2023-04-12": "Shapella",
+  "2022-09-15": "Bellatrix/Paris (The Merge)",
+  "2022-09-06": "Bellatrix (The Merge)",
 };
 
 export const rawData: UpgradeData[] = [

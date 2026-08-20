@@ -13,14 +13,33 @@ import { PhaseBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge
  */
 export function UpgradeTimelineStrip({
   currentSlug,
-  liveCount = 3,
+  liveCount = 4,
 }: {
   currentSlug?: string;
   liveCount?: number;
 }) {
-  const live = getLiveUpgrades().slice(0, liveCount).reverse();
-  const inProgress = getInProgressUpgrades();
-  const entries = [...live, ...inProgress];
+  const archiveEntry = {
+    slug: 'archive',
+    name: 'Previous Upgrades',
+    href: '/upgrade/archive',
+    status: 'Archive' as const,
+    tagline: 'Frontier (2015) through Dencun (2024), including The Merge, Shapella, London, and early forks.',
+    activationDate: '2015–2024',
+    isArchive: true,
+  };
+
+  const live = getLiveUpgrades()
+    .slice(0, liveCount)
+    .reverse()
+    .map((e) => ({ ...e, href: `/upgrade/${e.slug}`, isArchive: false }));
+
+  const inProgress = getInProgressUpgrades().map((e) => ({
+    ...e,
+    href: `/upgrade/${e.slug}`,
+    isArchive: false,
+  }));
+
+  const entries = [archiveEntry, ...live, ...inProgress];
   const today = new Date().toISOString().slice(0, 10);
 
   return (
@@ -29,14 +48,13 @@ export function UpgradeTimelineStrip({
         {entries.map((entry, index) => {
           const isCurrent = entry.slug === currentSlug;
           const previous = entries[index - 1];
-          const showHereMarker =
-            previous?.status === 'Live' && entry.status !== 'Live';
-          const phase = entry.status !== 'Live' ? getCurrentPhase(entry.slug, today) : null;
-          // The connector into this node is "live" history while the node to its
-          // left has already shipped; everything past the marker is still ahead.
-          const liveConnector = previous?.status === 'Live';
-          const headliner = entry.headliners?.[0];
-          const headlinerCount = entry.headliners?.length ?? 0;
+          const isPreviousLive = previous?.status === 'Live' || previous?.status === 'Archive';
+          const isEntryLive = entry.status === 'Live' || entry.status === 'Archive';
+          const showHereMarker = isPreviousLive && !isEntryLive;
+          const phase = !isEntryLive ? getCurrentPhase(entry.slug, today) : null;
+          const liveConnector = isPreviousLive;
+          const headliner = (entry as any).headliners?.[0];
+          const headlinerCount = (entry as any).headliners?.length ?? 0;
 
           return (
             <div key={entry.slug} className="flex items-stretch">
@@ -67,7 +85,7 @@ export function UpgradeTimelineStrip({
                 </div>
               )}
               <Link
-                href={`/upgrade/${entry.slug}`}
+                href={entry.href}
                 className={cn(
                   'group/card flex w-52 flex-col gap-2 rounded-xl border px-4 py-3 transition-all',
                   isCurrent
@@ -87,10 +105,14 @@ export function UpgradeTimelineStrip({
                   <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/40 transition-colors group-hover/card:text-primary" />
                 </div>
                 <span className="flex flex-wrap items-center gap-1.5">
-                  {phase ? (
+                  {entry.isArchive ? (
+                    <span className="inline-flex items-center rounded-full border border-indigo-500/30 bg-indigo-500/15 px-2 py-0.5 text-[10px] font-medium text-indigo-700 dark:text-indigo-300">
+                      Historical (16 Forks)
+                    </span>
+                  ) : phase ? (
                     <PhaseBadge phaseId={phase.id} label={phase.label} className="text-[10px]" />
                   ) : (
-                    <UpgradeStatusBadge status={entry.status} className="text-[10px]" />
+                    <UpgradeStatusBadge status={entry.status as any} className="text-[10px]" />
                   )}
                   {entry.activationDate ? (
                     <span className="text-[10px] text-muted-foreground">

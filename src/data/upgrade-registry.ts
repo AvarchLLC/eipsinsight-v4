@@ -224,7 +224,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
   },
   paris: {
     slug: 'paris',
-    name: 'The Merge',
+    name: 'Bellatrix/Paris (The Merge)',
     status: 'Live',
     tagline: 'Proof-of-Work to Proof-of-Stake.',
     description:
@@ -232,6 +232,17 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     activationDate: '2022-09-15',
     activationBlock: 15537394,
     executionName: 'Paris',
+    consensusName: 'Bellatrix',
+  },
+  bellatrix: {
+    slug: 'bellatrix',
+    name: 'Bellatrix (The Merge - CL)',
+    status: 'Live',
+    tagline: 'Consensus layer upgrade preparing beacon chain validators for The Merge.',
+    description:
+      'Bellatrix activated on the consensus layer at epoch 144896 to prepare beacon chain nodes for the Terminal Total Difficulty (TTD) transition.',
+    activationDate: '2022-09-06',
+    forkEpoch: 144896,
     consensusName: 'Bellatrix',
   },
   london: {
@@ -243,15 +254,6 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
       "London fundamentally reformed Ethereum's fee market with EIP-1559, introducing dynamic base fees and a burn mechanism. It revolutionized how transaction fees work, improved user experience, and began Ethereum's deflationary phase.",
     activationDate: '2021-08-05',
     activationBlock: 12965000,
-  },
-  'bpo-3': {
-    slug: 'bpo-3',
-    name: 'BPO3',
-    status: 'Upcoming',
-    tagline: 'Blob Parameter Only 3: Incremental blob throughput increase.',
-    statusNote: 'Planned parameter-only fork following BPO2, adjusting blob target and max limits.',
-    description: 'BPO3 is a Blob-Parameter-Only network upgrade under EIP-7892, adjusting blob target and max limits.',
-    executionName: 'BPO3',
   },
   'bpo-2': {
     slug: 'bpo-2',

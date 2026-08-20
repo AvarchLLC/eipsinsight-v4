@@ -41,7 +41,7 @@ const UPGRADE_CHRONOLOGY = [
   'frontier', 'homestead', 'dao-fork', 'tangerine-whistle', 'spurious-dragon',
   'byzantium', 'constantinople', 'petersburg', 'istanbul', 'muir-glacier', 'berlin', 'london',
   'arrow-glacier', 'gray-glacier', 'paris', 'shanghai', 'cancun', 'pectra', 'prague',
-  'fusaka', 'bpo-1', 'bpo-2', 'bpo-3', 'glamsterdam', 'hegota',
+  'fusaka', 'bpo-1', 'bpo-2', 'glamsterdam', 'hegota',
 ];
 
 const upgradeRank = (slug: string) => {
@@ -281,28 +281,35 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
       'Sr. No.',
       'EIP Number',
       'Title',
-      'Category',
       'Type',
+      'Category',
       'Status',
       'Stage',
       'Layer',
       'Upgrade Name',
-      'Upgrade Slug',
+      'Upgrade Mainnet Date',
       'Is Headliner',
     ];
-    const rows = filteredEips.map((e, index) => [
-      index + 1,
-      e.eip_number,
-      `"${(e.title || '').replace(/"/g, '""')}"`,
-      e.category || '',
-      e.type || '',
-      e.status || '',
-      e.bucket || '',
-      e.layer || '',
-      `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
-      e.upgrade_slug || '',
-      e.is_headliner ? 'Yes' : 'No',
-    ]);
+    const rows = filteredEips.map((e, index) => {
+      const typeVal = e.type || '';
+      const categoryVal = (e.category && e.category.trim()) ? e.category : typeVal;
+      const stageVal = stageAbbreviation(e.bucket as UpgradeBucket) || e.bucket || '';
+      const mainnetDate = UPGRADE_DATES[e.upgrade_slug] ?? 'Upcoming';
+
+      return [
+        index + 1,
+        e.eip_number,
+        `"${(e.title || '').replace(/"/g, '""')}"`,
+        `"${typeVal.replace(/"/g, '""')}"`,
+        `"${categoryVal.replace(/"/g, '""')}"`,
+        e.status || '',
+        stageVal,
+        e.layer || '',
+        `"${(e.upgrade_name || '').replace(/"/g, '""')}"`,
+        mainnetDate,
+        e.is_headliner ? 'Yes' : 'No',
+      ];
+    });
 
     const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -609,41 +616,55 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
 
           {/* Quick Stats Badges */}
           <div className="flex flex-wrap items-center gap-2 text-xs">
-            <button
-              type="button"
-              onClick={() => handleCategoryToggle('Core')}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
-                selectedCategories.includes('Core')
-                  ? 'border-blue-500/60 bg-blue-500/25 text-blue-700 dark:text-blue-200 font-bold'
-                  : 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20'
-              )}
-              title="Filter by Core category"
-            >
-              <span className="font-bold text-foreground">{coreCount}</span> Core
-            </button>
+            {/* Category breakdown group + Total */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => handleCategoryToggle('Core')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
+                  selectedCategories.includes('Core')
+                    ? 'border-blue-500/60 bg-blue-500/25 text-blue-700 dark:text-blue-200 font-bold'
+                    : 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 hover:bg-blue-500/20'
+                )}
+                title="Filter by Core category"
+              >
+                <span className="font-bold text-foreground">{coreCount}</span> Core
+              </button>
 
-            <button
-              type="button"
-              onClick={() => handleCategoryToggle('Meta')}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
-                selectedCategories.includes('Meta')
-                  ? 'border-emerald-500/60 bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 font-bold'
-                  : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
-              )}
-              title="Filter by Meta category"
-            >
-              <span className="font-bold text-foreground">{metaCount}</span> Meta
-            </button>
+              <button
+                type="button"
+                onClick={() => handleCategoryToggle('Meta')}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
+                  selectedCategories.includes('Meta')
+                    ? 'border-emerald-500/60 bg-emerald-500/25 text-emerald-700 dark:text-emerald-200 font-bold'
+                    : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20'
+                )}
+                title="Filter by Meta category"
+              >
+                <span className="font-bold text-foreground">{metaCount}</span> Meta
+              </button>
 
-            <span
-              className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 font-medium text-purple-700 dark:text-purple-300"
-              title="Networking, Interface, ERC & other categories"
-            >
-              <span className="font-bold text-foreground">{otherCount}</span> Other
-            </span>
+              <span
+                className="inline-flex items-center gap-1.5 rounded-full border border-purple-500/30 bg-purple-500/10 px-3 py-1 font-medium text-purple-700 dark:text-purple-300"
+                title="Networking, Interface, ERC & other categories"
+              >
+                <span className="font-bold text-foreground">{otherCount}</span> Other
+              </span>
 
+              <span className="rounded-full border border-border bg-background/80 px-3 py-1 font-medium text-muted-foreground shadow-2xs">
+                <span className="font-semibold text-foreground">{filteredEips.length}</span> Total
+                {filteredEips.length !== initialEips.length && (
+                  <span className="text-muted-foreground/70"> / {initialEips.length}</span>
+                )}
+              </span>
+            </div>
+
+            {/* Pipeline separator */}
+            <div className="h-4 w-px bg-border/80 mx-0.5 hidden sm:block" />
+
+            {/* Feature Filter: Headliners */}
             {headlinerCount > 0 && (
               <button
                 type="button"
@@ -651,7 +672,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                 className={cn(
                   'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-medium transition-all cursor-pointer',
                   headlinerFilter === 'headliner'
-                    ? 'border-amber-500/60 bg-amber-500/25 text-amber-700 dark:text-amber-200 font-bold'
+                    ? 'border-amber-500/60 bg-amber-500/25 text-amber-700 dark:text-amber-200 font-bold shadow-xs'
                     : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20'
                 )}
                 title="Filter by Upgrade Headliners"
@@ -660,13 +681,6 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                 <span className="font-bold text-foreground">{headlinerCount}</span> Headliners
               </button>
             )}
-
-            <span className="rounded-full border border-border bg-background/80 px-3 py-1 font-medium text-muted-foreground">
-              <span className="font-semibold text-foreground">{filteredEips.length}</span> Total
-              {filteredEips.length !== initialEips.length && (
-                <span className="text-muted-foreground/70"> / {initialEips.length}</span>
-              )}
-            </span>
 
             <button
               type="button"

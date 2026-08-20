@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
 
-type UpgradeType = 'Hard Fork' | 'Merge';
+type UpgradeType = 'Hard Fork' | 'Merge' | 'Merge (CL)' | 'Merge (EL)';
 type LayerType = 'execution' | 'consensus' | 'beacon_genesis';
 
 interface HistoricalUpgrade {
@@ -222,16 +222,30 @@ const previousUpgrades: HistoricalUpgrade[] = [
     relatedLinks: [{ title: 'Gray Glacier Fork', url: 'https://eips.ethereum.org/EIPS/eip-5133' }],
   },
   {
-    name: 'Paris/Bellatrix (The Merge)',
+    name: 'Bellatrix (The Merge - CL)',
+    slug: 'bellatrix',
+    date: '2022-09-06',
+    eipCount: 1,
+    type: 'Merge (CL)',
+    layer: 'consensus',
+    metaEip: 'EIP-7568',
+    summary: 'Consensus layer upgrade preparing beacon chain validators for The Merge.',
+    description:
+      'Bellatrix activated on the consensus layer at epoch 144896 to prepare beacon chain nodes for the Terminal Total Difficulty (TTD) transition.',
+    impact: 'Set beacon chain parameters for execution-layer transition.',
+    relatedLinks: [{ title: 'Bellatrix Specs', url: 'https://github.com/ethereum/consensus-specs/tree/master/specs/bellatrix' }],
+  },
+  {
+    name: 'Bellatrix/Paris (The Merge)',
     slug: 'paris',
     date: '2022-09-15',
     eipCount: 2,
-    type: 'Merge',
+    type: 'Merge (EL)',
     layer: 'execution',
     metaEip: 'EIP-7568',
-    summary: 'Transition from Proof-of-Work to Proof-of-Stake consensus.',
+    summary: 'Execution layer transition from Proof-of-Work to Proof-of-Stake consensus.',
     description:
-      "The Merge was Ethereum's highest-stakes upgrade, transitioning consensus from PoW to PoS, reducing energy consumption by 99.95% and establishing validator-based security.",
+      "Paris was the execution layer upgrade for The Merge, triggering when Terminal Total Difficulty (TTD 58750000000000000000000) was hit on block 15537394, turning off Proof-of-Work.",
     impact: 'Reduced energy by 99.95%; shifted to Proof-of-Stake; enabled staking.',
     relatedLinks: [{ title: 'The Merge Explained', url: 'https://etherworld.co/tag/the-merge/' }],
   },
