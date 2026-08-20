@@ -224,7 +224,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
   },
   paris: {
     slug: 'paris',
-    name: 'The Merge',
+    name: 'Bellatrix/Paris (The Merge)',
     status: 'Live',
     tagline: 'Proof-of-Work to Proof-of-Stake.',
     description:
@@ -232,6 +232,17 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     activationDate: '2022-09-15',
     activationBlock: 15537394,
     executionName: 'Paris',
+    consensusName: 'Bellatrix',
+  },
+  bellatrix: {
+    slug: 'bellatrix',
+    name: 'Bellatrix (The Merge - CL)',
+    status: 'Live',
+    tagline: 'Consensus layer upgrade preparing beacon chain validators for The Merge.',
+    description:
+      'Bellatrix activated on the consensus layer at epoch 144896 to prepare beacon chain nodes for the Terminal Total Difficulty (TTD) transition.',
+    activationDate: '2022-09-06',
+    forkEpoch: 144896,
     consensusName: 'Bellatrix',
   },
   london: {

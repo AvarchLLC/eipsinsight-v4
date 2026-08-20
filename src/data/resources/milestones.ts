@@ -306,7 +306,7 @@ export const MILESTONES_DATA: Milestone[] = [
   // 2022
   {
     id: 'the-merge-2022',
-    title: 'The Merge (Paris / Bellatrix)',
+    title: 'The Merge (Bellatrix / Paris)',
     date: 'September 15, 2022',
     year: '2022',
     category: 'upgrades',
