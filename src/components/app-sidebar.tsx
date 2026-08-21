@@ -284,6 +284,13 @@ const SECTION_LABEL_OVERRIDES: Record<string, string> = {
   "included-authors": "Included EIP Authors",
   "network-upgrades-chart": "Distribution Timeline",
   "upgrade-eip-details": "EIP Details",
+  "proposal-overview": "Overview",
+  "proposal-timeline": "Lifecycle & Upgrade Timeline",
+  "proposal-text": "Specification",
+  "enterprise-brief": "Enterprise Assessment",
+  "proposal-subscription": "Subscriptions",
+  "lucid-mev": "MEV Protection Metrics",
+  "lucid-meetings": "Working Group Decisions",
 };
 
 /**
@@ -632,9 +639,20 @@ function AppSidebarContent() {
       const parsed = new URL(href, "http://localhost");
       const basePath = parsed.pathname;
       if (basePath === "/") return pathname === "/";
+      if (basePath === "/standards") {
+        if (
+          pathname === "/standards" ||
+          pathname.startsWith("/standards/") ||
+          pathname.startsWith("/eip/") ||
+          pathname.startsWith("/erc/") ||
+          pathname.startsWith("/rip/")
+        ) {
+          return true;
+        }
+      }
       return pathname === basePath || pathname.startsWith(basePath + "/");
     },
-    [pathname, hash]
+    [pathname]
   );
 
   /**
@@ -657,6 +675,19 @@ function AppSidebarContent() {
     const hasNested = Boolean(subItem.items?.length);
     const subtreeKey = `${pathname}::${keyPath}`;
     const nestedOpen = openSubTrees[subtreeKey] || isActive;
+
+    const proposalMatch = pathname.match(/^\/(eip|erc|rip|eips|ercs|rips)\/([^\/]+)/i);
+    let activeProposalTitle: string | null = null;
+    if (proposalMatch) {
+      const rawRepo = proposalMatch[1].toLowerCase().replace(/s$/, '');
+      const repoUpper = rawRepo === 'eip' ? 'EIP' : rawRepo === 'erc' ? 'ERC' : 'RIP';
+      activeProposalTitle = `${repoUpper}-${proposalMatch[2]}`;
+    }
+
+    const isCurrentProposalItem =
+      Boolean(activeProposalTitle) &&
+      subItem.title === activeProposalTitle &&
+      subItem.href === pathname;
 
     if (hasNested) {
       return (
@@ -722,6 +753,23 @@ function AppSidebarContent() {
             <span className="text-xs">{subItem.title}</span>
           </Link>
         </SidebarMenuSubButton>
+
+        {/* ON THIS PAGE TOC nested directly under the current proposal item */}
+        {isCurrentProposalItem && pageSectionItems.length > 0 && (
+          <div className="mt-2 mb-1.5 rounded-lg border border-primary/20 bg-primary/[0.04] p-2">
+            <div className="mb-1.5 flex items-center gap-1.5 px-1">
+              <ListTree className="h-3.5 w-3.5 text-primary" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-primary/90">
+                On this page
+              </span>
+            </div>
+            <ul className="relative ml-1 space-y-0.5 border-l border-border/60">
+              {pageSectionItems.map((pageSub, idx) =>
+                renderPageTocItem(pageSub, `${keyPath}.page.${idx}`)
+              )}
+            </ul>
+          </div>
+        )}
       </SidebarMenuSubItem>
     );
   };
@@ -744,6 +792,9 @@ function AppSidebarContent() {
             const samePath = pathname === url.pathname;
             if (sectionId && samePath) {
               e.preventDefault();
+              if (sectionId === "enterprise-brief") {
+                window.dispatchEvent(new Event("enable-enterprise"));
+              }
               const el = document.getElementById(sectionId);
               if (el) {
                 el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -779,7 +830,41 @@ function AppSidebarContent() {
   const renderItem = (item: SidebarItem) => {
     const isActive = isParentPathActive(item.href);
     const contextualSectionItems: SidebarSubItem[] = isActive ? pageSectionItems : [];
-    const staticItems = item.items ?? [];
+
+    // Proposal title helper for /eip/7702, /erc/20, /rip/7212 etc.
+    const proposalMatch = pathname.match(/^\/(eip|erc|rip|eips|ercs|rips)\/([^\/]+)/i);
+    let activeProposalTitle: string | null = null;
+    let activeRepoType: 'eip' | 'erc' | 'rip' | null = null;
+    if (proposalMatch) {
+      const rawRepo = proposalMatch[1].toLowerCase().replace(/s$/, '');
+      activeRepoType = rawRepo as 'eip' | 'erc' | 'rip';
+      const repoUpper = rawRepo === 'eip' ? 'EIP' : rawRepo === 'erc' ? 'ERC' : 'RIP';
+      activeProposalTitle = `${repoUpper}-${proposalMatch[2]}`;
+    }
+
+    let staticItems = item.items ? [...item.items] : [];
+    if (item.title === "Standards" && activeProposalTitle && activeRepoType) {
+      staticItems = staticItems.map((sub) => {
+        const titleLower = sub.title.toLowerCase();
+        if (
+          (activeRepoType === 'eip' && titleLower === 'eips') ||
+          (activeRepoType === 'erc' && titleLower === 'ercs') ||
+          (activeRepoType === 'rip' && titleLower === 'rips')
+        ) {
+          return {
+            ...sub,
+            items: [
+              {
+                title: activeProposalTitle!,
+                href: pathname,
+              },
+            ],
+          };
+        }
+        return sub;
+      });
+    }
+
     const hasStaticItems = staticItems.length > 0;
     const hasPageSections = contextualSectionItems.length > 0;
     const hasSubItems = hasStaticItems || hasPageSections;
@@ -854,9 +939,8 @@ function AppSidebarContent() {
                 <SidebarMenuSub className="ml-0 border-l-2 border-border/80 pl-6 pt-2">
                   {staticItems.map((sub, idx) => renderSubItem(sub, `${item.title}.${idx}`))}
 
-                  {/* "On this page" — a distinct live TOC, deliberately styled
-                      unlike the nav links above it so people notice it. */}
-                  {hasPageSections && (
+                  {/* "On this page" — for non-proposal pages (on proposal pages it is nested under the proposal item) */}
+                  {hasPageSections && !activeProposalTitle && (
                     <li className="mt-2.5 list-none">
                       <div className="rounded-lg border border-primary/15 bg-primary/[0.04] px-2 py-2">
                         <div className="mb-1.5 flex items-center gap-1.5 px-1">
