@@ -236,7 +236,7 @@ const previousUpgrades: HistoricalUpgrade[] = [
     relatedLinks: [{ title: 'Bellatrix Specs', url: 'https://github.com/ethereum/consensus-specs/tree/master/specs/bellatrix' }],
   },
   {
-    name: 'Bellatrix/Paris (The Merge)',
+    name: 'Paris (The Merge)',
     slug: 'paris',
     date: '2022-09-15',
     eipCount: 2,

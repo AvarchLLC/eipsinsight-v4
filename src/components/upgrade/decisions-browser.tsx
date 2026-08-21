@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search, FileText } from 'lucide-react';
+import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { EipLinkedText, DecisionTypeMarker, type KeyDecision } from '@/components/upgrade/key-decisions';
@@ -160,14 +160,30 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
     <div className="space-y-5">
       {/* Filters */}
       <div className="space-y-2.5">
-        <div className="relative w-full sm:max-w-sm">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => changeSearch(e.target.value)}
-            placeholder="Search decisions, EIP #, or call…"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-          />
+        <div className="relative w-full sm:max-w-md">
+          <div className="relative flex items-center">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4.5 w-4.5 -translate-y-1/2 text-primary transition-colors" />
+            <input
+              value={search}
+              onChange={(e) => changeSearch(e.target.value)}
+              placeholder="Search decisions, EIP #, or call…"
+              className="h-10.5 w-full rounded-xl border border-primary/30 bg-background/90 pl-10 pr-24 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-all hover:border-primary/50 focus:border-primary focus:ring-2 focus:ring-primary/25 shadow-xs"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => changeSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded-lg border border-border/80 bg-muted/60 p-1 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                title="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+                Search
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="mr-1 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Series</span>

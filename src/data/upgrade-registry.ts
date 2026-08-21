@@ -224,7 +224,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
   },
   paris: {
     slug: 'paris',
-    name: 'Bellatrix/Paris (The Merge)',
+    name: 'Paris (The Merge)',
     status: 'Live',
     tagline: 'Proof-of-Work to Proof-of-Stake.',
     description:
