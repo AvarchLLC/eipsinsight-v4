@@ -163,7 +163,6 @@ const sidebarSections: SidebarSection[] = [
           { title: "ACD Calls", href: "/calls?series=acd#recent" },
           { title: "Breakout Calls", href: "/calls?series=breakouts#recent" },
           { title: "Decisions", href: "/decisions" },
-          { title: "Lucid · Mempool", href: "/lucid" },
         ],
       },
       {
@@ -313,11 +312,10 @@ function getActiveItemTitle(pathname: string): string | null {
   // Analytics + Insights are one destination now.
   if (pathname.startsWith("/analytics") || pathname.startsWith("/insights"))
     return "Analytics & Insights";
-  // Protocol Calls covers calls, decisions and the Lucid mempool page.
+  // Protocol Calls covers calls and decisions.
   if (
     pathname.startsWith("/calls") ||
-    pathname.startsWith("/decisions") ||
-    pathname.startsWith("/lucid")
+    pathname.startsWith("/decisions")
   )
     return "Protocol Calls";
   if (pathname === "/board" || pathname.startsWith("/board")) return "Open PR Board";
