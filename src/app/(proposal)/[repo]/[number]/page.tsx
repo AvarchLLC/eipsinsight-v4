@@ -1080,6 +1080,29 @@ export default function ProposalDetailPage() {
               </motion.div>
             </section>
 
+            {/* FAQ (curated Q&A) */}
+            {curation?.faq && curation.faq.length > 0 && (
+              <section
+                id="faq"
+                data-sidebar-label="FAQ"
+                className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-6"
+              >
+                <h2 className="mb-1 text-lg font-semibold tracking-tight text-foreground">Frequently Asked Questions</h2>
+                <p className="mb-4 text-xs text-muted-foreground">Curated from the proposal spec.</p>
+                <div className="divide-y divide-border/70">
+                  {curation.faq.map((item, idx) => (
+                    <details key={idx} className="group py-2">
+                      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 py-1.5 text-sm font-medium text-foreground">
+                        <span>{item.question}</span>
+                        <span className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180">▾</span>
+                      </summary>
+                      <p className="pb-2 pr-6 text-sm leading-relaxed text-muted-foreground">{item.answer}</p>
+                    </details>
+                  ))}
+                </div>
+              </section>
+            )}
+
             {/* Resources */}
             <motion.section
               id="resources"

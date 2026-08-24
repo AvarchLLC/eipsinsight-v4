@@ -9,7 +9,9 @@
 
 import { STAKEHOLDER_KEYS } from '@/lib/stakeholders';
 
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+// llama-3.3-70b-versatile was decommissioned by Groq; gpt-oss-120b is a current,
+// broadly-available model that supports JSON response_format. Override via GROQ_MODEL.
+const GROQ_MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
 const ANTHROPIC_MODEL = 'claude-sonnet-5';
 
 /** Actors that mark a curation row as machine-written (safe to overwrite). */
@@ -125,7 +127,7 @@ async function callGemini(system: string, user: string, modelOverride?: string):
   // Retry on rate limits, matching callGroq. Preview/thinking models like
   // gemini-3-flash-preview have tight RPM limits, so without this a burst of page
   // views (or React's dev double-render) throws 429 and the caller sees a failure.
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
     const response = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -133,9 +135,12 @@ async function callGemini(system: string, user: string, modelOverride?: string):
     });
 
     if (response.status === 429 || response.status === 503) {
+      // Last attempt: don't sleep just to give up — let callLLM fall through to
+      // the next provider immediately.
+      if (attempt === 2) break;
       const retryAfter = Number(response.headers.get('retry-after'));
-      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 8_000;
-      await sleep(Math.min(waitMs + 500, 30_000));
+      const waitMs = Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter * 1000 : 5_000;
+      await sleep(Math.min(waitMs + 500, 15_000));
       continue;
     }
     if (!response.ok) {
@@ -157,11 +162,33 @@ async function callGemini(system: string, user: string, modelOverride?: string):
   throw new Error('Gemini 429: rate limit not cleared after retries');
 }
 
-/** Prefer Gemini when configured, then Anthropic, else Groq. */
+/**
+ * Prefer Gemini when configured, then Anthropic, then Groq — but fall THROUGH to
+ * the next provider when one fails (e.g. Gemini 429 that never clears). Without
+ * this, a rate-limited Gemini throws and the caller 503s even when another
+ * provider is available.
+ */
 export async function callLLM(system: string, user: string, modelOverride?: string): Promise<string | null> {
-  if (process.env.GEMINI_API_KEY) return callGemini(system, user, modelOverride);
-  if (process.env.ANTHROPIC_API_KEY) return callAnthropic(system, user);
-  return callGroq(system, user, modelOverride);
+  const providers: Array<[string, () => Promise<string | null>]> = [];
+  if (process.env.GEMINI_API_KEY) providers.push(['gemini', () => callGemini(system, user, modelOverride)]);
+  if (process.env.ANTHROPIC_API_KEY) providers.push(['anthropic', () => callAnthropic(system, user)]);
+  if (process.env.GROQ_API_KEY) providers.push(['groq', () => callGroq(system, user, modelOverride)]);
+  // Preserve the prior default: with no keys set, still attempt Groq (it checks
+  // its own key and returns null if unset).
+  if (providers.length === 0) return callGroq(system, user, modelOverride);
+
+  let lastErr: unknown;
+  for (const [name, run] of providers) {
+    try {
+      const out = await run();
+      if (out) return out;
+    } catch (err) {
+      lastErr = err;
+      console.warn(`callLLM: ${name} failed, falling back — ${(err as Error).message}`);
+    }
+  }
+  if (lastErr) throw lastErr;
+  return null;
 }
 
 export function extractJson(text: string): string | null {
@@ -271,6 +298,60 @@ export async function generateEipCuration(
   };
 }
 
+// ─── FAQ generation ──────────────────────────────────────────────────────────
+// A short, grounded Q&A per EIP, stored in eip_curations.faq as [{question, answer}].
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+const FAQ_SYSTEM_PROMPT = `You write a short FAQ about one Ethereum Improvement Proposal (EIP/ERC/RIP) for a developer-literate but non-expert reader.
+Given the real text of one proposal, produce the questions a curious reader would actually ask.
+Rules:
+- Base every answer ONLY on the proposal text. Never invent facts, numbers, dates, or claims.
+- 4 to 6 questions. Order from most fundamental ("what does this do / why") to more specific (mechanics, impact, compatibility).
+- Questions are natural and specific to THIS proposal, not generic ("What is an EIP?").
+- Answers are 1-3 sentences, plain language, concrete. No fluff, no marketing.
+Return ONLY a JSON array: [{"question":"...","answer":"..."}, ...]`;
+
+function buildFaqUserPrompt(eipNumber: number, title: string, body: string): string {
+  const clipped = body.length > 12000 ? body.slice(0, 12000) : body;
+  return `EIP-${eipNumber}: ${title}\n\n--- SPEC TEXT ---\n${clipped}\n--- END ---\n\nReturn the FAQ JSON array now.`;
+}
+
+export async function generateEipFaq(eipNumber: number): Promise<FaqItem[] | null> {
+  const spec = await fetchEipSpec(eipNumber);
+  if (!spec) return null;
+
+  const raw = await callLLM(FAQ_SYSTEM_PROMPT, buildFaqUserPrompt(eipNumber, spec.title, spec.body));
+  if (!raw) return null;
+  // The FAQ output is a JSON array; extract the bracketed span (extractJson only
+  // handles objects).
+  const start = raw.indexOf('[');
+  const end = raw.lastIndexOf(']');
+  if (start === -1 || end === -1 || end <= start) return null;
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw.slice(start, end + 1));
+  } catch {
+    return null;
+  }
+  if (!Array.isArray(parsed)) return null;
+
+  const items = parsed
+    .map((item) => {
+      const q = String((item as FaqItem)?.question ?? '').trim();
+      const a = String((item as FaqItem)?.answer ?? '').trim();
+      return q && a ? { question: q, answer: a } : null;
+    })
+    .filter((x): x is FaqItem => x !== null)
+    .slice(0, 6);
+
+  return items.length > 0 ? items : null;
+}
+
 // ─── Enterprise / institutional impact ───────────────────────────────────────
 // A dedicated, finance-audience curation: for each institution type, a curated
 // impact level + a plain, specific reason. Non-impacted EIPs say so outright.
@@ -363,11 +444,11 @@ export async function generateEnterpriseImpact(eipNumber: number): Promise<Enter
   const spec = await fetchEipSpec(eipNumber);
   if (!spec) return null;
 
-  // The enterprise report is a large output. On GROQ's free tier the 70B model's
-  // token budget is easily exhausted, so use the high-throughput 8B model when
-  // GROQ is the active provider. Gemini/Anthropic use their own defaults.
+  // The enterprise report is a large output. When GROQ is the active provider,
+  // use its high-throughput small model. Gemini/Anthropic use their own defaults.
+  // (llama-3.1-8b-instant was decommissioned; gpt-oss-20b is the current equivalent.)
   const groqActive = !process.env.GEMINI_API_KEY && !process.env.ANTHROPIC_API_KEY;
-  const groqModel = groqActive ? process.env.ENTERPRISE_GROQ_MODEL || 'llama-3.1-8b-instant' : undefined;
+  const groqModel = groqActive ? process.env.ENTERPRISE_GROQ_MODEL || 'openai/gpt-oss-20b' : undefined;
 
   const raw = await callLLM(ENTERPRISE_SYSTEM_PROMPT, buildEnterpriseUserPrompt(eipNumber, spec.title, spec.body), groqModel);
   if (!raw) return null;

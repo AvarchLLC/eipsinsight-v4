@@ -82,6 +82,7 @@ export interface EipCuration {
   tradeoffs?: string[] | null;
   stakeholder_impacts?: Record<string, { description?: string }> | null;
   enterprise_impact?: EnterpriseImpactData | null;
+  faq?: Array<{ question: string; answer: string }> | null;
   headliner_of?: string | null;
   headliner_note?: string | null;
 }
