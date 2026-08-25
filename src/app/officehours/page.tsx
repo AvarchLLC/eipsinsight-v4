@@ -112,14 +112,54 @@ function downloadCsv(name: string, csv: string) {
   URL.revokeObjectURL(url);
 }
 
+/** Read a filter value from the URL query string (client-only). */
+function urlParam(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get(key);
+}
+
 export default function OfficeHoursPage() {
   const today = iso(new Date());
 
-  const [mode, setMode] = useState<"day" | "range">("range");
+  // Defaults must match the server render (no window access here) to avoid a
+  // hydration mismatch: single-day mode on TODAY. The URL is read after mount.
+  const [mode, setMode] = useState<"day" | "range">("day");
   const [day, setDay] = useState(today);
   const [from, setFrom] = useState(addDays(today, -7));
   const [to, setTo] = useState(today);
   const [repo, setRepo] = useState<Repo>("all");
+  const [hydrated, setHydrated] = useState(false);
+
+  // After mount (client only), apply any filters from the URL so links are
+  // shareable. Runs once; then the sync effect below keeps the URL updated.
+  useEffect(() => {
+    const m = urlParam("mode");
+    if (m === "range" || m === "day") setMode(m);
+    const d = urlParam("day");
+    if (d) setDay(d);
+    const f = urlParam("from");
+    if (f) setFrom(f);
+    const t = urlParam("to");
+    if (t) setTo(t);
+    const r = urlParam("repo");
+    if (r && (REPOS as readonly string[]).includes(r)) setRepo(r as Repo);
+    setHydrated(true);
+  }, []);
+
+  // Keep the URL in sync with the active filters (shareable / bookmarkable).
+  useEffect(() => {
+    if (!hydrated) return;
+    const p = new URLSearchParams();
+    p.set("mode", mode);
+    if (mode === "day") p.set("day", day);
+    else {
+      p.set("from", from);
+      p.set("to", to);
+    }
+    if (repo !== "all") p.set("repo", repo);
+    const qs = p.toString();
+    window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
+  }, [hydrated, mode, day, from, to, repo]);
 
   const winFrom = mode === "day" ? day : from;
   const winTo = mode === "day" ? day : to;
