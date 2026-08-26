@@ -2,11 +2,14 @@ import { optionalAuthProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
-async function getRepoIds(repo?: string): Promise<number[] | null> {
-  if (!repo) return null;
+const REPO_TYPE: Record<string, string> = { eips: 'EIPS', ercs: 'ERCS', rips: 'RIPS' };
+
+async function getRepoIds(repo?: string | string[]): Promise<number[] | null> {
+  const list = (Array.isArray(repo) ? repo : repo ? [repo] : []).map((r) => REPO_TYPE[r]).filter(Boolean);
+  if (list.length === 0) return null; // null = all repos
   const rows = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
-    `SELECT id FROM repositories WHERE LOWER(type) = LOWER($1)`,
-    repo === 'eips' ? 'EIPS' : repo === 'ercs' ? 'ERCS' : 'RIPS'
+    `SELECT id FROM repositories WHERE UPPER(type) = ANY($1::text[])`,
+    list
   );
   return rows.map((r) => r.id);
 }
@@ -362,6 +365,7 @@ const repoIds = await getRepoIds(input.repo);
   getOpenPRBoard: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      repos: z.array(z.enum(['eips', 'ercs', 'rips'])).optional(),
       govState: z.union([z.string(), z.array(z.string())]).optional(),
       processType: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
@@ -438,7 +442,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
             AND COALESCE(gs.category, '') != 'Tooling'
         ),
         filtered AS (
@@ -457,7 +461,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
         FROM filtered f
         ORDER BY ${orderColumn} ${orderDirection}, f.pr_number DESC
         LIMIT $5 OFFSET $6
-      `, repo || null, govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null);
+      `, (input.repos && input.repos.length ? input.repos : repo ? [repo] : null), govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null);
 
       const total = results.length > 0 ? Number(results[0].total_count) : 0;
 
@@ -492,11 +496,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
   getOpenPRBoardStats: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      repos: z.array(z.enum(['eips', 'ercs', 'rips'])).optional(),
       govState: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-const { repo, govState, search } = input;
+const { repo, repos, govState, search } = input;
+const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
 
       // Process type counts (filtered by govState + search, NOT by processType)
@@ -523,7 +529,7 @@ const { repo, govState, search } = input;
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
         )
         SELECT process_type, COUNT(*)::bigint AS count
         FROM base
@@ -535,7 +541,7 @@ const { repo, govState, search } = input;
           ))
         GROUP BY process_type
         ORDER BY count DESC
-      `, repo || null, govStates.length ? govStates : null, search || null);
+      `, repoArg, govStates.length ? govStates : null, search || null);
 
       // Governance state counts (NOT filtered by govState—so user sees all state counts)
       const gsResults = await prisma.$queryRawUnsafe<Array<{
@@ -566,7 +572,7 @@ const { repo, govState, search } = input;
         LEFT JOIN pr_governance_state gs
           ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
         WHERE p.state = 'open'
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
           AND ($2::text IS NULL OR (
             p.pr_number::text LIKE '%' || $2 || '%'
             OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
@@ -575,7 +581,7 @@ const { repo, govState, search } = input;
           AND COALESCE(gs.category, '') != 'Tooling'
         GROUP BY state, label
         ORDER BY count DESC
-      `, repo || null, search || null);
+      `, repoArg, search || null);
 
       // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
       const signalResults = await prisma.$queryRawUnsafe<Array<{
@@ -600,7 +606,7 @@ const { repo, govState, search } = input;
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
             AND COALESCE(gs.category, '') != 'Tooling'
         )
         SELECT
@@ -613,7 +619,7 @@ const { repo, govState, search } = input;
             OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
             OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
           ))
-      `, repo || null, govStates.length ? govStates : null, search || null);
+      `, repoArg, govStates.length ? govStates : null, search || null);
 
       return {
         processTypes: ptResults.map(r => ({ type: r.process_type, count: Number(r.count) })),

@@ -416,7 +416,7 @@ const PERSONA_HOME_PLANS: Record<HomePersona, {
       { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Key outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
       { key: 'editor-insights', title: 'Editor Leadership Board', href: '/analytics/editors', cta: 'View leadership board', icon: Trophy, blurb: 'Editorial workload, coverage, and the leadership board.', image: '/quick-access/editor-insights.png' },
       { key: 'eip-analytics', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore analytics', icon: FileText, blurb: 'Proposal activity and lifecycle, Draft to Final.', image: '/quick-access/eip-analytics.png' },
-      { key: 'pr-board', title: 'Open PR Board', href: '/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
+      { key: 'pr-board', title: 'Open PR Board', href: '/officehours/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
       { key: 'monthly-insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: ArrowUpDown, blurb: 'A month-by-month standards & governance recap.', image: '/quick-access/monthly-insights.png' },
     ],
   },
@@ -2719,12 +2719,12 @@ export default function EIPsHomePage() {
             <div>
               <div className="inline-flex items-center gap-2">
                 <Activity className="h-5 w-5 text-blue-400 shrink-0" />
-                <SectionTitleLink href="/board" className={sectionTitleClass}>Board</SectionTitleLink>
+                <SectionTitleLink href="/officehours/board" className={sectionTitleClass}>Board</SectionTitleLink>
                 <CopyLinkButton sectionId="board" tooltipLabel="Copy link" />
               </div>
               <p className={sectionSubtitleClass}>
                 Compact open PR snapshot from the{' '}
-                <Link href="/board" className="text-primary underline-offset-2 hover:underline">
+                <Link href="/officehours/board" className="text-primary underline-offset-2 hover:underline">
                   Editing Board
                 </Link>
                 .
@@ -2886,7 +2886,7 @@ export default function EIPsHomePage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
-              { title: 'Editing Board', href: '/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
+              { title: 'Editing Board', href: '/officehours/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
               { title: 'Timeline', href: '/timeline', blurb: 'Proposal lifecycle flow.', icon: GitBranch },
               { title: 'Dependencies', href: '/dependencies', blurb: 'Inter-proposal links.', icon: Network },
               { title: 'EIP Builder', href: '/eip-builder', blurb: 'Draft with validation.', icon: Code },
@@ -2931,7 +2931,7 @@ export default function EIPsHomePage() {
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {[
               { title: 'Tools Home', href: '/tools', blurb: 'See all available standards tools.', icon: Wrench },
-              { title: 'Editing Board', href: '/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
+              { title: 'Editing Board', href: '/officehours/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
               { title: 'Timeline', href: '/timeline', blurb: 'See proposal lifecycle changes.', icon: GitBranch },
               { title: 'Dependencies', href: '/dependencies', blurb: 'Explore proposal relationships.', icon: Network },
             ].map((tool) => {

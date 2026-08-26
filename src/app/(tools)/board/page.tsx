@@ -1,17 +1,17 @@
 "use client";
 
-import React, { Suspense, useEffect, useMemo, useState } from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import React, { useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams, redirect } from "next/navigation";
 import { client } from "@/lib/orpc";
 import { AgendaPrsPanel } from "./_components/agenda-prs-panel";
+import { AgendaMaker } from "./agenda/page";
 import {
   AlertTriangle,
   ArrowDown,
-  ArrowLeft,
   ArrowUp,
   ArrowUpDown,
   Bell,
-  CalendarClock,
+  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -67,6 +67,12 @@ type StatsData = {
 };
 
 type RepoKey = "" | "eips" | "ercs" | "rips";
+type RepoName = "eips" | "ercs" | "rips";
+const REPO_CHECKS: { key: RepoName; label: string }[] = [
+  { key: "eips", label: "EIPs" },
+  { key: "ercs", label: "ERCs" },
+  { key: "rips", label: "RIPs" },
+];
 type SortBy = "wait" | "pr" | "created";
 type SortDir = "asc" | "desc";
 
@@ -159,24 +165,35 @@ function priorityOf(days: number) {
   return { color: "text-emerald-600 dark:text-emerald-400", Icon: Minus, note: "Recently active" };
 }
 
+// The board now lives under the Office Hours hub. Old /board redirects there.
 export default function BoardPage() {
-  return (
-    <Suspense fallback={null}>
-      <BoardBrowser />
-    </Suspense>
-  );
+  redirect("/officehours/board");
 }
 
-function BoardBrowser() {
+export function BoardBrowser() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
 
   // Filters initialise from the URL, so a shared board link opens exactly as sent.
-  const [repo, setRepo] = useState<RepoKey>(() => {
-    const r = searchParams.get("repo");
-    return r === "eips" || r === "ercs" || r === "rips" ? r : "";
+  // Repos are checkboxes (EIPs + ERCs by default; RIP off).
+  const [repos, setRepos] = useState<Set<RepoName>>(() => {
+    const r = searchParams.get("repos");
+    if (r) {
+      const set = new Set<RepoName>(r.split(",").filter((x): x is RepoName => x === "eips" || x === "ercs" || x === "rips"));
+      if (set.size > 0) return set;
+    }
+    return new Set<RepoName>(["eips", "ercs"]);
   });
+  const toggleRepo = (r: RepoName) => setRepos((prev) => {
+    const next = new Set(prev);
+    if (next.has(r)) { if (next.size > 1) next.delete(r); } else next.add(r);
+    setPage(1);
+    return next;
+  });
+  const reposArr = [...repos];
+  const reposKey = [...repos].sort().join(",");
+  const isDefaultRepos = repos.size === 2 && repos.has("eips") && repos.has("ercs");
   const [selectedGovStates, setSelectedGovStates] = useState<string[]>(() => {
     const s = searchParams.get("status");
     if (s === null) return DEFAULT_GOV_STATES;
@@ -198,9 +215,10 @@ function BoardBrowser() {
     return s === "pr" || s === "created" || s === "wait" ? s : DEFAULT_SORT;
   });
   const [sortDir, setSortDir] = useState<SortDir>(() => (searchParams.get("dir") === "asc" ? "asc" : "desc"));
-  const [tab, setTab] = useState<"queue" | "agenda">(() =>
-    searchParams.get("tab") === "agenda" ? "agenda" : "queue",
-  );
+  const [tab, setTab] = useState<"queue" | "agenda" | "maker">(() => {
+    const t = searchParams.get("tab");
+    return t === "agenda" || t === "maker" ? t : "queue";
+  });
   const [needsAttention, setNeedsAttention] = useState(() => searchParams.get("attn") === "1");
   const [hasConflicts, setHasConflicts] = useState(() => searchParams.get("conflict") === "1");
 
@@ -222,7 +240,6 @@ function BoardBrowser() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const typedRepo = repo || undefined;
   const govFilter = selectedGovStates.length ? selectedGovStates : undefined;
   const processFilter = selectedProcessTypes.length ? selectedProcessTypes : undefined;
   const searchFilter = debouncedSearch || undefined;
@@ -244,7 +261,7 @@ function BoardBrowser() {
       return;
     }
     const p = new URLSearchParams();
-    if (repo) p.set("repo", repo);
+    if (!isDefaultRepos) p.set("repos", reposArr.join(","));
     if (selectedGovStates.length === 0) p.set("status", "none");
     else if (!isDefaultStatuses(selectedGovStates)) p.set("status", selectedGovStates.join(","));
     if (selectedProcessTypes.length) p.set("process", selectedProcessTypes.join(","));
@@ -258,7 +275,7 @@ function BoardBrowser() {
     const qs = p.toString();
     if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [tab, repo, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router, searchParams]);
+  }, [tab, reposKey, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,7 +283,7 @@ function BoardBrowser() {
     const timer = setTimeout(async () => {
       setStatsLoading(true);
       try {
-        const s = await client.tools.getOpenPRBoardStats({ repo: typedRepo, govState: govFilter, search: searchFilter });
+        const s = await client.tools.getOpenPRBoardStats({ repos: reposArr, govState: govFilter, search: searchFilter });
         if (!cancelled) setStats(s);
       } catch (err) {
         console.error(err);
@@ -278,7 +295,7 @@ function BoardBrowser() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [typedRepo, govFilter, searchFilter]);
+  }, [reposKey, govFilter, searchFilter]);
 
   useEffect(() => {
     let cancelled = false;
@@ -286,7 +303,7 @@ function BoardBrowser() {
       setLoading(true);
       try {
         const d = await client.tools.getOpenPRBoard({
-          repo: typedRepo,
+          repos: reposArr,
           govState: govFilter,
           processType: processFilter,
           search: searchFilter,
@@ -308,7 +325,7 @@ function BoardBrowser() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [typedRepo, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir, attnFilter, conflictFilter]);
+  }, [reposKey, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir, attnFilter, conflictFilter]);
 
   const totalMatching = data?.total ?? 0;
   const rows = data?.rows ?? [];
@@ -316,7 +333,7 @@ function BoardBrowser() {
   const endIdx = Math.min(page * pageSize, totalMatching);
 
   const hasActiveFilters =
-    Boolean(repo) ||
+    !isDefaultRepos ||
     !isDefaultStatuses(selectedGovStates) ||
     selectedProcessTypes.length > 0 ||
     Boolean(search) ||
@@ -346,7 +363,7 @@ function BoardBrowser() {
   };
 
   const resetFilters = () => {
-    setRepo("");
+    setRepos(new Set(["eips", "ercs"]));
     setSelectedGovStates(DEFAULT_GOV_STATES);
     setSelectedProcessTypes([]);
     setSearch("");
@@ -378,7 +395,7 @@ function BoardBrowser() {
   const getAllFilteredRows = async (): Promise<PRRow[]> => {
     const exportPageSize = 500;
     const query = {
-      repo: typedRepo,
+      repos: reposArr,
       govState: govFilter,
       processType: processFilter,
       search: searchFilter,
@@ -427,7 +444,7 @@ function BoardBrowser() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `board_${(repo || "all").toLowerCase()}_${monthLabel.replace(/\s+/g, "-")}.csv`;
+      a.download = `board_${(reposArr.join("-") || "all")}_${monthLabel.replace(/\s+/g, "-")}.csv`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -488,34 +505,16 @@ function BoardBrowser() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
-          <Link
-            href="/tools"
-            className="mb-2 inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Tools
-          </Link>
+    <div>
+      <div>
+        <div>
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
-                EIP / ERC / RIP Board
-              </h1>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Open pull requests by type and status for {monthLabel}. Sorted by longest wait first - the editorial queue,
-                oldest at the top.
+              <p className="text-sm leading-relaxed text-muted-foreground">
+                Open pull requests by type and status for {monthLabel}, sorted by longest wait first.
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">
-              <Link
-                href="/board/agenda"
-                className="inline-flex h-9 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-              >
-                <CalendarClock className="h-3.5 w-3.5" />
-                Agenda maker
-              </Link>
               <button
                 onClick={() => setShowInfo((v) => !v)}
                 className="inline-flex h-9 items-center gap-1 rounded-md border border-border bg-muted/60 px-2.5 text-xs text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10"
@@ -550,7 +549,7 @@ function BoardBrowser() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl space-y-4 px-4 py-5 sm:px-6">
+      <div className="space-y-4 py-1">
         {/* Tabs. The ACD panel owns its own filters/paging, so the whole board body
             below is skipped when it's active rather than trying to share state. */}
         <div
@@ -562,6 +561,7 @@ function BoardBrowser() {
             [
               { key: "queue", label: "Editorial queue" },
               { key: "agenda", label: "On an ACD agenda" },
+              { key: "maker", label: "Agenda Maker" },
             ] as const
           ).map((t) => (
             <button
@@ -583,6 +583,8 @@ function BoardBrowser() {
 
         {tab === "agenda" ? (
           <AgendaPrsPanel />
+        ) : tab === "maker" ? (
+          <AgendaMaker />
         ) : (
         <>
         <section className="rounded-xl border border-border bg-card/60 p-3 sm:p-4">
@@ -615,30 +617,26 @@ function BoardBrowser() {
             </div>
 
             <div className="flex items-center gap-2 lg:col-span-4">
-              {(
-                [
-                  { key: "", label: "All" },
-                  { key: "eips", label: "EIPs" },
-                  { key: "ercs", label: "ERCs" },
-                  { key: "rips", label: "RIPs" },
-                ] as const
-              ).map((r) => (
-                <button
-                  key={r.key || "all"}
-                  onClick={() => {
-                    setRepo(r.key);
-                    setPage(1);
-                  }}
-                  className={cn(
-                    "h-9 rounded-md border px-3 text-xs transition-colors",
-                    repo === r.key
-                      ? "border-primary/30 bg-primary/10 text-primary"
-                      : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
-                  )}
-                >
-                  {r.label}
-                </button>
-              ))}
+              {REPO_CHECKS.map((r) => {
+                const on = repos.has(r.key);
+                return (
+                  <button
+                    key={r.key}
+                    onClick={() => toggleRepo(r.key)}
+                    className={cn(
+                      "inline-flex h-9 items-center gap-1.5 rounded-md border px-2.5 text-xs transition-colors",
+                      on
+                        ? "border-primary/30 bg-primary/10 text-primary"
+                        : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                    )}
+                  >
+                    <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+                      {on && <Check className="h-2.5 w-2.5" />}
+                    </span>
+                    {r.label}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex items-center justify-end gap-2 lg:col-span-3">
@@ -758,7 +756,7 @@ function BoardBrowser() {
           {hasActiveFilters && (
             <div className="mt-3 border-t border-border pt-3">
               <div className="flex flex-wrap gap-2 text-[11px]">
-                {repo && <ActiveFilter label={`Repo: ${repo.toUpperCase()}`} onClear={() => setRepo("")} />}
+                {!isDefaultRepos && <ActiveFilter label={`Repos: ${reposArr.map((r) => r.toUpperCase()).join(", ")}`} onClear={() => setRepos(new Set(["eips", "ercs"]))} />}
                 {selectedGovStates.map((s) => (
                   <ActiveFilter
                     key={s}

@@ -29,7 +29,7 @@ const STATIC_PUBLIC_PATHS = [
   "/standards",
   "/recap",
   "/tools",
-  "/board",
+  "/officehours/board",
   "/dependencies",
   "/eip-builder",
   "/timeline",

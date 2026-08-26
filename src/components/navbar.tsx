@@ -102,7 +102,7 @@ const mobileNavSections = [
     label: "Tools",
     items: [
       { title: "Tools Home", href: "/tools", icon: Wrench },
-      { title: "Open PR Board", href: "/board", icon: Wrench },
+      { title: "Open PR Board", href: "/officehours/board", icon: Wrench },
       { title: "EIP Builder", href: "/eip-builder", icon: Wrench },
       { title: "Dependencies", href: "/dependencies", icon: Wrench },
       { title: "Timeline", href: "/timeline", icon: Wrench },

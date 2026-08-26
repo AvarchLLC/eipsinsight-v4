@@ -18,7 +18,7 @@ const tools = [
     title: "EIP / ERC / RIP Board",
     description: "Kanban view of proposals grouped by governance status.",
     icon: LayoutGrid,
-    href: "/board",
+    href: "/officehours/board",
     points: ["Filter and search quickly", "Track lifecycle states", "Cross-repo board workflow"],
   },
   {
