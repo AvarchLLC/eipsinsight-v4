@@ -166,13 +166,14 @@ const sidebarSections: SidebarSection[] = [
         ],
       },
       {
-        title: "Open PR Board",
+        title: "EIP Office Hours",
         icon: ClipboardList,
-        href: "/board",
+        href: "/officehours",
         items: [
-          { title: "Open PR Board", href: "/board" },
-          { title: "Waiting on Editor", href: "/board?status=Waiting+on+Editor" },
-          { title: "Agenda Maker", href: "/board/agenda" },
+          { title: "Overview", href: "/officehours" },
+          { title: "Board", href: "/officehours/board" },
+          { title: "Analytics", href: "/officehours/analytics" },
+          { title: "Calls", href: "/officehours/calls" },
         ],
       },
     ],
@@ -318,7 +319,7 @@ function getActiveItemTitle(pathname: string): string | null {
     pathname.startsWith("/decisions")
   )
     return "Protocol Calls";
-  if (pathname === "/board" || pathname.startsWith("/board")) return "Open PR Board";
+  if (pathname === "/officehours" || pathname.startsWith("/officehours")) return "EIP Office Hours";
   if (
     pathname.startsWith("/eip-builder") ||
     pathname.startsWith("/timeline") ||

@@ -9,6 +9,7 @@ import {
   ArrowRight,
   CalendarClock,
   CalendarRange,
+  Check,
   Download,
   Eye,
   GitMerge,
@@ -21,6 +22,7 @@ import {
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { LATEST_OFFICE_HOUR_RECAP } from "@/data/office-hour-recaps";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -42,6 +44,22 @@ type Meeting = Awaited<ReturnType<typeof client.calls.listOfficeHourMeetings>>[n
 const EXCLUDED = new Set(["abcoathup", "eip-review-bot"]);
 const REPOS = ["all", "eips", "ercs", "rips"] as const;
 type Repo = (typeof REPOS)[number];
+
+// Repo checkboxes (RIP unchecked by default).
+const REPO_KEYS = ["eips", "ercs", "rips"] as const;
+type RepoKey = (typeof REPO_KEYS)[number];
+const REPO_LABEL: Record<RepoKey, string> = { eips: "EIPs", ercs: "ERCs", rips: "RIPs" };
+
+/** Merge per-repo editor leaderboards into one, summing each editor's counts. */
+function mergeLeaders(lists: Array<Array<{ editor: string; reviews: number; comments: number; merges: number; prsReviewed: number; totalEvents: number }>>) {
+  const by = new Map<string, { editor: string; reviews: number; comments: number; merges: number; prsReviewed: number; totalEvents: number }>();
+  for (const list of lists) for (const e of list) {
+    const cur = by.get(e.editor) ?? { editor: e.editor, reviews: 0, comments: 0, merges: 0, prsReviewed: 0, totalEvents: 0 };
+    cur.reviews += e.reviews; cur.comments += e.comments; cur.merges += e.merges; cur.prsReviewed += e.prsReviewed; cur.totalEvents += e.totalEvents;
+    by.set(e.editor, cur);
+  }
+  return [...by.values()].sort((a, b) => b.prsReviewed - a.prsReviewed || b.totalEvents - a.totalEvents);
+}
 
 const TYPE_META: Array<{ key: "eips" | "ercs" | "rips"; label: string; color: string }> = [
   { key: "eips", label: "EIPs", color: "#6366f1" },
@@ -122,13 +140,19 @@ export default function OfficeHoursPage() {
   const today = iso(new Date());
 
   // Defaults must match the server render (no window access here) to avoid a
-  // hydration mismatch: single-day mode on TODAY. The URL is read after mount.
-  const [mode, setMode] = useState<"day" | "range">("day");
+  // hydration mismatch: THIS MONTH by default. The URL is read after mount.
+  const monthStart = `${today.slice(0, 7)}-01`;
+  const [mode, setMode] = useState<"day" | "range">("range");
   const [day, setDay] = useState(today);
-  const [from, setFrom] = useState(addDays(today, -7));
+  const [from, setFrom] = useState(monthStart);
   const [to, setTo] = useState(today);
-  const [repo, setRepo] = useState<Repo>("all");
+  const [repos, setRepos] = useState<Set<RepoKey>>(() => new Set<RepoKey>(["eips", "ercs"]));
   const [hydrated, setHydrated] = useState(false);
+  const toggleRepo = (r: RepoKey) => setRepos((prev) => {
+    const next = new Set(prev);
+    if (next.has(r)) { if (next.size > 1) next.delete(r); } else next.add(r);
+    return next;
+  });
 
   // After mount (client only), apply any filters from the URL so links are
   // shareable. Runs once; then the sync effect below keeps the URL updated.
@@ -141,8 +165,11 @@ export default function OfficeHoursPage() {
     if (f) setFrom(f);
     const t = urlParam("to");
     if (t) setTo(t);
-    const r = urlParam("repo");
-    if (r && (REPOS as readonly string[]).includes(r)) setRepo(r as Repo);
+    const r = urlParam("repos");
+    if (r) {
+      const set = new Set<RepoKey>(r.split(",").filter((x): x is RepoKey => (REPO_KEYS as readonly string[]).includes(x)));
+      if (set.size > 0) setRepos(set);
+    }
     setHydrated(true);
   }, []);
 
@@ -156,22 +183,27 @@ export default function OfficeHoursPage() {
       p.set("from", from);
       p.set("to", to);
     }
-    if (repo !== "all") p.set("repo", repo);
+    const repoList = [...repos].sort();
+    if (!(repoList.length === 2 && repoList[0] === "eips" && repoList[1] === "ercs")) p.set("repos", repoList.join(","));
     const qs = p.toString();
     window.history.replaceState(null, "", qs ? `${window.location.pathname}?${qs}` : window.location.pathname);
-  }, [hydrated, mode, day, from, to, repo]);
+  }, [hydrated, mode, day, from, to, repos]);
 
   const winFrom = mode === "day" ? day : from;
   const winTo = mode === "day" ? day : to;
 
-  const RANGE_PRESETS: Array<{ label: string; from: () => string }> = [
-    { label: "7d", from: () => addDays(today, -6) },
-    { label: "30d", from: () => addDays(today, -29) },
-    { label: "90d", from: () => addDays(today, -89) },
-    { label: "This month", from: () => `${today.slice(0, 7)}-01` },
+  // Simplified date control: Today · 7d · This month (default) · Date range.
+  const [customOpen, setCustomOpen] = useState(false);
+  const PRESETS: Array<{ id: string; label: string; apply: () => void }> = [
+    { id: "today", label: "Today", apply: () => { setMode("day"); setDay(today); } },
+    { id: "7d", label: "7d", apply: () => { setMode("range"); setFrom(addDays(today, -6)); setTo(today); } },
+    { id: "month", label: "This month", apply: () => { setMode("range"); setFrom(monthStart); setTo(today); } },
   ];
-  const applyPreset = (p: { from: () => string }) => { setMode("range"); setFrom(p.from()); setTo(today); };
-  const activePreset = mode === "range" && to === today ? RANGE_PRESETS.find((p) => p.from() === from)?.label ?? null : null;
+  const activePresetId =
+    mode === "day" && day === today ? "today"
+    : mode === "range" && to === today && from === addDays(today, -6) ? "7d"
+    : mode === "range" && to === today && from === monthStart ? "month"
+    : "custom";
 
   const [leaderboard, setLeaderboard] = useState<Leader[]>([]);
   const [byType, setByType] = useState<ByType[]>([]);
@@ -193,9 +225,15 @@ export default function OfficeHoursPage() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const repoArg = repo === "all" ? undefined : repo;
+    const selected = [...repos];
+    const isAllRepos = selected.length === REPO_KEYS.length;
+    // Leaderboard + total PRs are repo-filtered server-side; for a multi-repo
+    // selection we fetch each and merge (all three = one unfiltered call).
+    const ldrPromise: Promise<Leader[]> = isAllRepos
+      ? client.analytics.getEventDayEditorLeaderboard({ date: winFrom, to: winTo }).catch(() => [] as Leader[])
+      : Promise.all(selected.map((r) => client.analytics.getEventDayEditorLeaderboard({ date: winFrom, to: winTo, repo: r }).catch(() => [] as Leader[]))).then(mergeLeaders);
     const [ldr, typ, chg, brk, tot, prs, act] = await Promise.all([
-      client.analytics.getEventDayEditorLeaderboard({ date: winFrom, to: winTo, repo: repoArg }).catch(() => [] as Leader[]),
+      ldrPromise,
       client.analytics.getEventDayHourlyByType({ date: winFrom, to: winTo }).catch(() => [] as ByType[]),
       client.analytics.getEventDayStatusChanges({ date: winFrom, to: winTo }).catch(() => [] as StatusChange[]),
       client.analytics.getEventDayProposalBreakdown({ date: winFrom, to: winTo }).catch(() => [] as Breakdown[]),
@@ -212,7 +250,7 @@ export default function OfficeHoursPage() {
     setRecent(act as Recent[]);
     setRefreshedAt(new Date());
     setLoading(false);
-  }, [winFrom, winTo, repo]);
+  }, [winFrom, winTo, repos]);
 
   useEffect(() => { void fetchData(); }, [fetchData]);
 
@@ -242,8 +280,8 @@ export default function OfficeHoursPage() {
   // have volume — the old stacked chart made the top series trace the running
   // total, which read as activity even when it was flat zero.
   const activeTypes = useMemo(
-    () => TYPE_META.filter((t) => typeSeries.some((d) => d[t.key] > 0)),
-    [typeSeries],
+    () => TYPE_META.filter((t) => repos.has(t.key) && typeSeries.some((d) => d[t.key] > 0)),
+    [typeSeries, repos],
   );
 
   const activityOption = useMemo(() => ({
@@ -325,51 +363,52 @@ export default function OfficeHoursPage() {
   };
 
   return (
-    <div className="page-shell space-y-4 py-6">
-      {/* Hero */}
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/15 text-primary">
-              <CalendarClock className="h-5 w-5" />
-            </div>
-            <h1 className="dec-title persona-title text-2xl font-semibold tracking-tight sm:text-3xl">EIP Editing Office Hours</h1>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
-            <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
-          </div>
-        </div>
-        <p className="w-full text-xs text-muted-foreground sm:text-sm">Editorial activity for any day or date range · editor reviews, status changes & proposals</p>
-      </header>
+    <div className="space-y-4">
+      {/* Export actions (Overview-specific) */}
+      <div className="flex items-center justify-end gap-2">
+        <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
+        <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
+      </div>
 
       {/* Controls */}
       <section className="rounded-xl border border-border bg-card/60 p-3">
         <div className="flex flex-wrap items-center gap-2 text-xs">
-          <div className="inline-flex items-center rounded-lg border border-border bg-muted/60 p-0.5">
-            <button onClick={() => setMode("day")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1", mode === "day" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><CalendarClock className="h-3.5 w-3.5" /> Day</button>
-            <button onClick={() => setMode("range")} className={cn("inline-flex items-center gap-1 rounded-md px-2.5 py-1", mode === "range" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}><CalendarRange className="h-3.5 w-3.5" /> Range</button>
-          </div>
-          {mode === "day" ? (
-            <input type="date" value={day} max={today} onChange={(e) => setDay(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
-          ) : (
+          {/* Date: Today · 7d · This month (default) · Date range */}
+          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Date</span>
+          {PRESETS.map((p) => (
+            <button key={p.id} onClick={() => { p.apply(); setCustomOpen(false); }} className={cn("rounded-full border px-2.5 py-1", activePresetId === p.id && !customOpen ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{p.label}</button>
+          ))}
+          <button onClick={() => { setMode("range"); setCustomOpen(true); }} className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1", customOpen || activePresetId === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}><CalendarRange className="h-3.5 w-3.5" /> Date range</button>
+          {(customOpen || activePresetId === "custom") && (
             <div className="flex items-center gap-1.5">
               <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
               <span className="text-muted-foreground">to</span>
               <input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
             </div>
           )}
-          {RANGE_PRESETS.map((p) => (
-            <button key={p.label} onClick={() => applyPreset(p)} className={cn("rounded-full border px-2 py-1", activePreset === p.label ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{p.label}</button>
-          ))}
-          <div className="inline-flex items-center rounded-lg border border-border bg-muted/60 p-0.5">
-            {REPOS.map((r) => (
-              <button key={r} onClick={() => setRepo(r)} className={cn("rounded-md px-2 py-1", repo === r ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>{r === "all" ? "All" : r.toUpperCase()}</button>
-            ))}
-          </div>
-          {meetings[0] && (
-            <button onClick={() => { setMode("day"); setDay(meetings[0].date); }} title={meetings[0].title} className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/50 px-2.5 py-1 text-muted-foreground hover:border-primary/40 hover:text-foreground">
-              <CalendarClock className="h-3 w-3" /> Next OH · {prettyDate(meetings[0].date)}
+          {/* Repos (checkboxes — RIP off by default) */}
+          <span className="ml-1 text-[11px] uppercase tracking-wide text-muted-foreground">Repos</span>
+          {REPO_KEYS.map((r) => {
+            const on = repos.has(r);
+            return (
+              <button key={r} onClick={() => toggleRepo(r)} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1", on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on && <Check className="h-2.5 w-2.5" />}</span>
+                {REPO_LABEL[r]}
+              </button>
+            );
+          })}
+          {LATEST_OFFICE_HOUR_RECAP && (
+            <button
+              onClick={() => { setMode("day"); setDay(LATEST_OFFICE_HOUR_RECAP.dateISO); setCustomOpen(false); }}
+              title={`View editorial activity from ${LATEST_OFFICE_HOUR_RECAP.title}`}
+              className={cn(
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+                mode === "day" && day === LATEST_OFFICE_HOUR_RECAP.dateISO
+                  ? "border-primary/50 bg-primary/10 text-primary"
+                  : "border-border bg-muted/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+              )}
+            >
+              <CalendarClock className="h-3 w-3" /> Last Office Hour Day · {LATEST_OFFICE_HOUR_RECAP.displayDate}
             </button>
           )}
           <button onClick={() => void fetchData()} className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-foreground hover:bg-muted/70"><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh</button>

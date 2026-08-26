@@ -26,6 +26,8 @@ import {
   callSeriesShort,
 } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
+import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
+import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { ShareButtons } from '@/components/share-buttons';
 import { classifyProposalRef, proposalRefHref, proposalRefLabel } from '@/lib/proposal-ref';
 import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-decisions';
@@ -57,6 +59,12 @@ async function getTranscriptCues(series: string, callId: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
+  if (OFFICE_HOUR_SERIES.has(resolvedParams.series)) {
+    const recap = findOfficeHourRecap(resolvedParams.series, resolvedParams.number);
+    return recap
+      ? buildMetadata({ title: recap.title, description: `Recording, summary, decisions, and transcript for ${recap.title}.`, path: `/calls/${recap.series}/${recap.meeting}`, image: null })
+      : {};
+  }
   const call = await getCachedCall(resolvedParams.series, resolvedParams.number);
   if (!call) return {};
   return buildMetadata({
@@ -79,6 +87,15 @@ export async function generateStaticParams() {
 
 export default async function CallDetailPage({ params }: Props) {
   const { series, number } = await params;
+
+  // Static office-hour / EIPIP calls aren't in the protocol_calls pipeline yet;
+  // render them from curated recap data.
+  if (OFFICE_HOUR_SERIES.has(series)) {
+    const recap = findOfficeHourRecap(series, number);
+    if (recap) return <OfficeHourCallView recap={recap} />;
+    notFound();
+  }
+
   const call = await getCachedCall(series, number);
 
   if (!call) {

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardPaste, Copy, RotateCcw, Search } from "lucide-react";
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
@@ -125,7 +126,12 @@ function parseAgenda(md: string): ParsedAgenda {
   return out;
 }
 
-export default function AgendaMakerPage() {
+// The agenda board now lives under Office Hours → Board → ACD Agenda.
+export default function AgendaRedirect() {
+  redirect("/officehours/board");
+}
+
+export function AgendaMaker() {
   // ── Meeting header fields ──
   const [meetingNo, setMeetingNo] = useState("");
   const [dateISO, setDateISO] = useState(defaultDateISO);
@@ -342,7 +348,7 @@ EIP Editing Office Hour
       <div className="border-b border-border bg-background/85 backdrop-blur-xl">
         <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
           <Link
-            href="/board"
+            href="/officehours/board"
             className="mb-2 inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
