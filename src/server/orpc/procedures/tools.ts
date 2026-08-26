@@ -530,6 +530,10 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
             AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
+            -- Match the board list + other facet counts, which drop Tooling PRs
+            -- entirely. Without this, Tooling rows were folded into "Content Edit"
+            -- and inflated its count (e.g. 14) while the list showed 0.
+            AND COALESCE(gs.category, '') != 'Tooling'
         )
         SELECT process_type, COUNT(*)::bigint AS count
         FROM base
