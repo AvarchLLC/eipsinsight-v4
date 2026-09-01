@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Youtube, CalendarClock, ArrowRight, CheckCircle2, ListChecks, ExternalLink, ChevronDown } from "lucide-react";
+import { Youtube, CalendarClock, ArrowRight, CheckCircle2, ListChecks, ExternalLink, ChevronDown, Activity } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { OhRecap, OhPrStatus } from "@/data/office-hour-recaps";
 
@@ -27,7 +27,14 @@ function RecapHeader({ recap }: { recap: OhRecap }) {
         </div>
         <h3 className="mt-0.5 text-base font-semibold text-foreground">{recap.title}</h3>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <Link
+          href={`/officehours?mode=day&day=${recap.dateISO}`}
+          title={`Editorial activity from ${recap.displayDate}`}
+          className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"
+        >
+          <Activity className="h-3.5 w-3.5" /> Editorial activity
+        </Link>
         <Link href={recap.youtube} target="_blank" className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-500/30 bg-red-500/10 px-2.5 text-xs font-medium text-red-600 hover:bg-red-500/15 dark:text-red-400">
           <Youtube className="h-3.5 w-3.5" /> Watch
         </Link>
