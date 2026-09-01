@@ -26,6 +26,7 @@ import { commentVoteProcedures } from './procedures/commentVote'
 import { subscriptionsProcedures } from './procedures/subscriptions'
 import { watchlistProcedures } from './procedures/watchlist'
 import { mevProcedures } from './procedures/mev'
+import { aaProcedures } from './procedures/aa'
 
 export const router = {
   auth: authProcedures,
@@ -56,4 +57,5 @@ export const router = {
   subscriptions: subscriptionsProcedures,
   watchlist: watchlistProcedures,
   mev: mevProcedures,
+  aa: aaProcedures,
 }
