@@ -23,6 +23,7 @@ import {
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { ChartWatermark } from "@/components/chart-watermark";
 import { OFFICE_HOUR_MEETINGS } from "@/data/office-hour-meetings.generated";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
@@ -565,7 +566,7 @@ export default function OfficeHoursPage() {
               right={<span className="flex items-center gap-2 text-[11px] text-muted-foreground">{(activeTypes.length ? activeTypes : TYPE_META).map((t) => (<span key={t.key} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: t.color }} />{t.label}</span>))}</span>}
             >
               {typeSeries.length === 0 ? <Empty label="No activity in this window." /> : (
-                <div className="h-[300px] w-full"><ReactECharts option={activityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /></div>
+                <div className="relative h-[300px] w-full"><ReactECharts option={activityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /><ChartWatermark position="center" /></div>
               )}
             </Card>
 
@@ -612,7 +613,7 @@ export default function OfficeHoursPage() {
           <div className="grid gap-3 lg:grid-cols-3">
             <Card title="Proposals by status & category" icon={<Shuffle className="h-4 w-4 text-primary" />} className="lg:col-span-2">
               {breakdown.length === 0 ? <Empty label="No proposals changed in this window." /> : (
-                <div className="h-[300px] w-full"><ReactECharts option={breakdownOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /></div>
+                <div className="relative h-[300px] w-full"><ReactECharts option={breakdownOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /><ChartWatermark position="center" /></div>
               )}
             </Card>
             <Card
