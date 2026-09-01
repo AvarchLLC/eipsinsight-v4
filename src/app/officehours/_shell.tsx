@@ -2,13 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CalendarClock, LayoutDashboard, BarChart3, Video } from "lucide-react";
+import { CalendarClock, LayoutDashboard, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: typeof CalendarClock; exact?: boolean }[] = [
   { href: "/officehours", label: "Overview", icon: CalendarClock, exact: true },
   { href: "/officehours/board", label: "Board", icon: LayoutDashboard },
-  { href: "/officehours/analytics", label: "Analytics", icon: BarChart3 },
   { href: "/officehours/calls", label: "Calls", icon: Video },
 ];
 

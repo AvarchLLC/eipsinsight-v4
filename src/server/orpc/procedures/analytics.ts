@@ -7054,6 +7054,56 @@ export const analyticsProcedures = {
       }));
     }),
 
+  /**
+   * The individual proposals whose status changed in the window (not just the
+   * aggregate transition counts). Used by the Office Hours "Status changes"
+   * card so editors can see exactly which EIP/ERC/RIP moved, and jump to it.
+   */
+  getEventDayStatusChangeList: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+      to: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        eip: string;
+        eip_type: string;
+        title: string;
+        from_status: string | null;
+        to_status: string;
+        changed_at: Date;
+      }>>(
+        `
+        SELECT
+          e.eip_number::text AS eip,
+          CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END AS eip_type,
+          e.title,
+          se.from_status,
+          se.to_status,
+          se.changed_at
+        FROM eip_status_events se
+        JOIN eips e ON se.eip_id = e.id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r ON se.repository_id = r.id
+        WHERE se.changed_at >= $1::date
+          AND se.changed_at < (COALESCE($2::text, $1::text))::date + INTERVAL '1 day'
+          AND se.eip_id != 8136
+        ORDER BY se.changed_at DESC
+        `,
+        targetDate,
+        input.to ?? null
+      );
+      return results.map((r) => ({
+        eip: r.eip,
+        eipType: r.eip_type,
+        title: r.title,
+        fromStatus: r.from_status ?? '—',
+        toStatus: r.to_status,
+        changedAt: r.changed_at.toISOString(),
+      }));
+    }),
+
   getEventDayHourlyByType: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),

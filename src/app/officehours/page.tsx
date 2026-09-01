@@ -10,6 +10,7 @@ import {
   CalendarClock,
   CalendarRange,
   Check,
+  ChevronDown,
   Download,
   Eye,
   GitMerge,
@@ -22,7 +23,7 @@ import {
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
-import { LATEST_OFFICE_HOUR_RECAP } from "@/data/office-hour-recaps";
+import { OFFICE_HOUR_MEETINGS } from "@/data/office-hour-meetings.generated";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -36,6 +37,7 @@ const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 type Leader = Awaited<ReturnType<typeof client.analytics.getEventDayEditorLeaderboard>>[number];
 type ByType = Awaited<ReturnType<typeof client.analytics.getEventDayHourlyByType>>[number];
 type StatusChange = Awaited<ReturnType<typeof client.analytics.getEventDayStatusChanges>>[number];
+type StatusChangeItem = Awaited<ReturnType<typeof client.analytics.getEventDayStatusChangeList>>[number];
 type Breakdown = Awaited<ReturnType<typeof client.analytics.getEventDayProposalBreakdown>>[number];
 type PRItem = Awaited<ReturnType<typeof client.analytics.getEventDayPRList>>[number];
 type Recent = Awaited<ReturnType<typeof client.analytics.getAllRecentActivity>>[number];
@@ -194,6 +196,12 @@ export default function OfficeHoursPage() {
 
   // Simplified date control: Today · 7d · This month (default) · Date range.
   const [customOpen, setCustomOpen] = useState(false);
+  // Office Hour picker (backfilled list of ethereum/pm office-hour meetings).
+  const [ohOpen, setOhOpen] = useState(false);
+  const selectedOh = useMemo(
+    () => (mode === "day" ? OFFICE_HOUR_MEETINGS.find((m) => m.dateISO === day) ?? null : null),
+    [mode, day],
+  );
   const PRESETS: Array<{ id: string; label: string; apply: () => void }> = [
     { id: "today", label: "Today", apply: () => { setMode("day"); setDay(today); } },
     { id: "7d", label: "7d", apply: () => { setMode("range"); setFrom(addDays(today, -6)); setTo(today); } },
@@ -208,6 +216,9 @@ export default function OfficeHoursPage() {
   const [leaderboard, setLeaderboard] = useState<Leader[]>([]);
   const [byType, setByType] = useState<ByType[]>([]);
   const [statusChanges, setStatusChanges] = useState<StatusChange[]>([]);
+  const [statusChangeList, setStatusChangeList] = useState<StatusChangeItem[]>([]);
+  // Clicking an aggregate transition chip filters the detailed list to it.
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [breakdown, setBreakdown] = useState<Breakdown[]>([]);
   const [totalPRs, setTotalPRs] = useState(0);
   const [prList, setPrList] = useState<PRItem[]>([]);
@@ -232,10 +243,11 @@ export default function OfficeHoursPage() {
     const ldrPromise: Promise<Leader[]> = isAllRepos
       ? client.analytics.getEventDayEditorLeaderboard({ date: winFrom, to: winTo }).catch(() => [] as Leader[])
       : Promise.all(selected.map((r) => client.analytics.getEventDayEditorLeaderboard({ date: winFrom, to: winTo, repo: r }).catch(() => [] as Leader[]))).then(mergeLeaders);
-    const [ldr, typ, chg, brk, tot, prs, act] = await Promise.all([
+    const [ldr, typ, chg, chgList, brk, tot, prs, act] = await Promise.all([
       ldrPromise,
       client.analytics.getEventDayHourlyByType({ date: winFrom, to: winTo }).catch(() => [] as ByType[]),
       client.analytics.getEventDayStatusChanges({ date: winFrom, to: winTo }).catch(() => [] as StatusChange[]),
+      client.analytics.getEventDayStatusChangeList({ date: winFrom, to: winTo }).catch(() => [] as StatusChangeItem[]),
       client.analytics.getEventDayProposalBreakdown({ date: winFrom, to: winTo }).catch(() => [] as Breakdown[]),
       client.analytics.getEventDayTotalPRs({ date: winFrom, to: winTo }).catch(() => ({ totalPRs: 0 })),
       client.analytics.getEventDayPRList({ date: winFrom, to: winTo }).catch(() => [] as PRItem[]),
@@ -244,6 +256,7 @@ export default function OfficeHoursPage() {
     setLeaderboard(ldr.filter((e) => !EXCLUDED.has(e.editor.toLowerCase())));
     setByType(typ);
     setStatusChanges(chg);
+    setStatusChangeList(chgList);
     setBreakdown(brk);
     setTotalPRs(tot.totalPRs);
     setPrList(prs);
@@ -336,6 +349,12 @@ export default function OfficeHoursPage() {
     };
   }, [breakdown]);
 
+  const filteredStatusChanges = useMemo(
+    () => (statusFilter ? statusChangeList.filter((c) => `${c.fromStatus}→${c.toStatus}` === statusFilter) : statusChangeList),
+    [statusChangeList, statusFilter],
+  );
+  useEffect(() => { setStatusFilter(null); }, [statusChangeList]);
+
   const filteredPRs = useMemo(() => prList.filter((p) => prFilter === "all" || p.repoType === prFilter), [prList, prFilter]);
   const filteredRecent = useMemo(() => recent.filter((r) => !EXCLUDED.has((r.actor || "").toLowerCase())), [recent]);
 
@@ -397,23 +416,65 @@ export default function OfficeHoursPage() {
               </button>
             );
           })}
-          {LATEST_OFFICE_HOUR_RECAP && (
-            <button
-              onClick={() => { setMode("day"); setDay(LATEST_OFFICE_HOUR_RECAP.dateISO); setCustomOpen(false); }}
-              title={`View editorial activity from ${LATEST_OFFICE_HOUR_RECAP.title}`}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
-                mode === "day" && day === LATEST_OFFICE_HOUR_RECAP.dateISO
-                  ? "border-primary/50 bg-primary/10 text-primary"
-                  : "border-border bg-muted/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+          {/* Office Hour picker: jump to a specific past office-hour day. */}
+          {OFFICE_HOUR_MEETINGS.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setOhOpen((o) => !o)}
+                title="Jump to a specific EIP Editing Office Hour"
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+                  selectedOh
+                    ? "border-primary/50 bg-primary/10 text-primary"
+                    : "border-border bg-muted/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                )}
+              >
+                <CalendarClock className="h-3 w-3" />
+                {selectedOh
+                  ? `Office Hour #${selectedOh.meeting} · ${prettyDate(selectedOh.dateISO)}${selectedOh.timeUTC ? ` · ${selectedOh.timeUTC} UTC` : ""}`
+                  : "Office Hour day"}
+                <ChevronDown className={cn("h-3 w-3 transition-transform", ohOpen && "rotate-180")} />
+              </button>
+              {ohOpen && (
+                <>
+                  <div className="fixed inset-0 z-10" onClick={() => setOhOpen(false)} />
+                  <div className="absolute left-0 z-20 mt-1 max-h-80 w-80 overflow-y-auto rounded-lg border border-border bg-card p-1 shadow-lg">
+                    <p className="px-2 py-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      EIP Editing Office Hours ({OFFICE_HOUR_MEETINGS.length})
+                    </p>
+                    {OFFICE_HOUR_MEETINGS.map((m) => {
+                      const active = selectedOh?.meeting === m.meeting;
+                      return (
+                        <button
+                          key={m.meeting}
+                          onClick={() => { setMode("day"); setDay(m.dateISO); setCustomOpen(false); setOhOpen(false); }}
+                          className={cn(
+                            "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs",
+                            active ? "bg-primary/10 text-primary" : "text-foreground hover:bg-muted",
+                          )}
+                        >
+                          <span className="w-10 shrink-0 font-semibold tabular-nums">#{m.meeting}</span>
+                          <span className="flex-1 truncate text-muted-foreground">{prettyDate(m.dateISO)}</span>
+                          <span className="shrink-0 tabular-nums text-muted-foreground">{m.timeUTC ? `${m.timeUTC} UTC` : "—"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
               )}
-            >
-              <CalendarClock className="h-3 w-3" /> Last Office Hour Day · {LATEST_OFFICE_HOUR_RECAP.displayDate}
-            </button>
+            </div>
           )}
           <button onClick={() => void fetchData()} className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-foreground hover:bg-muted/70"><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh</button>
         </div>
-        {refreshedAt && <p className="mt-2 text-[11px] text-muted-foreground">Showing <strong className="text-foreground">{rangeLabel}</strong> · updated {refreshedAt.toLocaleTimeString()}</p>}
+        {refreshedAt && (
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Showing <strong className="text-foreground">{rangeLabel}</strong>
+            {selectedOh && (
+              <> · <span className="text-foreground">Office Hour #{selectedOh.meeting}</span>{selectedOh.timeUTC ? ` at ${selectedOh.timeUTC} UTC` : ""}</>
+            )}
+            {" "}· updated {refreshedAt.toLocaleTimeString()}
+          </p>
+        )}
       </section>
 
       {loading && leaderboard.length === 0 ? (
@@ -528,16 +589,60 @@ export default function OfficeHoursPage() {
                 <div className="h-[300px] w-full"><ReactECharts option={breakdownOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge /></div>
               )}
             </Card>
-            <Card title="Status changes" icon={<Shuffle className="h-4 w-4 text-amber-500" />}>
-              {statusChanges.length === 0 ? <Empty label="No status changes." /> : (
-                <ul className="h-[300px] space-y-1.5 overflow-y-auto pr-1">
-                  {statusChanges.slice(0, 14).map((c, i) => (
-                    <li key={i} className="flex items-center justify-between gap-2 text-xs">
-                      <span className="inline-flex min-w-0 items-center gap-1.5 truncate text-muted-foreground"><span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: STATUS_COLORS[c.toStatus] ?? "#94a3b8" }} />{c.label}</span>
-                      <span className="shrink-0 font-semibold text-foreground">{c.count}</span>
-                    </li>
-                  ))}
-                </ul>
+            <Card
+              title="Status changes"
+              icon={<Shuffle className="h-4 w-4 text-amber-500" />}
+              right={statusChangeList.length > 0 ? <span className="text-[11px] text-muted-foreground">{statusFilter ? `${filteredStatusChanges.length} of ${statusChangeList.length}` : `${statusChangeList.length} proposal${statusChangeList.length === 1 ? "" : "s"}`}</span> : undefined}
+            >
+              {statusChangeList.length === 0 ? <Empty label="No status changes." /> : (
+                <div className="flex h-[300px] flex-col">
+                  {/* Detailed, clickable list of the proposals that changed. */}
+                  <ul className="flex-1 space-y-1.5 overflow-y-auto pr-1">
+                    {filteredStatusChanges.map((c, i) => {
+                      const tag = repoTag(c.eipType);
+                      const href = `/${c.eipType === "RIP" ? "rip" : c.eipType === "ERC" ? "erc" : "eip"}/${c.eip}`;
+                      return (
+                        <li key={`${c.eipType}-${c.eip}-${i}`}>
+                          <Link href={href} className="group flex items-center gap-2 rounded-lg border border-border bg-background/50 px-2 py-1.5 transition-colors hover:border-primary/40">
+                            <span className={cn("shrink-0 rounded border px-1 py-px text-[9px] font-medium", tag.cls)}>{tag.label}</span>
+                            <span className="shrink-0 text-xs font-semibold text-foreground group-hover:text-primary">{tag.label}-{c.eip}</span>
+                            <span className="ml-auto inline-flex shrink-0 items-center gap-1 text-[11px]">
+                              <span className="text-muted-foreground">{c.fromStatus}</span>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <span className="inline-flex items-center gap-1 font-medium text-foreground">
+                                <span className="h-2 w-2 rounded-sm" style={{ background: STATUS_COLORS[c.toStatus] ?? "#94a3b8" }} />
+                                {c.toStatus}
+                              </span>
+                            </span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  {/* Aggregate transition counts — click to filter the list above. */}
+                  {statusChanges.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5 border-t border-border/60 pt-2">
+                      {statusChanges.map((c, i) => {
+                        const key = `${c.fromStatus}→${c.toStatus}`;
+                        const active = statusFilter === key;
+                        return (
+                          <button
+                            key={i}
+                            onClick={() => setStatusFilter(active ? null : key)}
+                            className={cn(
+                              "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] transition-colors",
+                              active ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                            )}
+                          >
+                            <span className="h-2 w-2 shrink-0 rounded-sm" style={{ background: STATUS_COLORS[c.toStatus] ?? "#94a3b8" }} />
+                            {c.label}
+                            <span className="font-semibold text-foreground">{c.count}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               )}
             </Card>
           </div>

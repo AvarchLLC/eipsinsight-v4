@@ -172,7 +172,6 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Overview", href: "/officehours" },
           { title: "Board", href: "/officehours/board" },
-          { title: "Analytics", href: "/officehours/analytics" },
           { title: "Calls", href: "/officehours/calls" },
         ],
       },
