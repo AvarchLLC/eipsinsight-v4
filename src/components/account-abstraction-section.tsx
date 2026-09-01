@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {
   Area,
   AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Legend,
   ResponsiveContainer,
@@ -21,6 +23,11 @@ import { InlineBrandLoader } from '@/components/inline-brand-loader';
 
 const C7702 = 'var(--chart-1)'; // blue
 const C4337 = 'var(--chart-4)'; // amber
+const CACCT = 'var(--chart-2)'; // green — unique accounts
+// ERC-4337 EntryPoint versions
+const CEP06 = 'var(--chart-8)'; // slate (oldest)
+const CEP07 = 'var(--chart-4)'; // amber
+const CEP08 = 'var(--chart-6)'; // violet (newest)
 
 /** The account-abstraction proposal family, with on-chain measurability noted. */
 const AA_FAMILY: Array<{ id: string; href: string; name: string; status: string; live: boolean }> = [
@@ -161,6 +168,87 @@ export function AccountAbstractionSection() {
                   <Area type="monotone" dataKey="aa4337" stroke={C4337} strokeWidth={2} fill="url(#g4337)" />
                 </AreaChart>
               </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* 7702 adoption share of all mainnet txs */}
+          <div className="rounded-xl border border-border bg-card/60 p-4">
+            <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">EIP-7702 share of all mainnet transactions</h3>
+              <span className="text-[11px] text-muted-foreground">how much of Ethereum is account-abstracted</span>
+            </div>
+            <div className="h-[240px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="gShare" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor={C7702} stopOpacity={0.35} />
+                      <stop offset="100%" stopColor={C7702} stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
+                  <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => `${v}%`} />
+                  <Tooltip
+                    contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: 'var(--foreground)' }}
+                    formatter={(v: number) => [`${v}%`, 'EIP-7702 share']}
+                  />
+                  <Area type="monotone" dataKey="share7702Pct" stroke={C7702} strokeWidth={2} fill="url(#gShare)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Unique 7702 accounts per week + EntryPoint version split, side by side */}
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <div className="rounded-xl border border-border bg-card/60 p-4">
+              <h3 className="mb-1 text-sm font-semibold text-foreground">Unique EIP-7702 accounts · weekly</h3>
+              <p className="mb-2 text-[11px] text-muted-foreground">distinct addresses using 7702 (adoption breadth)</p>
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={24} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: 'var(--foreground)' }}
+                      formatter={(v: number) => [fmtInt(v), 'unique accounts']}
+                    />
+                    <Bar dataKey="accounts7702" fill={CACCT} radius={[3, 3, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-card/60 p-4">
+              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                <h3 className="text-sm font-semibold text-foreground">ERC-4337 EntryPoint versions · weekly</h3>
+                <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP06 }} /> v0.6</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP07 }} /> v0.7</span>
+                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP08 }} /> v0.8</span>
+                </div>
+              </div>
+              <p className="mb-2 text-[11px] text-muted-foreground">migration across EntryPoint releases</p>
+              <div className="h-[220px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
+                    <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={24} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <Tooltip
+                      contentStyle={{ background: 'var(--background)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }}
+                      labelStyle={{ color: 'var(--foreground)' }}
+                      formatter={(v: number, name: string) => [fmtInt(v), name === 'ep06' ? 'v0.6' : name === 'ep07' ? 'v0.7' : 'v0.8']}
+                    />
+                    <Area type="monotone" dataKey="ep06" stackId="ep" stroke={CEP06} fill={CEP06} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="ep07" stackId="ep" stroke={CEP07} fill={CEP07} fillOpacity={0.5} />
+                    <Area type="monotone" dataKey="ep08" stackId="ep" stroke={CEP08} fill={CEP08} fillOpacity={0.5} />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </div>
           </div>
 

@@ -40,7 +40,15 @@ const N = (v: unknown): number => {
 }
 
 type TotalsRow = { t7702: string; t4337: string; last_day: string }
-type WeekRow = { week: string; aa7702: string; aa4337: string }
+type WeekRow = {
+  week: string
+  aa7702: string
+  accts7702: string
+  total: string
+  ep06: string
+  ep07: string
+  ep08: string
+}
 
 export interface AaUsageStats {
   available: boolean
@@ -52,8 +60,22 @@ export interface AaUsageStats {
   lastDay: string | null
   /** Date EIP-7702 first appeared on mainnet. */
   since7702: string
-  /** Weekly counts (chronological) for the 7702-vs-4337 trend chart. */
-  weekly: Array<{ week: string; aa7702: number; aa4337: number }>
+  /**
+   * Weekly series (chronological). Carries every metric derived from one scan:
+   * 7702 vs 4337 counts, 7702's share of ALL mainnet txs, unique 7702 accounts,
+   * and the ERC-4337 EntryPoint version split (v0.6 / v0.7 / v0.8).
+   */
+  weekly: Array<{
+    week: string
+    aa7702: number
+    aa4337: number
+    accounts7702: number
+    /** 7702 as a percent of all mainnet transactions that week. */
+    share7702Pct: number
+    ep06: number
+    ep07: number
+    ep08: number
+  }>
   source: string
   sourceUrl: string
 }
@@ -92,15 +114,19 @@ const getAaUsageStatsCached = unstable_cache(
         ),
         clickhouseQuery<WeekRow>(`
           SELECT
-            toStartOfWeek(block_timestamp)            AS week,
-            countIf(tx_type = 4)                      AS aa7702,
-            countIf(lower(to_address) IN (${EP_SQL})) AS aa4337
+            toStartOfWeek(block_timestamp)                                                        AS week,
+            countIf(tx_type = 4)                                                                  AS aa7702,
+            uniqExactIf(from_address, tx_type = 4)                                                AS accts7702,
+            count()                                                                               AS total,
+            countIf(lower(to_address) = '0x5ff137d4b0fdcd49dca30c7cf57e578a026d2789')             AS ep06,
+            countIf(lower(to_address) = '0x0000000071727de22e5e9d8baf0edac6f37da032')             AS ep07,
+            countIf(lower(to_address) = '0x4337084d9e255ff0702461cf8895ce9e3b5ff108')             AS ep08
           FROM ethereum.transactions
           WHERE is_deleted = 0
             AND block_timestamp >= now() - INTERVAL 26 WEEK
           GROUP BY week
           ORDER BY week ASC
-        `),
+        `, { timeoutMs: 15_000 }),
       ])
 
       const t = totalsRows[0]
@@ -112,11 +138,23 @@ const getAaUsageStatsCached = unstable_cache(
         total4337: N(t.t4337),
         lastDay: t.last_day ?? null,
         since7702: SEVEN702_START,
-        weekly: weekRows.map((w) => ({
-          week: w.week,
-          aa7702: N(w.aa7702),
-          aa4337: N(w.aa4337),
-        })),
+        weekly: weekRows.map((w) => {
+          const ep06 = N(w.ep06)
+          const ep07 = N(w.ep07)
+          const ep08 = N(w.ep08)
+          const aa7702 = N(w.aa7702)
+          const total = N(w.total)
+          return {
+            week: w.week,
+            aa7702,
+            aa4337: ep06 + ep07 + ep08,
+            accounts7702: N(w.accts7702),
+            share7702Pct: total > 0 ? Math.round((aa7702 / total) * 10000) / 100 : 0,
+            ep06,
+            ep07,
+            ep08,
+          }
+        }),
         source: 'BlobLens · ethereum.transactions (mainnet)',
         sourceUrl: 'https://eipsinsight.com',
       }
