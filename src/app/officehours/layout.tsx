@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { buildMetadata } from "@/lib/seo";
 import { OfficeHoursShell } from "./_shell";
@@ -12,5 +13,9 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function OfficeHoursLayout({ children }: { children: React.ReactNode }) {
-  return <OfficeHoursShell>{children}</OfficeHoursShell>;
+  return (
+    <Suspense fallback={null}>
+      <OfficeHoursShell>{children}</OfficeHoursShell>
+    </Suspense>
+  );
 }
