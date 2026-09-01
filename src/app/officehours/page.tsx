@@ -163,6 +163,7 @@ export default function OfficeHoursPage() {
     if (m === "range" || m === "day") setMode(m);
     const d = urlParam("day");
     if (d) setDay(d);
+    if (m === "day" && d && OFFICE_HOUR_MEETINGS.some((x) => x.dateISO === d)) setFilterMode("officehour");
     const f = urlParam("from");
     if (f) setFrom(f);
     const t = urlParam("to");
@@ -202,6 +203,11 @@ export default function OfficeHoursPage() {
     () => (mode === "day" ? OFFICE_HOUR_MEETINGS.find((m) => m.dateISO === day) ?? null : null),
     [mode, day],
   );
+  const latestPastOh = useMemo(() => OFFICE_HOUR_MEETINGS.find((m) => m.dateISO <= today) ?? OFFICE_HOUR_MEETINGS[0] ?? null, [today]);
+  // Top-level switch: filter by a specific Office Hour, or by a custom date window.
+  const [filterMode, setFilterMode] = useState<"custom" | "officehour">("custom");
+  const goCustom = () => { setFilterMode("custom"); setMode("range"); setFrom(monthStart); setTo(today); setCustomOpen(false); setOhOpen(false); };
+  const goOfficeHour = () => { setFilterMode("officehour"); setCustomOpen(false); setOhOpen(false); if (!selectedOh && latestPastOh) { setMode("day"); setDay(latestPastOh.dateISO); } };
   const PRESETS: Array<{ id: string; label: string; apply: () => void }> = [
     { id: "today", label: "Today", apply: () => { setMode("day"); setDay(today); } },
     { id: "7d", label: "7d", apply: () => { setMode("range"); setFrom(addDays(today, -6)); setTo(today); } },
@@ -383,57 +389,64 @@ export default function OfficeHoursPage() {
 
   return (
     <div className="space-y-4">
-      {/* Export actions (Overview-specific) */}
-      <div className="flex items-center justify-end gap-2">
-        <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
-        <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
-      </div>
-
       {/* Controls */}
       <section className="rounded-xl border border-border bg-card/60 p-3">
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          {/* Date: Today · 7d · This month (default) · Date range */}
-          <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Date</span>
-          {PRESETS.map((p) => (
-            <button key={p.id} onClick={() => { p.apply(); setCustomOpen(false); }} className={cn("rounded-full border px-2.5 py-1", activePresetId === p.id && !customOpen ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{p.label}</button>
-          ))}
-          <button onClick={() => { setMode("range"); setCustomOpen(true); }} className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1", customOpen || activePresetId === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}><CalendarRange className="h-3.5 w-3.5" /> Date range</button>
-          {(customOpen || activePresetId === "custom") && (
-            <div className="flex items-center gap-1.5">
-              <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
-              <span className="text-muted-foreground">to</span>
-              <input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
+        {/* Row 1: mode switch (left) + actions (right) */}
+        <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5">
+            <button
+              onClick={goCustom}
+              className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors", filterMode === "custom" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              <CalendarRange className="h-3.5 w-3.5" /> Custom range
+            </button>
+            <button
+              onClick={goOfficeHour}
+              disabled={OFFICE_HOUR_MEETINGS.length === 0}
+              className={cn("inline-flex items-center gap-1.5 rounded-md px-3 py-1 font-medium transition-colors disabled:opacity-40", filterMode === "officehour" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}
+            >
+              <CalendarClock className="h-3.5 w-3.5" /> Office Hour
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => void fetchData()} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-foreground hover:bg-muted/70"><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh</button>
+            <button onClick={exportEditors} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-foreground hover:bg-muted/70"><Download className="h-3.5 w-3.5" /> Editors CSV</button>
+            <button onClick={exportPRs} className="inline-flex h-8 items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-2.5 font-medium text-primary hover:bg-primary/15"><Download className="h-3.5 w-3.5" /> PRs CSV</button>
+          </div>
+        </div>
+
+        {/* Row 2: mode-specific selector (left) + repos (right) */}
+        <div className="mt-2.5 flex flex-wrap items-center gap-2 border-t border-border/60 pt-2.5 text-xs">
+          {filterMode === "custom" ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {PRESETS.map((p) => (
+                <button key={p.id} onClick={() => { p.apply(); setCustomOpen(false); }} className={cn("rounded-full border px-2.5 py-1", activePresetId === p.id && !customOpen ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{p.label}</button>
+              ))}
+              <button onClick={() => { setMode("range"); setCustomOpen(true); }} className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1", customOpen || activePresetId === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}><CalendarRange className="h-3.5 w-3.5" /> Date range</button>
+              {(customOpen || activePresetId === "custom") && (
+                <div className="flex items-center gap-1.5">
+                  <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
+                  <span className="text-muted-foreground">to</span>
+                  <input type="date" value={to} min={from} max={today} onChange={(e) => setTo(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
+                </div>
+              )}
             </div>
-          )}
-          {/* Repos (checkboxes — RIP off by default) */}
-          <span className="ml-1 text-[11px] uppercase tracking-wide text-muted-foreground">Repos</span>
-          {REPO_KEYS.map((r) => {
-            const on = repos.has(r);
-            return (
-              <button key={r} onClick={() => toggleRepo(r)} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1", on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-                <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on && <Check className="h-2.5 w-2.5" />}</span>
-                {REPO_LABEL[r]}
-              </button>
-            );
-          })}
-          {/* Office Hour picker: jump to a specific past office-hour day. */}
-          {OFFICE_HOUR_MEETINGS.length > 0 && (
+          ) : (
+            /* Office Hour selector */
             <div className="relative">
               <button
                 onClick={() => setOhOpen((o) => !o)}
-                title="Jump to a specific EIP Editing Office Hour"
+                title="Pick an EIP Editing Office Hour"
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
-                  selectedOh
-                    ? "border-primary/50 bg-primary/10 text-primary"
-                    : "border-border bg-muted/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
+                  "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5",
+                  selectedOh ? "border-primary/50 bg-primary/10 text-primary" : "border-border bg-muted/50 text-muted-foreground hover:border-primary/40 hover:text-foreground",
                 )}
               >
-                <CalendarClock className="h-3 w-3" />
+                <CalendarClock className="h-3.5 w-3.5" />
                 {selectedOh
                   ? `Office Hour #${selectedOh.meeting} · ${prettyDate(selectedOh.dateISO)}${selectedOh.timeUTC ? ` · ${selectedOh.timeUTC} UTC` : ""}`
-                  : "Office Hour day"}
-                <ChevronDown className={cn("h-3 w-3 transition-transform", ohOpen && "rotate-180")} />
+                  : "Select an Office Hour"}
+                <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", ohOpen && "rotate-180")} />
               </button>
               {ohOpen && (
                 <>
@@ -464,7 +477,20 @@ export default function OfficeHoursPage() {
               )}
             </div>
           )}
-          <button onClick={() => void fetchData()} className="ml-auto inline-flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/40 px-2.5 text-foreground hover:bg-muted/70"><RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} /> Refresh</button>
+
+          {/* Repos (checkboxes — RIP off by default) */}
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Repos</span>
+            {REPO_KEYS.map((r) => {
+              const on = repos.has(r);
+              return (
+                <button key={r} onClick={() => toggleRepo(r)} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1", on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
+                  <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on && <Check className="h-2.5 w-2.5" />}</span>
+                  {REPO_LABEL[r]}
+                </button>
+              );
+            })}
+          </div>
         </div>
         {refreshedAt && (
           <p className="mt-2 text-[11px] text-muted-foreground">

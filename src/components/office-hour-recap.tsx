@@ -45,9 +45,13 @@ function prHref(repo: string, pr: number) {
 }
 
 /** Collapsible recap card — small preview that expands to full detail. */
+const PR_PREVIEW_COUNT = 4;
+
 export function OfficeHourRecap({ recap, defaultOpen = false }: { recap: OhRecap; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
+  const [showAllPrs, setShowAllPrs] = useState(false);
   const merged = recap.prs.filter((p) => p.status === "MERGED").length;
+  const visiblePrs = showAllPrs ? recap.prs : recap.prs.slice(0, PR_PREVIEW_COUNT);
 
   return (
     <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
@@ -72,24 +76,6 @@ export function OfficeHourRecap({ recap, defaultOpen = false }: { recap: OhRecap
 
       {!open ? null : (
       <>
-      <div className="mt-4">
-        <div className="mb-2 text-[11px] font-mono uppercase tracking-wide text-muted-foreground">Pull requests reviewed ({recap.prs.length})</div>
-        <ul className="space-y-2">
-          {recap.prs.map((p) => (
-            <li key={p.pr} className="rounded-lg border border-border/70 bg-background/40 p-3">
-              <div className="flex items-start justify-between gap-3">
-                <Link href={prHref(p.repo, p.pr)} target="_blank" className="min-w-0 text-sm font-medium text-foreground hover:text-primary">
-                  <span className="font-mono text-muted-foreground">{p.repo.toUpperCase()} #{p.pr}</span> · {p.title}
-                </Link>
-                <StatusBadge status={p.status} />
-              </div>
-              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{p.note}</p>
-              <p className="mt-1 text-[11px] text-muted-foreground/80">by {p.author}</p>
-            </li>
-          ))}
-        </ul>
-      </div>
-
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div>
           <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wide text-muted-foreground"><CheckCircle2 className="h-3.5 w-3.5" /> Decisions</div>
@@ -103,6 +89,34 @@ export function OfficeHourRecap({ recap, defaultOpen = false }: { recap: OhRecap
             {recap.actionItems.map((a, i) => <li key={i} className="flex gap-1.5"><ArrowRight className="mt-0.5 h-3 w-3 shrink-0" />{a}</li>)}
           </ul>
         </div>
+      </div>
+
+      <div className="mt-5">
+        <div className="mb-2 text-[11px] font-mono uppercase tracking-wide text-muted-foreground">Pull requests reviewed ({recap.prs.length})</div>
+        <ul className="space-y-2">
+          {visiblePrs.map((p) => (
+            <li key={p.pr} className="rounded-lg border border-border/70 bg-background/40 p-3">
+              <div className="flex items-start justify-between gap-3">
+                <Link href={prHref(p.repo, p.pr)} target="_blank" className="min-w-0 text-sm font-medium text-foreground hover:text-primary">
+                  <span className="font-mono text-muted-foreground">{p.repo.toUpperCase()} #{p.pr}</span> · {p.title}
+                </Link>
+                <StatusBadge status={p.status} />
+              </div>
+              <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground">{p.note}</p>
+              <p className="mt-1 text-[11px] text-muted-foreground/80">by {p.author}</p>
+            </li>
+          ))}
+        </ul>
+        {recap.prs.length > PR_PREVIEW_COUNT && (
+          <button
+            onClick={() => setShowAllPrs((v) => !v)}
+            aria-expanded={showAllPrs}
+            className="mt-2 inline-flex items-center gap-1 rounded-md border border-border bg-background/40 px-2.5 py-1.5 text-xs font-medium text-primary transition-colors hover:border-primary/40"
+          >
+            {showAllPrs ? "Show fewer" : `Show ${recap.prs.length - PR_PREVIEW_COUNT} more`}
+            <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showAllPrs && "rotate-180")} />
+          </button>
+        )}
       </div>
 
       <div className="mt-4 border-t border-border pt-3 text-[12px] text-muted-foreground">Next: {recap.nextMeeting}</div>
