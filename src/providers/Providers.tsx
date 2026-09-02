@@ -6,7 +6,6 @@ import { PersonaProvider } from "@/providers/PersonaProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { HashScrollProvider } from "@/providers/HashScrollProvider";
 import { OnboardingRedirect } from "@/components/onboarding-redirect";
-import { ThemeLoading } from "@/components/theme-loading";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -39,7 +38,6 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <ThemeLoading />
         <HashScrollProvider>
           <PersonaProvider>
             <OnboardingRedirect />
