@@ -22,6 +22,9 @@ import {
   Info,
   ArrowUpRight,
   Flame,
+  Video,
+  CalendarClock,
+  Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -76,12 +79,30 @@ const mobileNavSections = [
     label: "Upgrades",
     items: [
       { title: "Overview", href: "/upgrade", icon: Package },
-      { title: "EIP Upgrade Directory", href: "/upgrade/eips", icon: Package },
-      { title: "Archive", href: "/upgrade/archive", icon: Package },
-      { title: "Pectra", href: "/upgrade/pectra", icon: Package },
-      { title: "Fusaka", href: "/upgrade/fusaka", icon: Package },
-      { title: "Glamsterdam", href: "/upgrade/glamsterdam", icon: Package },
+      { title: "Upgrade EIP Directory", href: "/upgrade/eips", icon: Package },
       { title: "Hegotá", href: "/upgrade/hegota", icon: Package },
+      { title: "Glamsterdam", href: "/upgrade/glamsterdam", icon: Package },
+      { title: "Fusaka", href: "/upgrade/fusaka", icon: Package },
+      { title: "Previous Upgrades", href: "/upgrade/archive", icon: Package },
+      { title: "Devnets", href: "/upgrade/devnets", icon: Package },
+      { title: "Schedule", href: "/upgrade/schedule", icon: Package },
+    ],
+  },
+  {
+    label: "Protocol Calls",
+    items: [
+      { title: "All Calls", href: "/calls", icon: Video },
+      { title: "ACD Calls", href: "/calls?series=acd#recent", icon: Video },
+      { title: "Breakout Calls", href: "/calls?series=breakouts#recent", icon: Video },
+      { title: "Decisions", href: "/decisions", icon: Video },
+    ],
+  },
+  {
+    label: "EIP Office Hours",
+    items: [
+      { title: "Overview", href: "/officehours", icon: CalendarClock },
+      { title: "Board", href: "/officehours/board", icon: CalendarClock },
+      { title: "Calls", href: "/officehours/calls", icon: CalendarClock },
     ],
   },
   {
@@ -90,7 +111,7 @@ const mobileNavSections = [
       { title: "Analytics Home", href: "/analytics", icon: LineChart },
       { title: "EIPs", href: "/analytics/eips", icon: LineChart },
       { title: "PRs", href: "/analytics/prs", icon: LineChart },
-      { title: "Editors Leadership Board", href: "/analytics/editors", icon: LineChart },
+      { title: "Editors Leaderboard", href: "/analytics/editors", icon: LineChart },
       { title: "Reviewers", href: "/analytics/reviewers", icon: LineChart },
       { title: "Authors", href: "/analytics/authors", icon: LineChart },
       { title: "Contributors", href: "/analytics/contributors", icon: LineChart },
@@ -102,10 +123,10 @@ const mobileNavSections = [
     label: "Tools",
     items: [
       { title: "Tools Home", href: "/tools", icon: Wrench },
-      { title: "Open PR Board", href: "/officehours/board", icon: Wrench },
       { title: "EIP Builder", href: "/eip-builder", icon: Wrench },
-      { title: "Dependencies", href: "/dependencies", icon: Wrench },
       { title: "Timeline", href: "/timeline", icon: Wrench },
+      { title: "Dependencies", href: "/dependencies", icon: Wrench },
+      { title: "Account Abstraction", href: "/aa", icon: Boxes },
     ],
   },
   {
@@ -115,6 +136,8 @@ const mobileNavSections = [
       { title: "Blogs", href: "/resources/blogs", icon: BookOpen },
       { title: "Videos", href: "/resources/videos", icon: BookOpen },
       { title: "News", href: "/resources/news", icon: BookOpen },
+      { title: "FAQ", href: "/resources/faq", icon: BookOpen },
+      { title: "Milestones", href: "/resources/milestones", icon: BookOpen },
       { title: "About Us", href: "/about", icon: Info },
     ],
   },
