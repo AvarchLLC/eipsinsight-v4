@@ -219,8 +219,8 @@ const privacySections: LegalSection[] = [
         <div className="rounded-lg border border-border bg-muted/30 p-4">
           <p className="text-sm font-medium text-foreground">
             Email:{' '}
-            <a href="mailto:dev@avarch.com" className="text-primary hover:text-primary/80">
-              dev@avarch.com
+            <a href="mailto:dev@avarch.org" className="text-primary hover:text-primary/80">
+              dev@avarch.org
             </a>
           </p>
         </div>

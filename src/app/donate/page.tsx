@@ -298,8 +298,8 @@ export default function DonatePage() {
           <h3 className="text-base font-semibold text-foreground">Have questions or partnership inquiries?</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Reach out directly to our engineering & governance team at{' '}
-            <a href="mailto:dev@avarch.com" className="font-semibold text-primary underline hover:text-primary/80">
-              dev@avarch.com
+            <a href="mailto:dev@avarch.org" className="font-semibold text-primary underline hover:text-primary/80">
+              dev@avarch.org
             </a>
           </p>
         </section>

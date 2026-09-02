@@ -138,7 +138,7 @@ export default function TeamPage() {
 
   const socialLinks = [
     { label: 'GitHub', href: GITHUB_REPO_URL, icon: Github },
-    { label: 'Contact', href: 'mailto:dev@avarch.com', icon: Mail },
+    { label: 'Contact', href: 'mailto:dev@avarch.org', icon: Mail },
     { label: 'Discord', href: 'https://discord.com/invite/tUXgfV822C', icon: MessageCircle },
     { label: 'Donate', href: '/donate', icon: Heart },
   ];
@@ -630,7 +630,7 @@ export default function TeamPage() {
                     Read our principles
                   </Link>
                   <a
-                    href="mailto:dev@avarch.com?subject=EIPsInsight%20Team%20Opportunity"
+                    href="mailto:dev@avarch.org?subject=EIPsInsight%20Team%20Opportunity"
                     className="inline-flex h-10 items-center rounded-lg persona-gradient px-5 text-sm font-semibold text-black transition-all hover:opacity-95"
                   >
                     We&apos;re hiring!
