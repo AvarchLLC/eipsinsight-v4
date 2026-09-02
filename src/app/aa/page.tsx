@@ -16,7 +16,7 @@ export default function AccountAbstractionPage() {
         <h1 className="persona-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Account Abstraction
         </h1>
-        <p className="max-w-3xl text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground">
           Tracking Ethereum&apos;s account-abstraction effort: live on-chain usage of the mechanisms in production today,
           the proposal family, and the native-AA work in progress. Related calls are on the{' '}
           <Link href="/calls/aa/003" className="text-primary hover:underline">
