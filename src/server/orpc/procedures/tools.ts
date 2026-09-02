@@ -650,6 +650,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         repo_short: string;
         is_new: boolean;
         wait_days: number;
+        waiting_state: string | null;
         bucket: string;
       }>>(`
         WITH glam AS (
@@ -670,6 +671,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
             p.labels @> ARRAY['s-draft']::text[] AS is_s_draft,
             (SELECT COUNT(*) FROM unnest(p.labels) l WHERE l LIKE 's-%') AS status_label_count,
             GREATEST(EXTRACT(DAY FROM (NOW() - COALESCE(gs.waiting_since, p.created_at, NOW())))::int, 0) AS wait_days,
+            gs.current_state AS waiting_state,
             LOWER(COALESCE(p.title, '')) AS lt,
             NULLIF((regexp_match(p.title, '(?:EIP|ERC)-(\\d+)'))[1], '')::int AS eip_num
           FROM pull_requests p
@@ -678,7 +680,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
         )
-        SELECT pr_number, title, author, repo_name, repo_short, is_new, wait_days,
+        SELECT pr_number, title, author, repo_name, repo_short, is_new, wait_days, waiting_state,
           CASE
             WHEN is_status_change AND lt ~ 'move to final' THEN 'final'
             WHEN is_status_change AND lt ~ 'move to last call' THEN 'lastcall'
@@ -687,8 +689,14 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
             ELSE 'draft'
           END AS bucket
         FROM base
-        WHERE (is_status_change AND lt ~ 'move to (final|last call|review)')
-           OR (is_s_draft AND status_label_count = 1 AND (is_new OR is_status_change))
+        WHERE
+          -- The office-hour agenda is the editor's review list, so only surface
+          -- PRs that are actually waiting on an editor (not blocked on the author).
+          waiting_state = 'WAITING_ON_EDITOR'
+          AND (
+            (is_status_change AND lt ~ 'move to (final|last call|review)')
+            OR (is_s_draft AND status_label_count = 1 AND (is_new OR is_status_change))
+          )
         ORDER BY repo_short, pr_number DESC
       `);
 
@@ -701,6 +709,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         url: `https://github.com/${r.repo_name}/pull/${r.pr_number}`,
         isNew: r.is_new,
         waitDays: r.wait_days,
+        waitingState: r.waiting_state,
         bucket: r.bucket as 'final' | 'lastcall' | 'review' | 'glamsterdam' | 'draft',
       }));
     }),

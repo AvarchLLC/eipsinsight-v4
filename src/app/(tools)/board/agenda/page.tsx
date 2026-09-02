@@ -2,7 +2,6 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { ArrowLeft, Check, ChevronDown, ChevronRight, ClipboardPaste, Copy, RotateCcw, Search } from "lucide-react";
 import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
@@ -126,12 +125,12 @@ function parseAgenda(md: string): ParsedAgenda {
   return out;
 }
 
-// The agenda board now lives under Office Hours → Board → ACD Agenda.
-export default function AgendaRedirect() {
-  redirect("/officehours/board");
+// Dedicated route for the Agenda Maker (also reachable as the board's "Agenda Maker" tab).
+export default function BoardAgendaPage() {
+  return <AgendaMaker />;
 }
 
-export function AgendaMaker() {
+export function AgendaMaker({ embedded = false }: { embedded?: boolean } = {}) {
   // ── Meeting header fields ──
   const [meetingNo, setMeetingNo] = useState("");
   const [dateISO, setDateISO] = useState(defaultDateISO);
@@ -141,7 +140,35 @@ export function AgendaMaker() {
 
   // ── Free-text sections (judgement calls) ──
   const [acdText, setAcdText] = useState("");
+  const [acdLoading, setAcdLoading] = useState(false);
   const [miscText, setMiscText] = useState("");
+
+  // Pull the PRs whose EIPs are on an upcoming ACD agenda into the ACD section.
+  const pullAcd = async () => {
+    setAcdLoading(true);
+    try {
+      const res = await client.tools.getAgendaPRs({ window: "upcoming", pageSize: 100 });
+      if (!res.ready) {
+        toast.error("ACD agenda data isn't available yet.");
+        return;
+      }
+      if (res.rows.length === 0) {
+        toast.info("No PRs are on an upcoming ACD agenda right now.");
+        return;
+      }
+      const repoPath = (s: string) =>
+        s === "ercs" ? "ethereum/ERCs" : s === "rips" ? "ethereum/RIPs" : "ethereum/EIPs";
+      const lines = res.rows.map(
+        (r) => `- https://github.com/${repoPath(r.repo)}/pull/${r.prNumber}${r.title ? `  ${r.title}` : ""}`,
+      );
+      setAcdText(lines.join("\n"));
+      toast.success(`Pulled ${res.rows.length} ACD-related PR(s).`);
+    } catch {
+      toast.error("Failed to pull ACD items.");
+    } finally {
+      setAcdLoading(false);
+    }
+  };
 
   // ── Candidate data + selection ──
   const [candidates, setCandidates] = useState<Candidate[] | null>(null);
@@ -344,27 +371,39 @@ EIP Editing Office Hour
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-background/85 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
-          <Link
-            href="/officehours/board"
-            className="mb-2 inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <ArrowLeft className="h-3.5 w-3.5" />
-            Back to Board
-          </Link>
-          <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
-            Office Hour Agenda Maker
-          </h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-            Status moves (Final / Last Call / Review) and drafts are pulled live from the PR board and pre-sorted. Tick what
-            you want, add references, then copy the ready-to-paste agenda.
+    <div className={embedded ? "" : "min-h-screen bg-background"}>
+      {/* Standalone chrome only when this is its own page; in the board tab the
+          board already provides the surrounding header. */}
+      {embedded ? (
+        <div className="px-1 pb-1 pt-2">
+          <h2 className="text-sm font-semibold text-foreground">Office Hour Agenda Maker</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Status moves and drafts are pulled live from the board. Tick what you want, add references, then copy the
+            ready-to-paste agenda.
           </p>
         </div>
-      </div>
+      ) : (
+        <div className="border-b border-border bg-background/85 backdrop-blur-xl">
+          <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6">
+            <Link
+              href="/officehours/board"
+              className="mb-2 inline-flex items-center gap-2 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Back to Board
+            </Link>
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-[1.1] tracking-tight sm:text-4xl">
+              Office Hour Agenda Maker
+            </h1>
+            <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+              Status moves (Final / Last Call / Review) and drafts are pulled live from the PR board and pre-sorted. Tick what
+              you want, add references, then copy the ready-to-paste agenda.
+            </p>
+          </div>
+        </div>
+      )}
 
-      <div className="mx-auto grid max-w-7xl gap-4 px-4 py-5 sm:px-6 lg:grid-cols-[1fr_minmax(360px,42%)]">
+      <div className={cn("mx-auto grid max-w-7xl gap-4 lg:grid-cols-[1fr_minmax(360px,42%)]", embedded ? "py-3" : "px-4 py-5 sm:px-6")}>
         {/* ── Builder ── */}
         <div className="space-y-4">
           {/* Meeting header */}
@@ -443,9 +482,19 @@ EIP Editing Office Hour
           <section className="rounded-xl border border-border bg-card/60 p-4">
             <h2 className="mb-3 text-sm font-semibold text-foreground">Manual sections</h2>
             <div className="space-y-3">
-              <Field label="ACD related">
-                <textarea value={acdText} onChange={(e) => setAcdText(e.target.value)} rows={2} placeholder="Leave blank for _TBA_ - no reliable signal for ACD items, editor's call" className={textareaCls} />
-              </Field>
+              <div className="block">
+                <div className="mb-1 flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">ACD related</span>
+                  <button
+                    onClick={pullAcd}
+                    disabled={acdLoading}
+                    className="inline-flex h-6 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+                  >
+                    {acdLoading ? "Pulling…" : "Pull from ACD agenda"}
+                  </button>
+                </div>
+                <textarea value={acdText} onChange={(e) => setAcdText(e.target.value)} rows={3} placeholder="Leave blank for _TBA_, or pull PRs on an upcoming ACD agenda" className={textareaCls} />
+              </div>
               <Field label="Misc">
                 <textarea value={miscText} onChange={(e) => setMiscText(e.target.value)} rows={3} placeholder="Leave blank for _TBA_" className={textareaCls} />
               </Field>

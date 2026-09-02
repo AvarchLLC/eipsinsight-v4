@@ -584,7 +584,7 @@ export function BoardBrowser() {
         {tab === "agenda" ? (
           <AgendaPrsPanel />
         ) : tab === "maker" ? (
-          <AgendaMaker />
+          <AgendaMaker embedded />
         ) : (
         <>
         <section className="rounded-xl border border-border bg-card/60 p-3 sm:p-4">
