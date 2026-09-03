@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo';
+import { AaShell } from './_shell';
 
 export const metadata: Metadata = buildMetadata({
   title: 'Account Abstraction Usage',
@@ -11,5 +12,5 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function AaLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return <AaShell>{children}</AaShell>;
 }
