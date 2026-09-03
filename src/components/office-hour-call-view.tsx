@@ -21,11 +21,12 @@ function getYoutubeId(url: string): string | null {
 export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
   const youtubeId = getYoutubeId(recap.youtube);
   const cues = TRANSCRIPTS[`${recap.series}-${recap.meeting}`] ?? [];
+  const backHref = recap.series === "eipip" ? "/eipip/calls" : "/officehours/calls";
 
   return (
     <div className="mx-auto max-w-5xl space-y-4 px-4 py-6 sm:px-6">
-      <Link href="/officehours/calls" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-        <ArrowLeft className="h-3.5 w-3.5" /> Back to Calls
+      <Link href={backHref} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+        <ArrowLeft className="h-3.5 w-3.5" /> Back to {recap.series === "eipip" ? "Meetings" : "Calls"}
       </Link>
 
       <header className="space-y-1">
@@ -36,7 +37,7 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
         {cues.length > 0 && <p className="text-xs text-muted-foreground">{cues.length} transcript lines · recording synced below</p>}
       </header>
 
-      {youtubeId ? <CallPlayer youtubeId={youtubeId} cues={cues} /> : <CallVideoFallback videoUrl={recap.youtube} />}
+      {youtubeId ? <CallPlayer youtubeId={youtubeId} cues={cues} /> : recap.youtube ? <CallVideoFallback videoUrl={recap.youtube} /> : null}
 
       <OfficeHourRecap recap={recap} defaultOpen />
     </div>

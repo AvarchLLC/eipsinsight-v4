@@ -106,6 +106,13 @@ const mobileNavSections = [
     ],
   },
   {
+    label: "EIPIP Meetings",
+    items: [
+      { title: "Overview", href: "/eipip", icon: CalendarClock },
+      { title: "Meetings", href: "/eipip/calls", icon: CalendarClock },
+    ],
+  },
+  {
     label: "Analytics & Insights",
     items: [
       { title: "Analytics Home", href: "/analytics", icon: LineChart },
