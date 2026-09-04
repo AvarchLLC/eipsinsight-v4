@@ -102,7 +102,15 @@ const mobileNavSections = [
     items: [
       { title: "Overview", href: "/officehours", icon: CalendarClock },
       { title: "Board", href: "/officehours/board", icon: CalendarClock },
+      { title: "PR Analytics", href: "/officehours/prs", icon: CalendarClock },
       { title: "Calls", href: "/officehours/calls", icon: CalendarClock },
+    ],
+  },
+  {
+    label: "EIPIP Meetings",
+    items: [
+      { title: "Overview", href: "/eipip", icon: CalendarClock },
+      { title: "Meetings", href: "/eipip/calls", icon: CalendarClock },
     ],
   },
   {

@@ -376,12 +376,24 @@ const repoIds = await getRepoIds(input.repo);
       // Editorial signals the scheduler computes in pr_governance_state.
       needsAttention: z.boolean().optional(),
       hasConflicts: z.boolean().optional(),
+      ciFailing: z.boolean().optional(),
     }))
     .handler(async ({ context, input }) => {
-const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts } = input;
+const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, ciFailing } = input;
       const offset = (page - 1) * pageSize;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
       const processTypes = typeof processType === 'string' ? [processType] : (processType ?? []);
+
+      // CI columns come from a separate scheduler migration; degrade gracefully
+      // (no CI flag) if it hasn't run yet, rather than 500ing the whole board.
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
 
       // Whitelisted so the raw query can never take user-controlled SQL.
       const ORDER_COLUMNS = { wait: 'f.wait_days', pr: 'f.pr_number', created: 'f.created_at' } as const;
@@ -406,6 +418,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
         ethbot_review: boolean;
         author_is_preamble_author: boolean;
         has_participants: boolean;
+        ci_failing: boolean;
         total_count: bigint;
       }>>(`
         WITH base AS (
@@ -436,7 +449,8 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
             COALESCE(gs.has_stagnant_preamble_status, false) AS stagnant_preamble,
             COALESCE(gs.ethbot_needs_editor_review, false) AS ethbot_review,
             COALESCE(gs.opened_by_preamble_author, false) AS author_is_preamble_author,
-            COALESCE(gs.has_other_participants, false) AS has_participants
+            COALESCE(gs.has_other_participants, false) AS has_participants,
+            ${ciExpr} AS ci_failing
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
@@ -456,12 +470,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
             ))
             AND ($7::boolean IS NULL OR needs_attention = $7)
             AND ($8::boolean IS NULL OR has_conflicts = $8)
+            AND ($9::boolean IS NULL OR ci_failing = $9)
         )
         SELECT f.*, (SELECT COUNT(*) FROM filtered)::bigint AS total_count
         FROM filtered f
         ORDER BY ${orderColumn} ${orderDirection}, f.pr_number DESC
         LIMIT $5 OFFSET $6
-      `, (input.repos && input.repos.length ? input.repos : repo ? [repo] : null), govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null);
+      `, (input.repos && input.repos.length ? input.repos : repo ? [repo] : null), govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null, ciFailing ?? null);
 
       const total = results.length > 0 ? Number(results[0].total_count) : 0;
 
@@ -488,6 +503,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
           ethbotReview: r.ethbot_review,
           authorIsPreambleAuthor: r.author_is_preamble_author,
           hasParticipants: r.has_participants,
+          ciFailing: r.ci_failing ?? false,
         })),
       };
     }),
@@ -587,9 +603,19 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         ORDER BY count DESC
       `, repoArg, search || null);
 
+      // CI columns come from a separate scheduler migration (degrade gracefully).
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
+
       // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
       const signalResults = await prisma.$queryRawUnsafe<Array<{
-        needs_attention: bigint; has_conflicts: bigint;
+        needs_attention: bigint; has_conflicts: bigint; ci_failing: bigint;
       }>>(`
         WITH base AS (
           SELECT
@@ -604,7 +630,8 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
               END
             ) AS gov_state,
             COALESCE(gs.needs_editor_attention, false) AS needs_attention,
-            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts
+            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts,
+            ${ciExpr} AS ci_failing
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
@@ -615,7 +642,8 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         )
         SELECT
           COUNT(*) FILTER (WHERE needs_attention)::bigint AS needs_attention,
-          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts
+          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts,
+          COUNT(*) FILTER (WHERE ci_failing)::bigint AS ci_failing
         FROM base
         WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
           AND ($3::text IS NULL OR (
@@ -631,6 +659,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         totalOpen: gsResults.reduce((sum, r) => sum + Number(r.count), 0),
         needsAttention: Number(signalResults[0]?.needs_attention ?? 0),
         hasConflicts: Number(signalResults[0]?.has_conflicts ?? 0),
+        ciFailing: Number(signalResults[0]?.ci_failing ?? 0),
       };
     }),
 

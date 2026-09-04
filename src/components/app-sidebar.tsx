@@ -172,7 +172,17 @@ const sidebarSections: SidebarSection[] = [
         items: [
           { title: "Overview", href: "/officehours" },
           { title: "Board", href: "/officehours/board" },
+          { title: "PR Analytics", href: "/officehours/prs" },
           { title: "Calls", href: "/officehours/calls" },
+        ],
+      },
+      {
+        title: "EIPIP Meetings",
+        icon: ClipboardList,
+        href: "/eipip",
+        items: [
+          { title: "Overview", href: "/eipip" },
+          { title: "Meetings", href: "/eipip/calls" },
         ],
       },
     ],
@@ -319,6 +329,7 @@ function getActiveItemTitle(pathname: string): string | null {
   )
     return "Protocol Calls";
   if (pathname === "/officehours" || pathname.startsWith("/officehours")) return "EIP Office Hours";
+  if (pathname === "/eipip" || pathname.startsWith("/eipip")) return "EIPIP Meetings";
   if (
     pathname.startsWith("/eip-builder") ||
     pathname.startsWith("/timeline") ||

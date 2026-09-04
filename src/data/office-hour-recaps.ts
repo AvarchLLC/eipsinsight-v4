@@ -105,6 +105,35 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     ],
     nextMeeting: "Meeting #112, Sep 1, 2026",
   },
+  {
+    series: "eipip",
+    meeting: 129,
+    dateISO: "2026-08-12",
+    displayDate: "Aug 12, 2026",
+    title: "EIPIP Meeting #129",
+    youtube: "",
+    issueUrl: "https://github.com/ethereum/pm/issues/2159",
+    summary:
+      "Meeting #129 covered open calls for input, including approval to allow links to Unicode standards and stricter rules for changing EIP authors. Sam and jochem-brouwer debated the risks of changing author permissions and the importance of protecting EIP numbers. The group reviewed contributing.md changes that clarify EIP number allocation and prevent authors self-allocating numbers. It also addressed Meta EIP-7773 being blocked by unrelated changes (a mascot EIP) and the need for better process alignment between ACD and EIP editors. Updates on the Rust rendering system and EIP numbering automation showed limited progress with no active owner. Pooja announced plans for an EIP Hub at DevCon.",
+    prs: [],
+    decisions: [
+      "Approved allowing links to the Unicode technical standard; Sam to resolve the conflict and force-merge the CFI since further approvals were unlikely.",
+      "Proposed rule that office members should not change EIP author lists, to prevent conflicts and EIPs being taken hostage; edge cases around number ownership and compromised accounts were discussed.",
+      "contributing.md updated: EIP number allocation clarified, self-allocation by authors prevented, don'ts moved to a separate section, and editor responsibility for number allocation noted (needs two reviewer approvals).",
+      "The EIP bot that checks references to non-final EIPs and ERCs was re-enabled on both the EIP and ERC repositories.",
+      "Meta EIP-7773 is blocked by unrelated changes (the addition of a mascot EIP); to be raised at ACD for a process fix.",
+      "A community waiting period for author/removal objections was discussed, to continue on Discord for more editor feedback.",
+      "Rust rendering implementation and EIP numbering automation have limited progress and no active owner since the protocol support team transition.",
+    ],
+    actionItems: [
+      "Pooja: raise the mascot EIP blocking the Meta EIP at the next ACD meeting and discuss the inclusion process.",
+      "Pooja: reach out to programming partners for the EIP Hub at DevCon and coordinate with attending editors.",
+      "Sam: fix the conflict and force-merge the CFI allowing links to the Unicode technical standard.",
+      "jochem-brouwer: open a PR updating agents.md to note that AI/LLMs should not allocate EIP numbers.",
+      "jochem-brouwer: review the Rust implementation of the rendering system for the EIP working group.",
+    ],
+    nextMeeting: "Meeting #130, Sep 16, 2026 at 16:00 UTC",
+  },
 ];
 
 export const LATEST_OFFICE_HOUR_RECAP = OFFICE_HOUR_RECAPS[0];

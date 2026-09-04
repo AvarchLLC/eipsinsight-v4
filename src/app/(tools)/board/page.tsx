@@ -48,6 +48,7 @@ type PRRow = {
   ethbotReview: boolean;
   authorIsPreambleAuthor: boolean;
   hasParticipants: boolean;
+  ciFailing: boolean;
 };
 
 type BoardData = {
@@ -64,6 +65,7 @@ type StatsData = {
   totalOpen: number;
   needsAttention: number;
   hasConflicts: number;
+  ciFailing: number;
 };
 
 type RepoKey = "" | "eips" | "ercs" | "rips";
@@ -221,6 +223,7 @@ export function BoardBrowser() {
   });
   const [needsAttention, setNeedsAttention] = useState(() => searchParams.get("attn") === "1");
   const [hasConflicts, setHasConflicts] = useState(() => searchParams.get("conflict") === "1");
+  const [ciBlocked, setCiBlocked] = useState(() => searchParams.get("ci") === "1");
 
   const [loading, setLoading] = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -245,6 +248,7 @@ export function BoardBrowser() {
   const searchFilter = debouncedSearch || undefined;
   const attnFilter = needsAttention || undefined;
   const conflictFilter = hasConflicts || undefined;
+  const ciFilter = ciBlocked || undefined;
 
   // Mirror state into the URL so "Copy link" (and browser back/refresh) actually work.
   useEffect(() => {
@@ -272,10 +276,11 @@ export function BoardBrowser() {
     if (sortDir !== DEFAULT_DIR) p.set("dir", sortDir);
     if (needsAttention) p.set("attn", "1");
     if (hasConflicts) p.set("conflict", "1");
+    if (ciBlocked) p.set("ci", "1");
     const qs = p.toString();
     if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [tab, reposKey, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, pathname, router, searchParams]);
+  }, [tab, reposKey, selectedGovStates, selectedProcessTypes, debouncedSearch, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, ciBlocked, pathname, router, searchParams]);
 
   useEffect(() => {
     let cancelled = false;
@@ -313,6 +318,7 @@ export function BoardBrowser() {
           sortDir,
           needsAttention: attnFilter,
           hasConflicts: conflictFilter,
+          ciFailing: ciFilter,
         });
         if (!cancelled) setData(d);
       } catch (err) {
@@ -325,7 +331,7 @@ export function BoardBrowser() {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [reposKey, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir, attnFilter, conflictFilter]);
+  }, [reposKey, govFilter, processFilter, searchFilter, page, pageSize, sortBy, sortDir, attnFilter, conflictFilter, ciFilter]);
 
   const totalMatching = data?.total ?? 0;
   const rows = data?.rows ?? [];
@@ -340,7 +346,8 @@ export function BoardBrowser() {
     sortBy !== DEFAULT_SORT ||
     sortDir !== DEFAULT_DIR ||
     needsAttention ||
-    hasConflicts;
+    hasConflicts ||
+    ciBlocked;
 
   const toggleGovState = (state: string) => {
     setPage(1);
@@ -371,6 +378,7 @@ export function BoardBrowser() {
     setSortDir(DEFAULT_DIR);
     setNeedsAttention(false);
     setHasConflicts(false);
+    setCiBlocked(false);
     setPage(1);
   };
 
@@ -381,6 +389,10 @@ export function BoardBrowser() {
   const toggleConflicts = () => {
     setPage(1);
     setHasConflicts((v) => !v);
+  };
+  const toggleCiBlocked = () => {
+    setPage(1);
+    setCiBlocked((v) => !v);
   };
 
   const orderedProcessTypes = useMemo(() => {
@@ -403,6 +415,7 @@ export function BoardBrowser() {
       sortDir,
       needsAttention: attnFilter,
       hasConflicts: conflictFilter,
+      ciFailing: ciFilter,
     };
     const firstPage = await client.tools.getOpenPRBoard({ ...query, page: 1, pageSize: exportPageSize });
 
@@ -750,6 +763,22 @@ export function BoardBrowser() {
                   ({stats?.hasConflicts ?? 0})
                 </span>
               </button>
+              <button
+                onClick={toggleCiBlocked}
+                aria-pressed={ciBlocked}
+                title="PRs blocked by failing required CI - reclassified out of the editor queue until the author fixes them"
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-xs font-medium transition-colors",
+                  ciBlocked
+                    ? "border-red-500/40 bg-red-500/10 text-red-700 dark:text-red-300"
+                    : "border-border bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground",
+                )}
+              >
+                <AlertTriangle className="h-3.5 w-3.5" /> CI-blocked{" "}
+                <span className={cn("opacity-70 transition-opacity", statsLoading && "animate-pulse opacity-40")}>
+                  ({stats?.ciFailing ?? 0})
+                </span>
+              </button>
             </div>
           </div>
 
@@ -1016,6 +1045,14 @@ export function BoardBrowser() {
 /** Compact editorial-signal pills, shown under a PR's title. */
 function SignalBadges({ row }: { row: PRRow }) {
   const badges: { key: string; label: string; title: string; cls: string; Icon?: typeof GitMerge }[] = [];
+  if (row.ciFailing)
+    badges.push({
+      key: "ci",
+      label: "CI-blocked",
+      title: "Failing required CI - reclassified out of the editor queue until the author fixes it",
+      cls: "border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300",
+      Icon: AlertTriangle,
+    });
   if (row.hasConflicts)
     badges.push({
       key: "conflict",

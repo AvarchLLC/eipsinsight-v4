@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, usePathname } from "next/navigation";
 import Link from "next/link";
 import ReactECharts from "echarts-for-react";
-import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
+import { useAnalytics, useAnalyticsExport, timeRangeOptions } from "../analytics-layout-client";
 import { rangeToMonthWindow, type TimeRange } from "@/lib/analytics-range";
 import { client } from "@/lib/orpc";
 import {
@@ -19,6 +19,8 @@ import {
   Users,
   ChevronDown,
   CircleHelp,
+  Check,
+  Database,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CopyLinkButton } from "@/components/header";
@@ -151,6 +153,114 @@ const GOVERNANCE_COLORS: Record<string, string> = {
 
 const getMonthWindow = rangeToMonthWindow;
 
+// ---- Multi-repo (union) support: fetch per selected repo and merge client-side ----
+type PrRepoKey = "eips" | "ercs" | "rips";
+const PR_REPO_KEYS: PrRepoKey[] = ["eips", "ercs", "rips"];
+const PR_REPO_LABEL: Record<PrRepoKey, string> = { eips: "EIPs", ercs: "ERCs", rips: "RIPs" };
+
+interface PrBundle {
+  openState: OpenStateSummary;
+  hero: PRMonthHero;
+  monthly: PRMonthlyPoint[];
+  govStates: GovernanceState[];
+  labels: LabelStat[];
+  lifecycle: LifecycleStage[];
+  tto: TimeToOutcomeMetric[];
+  stale: StalenessBucket[];
+  procCat: ProcessCategory[];
+  govWait: GovernanceWaitState[];
+  processTimeline: Array<{ month: string; rows: ProcessCategory[] }>;
+  participantTimeline: Array<{ month: string; rows: GovernanceWaitState[] }>;
+  crossTab: Array<{ processType: string; govState: string; count: number }>;
+  openExport: OpenPRRow[];
+  mergedExport: OpenPRRow[];
+  closedExport: OpenPRRow[];
+  issueExport: OpenIssueRow[];
+}
+
+/** Sum rows sharing the same key, adding the given numeric fields. */
+function sumByKey<T extends object>(lists: T[][], keyOf: (r: T) => string, fields: (keyof T)[]): T[] {
+  const map = new Map<string, T>();
+  for (const list of lists) {
+    for (const r of list) {
+      const k = keyOf(r);
+      const cur = map.get(k);
+      if (!cur) {
+        map.set(k, { ...r });
+      } else {
+        const c = cur as Record<string, number>;
+        const rr = r as Record<string, number>;
+        for (const f of fields) c[f as string] = (c[f as string] ?? 0) + (rr[f as string] ?? 0);
+      }
+    }
+  }
+  return [...map.values()];
+}
+
+/** Merge per-repo bundles into a single union bundle. Count metrics are exact;
+    median/percentile metrics are approximated (weighted where possible) when
+    more than one repo is selected, since they can't be merged exactly. */
+function mergePrBundles(bs: PrBundle[]): PrBundle {
+  if (bs.length === 1) return bs[0];
+  const num = (fn: (b: PrBundle) => number) => bs.reduce((s, b) => s + fn(b), 0);
+
+  const totalOpen = num((b) => b.openState.totalOpen);
+  const medianAge = totalOpen > 0 ? Math.round(num((b) => b.openState.medianAge * b.openState.totalOpen) / totalOpen) : 0;
+  const oldestPR = bs.map((b) => b.openState.oldestPR).filter(Boolean).sort((a, b) => (b!.age_days) - (a!.age_days))[0] ?? null;
+
+  const monthly = sumByKey(bs.map((b) => b.monthly), (r) => r.month, ["created", "merged", "closed", "openAtMonthEnd"])
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  // lifecycle funnel is repo-agnostic (same for every bundle) — no merge needed
+  const lifecycle = bs[0].lifecycle;
+
+  const govWait = sumByKey(bs.map((b) => b.govWait), (r) => r.state, ["count"]).map((r) => ({
+    ...r, medianWaitDays: null, // can't merge medians across repos
+  }));
+
+  const mergeTimeline = <R extends object>(
+    lists: Array<Array<{ month: string; rows: R[] }>>, keyOf: (r: R) => string,
+  ) => {
+    const byMonth = new Map<string, R[][]>();
+    for (const list of lists) for (const { month, rows } of list) {
+      byMonth.set(month, [...(byMonth.get(month) ?? []), rows]);
+    }
+    return [...byMonth.entries()]
+      .map(([month, rowLists]) => ({ month, rows: sumByKey(rowLists, keyOf, ["count"] as (keyof R)[]) }))
+      .sort((a, b) => a.month.localeCompare(b.month));
+  };
+
+  return {
+    openState: { totalOpen, medianAge, oldestPR },
+    hero: {
+      month: bs[0].hero.month,
+      openPRs: num((b) => b.hero.openPRs),
+      newPRs: num((b) => b.hero.newPRs),
+      mergedPRs: num((b) => b.hero.mergedPRs),
+      closedUnmerged: num((b) => b.hero.closedUnmerged),
+      netDelta: num((b) => b.hero.netDelta),
+    },
+    monthly,
+    govStates: sumByKey(bs.map((b) => b.govStates), (r) => r.state, ["count"]),
+    labels: sumByKey(bs.map((b) => b.labels), (r) => r.label, ["count"]).sort((a, b) => b.count - a.count),
+    lifecycle,
+    tto: bs[0].tto.map((m) => ({
+      ...m,
+      medianDays: Math.round(bs.reduce((s, b) => s + (b.tto.find((x) => x.metric === m.metric)?.medianDays ?? 0), 0) / bs.length),
+    })),
+    stale: sumByKey(bs.map((b) => b.stale), (r) => r.bucket, ["count"]),
+    procCat: sumByKey(bs.map((b) => b.procCat), (r) => r.category, ["count"]),
+    govWait,
+    processTimeline: mergeTimeline(bs.map((b) => b.processTimeline), (r) => r.category),
+    participantTimeline: mergeTimeline(bs.map((b) => b.participantTimeline), (r) => r.state),
+    crossTab: sumByKey(bs.map((b) => b.crossTab), (r) => `${r.processType}|${r.govState}`, ["count"]),
+    openExport: bs.flatMap((b) => b.openExport),
+    mergedExport: bs.flatMap((b) => b.mergedExport),
+    closedExport: bs.flatMap((b) => b.closedExport),
+    issueExport: bs.flatMap((b) => b.issueExport),
+  };
+}
+
 function Section({ title, icon, children, action, className, id }: {
   title: string;
   icon: React.ReactNode;
@@ -202,7 +312,11 @@ function GraphFooter({ nextUpdateAt }: { nextUpdateAt: Date }) {
 export default function PRsAnalyticsPage() {
   const searchParams = useSearchParams();
   const highlightedPr = Number(searchParams.get("pr") ?? NaN);
-  const { timeRange, repoFilter, customFromMonth, customToMonth } = useAnalytics();
+  const { timeRange, setTimeRange, customFromMonth, customToMonth, setCustomFromMonth, setCustomToMonth } = useAnalytics();
+  const pathname = usePathname();
+  // In the Office Hours embedded tab the page owns a single filter bar
+  // (time frame + repos); standalone /analytics/prs keeps the time frame in the header.
+  const isEmbedded = pathname?.endsWith("/officehours/prs") ?? false;
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -318,7 +432,20 @@ export default function PRsAnalyticsPage() {
 
   const issuesTotalPages = Math.ceil(filteredIssues.length / PAGE_SIZE);
 
-  const repoParam = repoFilter === "all" ? undefined : repoFilter;
+  // Multi-select repo filter (union of selected repos), local to the PR page.
+  // RIPs off by default (near-zero PR volume), matching the Office Hours overview.
+  const [selectedRepos, setSelectedRepos] = useState<Set<PrRepoKey>>(() => new Set<PrRepoKey>(["eips", "ercs"]));
+  const toggleRepo = (r: PrRepoKey) =>
+    setSelectedRepos((prev) => {
+      const next = new Set(prev);
+      if (next.has(r)) { if (next.size > 1) next.delete(r); } else next.add(r);
+      return next;
+    });
+  const reposKey = [...selectedRepos].sort().join(",");
+  const allReposSelected = selectedRepos.size === PR_REPO_KEYS.length;
+  const repoLabel = allReposSelected ? "all" : [...selectedRepos].sort().join("+");
+  // Single repo param used by the per-report export endpoint (one repo, or all).
+  const primaryRepoParam = selectedRepos.size === 1 ? [...selectedRepos][0] : undefined;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -333,60 +460,101 @@ export default function PRsAnalyticsPage() {
         const heroYear = Number(heroYearStr);
         const heroMonthNum = Number(heroMonthStr);
 
-        const [openState, hero] = await Promise.all([
-          client.analytics.getPROpenState({ repo: repoParam }),
-          client.analytics.getPRMonthHeroKPIs({
-            year: Number.isFinite(heroYear) ? heroYear : now.getFullYear(),
-            month: Number.isFinite(heroMonthNum) ? heroMonthNum : now.getMonth() + 1,
-            repo: repoParam,
+        const keys = [...selectedRepos];
+        // All (or none) selected → one unfiltered "all" call; a subset → one call
+        // per repo, merged client-side into a union.
+        const repos: (PrRepoKey | undefined)[] =
+          keys.length === 0 || keys.length === PR_REPO_KEYS.length ? [undefined] : keys;
+
+        // Phase A — fast: the KPIs + trend chart. Fetched first, set first, and
+        // the loader clears here so the page renders while the heavy sections load.
+        type Core = { openState: OpenStateSummary; hero: PRMonthHero; monthly: PRMonthlyPoint[] };
+        const cores = await Promise.all(
+          repos.map(async (repoParam): Promise<Core> => {
+            const [openState, hero, monthly] = await Promise.all([
+              client.analytics.getPROpenState({ repo: repoParam }),
+              client.analytics.getPRMonthHeroKPIs({
+                year: Number.isFinite(heroYear) ? heroYear : now.getFullYear(),
+                month: Number.isFinite(heroMonthNum) ? heroMonthNum : now.getMonth() + 1,
+                repo: repoParam,
+              }),
+              client.analytics.getPRMonthlyActivity({ repo: repoParam, from, to }),
+            ]);
+            return { openState, hero, monthly };
           }),
-        ]);
-        setOpenSummary(openState);
-        setHeroMonth(hero);
+        );
 
-        const [monthly, govStates, labels, lifecycle] = await Promise.all([
-          client.analytics.getPRMonthlyActivity({ repo: repoParam, from, to }),
-          client.analytics.getPRGovernanceStates({ repo: repoParam }),
-          client.analytics.getPRLabels({ repo: repoParam }),
-          client.analytics.getPRLifecycleFunnel({}),
-        ]);
-        setMonthlySeries(monthly);
-        setGovernanceStates(govStates);
-        setLabelStats(labels.slice(0, 20));
-        setLifecycleStages(lifecycle);
+        const totalOpen = cores.reduce((s, c) => s + c.openState.totalOpen, 0);
+        const coreOpen: OpenStateSummary = cores.length === 1 ? cores[0].openState : {
+          totalOpen,
+          medianAge: totalOpen > 0 ? Math.round(cores.reduce((s, c) => s + c.openState.medianAge * c.openState.totalOpen, 0) / totalOpen) : 0,
+          oldestPR: cores.map((c) => c.openState.oldestPR).filter(Boolean).sort((a, b) => (b!.age_days) - (a!.age_days))[0] ?? null,
+        };
+        const coreHero: PRMonthHero = cores.length === 1 ? cores[0].hero : {
+          month: cores[0].hero.month,
+          openPRs: cores.reduce((s, c) => s + c.hero.openPRs, 0),
+          newPRs: cores.reduce((s, c) => s + c.hero.newPRs, 0),
+          mergedPRs: cores.reduce((s, c) => s + c.hero.mergedPRs, 0),
+          closedUnmerged: cores.reduce((s, c) => s + c.hero.closedUnmerged, 0),
+          netDelta: cores.reduce((s, c) => s + c.hero.netDelta, 0),
+        };
+        const coreMonthly = cores.length === 1 ? cores[0].monthly
+          : sumByKey(cores.map((c) => c.monthly), (r) => r.month, ["created", "merged", "closed", "openAtMonthEnd"]).sort((a, b) => a.month.localeCompare(b.month));
 
-        const monthBuckets = monthly.map((m) => m.month);
+        setOpenSummary(coreOpen);
+        setHeroMonth(coreHero);
+        setMonthlySeries(coreMonthly);
+        setDataUpdatedAt(new Date());
+        setLoading(false); // page renders KPIs + trend now; heavy sections stream in below
 
-        const trendFrom = monthBuckets[0];
-        const trendTo = monthBuckets[monthBuckets.length - 1];
+        // Phase B — heavy: governance, labels, lifecycle, tables, cross-tabs, exports.
+        const fetchHeavy = async (repoParam: PrRepoKey | undefined, monthly: PRMonthlyPoint[], openState: OpenStateSummary, hero: PRMonthHero): Promise<PrBundle> => {
+          const buckets = monthly.map((m) => m.month);
+          const trendFrom = buckets[0];
+          const trendTo = buckets[buckets.length - 1];
+          const [govStates, labels, lifecycle] = await Promise.all([
+            client.analytics.getPRGovernanceStates({ repo: repoParam }),
+            client.analytics.getPRLabels({ repo: repoParam }),
+            client.analytics.getPRLifecycleFunnel({}),
+          ]);
+          const [tto, stale, procCat, govWait, processTimeline, participantTimeline, crossTab] = await Promise.all([
+            client.analytics.getPRTimeToOutcome({ repo: repoParam }),
+            client.analytics.getPRStaleness({ repo: repoParam }),
+            client.analytics.getPROpenClassification({ repo: repoParam, month: contextMonth }),
+            client.analytics.getPRGovernanceWaitingState({ repo: repoParam, month: contextMonth }),
+            client.analytics.getPROpenClassificationTimeline({ repo: repoParam, from: trendFrom, to: trendTo }),
+            client.analytics.getPRGovernanceWaitingStateTimeline({ repo: repoParam, from: trendFrom, to: trendTo }),
+            client.analytics.getPRProcessParticipantCrossTab({ repo: repoParam, month: contextMonth }),
+          ]);
+          const [openExport, mergedExport, closedExport, issueExport] = await Promise.all([
+            client.analytics.getPROpenExport({ repo: repoParam, month: contextMonth }),
+            client.analytics.getPRMergedExport({ repo: repoParam, month: contextMonth }),
+            client.analytics.getPRClosedExport({ repo: repoParam, month: contextMonth }),
+            client.analytics.getIssueOpenExport({ repo: repoParam, month: contextMonth }),
+          ]);
+          return {
+            openState, hero, monthly, govStates, labels, lifecycle, tto, stale, procCat, govWait,
+            processTimeline, participantTimeline, crossTab, openExport, mergedExport, closedExport, issueExport,
+          };
+        };
 
-        const [tto, stale, procCat, govWait, processTimeline, participantTimeline, crossTab] = await Promise.all([
-          client.analytics.getPRTimeToOutcome({ repo: repoParam }),
-          client.analytics.getPRStaleness({ repo: repoParam }),
-          client.analytics.getPROpenClassification({ repo: repoParam, month: contextMonth }),
-          client.analytics.getPRGovernanceWaitingState({ repo: repoParam, month: contextMonth }),
-          client.analytics.getPROpenClassificationTimeline({ repo: repoParam, from: trendFrom, to: trendTo }),
-          client.analytics.getPRGovernanceWaitingStateTimeline({ repo: repoParam, from: trendFrom, to: trendTo }),
-          client.analytics.getPRProcessParticipantCrossTab({ repo: repoParam, month: contextMonth }),
-        ]);
-        setTimeToOutcome(tto);
-        setStaleness(stale);
-        setProcessCategories(procCat);
-        setGovWaitStates(govWait);
-        setProcessCategoriesByMonth(processTimeline);
-        setGovWaitStatesByMonth(participantTimeline);
-        setCrossTabRaw(crossTab);
+        const bundles = await Promise.all(repos.map((rp, i) => fetchHeavy(rp, cores[i].monthly, cores[i].openState, cores[i].hero)));
+        const b = mergePrBundles(bundles);
 
-        const [openExport, mergedExport, closedExport, issueExport] = await Promise.all([
-          client.analytics.getPROpenExport({ repo: repoParam, month: contextMonth }),
-          client.analytics.getPRMergedExport({ repo: repoParam, month: contextMonth }),
-          client.analytics.getPRClosedExport({ repo: repoParam, month: contextMonth }),
-          client.analytics.getIssueOpenExport({ repo: repoParam, month: contextMonth }),
-        ]);
-        setOpenPRs(openExport);
-        setMergedPRs(mergedExport);
-        setClosedPRs(closedExport);
-        setOpenIssues(issueExport);
+        setGovernanceStates(b.govStates);
+        setLabelStats(b.labels.slice(0, 20));
+        setLifecycleStages(b.lifecycle);
+        setTimeToOutcome(b.tto);
+        setStaleness(b.stale);
+        setProcessCategories(b.procCat);
+        setGovWaitStates(b.govWait);
+        setProcessCategoriesByMonth(b.processTimeline);
+        setGovWaitStatesByMonth(b.participantTimeline);
+        setCrossTabRaw(b.crossTab);
+        setOpenPRs(b.openExport);
+        setMergedPRs(b.mergedExport);
+        setClosedPRs(b.closedExport);
+        setOpenIssues(b.issueExport);
         setDataUpdatedAt(new Date());
       } catch (err) {
         console.error("Failed to fetch PR analytics:", err);
@@ -396,7 +564,8 @@ export default function PRsAnalyticsPage() {
       }
     };
     fetchData();
-  }, [timeRange, repoFilter, repoParam, selectedMonth, customFromMonth, customToMonth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeRange, reposKey, selectedMonth, customFromMonth, customToMonth]);
 
   useEffect(() => {
     if (!selectedMonth && monthlySeries.length > 0) {
@@ -748,6 +917,22 @@ export default function PRsAnalyticsPage() {
 
   const totalOpen = openSummary?.totalOpen ?? 0;
 
+  // KPI totals over the SELECTED filter window. monthlySeries is already fetched
+  // with the analytics {from,to} window, so summing it makes the KPI cards follow
+  // the time-range / repo filter (they used to be pinned to the current month).
+  const windowKpis = useMemo(() => {
+    if (!monthlySeries.length) {
+      return { created: 0, merged: 0, closed: 0, openEnd: totalOpen, net: 0, label: "" };
+    }
+    const created = monthlySeries.reduce((s, m) => s + m.created, 0);
+    const merged = monthlySeries.reduce((s, m) => s + m.merged, 0);
+    const closed = monthlySeries.reduce((s, m) => s + m.closed, 0);
+    const first = monthlySeries[0].month;
+    const last = monthlySeries[monthlySeries.length - 1];
+    const label = first === last.month ? first : `${first} → ${last.month}`;
+    return { created, merged, closed, openEnd: last.openAtMonthEnd, net: created - merged - closed, label };
+  }, [monthlySeries, totalOpen]);
+
   const downloadObjectRowsCsv = useCallback(
     (rows: Array<Record<string, string | number | null>>, filename: string) => {
       if (!rows.length) return;
@@ -785,14 +970,14 @@ export default function PRsAnalyticsPage() {
       waiting_since: pr.waitingSince,
       last_event_type: pr.lastEventType,
       month_context: monthContext,
-      repo_filter: repoFilter,
+      repo_filter: repoLabel,
       generated_at: generatedAt,
     }));
     downloadObjectRowsCsv(
       rows,
-      `eip-open-prs-detailed-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
+      `eip-open-prs-detailed-${repoLabel}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
     );
-  }, [downloadObjectRowsCsv, monthContext, openPRs, repoFilter, timeRange]);
+  }, [downloadObjectRowsCsv, monthContext, openPRs, repoLabel, timeRange]);
 
   const downloadOpenIssuesDetailedCSV = useCallback(() => {
     const generatedAt = new Date().toISOString();
@@ -808,14 +993,14 @@ export default function PRsAnalyticsPage() {
       updated_at: issue.updatedAt,
       num_comments: issue.numComments,
       month_context: monthContext,
-      repo_filter: repoFilter,
+      repo_filter: repoLabel,
       generated_at: generatedAt,
     }));
     downloadObjectRowsCsv(
       rows,
-      `eip-open-issues-detailed-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
+      `eip-open-issues-detailed-${repoLabel}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
     );
-  }, [downloadObjectRowsCsv, monthContext, openIssues, repoFilter, timeRange]);
+  }, [downloadObjectRowsCsv, monthContext, openIssues, repoLabel, timeRange]);
 
   const downloadCategoryBreakdownDetailedCSV = useCallback(() => {
     const generatedAt = new Date().toISOString();
@@ -835,15 +1020,15 @@ export default function PRsAnalyticsPage() {
     }));
     downloadObjectRowsCsv(
       rows,
-      `pr-category-breakdown-prs-${repoFilter}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
+      `pr-category-breakdown-prs-${repoLabel}-${monthContext}-${new Date().toISOString().slice(0, 10)}.csv`,
     );
-  }, [downloadObjectRowsCsv, monthContext, openPRs, repoFilter]);
+  }, [downloadObjectRowsCsv, monthContext, openPRs, repoLabel]);
 
   const downloadReports = async () => {
     try {
       setExportingReports(true);
       const result = await client.analytics.exportPRAnalyticsDetailedCSV({
-        repo: repoParam,
+        repo: primaryRepoParam,
         fromMonth: trendFromMonth ?? undefined,
         toMonth: trendToMonth ?? undefined,
         contextMonth: selectedMonth ?? undefined,
@@ -876,9 +1061,12 @@ export default function PRsAnalyticsPage() {
     govWaitStates.forEach((g) => combined.push({ type: "Participant State", state: g.state, count: g.count, medianWaitDays: g.medianWaitDays }));
     openPRs.forEach((pr) => combined.push({ type: "Open PR", ...pr }));
     return combined;
-  }, `prs-analytics-${repoFilter}-${timeRange}`);
+  }, `prs-analytics-${repoLabel}-${timeRange}`);
 
-  if (loading) {
+  // Full-screen loader only on the FIRST load (no data yet). On later refetches
+  // (filter/repo changes) we keep the page and controls visible with a subtle
+  // "updating" hint, so changing a filter never blanks the page.
+  if (loading && monthlySeries.length === 0) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
         <InlineBrandLoader size="md" label="Loading analytics..." />
@@ -887,7 +1075,12 @@ export default function PRsAnalyticsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className={cn("space-y-6", loading && "opacity-60 transition-opacity")}>
+      {loading && (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-card/60 py-1.5 text-xs text-muted-foreground">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Updating…
+        </div>
+      )}
       {error && (
         <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
           <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
@@ -895,12 +1088,78 @@ export default function PRsAnalyticsPage() {
         </div>
       )}
 
+      {/* Single filter bar: time frame (embedded only) + repo multi-select */}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-border bg-card/60 px-3 py-2.5">
+        {isEmbedded && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+              <Activity className="h-3.5 w-3.5" /> Time frame
+            </span>
+            <select
+              value={timeRange}
+              onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+              className="rounded-md border border-border bg-muted/50 px-2 py-1 text-xs font-medium text-foreground outline-none"
+            >
+              {timeRangeOptions.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-card text-foreground">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            {timeRange === "custom" && (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="month"
+                  value={customFromMonth}
+                  max={customToMonth || undefined}
+                  onChange={(e) => setCustomFromMonth(e.target.value)}
+                  className="h-7 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground outline-none"
+                />
+                <span className="text-[11px] text-muted-foreground">to</span>
+                <input
+                  type="month"
+                  value={customToMonth}
+                  min={customFromMonth || undefined}
+                  onChange={(e) => setCustomToMonth(e.target.value)}
+                  className="h-7 rounded-md border border-border bg-muted/40 px-2 text-xs text-foreground outline-none"
+                />
+              </div>
+            )}
+            <span className="hidden h-4 w-px bg-border sm:block" aria-hidden />
+          </div>
+        )}
+        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+          <Database className="h-3.5 w-3.5" /> Repos
+        </span>
+        {PR_REPO_KEYS.map((r) => {
+          const on = selectedRepos.has(r);
+          return (
+            <button
+              key={r}
+              onClick={() => toggleRepo(r)}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
+                on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
+              )}
+            >
+              <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
+                {on && <Check className="h-2.5 w-2.5" />}
+              </span>
+              {PR_REPO_LABEL[r]}
+            </button>
+          );
+        })}
+        <span className="ml-1 text-[11px] text-muted-foreground">
+          {allReposSelected ? "All repositories" : `Union of ${[...selectedRepos].map((r) => PR_REPO_LABEL[r]).join(" + ")}`}
+        </span>
+      </div>
+
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         {[
-          { label: "Open PRs", value: totalOpen, sub: `Median age: ${openSummary?.medianAge != null ? `${openSummary.medianAge}d` : "–"}`, icon: <GitPullRequest className="h-5 w-5" />, filter: "open" as const },
-          { label: `Created (${heroMonth?.month ?? ""})`, value: heroMonth?.newPRs ?? 0, sub: `Net: ${(heroMonth?.netDelta ?? 0) >= 0 ? "+" : ""}${heroMonth?.netDelta ?? 0}`, icon: <Activity className="h-5 w-5" />, filter: "created" as const },
-          { label: "Merged", value: heroMonth?.mergedPRs ?? 0, sub: "Current month", icon: <GitPullRequest className="h-5 w-5" />, filter: "merged" as const },
-          { label: "Closed (unmerged)", value: heroMonth?.closedUnmerged ?? 0, sub: "Current month", icon: <AlertCircle className="h-5 w-5" />, filter: "closed" as const },
+          { label: "Open PRs (now)", value: totalOpen, sub: `Median age: ${openSummary?.medianAge != null ? `${openSummary.medianAge}d` : "–"}`, icon: <GitPullRequest className="h-5 w-5" />, filter: "open" as const },
+          { label: "Created", value: windowKpis.created, sub: windowKpis.label ? `Net ${windowKpis.net >= 0 ? "+" : ""}${windowKpis.net} · ${windowKpis.label}` : "In range", icon: <Activity className="h-5 w-5" />, filter: "created" as const },
+          { label: "Merged", value: windowKpis.merged, sub: windowKpis.label || "In range", icon: <GitPullRequest className="h-5 w-5" />, filter: "merged" as const },
+          { label: "Closed (unmerged)", value: windowKpis.closed, sub: windowKpis.label || "In range", icon: <AlertCircle className="h-5 w-5" />, filter: "closed" as const },
         ].map((kpi) => (
           <button
             key={kpi.label}
@@ -944,74 +1203,9 @@ export default function PRsAnalyticsPage() {
               {exportingReports ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
               {exportingReports ? "Exporting..." : "Download Reports"}
             </button>
-            <span className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-muted-foreground">Context: {monthContext}</span>
-            <button
-              onClick={() => setSelectedMonth(monthlySeries.length ? monthlySeries[monthlySeries.length - 1].month : null)}
-              className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground hover:bg-muted/60"
-            >
-              Latest
-            </button>
-            <LastUpdated timestamp={dataUpdatedAt} />
           </div>
         }
       >
-        {monthlySeries.length > 0 && (
-          <div className="mb-3 flex flex-wrap items-center gap-2 text-xs">
-            <span className="text-muted-foreground">Range:</span>
-            <select
-              value={trendFromMonth ?? ""}
-              onChange={(e) => {
-                const nextFrom = e.target.value;
-                setTrendFromMonth(nextFrom);
-                if (trendToMonth && nextFrom > trendToMonth) setTrendToMonth(nextFrom);
-              }}
-              className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {monthOptionsDesc.map((m) => (
-                <option key={`from-${m.month}`} value={m.month}>
-                  {m.month}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted-foreground">to</span>
-            <select
-              value={trendToMonth ?? ""}
-              onChange={(e) => {
-                const nextTo = e.target.value;
-                setTrendToMonth(nextTo);
-                if (trendFromMonth && nextTo < trendFromMonth) setTrendFromMonth(nextTo);
-              }}
-              className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {monthOptionsDesc.map((m) => (
-                <option key={`to-${m.month}`} value={m.month}>
-                  {m.month}
-                </option>
-              ))}
-            </select>
-            <span className="text-muted-foreground">Context month:</span>
-            <select
-              value={selectedMonth ?? ""}
-              onChange={(e) => setSelectedMonth(e.target.value || null)}
-              className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {monthOptionsDesc.map((m) => (
-                <option key={`ctx-${m.month}`} value={m.month}>
-                  {m.month}
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={() => {
-                setTrendFromMonth(monthlySeries[0]?.month ?? null);
-                setTrendToMonth(monthlySeries[monthlySeries.length - 1]?.month ?? null);
-              }}
-              className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground hover:bg-muted/60"
-            >
-              Full Range
-            </button>
-          </div>
-        )}
         {monthlySeries.length === 0 ? (
           <p className="text-sm text-muted-foreground">No monthly data available.</p>
         ) : (
@@ -1167,17 +1361,6 @@ export default function PRsAnalyticsPage() {
             </div>
           )}
         <p className="mt-2 text-[10px] text-muted-foreground">Each column is one month; stacked segments sum to the total open PR backlog in that month.</p>
-        <GraphFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
-
-      <Section id="pr-label-distribution" title="Label distribution" icon={<BarChart3 className="h-4 w-4" />}>
-        {labelStats.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No label data available.</p>
-        ) : (
-          <div className="h-[320px] w-full">
-            <ReactECharts option={labelDistributionOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-          </div>
-        )}
         <GraphFooter nextUpdateAt={nextUpdateAt} />
       </Section>
 
