@@ -62,7 +62,15 @@ export default function Footer() {
             </Link>
 
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Build With <Heart className="mx-1 inline h-3.5 w-3.5 text-primary" /> by Avarch
+              Build With <Heart className="mx-1 inline h-3.5 w-3.5 text-primary" /> by{" "}
+              <a
+                href="https://avarch.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+              >
+                Avarch
+              </a>
             </p>
 
             <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

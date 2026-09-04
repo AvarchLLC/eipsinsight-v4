@@ -124,7 +124,7 @@ export function useAnalyticsExport(
   }, [data, filename]);
 }
 
-const timeRangeOptions: { value: TimeRange; label: string }[] = [
+export const timeRangeOptions: { value: TimeRange; label: string }[] = [
   { value: "this_month", label: "This month" },
   { value: "7d", label: "Last 7 days" },
   { value: "15d", label: "Last 15 days" },
@@ -223,8 +223,17 @@ function TabGroup({
 
 function AnalyticsLayoutInner({
   children,
+  embedded = false,
+  embeddedBare = false,
+  embeddedTitle,
+  embeddedSubtitle,
 }: {
   children: React.ReactNode;
+  embedded?: boolean;
+  /** Provider + children only — the page renders its own filter bar. */
+  embeddedBare?: boolean;
+  embeddedTitle?: string;
+  embeddedSubtitle?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -372,6 +381,9 @@ function AnalyticsLayoutInner({
   );
 
   const onInsights = isInsightsPath(pathname);
+  // The PR page owns a multi-select repo control, so the shared single-repo
+  // dropdown is suppressed there (both standalone and embedded).
+  const hideRepo = pathname === "/analytics/prs" || pathname.endsWith("/officehours/prs");
 
   const pageTitle = useMemo(() => {
     if (onInsights) {
@@ -404,6 +416,102 @@ function AnalyticsLayoutInner({
     return "Data-driven insights into Ethereum standards";
   }, [pageTitle]);
 
+  const controls = (
+    <div className="flex flex-wrap items-center gap-3">
+      {/* Time Range */}
+      <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
+        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+        <select
+          value={timeRange}
+          onChange={(e) => setTimeRange(e.target.value as TimeRange)}
+          className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
+        >
+          {timeRangeOptions.map((opt) => (
+            <option key={opt.value} value={opt.value} className="bg-card text-foreground">
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+      </div>
+
+      {timeRange === "custom" && (
+        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-1.5 shadow-sm">
+          <span className="px-1 text-[11px] font-semibold text-muted-foreground">From:</span>
+          <input
+            type="month"
+            value={localFromMonth}
+            max={localToMonth || undefined}
+            onChange={(e) => setLocalFromMonth(e.target.value)}
+            className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
+            aria-label="Custom range start month"
+          />
+          <span className="px-1 text-[11px] font-semibold text-muted-foreground">To:</span>
+          <input
+            type="month"
+            value={localToMonth}
+            min={localFromMonth || undefined}
+            onChange={(e) => setLocalToMonth(e.target.value)}
+            className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
+            aria-label="Custom range end month"
+          />
+          <button
+            type="button"
+            onClick={handleApplyCustomRange}
+            className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-1 focus:ring-primary/30"
+          >
+            Apply
+          </button>
+        </div>
+      )}
+
+      {/* Repo Filter — hidden on the PR page, which owns a multi-select */}
+      {!hideRepo && (
+        <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
+          <Database className="h-4 w-4 text-muted-foreground shrink-0" />
+          <select
+            value={repoFilter}
+            onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
+            className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
+          >
+            {repoOptions.map((opt) => (
+              <option key={opt.value} value={opt.value} className="bg-card text-foreground">
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+        </div>
+      )}
+    </div>
+  );
+
+  // Embedded: just the provider + a compact controls bar, so an analytics page
+  // can live as a tab inside another hub (e.g. Office Hours) without the full
+  // analytics chrome (title, tab bar, page wrapper).
+  if (embedded && embeddedBare) {
+    return <AnalyticsContext.Provider value={contextValue}>{children}</AnalyticsContext.Provider>;
+  }
+
+  if (embedded) {
+    return (
+      <AnalyticsContext.Provider value={contextValue}>
+        <div className="space-y-3">
+          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+            {(embeddedTitle || embeddedSubtitle) && (
+              <div className="min-w-0">
+                {embeddedTitle && <p className="text-sm font-semibold text-foreground">{embeddedTitle}</p>}
+                {embeddedSubtitle && <p className="text-[11px] text-muted-foreground">{embeddedSubtitle}</p>}
+              </div>
+            )}
+            <div className="sm:ml-auto">{controls}</div>
+          </div>
+          <main className="min-w-0">{children}</main>
+        </div>
+      </AnalyticsContext.Provider>
+    );
+  }
+
   return (
     <AnalyticsContext.Provider value={contextValue}>
       <div className="min-h-screen bg-background">
@@ -423,72 +531,7 @@ function AnalyticsLayoutInner({
 
                 {/* Controls — Activity views only (this block isn't rendered on
                     Insights routes). Time-range + repo filters. */}
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Time Range */}
-                  <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
-                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <select
-                      value={timeRange}
-                      onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                      className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
-                    >
-                      {timeRangeOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-card text-foreground">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-
-                  {timeRange === "custom" && (
-                    <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-1.5 shadow-sm">
-                      <span className="px-1 text-[11px] font-semibold text-muted-foreground">From:</span>
-                      <input
-                        type="month"
-                        value={localFromMonth}
-                        max={localToMonth || undefined}
-                        onChange={(e) => setLocalFromMonth(e.target.value)}
-                        className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
-                        aria-label="Custom range start month"
-                      />
-                      <span className="px-1 text-[11px] font-semibold text-muted-foreground">To:</span>
-                      <input
-                        type="month"
-                        value={localToMonth}
-                        min={localFromMonth || undefined}
-                        onChange={(e) => setLocalToMonth(e.target.value)}
-                        className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
-                        aria-label="Custom range end month"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCustomRange}
-                        className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-1 focus:ring-primary/30"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Repo Filter */}
-                  <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
-                    <Database className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <select
-                      value={repoFilter}
-                      onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-                      className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
-                    >
-                      {repoOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value} className="bg-card text-foreground">
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
-                    <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-
-                </div>
+                {controls}
               </div>
               {pageSubtitle && (
                 <p className="w-full text-sm text-muted-foreground">
@@ -517,18 +560,32 @@ function AnalyticsLayoutInner({
 
 export default function AnalyticsLayout({
   children,
+  embedded = false,
+  embeddedBare = false,
+  embeddedTitle,
+  embeddedSubtitle,
 }: {
   children: React.ReactNode;
+  /** When true, render only the provider + time-range/repo controls (no title,
+      tab bar, or full-page chrome), so an analytics page can be dropped into
+      another hub as a tab. */
+  embedded?: boolean;
+  /** With `embedded`, render provider + children only (the page owns its filters). */
+  embeddedBare?: boolean;
+  embeddedTitle?: string;
+  embeddedSubtitle?: string;
 }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-background">
+        <div className={embedded ? "py-8" : "min-h-screen bg-background"}>
           <InlineBrandLoader size="md" label="Loading analytics..." />
         </div>
       }
     >
-      <AnalyticsLayoutInner>{children}</AnalyticsLayoutInner>
+      <AnalyticsLayoutInner embedded={embedded} embeddedBare={embeddedBare} embeddedTitle={embeddedTitle} embeddedSubtitle={embeddedSubtitle}>
+        {children}
+      </AnalyticsLayoutInner>
     </Suspense>
   );
 }

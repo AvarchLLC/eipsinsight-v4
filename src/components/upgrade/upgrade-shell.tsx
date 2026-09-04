@@ -432,7 +432,9 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
               <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <span>Built with</span>
                 <Heart className="h-3.5 w-3.5 text-rose-500 fill-rose-500" />
-                <span>by Avarch</span>
+                <span>by{" "}
+                  <a href="https://avarch.org" target="_blank" rel="noopener noreferrer" className="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline">Avarch</a>
+                </span>
               </div>
             </div>
 
