@@ -1,8 +1,6 @@
 import { AccountAbstractionSection } from '@/components/account-abstraction-section';
 import { AaAdoptionIndex } from '@/components/aa-adoption-index';
 import { AaProposalFamily } from '@/components/aa-proposal-family';
-import { AaTxRace } from '@/components/aa-tx-race';
-import { MempoolTxRace } from '@/components/mempool-tx-race';
 import { AaExplainer } from './_explainer';
 
 export const revalidate = 300;
@@ -13,20 +11,14 @@ export default function AccountAbstractionDashboard() {
       {/* Collapsible plain-English intro */}
       <AaExplainer />
 
-      {/* Animated tx races (WatcherGuru-style) */}
-      <AaTxRace />
-
-      {/* All mainnet transactions by type — shows where 7702 sits in the wider mix */}
-      <MempoolTxRace />
-
-      {/* Usage charts */}
+      {/* Core mainnet usage metrics, timeline controls, charts & synced race visualizer */}
       <AccountAbstractionSection />
 
-      {/* Adoption index (protocol / infra / app / user) */}
-      <AaAdoptionIndex />
-
-      {/* Proposal family */}
-      <AaProposalFamily />
+      {/* 2-Column Ecosystem Layout: Adoption Index & Proposal Family */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <AaAdoptionIndex />
+        <AaProposalFamily />
+      </div>
     </div>
   );
 }

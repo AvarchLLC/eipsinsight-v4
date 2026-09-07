@@ -3,11 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Boxes, LayoutDashboard, Video, CalendarClock, Fingerprint } from "lucide-react";
+import { Boxes, LayoutDashboard, Video, CalendarClock, Fingerprint, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: typeof Boxes; exact?: boolean }[] = [
   { href: "/aa", label: "Dashboard", icon: LayoutDashboard, exact: true },
+  { href: "/aa/history", label: "History & Timeline", icon: History },
   { href: "/aa/calls", label: "Calls", icon: Video },
   { href: "/aa/eip-7702", label: "EIP-7702", icon: Fingerprint },
   { href: "/aa/eip-8141", label: "EIP-8141", icon: CalendarClock },

@@ -173,7 +173,7 @@ export function LucidProposalSection() {
           Lucid Protocol Context & Working Group Tracker
         </h2>
         <p className="text-sm leading-relaxed text-muted-foreground mb-6 max-w-4xl">
-          Lucid (EIP-8184) introduces an encrypted mempool for Ethereum — encrypting user transactions until they are included in a block so builders and relays cannot front-run, sandwich, or censor them.
+          Lucid (EIP-8184) introduces an encrypted mempool for Ethereum: encrypting user transactions until they are included in a block so builders and relays cannot front-run, sandwich, or censor them.
         </p>
 
         {/* Working Group Stats Row */}
@@ -281,10 +281,10 @@ export function LucidProposalSection() {
             title="Working Group Meetings & Consensus Decisions"
             action={
               <Link
-                href="/calls?series=etm"
+                href="/lucid/calls"
                 className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
               >
-                All ETM Calls
+                All Working Group Calls
                 <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             }

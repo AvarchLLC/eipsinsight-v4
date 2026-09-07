@@ -1,5 +1,7 @@
-import { redirect } from 'next/navigation';
+import { LucidProposalSection } from '@/components/lucid-proposal-section';
+
+export const revalidate = 300;
 
 export default function LucidPage() {
-  redirect('/eip/8184');
+  return <LucidProposalSection />;
 }

@@ -7,9 +7,13 @@ import { AnimatedLineRace, LineRaceSkeleton, type RaceSeries } from '@/component
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-const pretty = (ym: string) => {
-  const [y, m] = ym.split('-').map(Number);
-  return `${MONTHS[(m ?? 1) - 1]} ${y}`;
+const pretty = (b: string, g: 'day' | 'week' | 'month' = 'month') => {
+  if (!b) return '';
+  const d = new Date(`${b.slice(0, 10)}T00:00:00Z`);
+  if (Number.isNaN(d.getTime())) return b;
+  return g === 'month'
+    ? d.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' })
+    : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 };
 const cumsum = (a: number[]) => {
   let t = 0;
@@ -21,23 +25,32 @@ const cumsum = (a: number[]) => {
  * mainnet since Pectra: cumulative EIP-7702 (type 4) vs the ERC-4337 EntryPoint
  * versions. Lines draw left-to-right and totals count up on scroll-in.
  */
-export function AaTxRace() {
+export function AaTxRace({
+  granularity = 'month',
+  from,
+  to,
+}: {
+  granularity?: 'day' | 'week' | 'month';
+  from?: string;
+  to?: string;
+}) {
   const [series, setSeries] = useState<RaceSeries[]>([]);
   const [buckets, setBuckets] = useState<string[]>([]);
   const [done, setDone] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
-    // The per-EntryPoint series query is heavy (~8s cold) and can time out under
-    // load, returning empty. Retry a few times with backoff before giving up so
-    // the chart reliably fills in without a manual reload.
     (async () => {
       for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
         try {
-          const s = await client.aa.getUsageStats({ granularity: 'month', from: '2025-05-01' });
+          const s = await client.aa.getUsageStats({
+            granularity,
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+          });
           if (cancelled) return;
           if (s && s.series.length) {
-            const b = s.series.map((r) => r.bucket.slice(0, 7));
+            const b = s.series.map((r) => r.bucket.slice(0, 10));
             const line = (key: string, label: string, sub: string, color: string, pick: (r: (typeof s.series)[number]) => number) => ({
               key,
               label,
@@ -58,27 +71,26 @@ export function AaTxRace() {
         } catch {
           // ignore and retry
         }
-        await sleep(2500);
+        await sleep(2000);
       }
       if (!cancelled) setDone(true);
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [granularity, from, to]);
 
   if (buckets.length < 2 || !series.length) {
-    // Still trying → skeleton; gave up (e.g. ClickHouse down) → render nothing.
     return done ? null : (
-      <LineRaceSkeleton title="Account abstraction on mainnet" subtitle="Cumulative transactions since Pectra" />
+      <LineRaceSkeleton title="Account abstraction on mainnet" subtitle="Cumulative transactions for selected timeframe" />
     );
   }
 
   return (
     <AnimatedLineRace
       title="Account abstraction on mainnet"
-      subtitle="Cumulative transactions since Pectra"
-      periodLabel={`${pretty(buckets[0])} – ${pretty(buckets[buckets.length - 1])}`}
+      subtitle="Cumulative transactions for selected timeframe"
+      periodLabel={`${pretty(buckets[0], granularity)} – ${pretty(buckets[buckets.length - 1], granularity)}`}
       series={series}
       buckets={buckets}
       footer="EIP-7702 is in-protocol (type 4); ERC-4337 runs off-protocol through the shared EntryPoint. Live from mainnet · EIPsInsight.com"
