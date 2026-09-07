@@ -22,6 +22,8 @@ import {
   Wrench,
   LayoutDashboard,
   Shield,
+  Boxes,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -99,6 +101,33 @@ const sidebarSections: SidebarSection[] = [
         title: "Search",
         icon: Search,
         href: "/search",
+      },
+    ],
+  },
+  {
+    id: "featured",
+    label: "Featured Hubs",
+    items: [
+      {
+        title: "Account Abstraction",
+        icon: Boxes,
+        href: "/aa",
+        items: [
+          { title: "Dashboard", href: "/aa" },
+          { title: "History & Timeline", href: "/aa/history" },
+          { title: "Breakout Calls", href: "/aa/calls" },
+        ],
+      },
+      {
+        title: "Lucid Encrypted Mempool",
+        icon: Lock,
+        href: "/lucid",
+        items: [
+          { title: "Dashboard & MEV", href: "/lucid" },
+          { title: "History & MEV Genealogy", href: "/lucid/history" },
+          { title: "Working Group Calls", href: "/lucid/calls" },
+          { title: "EIP-8184 Spec", href: "/eip/8184" },
+        ],
       },
     ],
   },

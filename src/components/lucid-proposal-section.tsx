@@ -417,71 +417,156 @@ const CHART_TOOLTIP = {
   fontSize: '12px',
 } as const;
 
-type WeekPoint = MempoolMevStats['weekly'][number] & { label: string };
+type WeekPoint = MempoolMevStats['weekly'][number] & { label: string; avgProfitPerAttack: number };
 
 function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
-  const data: WeekPoint[] = mev.weekly.map((w) => ({ ...w, label: weekLabel(w.week) }));
-  const hasProfit = data.some((d) => d.botProfitUsd > 0);
-  const valueKey: 'botProfitUsd' | 'victimUsd' = hasProfit ? 'botProfitUsd' : 'victimUsd';
-  const valueLabel = hasProfit ? 'Value extracted (bot profit)' : 'Victim volume';
+  const data: WeekPoint[] = mev.weekly.map((w) => ({
+    ...w,
+    label: weekLabel(w.week),
+    avgProfitPerAttack: w.sandwiches > 0 ? Math.round(w.botProfitUsd / w.sandwiches) : 0,
+  }));
 
   return (
-    <div className="mt-3 grid gap-3 lg:grid-cols-2">
-      <div className="rounded-xl border border-border bg-card/60 p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          Weekly Sandwich Attacks
-        </p>
-        <div className="h-52 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-              <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={40} tickFormatter={(v: number) => compactNum(v)} />
-              <Tooltip
-                cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
-                contentStyle={CHART_TOOLTIP}
-                labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                formatter={(value: number) => [Number(value).toLocaleString(), 'Attacks']}
-              />
-              <Bar dataKey="sandwiches" fill={CHART_SERIES[6]} radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+    <div className="mt-4 space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
+          <TrendingUp className="h-4 w-4 text-violet-500" />
+          Mainnet MEV Extraction Analytics (Post-Dencun)
+        </h3>
+        <span className="text-[11px] text-muted-foreground">26-week weekly trend</span>
       </div>
 
-      <div className="rounded-xl border border-border bg-card/60 p-4">
-        <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-          {valueLabel} · Weekly (USD)
-        </p>
-        <div className="h-52 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-              <defs>
-                <linearGradient id="mevValueFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={CHART_SERIES[3]} stopOpacity={0.35} />
-                  <stop offset="100%" stopColor={CHART_SERIES[3]} stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-              <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-              <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={48} tickFormatter={(v: number) => compactUsd(v)} />
-              <Tooltip
-                contentStyle={CHART_TOOLTIP}
-                labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                formatter={(value: number) => [compactUsd(value), valueLabel]}
-              />
-              <Area
-                type="monotone"
-                dataKey={valueKey}
-                stroke={CHART_SERIES[3]}
-                strokeWidth={2}
-                fill="url(#mevValueFill)"
-                dot={false}
-                activeDot={{ r: 4 }}
-                isAnimationActive={false}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Chart 1: Weekly Sandwich Attacks */}
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Weekly Sandwich Attack Volume
+            </p>
+            <span className="text-xs font-mono font-bold text-foreground">{compactNum(mev.totalSandwiches)} total</span>
+          </div>
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={40} tickFormatter={(v: number) => compactNum(v)} />
+                <Tooltip
+                  cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
+                  contentStyle={CHART_TOOLTIP}
+                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                  formatter={(value: number) => [Number(value).toLocaleString(), 'Sandwich Attacks']}
+                />
+                <Bar dataKey="sandwiches" fill="var(--chart-1)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 2: Extracted Bot Profit (USD) */}
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Extracted Bot Gross Profit (USD)
+            </p>
+            <span className="text-xs font-mono font-bold text-emerald-500">{compactUsd(mev.botProfitUsd)} total</span>
+          </div>
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={48} tickFormatter={(v: number) => compactUsd(v)} />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP}
+                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                  formatter={(value: number) => [compactUsd(value), 'Bot Profit (USD)']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="botProfitUsd"
+                  stroke="var(--chart-2)"
+                  strokeWidth={2}
+                  fill="url(#profitGrad)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 3: Exploited Victim Trade Volume (USD) */}
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Exploited Victim Trade Volume (USD)
+            </p>
+            <span className="text-xs font-mono font-bold text-amber-500">{compactUsd(mev.victimVolumeUsd)} total</span>
+          </div>
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="victimGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={52} tickFormatter={(v: number) => compactUsd(v)} />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP}
+                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                  formatter={(value: number) => [compactUsd(value), 'Victim Volume (USD)']}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="victimUsd"
+                  stroke="var(--chart-4)"
+                  strokeWidth={2}
+                  fill="url(#victimGrad)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                  isAnimationActive={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 4: Active MEV Searcher Bots per Week */}
+        <div className="rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Active MEV Searcher Bots per Week
+            </p>
+            <span className="text-xs font-mono font-bold text-cyan-500">{mev.uniqueBots} unique bots</span>
+          </div>
+          <div className="h-52 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
+                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
+                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={36} tickFormatter={(v: number) => String(v)} />
+                <Tooltip
+                  cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
+                  contentStyle={CHART_TOOLTIP}
+                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
+                  formatter={(value: number) => [Number(value).toLocaleString(), 'Active Searcher Bots']}
+                />
+                <Bar dataKey="activeBots" fill="var(--chart-5)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
     </div>
