@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Lock, LayoutDashboard, FileText, Video } from 'lucide-react';
+import { Lock, LayoutDashboard, FileText, Video, History } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS = [
   { href: '/lucid', label: 'Dashboard & MEV', icon: LayoutDashboard, exact: true },
+  { href: '/lucid/history', label: 'History & MEV Genealogy', icon: History },
   { href: '/lucid/calls', label: 'Working Group Calls', icon: Video },
   { href: '/eip/8184', label: 'EIP-8184 Spec', icon: FileText },
 ];
