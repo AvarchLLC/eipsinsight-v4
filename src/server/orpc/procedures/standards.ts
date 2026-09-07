@@ -122,6 +122,39 @@ function getCategoryBreakdownCached(repo: string | null) {
   )();
 }
 
+// ——— Type Breakdown (Standards Track / Meta / Informational) ———
+// getCategoryBreakdown folds type into category; this keeps `type` distinct so
+// the analytics page can show a "by type" view like v3's /eip?view=type.
+function getTypeBreakdownCached(repo: string | null) {
+  return unstable_cache(
+    async () => {
+      const results = await prisma.$queryRawUnsafe<Array<{ type: string; count: bigint }>>(
+        `WITH base AS (
+           SELECT
+             CASE WHEN s.type IS NOT NULL AND TRIM(s.type) <> '' THEN s.type ELSE 'Unknown' END AS type
+           FROM eip_snapshots s
+           JOIN eips e ON s.eip_id = e.id
+           LEFT JOIN repositories r ON s.repository_id = r.id
+           WHERE e.eip_number NOT IN ${HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL}
+             AND (($1::text IS NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) IN ('eips', 'ercs'))
+               OR ($1::text IS NOT NULL AND LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($1)))
+           UNION ALL
+           SELECT 'Standards Track' AS type
+           FROM rips rp
+           WHERE rp.${EXCLUDE_PLACEHOLDER_RIPS_SQL}
+             AND ($1::text IS NULL OR LOWER($1::text) = 'rips')
+         )
+         SELECT type, COUNT(*)::bigint AS count
+         FROM base GROUP BY 1 ORDER BY count DESC`,
+        repo
+      );
+      return results.map(r => ({ type: r.type, count: Number(r.count) }));
+    },
+    ['standards-getTypeBreakdown', repo ?? 'all'],
+    { revalidate: CACHE_REVALIDATE }
+  )();
+}
+
 const getStatusMatrixCached = unstable_cache(
   async () => {
     const results = await prisma.$queryRawUnsafe<Array<{ status: string; group_name: string; count: bigint }>>(
@@ -308,6 +341,14 @@ getCategoryBreakdown: publicProcedure
   .handler(async ({ context, input }) => {
     await checkAPIToken(context.headers);
     return getCategoryBreakdownCached(input.repo ?? null);
+  }),
+
+// ——— Type Breakdown ———
+getTypeBreakdown: publicProcedure
+  .input(repoFilterSchema)
+  .handler(async ({ context, input }) => {
+    await checkAPIToken(context.headers);
+    return getTypeBreakdownCached(input.repo ?? null);
   }),
 
   // ——— Filter Options (for populating multi-selects) ———

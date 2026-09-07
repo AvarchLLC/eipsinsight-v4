@@ -10,10 +10,15 @@ import {
   ArrowRight,
   CheckCircle,
   Download,
+  Eye,
   FileText,
+  GitFork,
+  GitPullRequest,
   Layers,
   Loader2,
   Pause,
+  Star,
+  Tag,
   TrendingUp,
   XCircle,
 } from "lucide-react";
@@ -228,6 +233,10 @@ export default function EIPsAnalyticsPage() {
   const [crossTab, setCrossTab] = useState<CrossTabRow[]>([]);
   const [statusDist, setStatusDist] = useState<Array<{ status: string; count: number }>>([]);
   const [catBreakdown, setCatBreakdown] = useState<Array<{ category: string; count: number }>>([]);
+  const [typeBreakdown, setTypeBreakdown] = useState<Array<{ type: string; count: number }>>([]);
+  const [githubStats, setGithubStats] = useState<{ stars: number; forks: number; watchers: number; openIssues: number; openPRs: number } | null>(null);
+  // Which distribution dimension the consolidated tab row is showing.
+  const [dimTab, setDimTab] = useState<"category" | "status" | "type">("category");
   const [transitions, setTransitions] = useState<Array<{ from: string; to: string; value: number }>>([]);
   const [throughput, setThroughput] = useState<Array<Record<string, unknown>>>([]);
   const [funnel, setFunnel] = useState<Array<{ stage: string; count: number }>>([]);
@@ -247,14 +256,33 @@ export default function EIPsAnalyticsPage() {
       setLoading(true);
       setError(null);
       try {
-        const [kRes, ctRes, sdRes, cbRes] = await Promise.all([
+        const [kRes, ctRes, sdRes, cbRes, tbRes] = await Promise.all([
           client.standards.getKPIs({ repo: repoParam }),
           client.standards.getCategoryStatusCrosstab(),
           client.standards.getStatusDistribution({ repo: repoParam }),
           client.standards.getCategoryBreakdown({ repo: repoParam }),
+          client.standards.getTypeBreakdown({ repo: repoParam }),
         ]);
         setKpis(kRes);
         setCrossTab(ctRes as CrossTabRow[]);
+        setTypeBreakdown(tbRes as Array<{ type: string; count: number }>);
+
+        // GitHub repo stats (v3 parity). For "all", sum across the three repos.
+        const ghSlugs = repoParam ? [repoParam] : ["eips", "ercs", "rips"];
+        Promise.all(ghSlugs.map((slug) => client.explore.getDetailRepoGithubStats({ slug }).catch(() => null)))
+          .then((list) => {
+            const acc = { stars: 0, forks: 0, watchers: 0, openIssues: 0, openPRs: 0 };
+            for (const g of list) {
+              if (!g) continue;
+              acc.stars += g.stars ?? 0;
+              acc.forks += g.forks ?? 0;
+              acc.watchers += g.watchlist ?? 0;
+              acc.openIssues += g.openIssues ?? 0;
+              acc.openPRs += g.openPRs ?? 0;
+            }
+            setGithubStats(acc);
+          })
+          .catch(() => setGithubStats(null));
 
         const sMap = new Map<string, number>();
         (sdRes as Array<{ status: string; count: number }>).forEach((r) => {
@@ -496,6 +524,64 @@ export default function EIPsAnalyticsPage() {
       ],
     };
   }, [catBreakdown, total]);
+
+  const typeTotal = useMemo(() => typeBreakdown.reduce((s, t) => s + t.count, 0), [typeBreakdown]);
+  const TYPE_COLORS: Record<string, string> = {
+    "Standards Track": "#6366f1",
+    Meta: "#f59e0b",
+    Informational: "#10b981",
+    Unknown: "#64748b",
+  };
+  const typeDonutOption = useMemo(() => {
+    const rows = typeBreakdown
+      .filter((t) => t.count > 0)
+      .sort((a, b) => b.count - a.count)
+      .map((t) => ({ name: t.type, value: t.count, itemStyle: { color: TYPE_COLORS[t.type] || "#64748b" } }));
+    const pctMap = new Map(rows.map((r) => [r.name, typeTotal > 0 ? ((r.value / typeTotal) * 100).toFixed(1) : "0.0"]));
+    return {
+      backgroundColor: "transparent",
+      graphic: [],
+      title: [
+        {
+          text: typeTotal.toLocaleString(),
+          subtext: "Total Proposals",
+          left: "34%",
+          top: "46%",
+          textAlign: "center",
+          textStyle: { color: "var(--foreground)", fontSize: 34, fontWeight: 700 },
+          subtextStyle: { color: "var(--muted-foreground)", fontSize: 12, fontWeight: 500 },
+        },
+      ],
+      tooltip: chartTooltip({
+        trigger: "item",
+        confine: true,
+        formatter: (p: { name: string; value: number; percent: number }) => `${p.name}: ${p.value.toLocaleString()} (${p.percent}%)`,
+      }),
+      legend: {
+        type: "scroll",
+        orient: "vertical",
+        right: 8,
+        top: "center",
+        itemWidth: 10,
+        itemHeight: 10,
+        itemGap: 12,
+        textStyle: { color: "var(--foreground)", fontSize: 12, fontWeight: 500 },
+        formatter: (name: string) => `${name}  ${pctMap.get(name)}%`,
+      },
+      series: [
+        {
+          type: "pie",
+          radius: ["56%", "76%"],
+          center: ["34%", "50%"],
+          avoidLabelOverlap: true,
+          label: { show: false },
+          itemStyle: { borderColor: "rgba(2,6,23,0.55)", borderWidth: 2 },
+          data: rows,
+        },
+      ],
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typeBreakdown, typeTotal]);
 
   const throughputOption = useMemo(() => {
     const months = throughput.map((row) => String(row.month || ""));
@@ -935,62 +1021,117 @@ export default function EIPsAnalyticsPage() {
             {healthBreakdown.volumeDeltaPct != null &&
               ` (${healthBreakdown.volumeDeltaPct >= 0 ? "+" : ""}${healthBreakdown.volumeDeltaPct.toFixed(1)}%)`}
           </span>
+          {githubStats && (
+            <span className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="inline-flex items-center gap-1" title="GitHub stars"><Star className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.stars.toLocaleString()}</span></span>
+              <span className="inline-flex items-center gap-1" title="Forks"><GitFork className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.forks.toLocaleString()}</span></span>
+              <span className="inline-flex items-center gap-1" title="Watchers"><Eye className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.watchers.toLocaleString()}</span></span>
+              <span className="inline-flex items-center gap-1" title="Open issues"><AlertCircle className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.openIssues.toLocaleString()}</span></span>
+              <span className="inline-flex items-center gap-1" title="Open PRs"><GitPullRequest className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.openPRs.toLocaleString()}</span></span>
+            </span>
+          )}
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <Section
-          title="Pipeline Status"
-          icon={<TrendingUp className="h-4 w-4" />}
-          action={<CSVBtn onClick={exportPipelineCSV} label="Download Reports" loading={exportingPipeline} />}
-        >
-          <div className="relative h-[320px] w-full">
-            <ReactECharts option={pipelineOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-            <ChartWatermark />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-            <div className="rounded-md border border-border px-2 py-1">Draft backlog: {(statusCountMap.Draft || 0).toLocaleString()}</div>
-            <div className="rounded-md border border-border px-2 py-1">Review backlog: {(statusCountMap.Review || 0).toLocaleString()}</div>
-            <div className="rounded-md border border-border px-2 py-1">Stagnant: {stagnantRate.toFixed(1)}%</div>
-            <div className="rounded-md border border-border px-2 py-1">Finalized: {finalizedCount.toLocaleString()}</div>
-          </div>
-          <ChartFooter nextUpdateAt={nextUpdateAt} />
-        </Section>
-
-        <Section
-          title="Proposal Composition"
-          icon={<Layers className="h-4 w-4" />}
-          action={<CSVBtn onClick={exportCompositionCSV} label="Download Reports" loading={exportingComposition} />}
-        >
-          <div className="relative h-[320px] w-full">
-            <ReactECharts
-              option={categoryDonutOption}
-              style={{ height: "100%", width: "100%" }}
-              opts={{ renderer: "svg" }}
-              notMerge
-            />
-            <ChartWatermark />
-          </div>
-          <ChartFooter nextUpdateAt={nextUpdateAt} />
-        </Section>
+      {/* Consolidated distribution: Category / Status / Type (v3 /eip?view=… parity) */}
+      <div className="flex flex-wrap items-center gap-1 border-b border-border">
+        {(["category", "status", "type"] as const).map((t) => (
+          <button
+            key={t}
+            onClick={() => setDimTab(t)}
+            className={cn(
+              "-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize transition-colors",
+              dimTab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
+            )}
+          >
+            By {t}
+          </button>
+        ))}
       </div>
 
-      <Section
-        title="Status Transition Flow"
-        icon={<ArrowRight className="h-4 w-4" />}
-        action={<CSVBtn onClick={exportTransitionCSV} label="Download Reports" loading={exportingTransition} />}
-      >
-        {transitionFlows.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No transition data available.</p>
-        ) : (
-          <div className="relative h-[360px] w-full">
-            <ReactECharts option={sankeyOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-            <ChartWatermark />
-          </div>
-        )}
-        <ChartFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
+      {dimTab === "category" && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Section
+            title="Proposal Composition by Category"
+            icon={<Layers className="h-4 w-4" />}
+            action={<CSVBtn onClick={exportCompositionCSV} label="Download Reports" loading={exportingComposition} />}
+          >
+            <div className="relative h-[320px] w-full">
+              <ReactECharts option={categoryDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+              <ChartWatermark />
+            </div>
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </Section>
+          <Section
+            title="Category × Status Heatmap"
+            icon={<Layers className="h-4 w-4" />}
+            action={<CSVBtn onClick={exportCrossTab} label="Download Reports" loading={exportingHeatmap} />}
+          >
+            {matrixData.categories.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No category/status matrix data available.</p>
+            ) : (
+              <div className="relative h-[420px] w-full">
+                <ReactECharts option={matrixOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <ChartWatermark />
+              </div>
+            )}
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </Section>
+        </div>
+      )}
 
+      {dimTab === "status" && (
+        <div className="grid gap-4 xl:grid-cols-2">
+          <Section
+            title="Pipeline Status"
+            icon={<TrendingUp className="h-4 w-4" />}
+            action={<CSVBtn onClick={exportPipelineCSV} label="Download Reports" loading={exportingPipeline} />}
+          >
+            <div className="relative h-[320px] w-full">
+              <ReactECharts option={pipelineOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+              <ChartWatermark />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
+              <div className="rounded-md border border-border px-2 py-1">Draft backlog: {(statusCountMap.Draft || 0).toLocaleString()}</div>
+              <div className="rounded-md border border-border px-2 py-1">Review backlog: {(statusCountMap.Review || 0).toLocaleString()}</div>
+              <div className="rounded-md border border-border px-2 py-1">Stagnant: {stagnantRate.toFixed(1)}%</div>
+              <div className="rounded-md border border-border px-2 py-1">Finalized: {finalizedCount.toLocaleString()}</div>
+            </div>
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </Section>
+          <Section
+            title="Status Transition Flow"
+            icon={<ArrowRight className="h-4 w-4" />}
+            action={<CSVBtn onClick={exportTransitionCSV} label="Download Reports" loading={exportingTransition} />}
+          >
+            {transitionFlows.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No transition data available.</p>
+            ) : (
+              <div className="relative h-[360px] w-full">
+                <ReactECharts option={sankeyOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <ChartWatermark />
+              </div>
+            )}
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </Section>
+        </div>
+      )}
+
+      {dimTab === "type" && (
+        <Section title="Proposal Composition by Type" icon={<Tag className="h-4 w-4" />}>
+          {typeBreakdown.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No type data available.</p>
+          ) : (
+            <div className="relative h-[320px] w-full">
+              <ReactECharts option={typeDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+              <ChartWatermark />
+            </div>
+          )}
+          <ChartFooter nextUpdateAt={nextUpdateAt} />
+        </Section>
+      )}
+
+      {/* Shared across dimensions */}
       <Section
         title="Monthly Governance Throughput"
         icon={<Activity className="h-4 w-4" />}
@@ -1001,22 +1142,6 @@ export default function EIPsAnalyticsPage() {
         ) : (
           <div className="relative h-[340px] w-full">
             <ReactECharts option={throughputOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-            <ChartWatermark />
-          </div>
-        )}
-        <ChartFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
-
-      <Section
-        title="Category × Status Heatmap"
-        icon={<Layers className="h-4 w-4" />}
-        action={<CSVBtn onClick={exportCrossTab} label="Download Reports" loading={exportingHeatmap} />}
-      >
-        {matrixData.categories.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No category/status matrix data available.</p>
-        ) : (
-          <div className="relative h-[420px] w-full">
-            <ReactECharts option={matrixOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
             <ChartWatermark />
           </div>
         )}

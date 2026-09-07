@@ -1409,49 +1409,34 @@ function StandardsPageContent() {
                         </BarChart>
                       </WatermarkedChartContainer>
 
-                      {/* Category summary with percentages */}
-                      <div className="mt-3 text-xs text-muted-foreground flex flex-wrap gap-x-4 gap-y-1">
-                        {normalizedCategoryData.map((d) => {
-                          const pct = categoryTotalCount > 0 ? ((d.count / categoryTotalCount) * 100).toFixed(1) : "0";
-                          return (
-                            <span key={d.category}>
-                              {d.category} {d.count} ({pct}%)
-                            </span>
-                          );
-                        })}
-                        <span className="font-medium text-foreground">
-                          All {repo === "all" ? "Standards" : repo.toUpperCase()} {categoryTotalCount} (100%)
-                        </span>
-                      </div>
-
-                      {/* Bottom controls: legend filters, CSV, total */}
-                      <div className="mt-4 flex items-center justify-between gap-4 px-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-sm text-foreground mr-2">Show:</div>
+                      {/* Legend filters (with counts) + total. The chips double as the
+                          category breakdown, so no separate summary row is needed. */}
+                      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 px-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           {normalizedCategoryData.map((d) => {
                             const disabled = disabledCategories.includes(d.category);
+                            const pct = categoryTotalCount > 0 ? ((d.count / categoryTotalCount) * 100).toFixed(1) : "0";
                             return (
                               <button
                                 key={d.category}
                                 onClick={() => toggleCategory(d.category)}
                                 className={cn(
-                                  "inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium transition-all",
+                                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-all",
                                   disabled
-                                    ? "bg-muted/50 text-muted-foreground border border-border"
-                                    : "bg-muted/70 text-foreground border border-border shadow-sm"
+                                    ? "border-border bg-muted/40 text-muted-foreground opacity-60"
+                                    : "border-border bg-muted/70 text-foreground shadow-sm"
                                 )}
                                 title={disabled ? `Show ${d.category}` : `Hide ${d.category}`}
                               >
-                                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLOR_MAP[d.category] ?? CATEGORY_COLORS[0] }} />
+                                <span className="h-2 w-2 rounded-full" style={{ backgroundColor: CATEGORY_COLOR_MAP[d.category] ?? CATEGORY_COLORS[0] }} />
                                 {d.category}
+                                <span className="tabular-nums text-muted-foreground">{d.count.toLocaleString()}</span>
+                                <span className="text-[10px] text-muted-foreground">{pct}%</span>
                               </button>
                             );
                           })}
                         </div>
-
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-muted-foreground">Total: {categoryTotalCount}</span>
-                    </div>
+                        <span className="text-xs text-muted-foreground">Total: {categoryTotalCount.toLocaleString()}</span>
                       </div>
                     </>
                   ) : (
