@@ -4,14 +4,14 @@ import { cn } from '@/lib/utils';
 /** The account-abstraction proposal family, oldest idea to current native-AA work. */
 const AA_FAMILY: Array<{ id: string; href: string; name: string; status: string; live: boolean }> = [
   { id: 'EIP-7702', href: '/eip/7702', name: 'Set EOA account code', status: 'Live · Pectra', live: true },
-  { id: 'ERC-4337', href: '/erc/4337', name: 'Account Abstraction (EntryPoint)', status: 'Live · off-protocol', live: true },
-  { id: 'EIP-7701', href: '/eip/7701', name: 'Native Account Abstraction', status: 'Draft', live: false },
+  { id: 'ERC-4337', href: '/erc/4337', name: 'Account Abstraction (EntryPoint)', status: 'Live · Off-protocol', live: true },
+  { id: 'EIP-7701', href: '/eip/7701', name: 'Native Account Abstraction', status: 'Draft · Stage Split', live: false },
   { id: 'EIP-8141', href: '/eip/8141', name: 'Frames (native AA)', status: 'Proposed · Hegota', live: false },
-  { id: 'EIP-8130', href: '/eip/8130', name: 'AA for L2s', status: 'Draft', live: false },
-  { id: 'EIP-5792', href: '/eip/5792', name: 'Wallet Call API', status: 'Wallet RPC', live: false },
+  { id: 'EIP-8130', href: '/eip/8130', name: 'Keystore Accounts', status: 'Draft · Authenticators', live: false },
+  { id: 'EIP-5792', href: '/eip/5792', name: 'Wallet Call API', status: 'Wallet RPC Standard', live: false },
   { id: 'EIP-3074', href: '/eip/3074', name: 'AUTH / AUTHCALL', status: 'Superseded by 7702', live: false },
   { id: 'EIP-2938', href: '/eip/2938', name: 'Account Abstraction', status: 'Withdrawn', live: false },
-  { id: 'EIP-86', href: '/eip/86', name: 'Abstraction of tx origin & signature', status: 'The original AA idea (2017)', live: false },
+  { id: 'EIP-86', href: '/eip/86', name: 'Abstraction of tx origin & signature', status: 'Ancestor (2017)', live: false },
 ];
 
 export function AaProposalFamily() {

@@ -23,6 +23,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { cn } from '@/lib/utils';
+import { AaRaceTabs } from '@/app/aa/_race_tabs';
 
 const C7702 = 'var(--chart-1)'; // blue
 const C4337 = 'var(--chart-4)'; // amber
@@ -294,7 +295,7 @@ export function AccountAbstractionSection() {
                   ? 'USD value moved inside AA transactions (stablecoins + WETH transfers). The outer tx value is ~0, so this measures the real economic flow.'
                   : shareMode === 'trend'
                     ? 'EIP-7702 as a percent of all mainnet transactions over time.'
-                    : `EIP-7702 vs ERC-4337 split of account-abstraction transactions in ${pieBucketLabel}${pieAaSharePct != null ? ` — AA is ${pieAaSharePct}% of all mainnet transactions` : ''}.`}
+                    : `EIP-7702 vs ERC-4337 split of account-abstraction transactions in ${pieBucketLabel}${pieAaSharePct != null ? `: AA is ${pieAaSharePct}% of all mainnet transactions` : ''}.`}
             </p>
             <div className="relative h-[300px] w-full">
               <ChartWatermark position="center" />
@@ -352,6 +353,9 @@ export function AccountAbstractionSection() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Animated Growth Race & Mempool Mix synced with Timeline controls */}
+          <AaRaceTabs granularity={granularity} from={from} to={to} />
 
           {/* Unique 7702 accounts per week + EntryPoint version split, side by side */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -447,20 +451,20 @@ function StatCard({
   leading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-3.5">
+    <div className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/30 hover:bg-card/80">
       <div className="flex items-center justify-between">
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }}>
+        <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }}>
           {icon}
         </span>
         {leading && (
-          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px text-[9px] font-semibold text-emerald-600 dark:text-emerald-400">
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
             leading
           </span>
         )}
       </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground">{value}</p>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground/80">{sub}</p>}
+      <p className="mt-3 text-2xl font-bold tabular-nums tracking-tight text-foreground">{value}</p>
+      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground mt-0.5">{label}</p>
+      {sub && <p className="mt-1 text-[11px] text-muted-foreground/80">{sub}</p>}
     </div>
   );
 }

@@ -37,7 +37,7 @@ export function AaAdoptionIndex() {
       title: 'Protocol adoption',
       subtitle: 'The clients implement it',
       metric: 'Live since Pectra',
-      detail: 'Shipped in the Pectra upgrade — implemented by every major execution client.',
+      detail: 'Shipped in the Pectra upgrade: implemented by every major execution client.',
       tone: 'text-emerald-600 dark:text-emerald-400',
       accent: 'var(--chart-2)',
       full: true,
