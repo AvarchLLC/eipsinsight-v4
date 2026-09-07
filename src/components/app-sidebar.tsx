@@ -22,6 +22,8 @@ import {
   Wrench,
   LayoutDashboard,
   Shield,
+  Boxes,
+  Lock,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -129,6 +131,11 @@ const sidebarSections: SidebarSection[] = [
           { title: "Trending", href: "/explore/trending" },
         ],
       },
+      {
+        title: "Analytics & Insights",
+        icon: LineChart,
+        href: "/analytics/eips",
+      },
     ],
   },
   {
@@ -188,16 +195,29 @@ const sidebarSections: SidebarSection[] = [
     ],
   },
   {
-    id: "analytics",
-    label: "Analytics",
+    id: "featured",
+    label: "Featured Hubs",
     items: [
-      // One destination — the merged hub. Activity (PRs, Editors, EIPs…) and
-      // Insights (This Week, Monthly, Commentary) are switched via grouped
-      // tabs inside the page header, not the sidebar tree.
       {
-        title: "Analytics & Insights",
-        icon: LineChart,
-        href: "/analytics/eips",
+        title: "Account Abstraction",
+        icon: Boxes,
+        href: "/aa",
+        items: [
+          { title: "Dashboard", href: "/aa" },
+          { title: "History & Timeline", href: "/aa/history" },
+          { title: "Breakout Calls", href: "/aa/calls" },
+        ],
+      },
+      {
+        title: "Lucid Encrypted Mempool",
+        icon: Lock,
+        href: "/lucid",
+        items: [
+          { title: "Dashboard & MEV", href: "/lucid" },
+          { title: "History & MEV Genealogy", href: "/lucid/history" },
+          { title: "Working Group Calls", href: "/lucid/calls" },
+          { title: "EIP-8184 Spec", href: "/eip/8184" },
+        ],
       },
     ],
   },
