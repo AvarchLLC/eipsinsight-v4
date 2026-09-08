@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Brush,
   Area,
   AreaChart,
   CartesianGrid,
@@ -129,7 +130,7 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
         </div>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -152,6 +153,7 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
                   {labels.map((label) => (
                     <Line key={label} type="monotone" dataKey={label} stroke={COLORS[label] ?? 'var(--chart-3)'} strokeWidth={2} dot={false} isAnimationActive={false} />
                   ))}
+                                  <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
                 </LineChart>
               ) : (
                 <AreaChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -163,6 +165,7 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
                   {labels.map((label) => (
                     <Area key={label} type="monotone" dataKey={label} stackId="econ" stroke={COLORS[label] ?? 'var(--chart-3)'} fill={COLORS[label] ?? 'var(--chart-3)'} fillOpacity={0.8} strokeWidth={0} isAnimationActive={false} />
                   ))}
+                                  <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
                 </AreaChart>
               )}
             </ResponsiveContainer>

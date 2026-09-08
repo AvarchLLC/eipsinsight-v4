@@ -26,6 +26,7 @@ import {
   AreaChart,
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   ResponsiveContainer,
   Tooltip,
@@ -115,7 +116,7 @@ function parseActionItems(value: unknown): string[] {
     .filter(Boolean);
 }
 
-export function LucidProposalSection() {
+export function LucidProposalSection({ featured = false }: { featured?: boolean } = {}) {
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
   const [mev, setMev] = useState<MempoolMevStats | null>(null);
@@ -218,7 +219,7 @@ export function LucidProposalSection() {
             title="The MEV Harm EIP-8184 Neutralises"
             action={
               <span className="text-xs text-muted-foreground">
-                Mainnet Sandwich Index · source <strong className="text-foreground">BlobLens</strong>
+                Mainnet Sandwich Index · <strong className="text-foreground">EIPsInsight</strong>
               </span>
             }
           />
@@ -259,7 +260,18 @@ export function LucidProposalSection() {
                 />
               </div>
 
-              {mev.weekly.length > 1 && <MevWeeklyChart mev={mev} />}
+              {/* The detailed MEV graphs live on the featured Lucid hub, not on each proposal page. */}
+              {featured
+                ? mev.weekly.length > 1 && <MevWeeklyChart mev={mev} />
+                : mev.weekly.length > 1 && (
+                    <Link
+                      href="/lucid#lucid-mev"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      <TrendingUp className="h-3.5 w-3.5" /> See the full weekly MEV analytics on the Lucid hub
+                      <ArrowUpRight className="h-3.5 w-3.5" />
+                    </Link>
+                  )}
             </div>
           ) : (
             <div className="py-8">
@@ -449,7 +461,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
               <CopyAnchorButton anchor="lucid-sandwich-volume" />
             </div>
           </div>
-          <div className="h-52 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
@@ -462,6 +474,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
                   formatter={(value: number) => [Number(value).toLocaleString(), 'Sandwich Attacks']}
                 />
                 <Bar dataKey="sandwiches" fill="var(--chart-1)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-1)" fill="transparent" tickFormatter={() => ''} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -478,7 +491,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
               <CopyAnchorButton anchor="lucid-bot-profit" />
             </div>
           </div>
-          <div className="h-52 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <defs>
@@ -505,6 +518,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
+                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-2)" fill="transparent" tickFormatter={() => ''} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -521,7 +535,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
               <CopyAnchorButton anchor="lucid-victim-volume" />
             </div>
           </div>
-          <div className="h-52 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <defs>
@@ -548,6 +562,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
                   activeDot={{ r: 4 }}
                   isAnimationActive={false}
                 />
+                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-4)" fill="transparent" tickFormatter={() => ''} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
@@ -564,7 +579,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
               <CopyAnchorButton anchor="lucid-mev-bots" />
             </div>
           </div>
-          <div className="h-52 w-full">
+          <div className="h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
                 <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
@@ -577,6 +592,7 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
                   formatter={(value: number) => [Number(value).toLocaleString(), 'Active Searcher Bots']}
                 />
                 <Bar dataKey="activeBots" fill="var(--chart-5)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-5)" fill="transparent" tickFormatter={() => ''} />
               </BarChart>
             </ResponsiveContainer>
           </div>

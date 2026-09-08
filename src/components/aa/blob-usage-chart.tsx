@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   Bar,
+  Brush,
   CartesianGrid,
   ComposedChart,
   Legend,
@@ -75,7 +76,7 @@ export function BlobUsageChart({ months = 24 }: { months?: number }) {
         </p>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -119,6 +120,7 @@ export function BlobUsageChart({ months = 24 }: { months?: number }) {
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                 <Bar yAxisId="tx" dataKey="blobTx" name="Blob transactions" fill={C_TX} radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
                 <Line yAxisId="per" type="monotone" dataKey="blobsPerTx" name="Blobs per tx" stroke={C_PER} strokeWidth={2} dot={false} isAnimationActive={false} />
+                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
               </ComposedChart>
             </ResponsiveContainer>
           </>

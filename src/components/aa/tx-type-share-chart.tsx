@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
+  Brush,
   CartesianGrid,
   Legend,
   ResponsiveContainer,
@@ -96,7 +97,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
         </p>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -141,6 +142,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
                     isAnimationActive={false}
                   />
                 ))}
+                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
               </AreaChart>
             </ResponsiveContainer>
           </>
