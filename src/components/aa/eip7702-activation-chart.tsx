@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import {
   Area,
   AreaChart,
+  Brush,
   CartesianGrid,
   ReferenceLine,
   ResponsiveContainer,
@@ -89,7 +90,7 @@ export function Eip7702ActivationChart() {
         </p>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -145,6 +146,7 @@ export function Eip7702ActivationChart() {
                   />
                 ))}
                 <Area type="monotone" dataKey="cumulative" stroke={C} strokeWidth={2} fill="url(#grad7702act)" dot={false} isAnimationActive={false} />
+                              <Brush dataKey="m" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
               </AreaChart>
             </ResponsiveContainer>
           </>

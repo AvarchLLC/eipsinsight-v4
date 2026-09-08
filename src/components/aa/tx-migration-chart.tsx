@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Brush,
   CartesianGrid,
   Legend,
   Line,
@@ -94,7 +95,7 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
         </p>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -129,6 +130,7 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
                 {lines.map((l) => (
                   <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={2} dot={false} isAnimationActive={false} />
                 ))}
+                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
               </LineChart>
             </ResponsiveContainer>
           </>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import {
+  Brush,
   CartesianGrid,
   Legend,
   Line,
@@ -117,7 +118,7 @@ export function Eip7702AdoptionChart() {
         </p>
       </div>
 
-      <div className="relative h-[280px]">
+      <div className="relative h-[320px]">
         {loading && !hasData ? (
           <div className="flex h-full items-center justify-center">
             <InlineBrandLoader />
@@ -149,6 +150,7 @@ export function Eip7702AdoptionChart() {
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                 <Line type="monotone" dataKey="accounts" name="Delegated accounts" stroke={C_ACCT} strokeWidth={2} dot={false} isAnimationActive={false} />
                 <Line type="monotone" dataKey="txs" name="7702 transactions" stroke={C_TX} strokeWidth={2} dot={false} isAnimationActive={false} />
+                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
               </LineChart>
             </ResponsiveContainer>
           </>
