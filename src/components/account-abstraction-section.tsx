@@ -41,6 +41,13 @@ const TT_CONTENT = {
 } as const;
 const TT_ITEM = { color: 'var(--foreground)' } as const;
 const TT_LABEL = { color: 'var(--foreground)', fontWeight: 600 } as const;
+// Rotated y-axis unit label so every chart states what its numbers are.
+const yLabel = (value: string) => ({
+  value,
+  angle: -90 as const,
+  position: 'insideLeft' as const,
+  style: { fontSize: 11, fill: 'var(--muted-foreground)', textAnchor: 'middle' as const },
+});
 // ERC-4337 EntryPoint versions
 const CEP06 = 'var(--chart-8)'; // slate (oldest)
 const CEP07 = 'var(--chart-4)'; // amber
@@ -308,7 +315,7 @@ export function AccountAbstractionSection() {
                     </defs>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
-                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={48} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={62} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} label={yLabel('Transactions')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [fmtInt(v), name === 'aa7702' ? 'EIP-7702' : 'ERC-4337']} />
                     <Area type="monotone" dataKey="aa7702" stroke={C7702} strokeWidth={2} fill="url(#g7702)" />
                     <Area type="monotone" dataKey="aa4337" stroke={C4337} strokeWidth={2} fill="url(#g4337)" />
@@ -324,7 +331,7 @@ export function AccountAbstractionSection() {
                     </defs>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
-                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={52} tickFormatter={(v) => fmtUsd(v)} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => fmtUsd(v)} label={yLabel('USD moved')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [fmtUsd(v), name === 'value7702Usd' ? 'EIP-7702 value' : 'ERC-4337 value']} />
                     <Area type="monotone" dataKey="value7702Usd" stackId="val" stroke={C7702} strokeWidth={2} fill="url(#gv7702)" />
                     <Area type="monotone" dataKey="value4337Usd" stackId="val" stroke={C4337} strokeWidth={2} fill="url(#gv4337)" />
@@ -337,7 +344,7 @@ export function AccountAbstractionSection() {
                     </defs>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
-                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={40} tickFormatter={(v) => `${v}%`} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={58} tickFormatter={(v) => `${v}%`} label={yLabel('% of all txs')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v}%`, 'EIP-7702 share']} />
                     <Area type="monotone" dataKey="share7702Pct" stroke={C7702} strokeWidth={2} fill="url(#gShare)" />
                   </AreaChart>
@@ -371,7 +378,7 @@ export function AccountAbstractionSection() {
                   <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={24} />
-                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={58} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} label={yLabel('Unique accounts')} />
                     <Tooltip
                       contentStyle={TT_CONTENT}
                       labelStyle={TT_LABEL}
@@ -403,7 +410,7 @@ export function AccountAbstractionSection() {
                   <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={24} />
-                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} />
+                    <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={58} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} label={yLabel('Transactions')} />
                     <Tooltip
                       contentStyle={TT_CONTENT}
                       labelStyle={TT_LABEL}

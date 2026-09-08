@@ -179,6 +179,144 @@ async function getTxTypeSeries(months: number): Promise<TxTypeSeries> {
   }
 }
 
+// ── Daily rollup reads (blob_lens.tx_daily_type_stats, filled by rollup-tx-daily.mjs) ──
+// A live per-month scan of ethereum.transactions + receipts is too slow, so these
+// read the pre-aggregated daily table instead (instant). See blob_lens/scripts.
+
+function monthBuckets(months: number): { buckets: string[]; idx: Map<string, number> } {
+  const buckets: string[] = []
+  const idx = new Map<string, number>()
+  const d = new Date()
+  d.setUTCDate(1)
+  d.setUTCMonth(d.getUTCMonth() - (months - 1))
+  for (let i = 0; i < months; i++) {
+    const b = d.toISOString().slice(0, 7)
+    idx.set(b, buckets.length)
+    buckets.push(b)
+    d.setUTCMonth(d.getUTCMonth() + 1)
+  }
+  return { buckets, idx }
+}
+
+// Composition (transfer / contract / blob / setcode) monthly counts.
+const CLASS_META: Record<string, { label: string }> = {
+  transfer: { label: 'Plain transfers' },
+  contract: { label: 'Contract calls' },
+  blob: { label: 'Blob (EIP-4844)' },
+  setcode: { label: 'Set-code (EIP-7702)' },
+}
+const CLASS_ORDER = ['contract', 'transfer', 'blob', 'setcode']
+
+export interface TxComposition {
+  available: boolean
+  months: number
+  buckets: string[]
+  series: Array<{ key: string; label: string; counts: number[] }>
+  source: string
+}
+
+const compositionCache = new Map<number, { at: number; data: TxComposition }>()
+const emptyComposition = (months: number): TxComposition => ({ available: false, months, buckets: [], series: [], source: 'BlobLens · tx_daily_type_stats' })
+
+async function queryComposition(months: number): Promise<TxComposition> {
+  const rows = await clickhouseQuery<{ m: string; class: string; c: string }>(
+    `
+    SELECT toStartOfMonth(date) AS m, class, sum(tx_count) AS c
+    FROM blob_lens.tx_daily_type_stats FINAL
+    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
+    GROUP BY m, class
+    ORDER BY m ASC
+    `,
+    { timeoutMs: 10_000 },
+  )
+  if (!rows.length) throw new Error('composition: empty')
+  const { buckets, idx } = monthBuckets(months)
+  const byClass = new Map<string, number[]>()
+  for (const r of rows) {
+    const i = idx.get(r.m.slice(0, 7))
+    if (i === undefined) continue
+    const arr = byClass.get(r.class) ?? new Array(months).fill(0)
+    arr[i] = N(r.c)
+    byClass.set(r.class, arr)
+  }
+  const series = CLASS_ORDER.filter((k) => byClass.has(k)).map((key) => ({
+    key,
+    label: CLASS_META[key]?.label ?? key,
+    counts: byClass.get(key)!,
+  }))
+  return { available: true, months, buckets, series, source: 'BlobLens · tx_daily_type_stats' }
+}
+
+async function getTxComposition(months: number): Promise<TxComposition> {
+  if (!clickhouseConfigured()) return emptyComposition(months)
+  const hit = compositionCache.get(months)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+  try {
+    const data = await queryComposition(months)
+    compositionCache.set(months, { at: Date.now(), data })
+    return data
+  } catch {
+    return hit?.data ?? emptyComposition(months)
+  }
+}
+
+// Per-type economics: gas used, fees (ETH), failure rate, monthly.
+export interface TxTypeEconomics {
+  available: boolean
+  months: number
+  buckets: string[]
+  types: Array<{ txType: number; label: string; count: number[]; gasUsed: number[]; feesEth: number[]; failed: number[] }>
+  source: string
+}
+
+const economicsCache = new Map<number, { at: number; data: TxTypeEconomics }>()
+const emptyEconomics = (months: number): TxTypeEconomics => ({ available: false, months, buckets: [], types: [], source: 'BlobLens · tx_daily_type_stats' })
+
+async function queryEconomics(months: number): Promise<TxTypeEconomics> {
+  const rows = await clickhouseQuery<{ m: string; tx_type: number; c: string; gas: string; fees: string; failed: string }>(
+    `
+    SELECT toStartOfMonth(date) AS m, tx_type,
+           sum(tx_count) AS c, sum(gas_used) AS gas, sum(fees_eth) AS fees, sum(failed) AS failed
+    FROM blob_lens.tx_daily_type_stats FINAL
+    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
+    GROUP BY m, tx_type
+    ORDER BY m ASC, tx_type ASC
+    `,
+    { timeoutMs: 10_000 },
+  )
+  if (!rows.length) throw new Error('economics: empty')
+  const { buckets, idx } = monthBuckets(months)
+  const byType = new Map<number, { count: number[]; gasUsed: number[]; feesEth: number[]; failed: number[] }>()
+  for (const r of rows) {
+    const i = idx.get(r.m.slice(0, 7))
+    if (i === undefined) continue
+    const t = N(r.tx_type)
+    const e = byType.get(t) ?? { count: new Array(months).fill(0), gasUsed: new Array(months).fill(0), feesEth: new Array(months).fill(0), failed: new Array(months).fill(0) }
+    e.count[i] = N(r.c)
+    e.gasUsed[i] = N(r.gas)
+    e.feesEth[i] = N(r.fees)
+    e.failed[i] = N(r.failed)
+    byType.set(t, e)
+  }
+  const types = [...byType.entries()]
+    .map(([txType, e]) => ({ txType, label: TX_TYPES[txType]?.label ?? `Type ${txType}`, ...e }))
+    .sort((a, b) => b.count.reduce((x, y) => x + y, 0) - a.count.reduce((x, y) => x + y, 0))
+  return { available: true, months, buckets, types, source: 'BlobLens · tx_daily_type_stats' }
+}
+
+async function getTxTypeEconomics(months: number): Promise<TxTypeEconomics> {
+  if (!clickhouseConfigured()) return emptyEconomics(months)
+  const hit = economicsCache.get(months)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+  try {
+    const data = await queryEconomics(months)
+    economicsCache.set(months, { at: Date.now(), data })
+    return data
+  } catch {
+    return hit?.data ?? emptyEconomics(months)
+  }
+}
+
 export const networkProcedures = {
   getTxTypeMix: optionalAuthProcedure
     .input(z.object({ windowDays: z.number().int().min(1).max(365).default(30) }))
@@ -187,4 +325,12 @@ export const networkProcedures = {
   getTxTypeSeries: optionalAuthProcedure
     .input(z.object({ months: z.number().int().min(3).max(48).default(24) }))
     .handler(async ({ input }): Promise<TxTypeSeries> => getTxTypeSeries(input.months)),
+
+  getTxComposition: optionalAuthProcedure
+    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .handler(async ({ input }): Promise<TxComposition> => getTxComposition(input.months)),
+
+  getTxTypeEconomics: optionalAuthProcedure
+    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .handler(async ({ input }): Promise<TxTypeEconomics> => getTxTypeEconomics(input.months)),
 }
