@@ -2,10 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Area,
-  AreaChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -17,14 +17,9 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
 
-// Stable colour per transaction type (keyed by the label the procedure returns).
-const COLORS: Record<string, string> = {
-  'EIP-1559': 'var(--chart-1)',
-  Legacy: 'var(--chart-8)',
-  'EIP-4844': 'var(--chart-4)',
-  'EIP-7702': 'var(--chart-2)',
-  'EIP-2930': 'var(--chart-6)',
-};
+const C_LEGACY = 'var(--chart-8)';
+const C_1559 = 'var(--chart-1)';
+const C_OTHER = 'var(--chart-4)';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -38,19 +33,17 @@ const TT_CONTENT = {
 
 function fmtBucket(ym: string): string {
   const d = new Date(`${ym}-01T00:00:00Z`);
-  return Number.isNaN(d.getTime())
-    ? ym
-    : d.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+  return Number.isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 }
 
 /**
- * Transaction Type Market Share: the share of all mainnet transactions using
- * each typed-transaction format, month by month. Answers "how fast does each new
- * transaction standard take over?" Data from BlobLens via network.getTxTypeSeries.
+ * Typed-transaction migration: the share of mainnet transactions that are
+ * Legacy, EIP-1559, and other typed formats (EIP-2718 envelope), month by month.
+ * Covers "legacy vs typed" and "EIP-1559 adoption" in one view. Reads the
+ * existing network.getTxTypeSeries.
  */
-export function TxTypeShareChart({ months = 24 }: { months?: number }) {
-  const [rows, setRows] = useState<Array<Record<string, number | string>>>([]);
-  const [labels, setLabels] = useState<string[]>([]);
+export function TxMigrationChart({ months = 24 }: { months?: number }) {
+  const [rows, setRows] = useState<Array<{ bucket: string; Legacy: number; 'EIP-1559': number; 'Other typed': number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,14 +52,20 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
       .getTxTypeSeries({ months })
       .then((s) => {
         if (cancelled || !s || !s.buckets.length || !s.series.length) return;
-        // Order legend/stack largest-first (procedure already sorts series desc).
-        setLabels(s.series.map((t) => t.label));
+        const find = (label: string) => s.series.find((t) => t.label === label)?.counts ?? new Array(s.buckets.length).fill(0);
+        const legacy = find('Legacy');
+        const c1559 = find('EIP-1559');
         setRows(
           s.buckets.map((b, i) => {
             const total = s.series.reduce((a, t) => a + (t.counts[i] ?? 0), 0) || 1;
-            const row: Record<string, number | string> = { bucket: fmtBucket(b) };
-            for (const t of s.series) row[t.label] = ((t.counts[i] ?? 0) / total) * 100;
-            return row;
+            const leg = ((legacy[i] ?? 0) / total) * 100;
+            const dyn = ((c1559[i] ?? 0) / total) * 100;
+            return {
+              bucket: fmtBucket(b),
+              Legacy: Math.round(leg * 10) / 10,
+              'EIP-1559': Math.round(dyn * 10) / 10,
+              'Other typed': Math.round((100 - leg - dyn) * 10) / 10,
+            };
           }),
         );
       })
@@ -80,19 +79,18 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
   }, [months]);
 
   const hasData = rows.length > 1;
-
-  const stackOrder = useMemo(
-    // Stack smallest-first so the tiny types stay visible at the bottom.
-    () => [...labels].reverse(),
-    [labels],
-  );
+  const lines = useMemo(() => [
+    { key: 'EIP-1559', color: C_1559 },
+    { key: 'Legacy', color: C_LEGACY },
+    { key: 'Other typed', color: C_OTHER },
+  ], []);
 
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Transaction type market share <ChartInfo text="Share of every mainnet transaction by its format (Legacy, EIP-2930, EIP-1559, EIP-4844, EIP-7702) each month, stacked to 100 percent. Shows how fast each new standard takes over." /></p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Typed-transaction migration <ChartInfo text="The shift to typed transactions since EIP-2718. Each line is a format's share of all transactions: legacy falling, EIP-1559 dominant, newer formats rising." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          Share of all mainnet transactions by typed-transaction format, per month.
+          Share of mainnet transactions by format since EIP-2718: legacy falling, EIP-1559 dominant, newer typed formats rising.
         </p>
       </div>
 
@@ -109,7 +107,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
           <>
             <ChartWatermark position="center" />
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }} stackOffset="none">
+              <LineChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} opacity={0.4} vertical={false} />
                 <XAxis dataKey="bucket" tick={{ fontSize: 11, fill: CHART_AXIS }} tickLine={false} axisLine={false} minTickGap={24} />
                 <YAxis
@@ -125,30 +123,20 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
                 <Tooltip
                   contentStyle={TT_CONTENT}
                   labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(v: number, name: string) => [`${v.toFixed(1)}%`, name]}
+                  formatter={(v: number, name: string) => [`${v}%`, name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
-                {stackOrder.map((label) => (
-                  <Area
-                    key={label}
-                    type="monotone"
-                    dataKey={label}
-                    stackId="share"
-                    stroke={COLORS[label] ?? 'var(--chart-3)'}
-                    fill={COLORS[label] ?? 'var(--chart-3)'}
-                    fillOpacity={0.85}
-                    strokeWidth={0}
-                    isAnimationActive={false}
-                  />
+                {lines.map((l) => (
+                  <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={2} dot={false} isAnimationActive={false} />
                 ))}
-              </AreaChart>
+              </LineChart>
             </ResponsiveContainer>
           </>
         )}
       </div>
 
       <p className="mt-2 text-[11px] text-muted-foreground">
-        EIP-1559 dominates; watch EIP-4844 (blobs) and EIP-7702 (set-code) climb from the baseline. Live from mainnet.
+        Every non-legacy format is a typed EIP-2718 transaction. EIP-1559 carries most traffic; EIP-4844 and EIP-7702 are the newest entrants. Live from mainnet.
       </p>
     </div>
   );

@@ -317,10 +317,65 @@ async function getTxTypeEconomics(months: number): Promise<TxTypeEconomics> {
   }
 }
 
+// ── Blob usage (EIP-4844): monthly blob-tx count and blobs per transaction ──
+export interface BlobStats {
+  available: boolean
+  months: number
+  buckets: string[]
+  blobTx: number[]
+  blobsPerTx: number[]
+  source: string
+}
+
+const blobCache = new Map<number, { at: number; data: BlobStats }>()
+const emptyBlob = (months: number): BlobStats => ({ available: false, months, buckets: [], blobTx: [], blobsPerTx: [], source: 'BlobLens · tx_daily_type_stats' })
+
+async function queryBlobStats(months: number): Promise<BlobStats> {
+  const rows = await clickhouseQuery<{ m: string; txs: string; blobs: string }>(
+    `
+    SELECT toStartOfMonth(date) AS m, sum(tx_count) AS txs, sum(num_blobs) AS blobs
+    FROM blob_lens.tx_daily_type_stats FINAL
+    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH AND tx_type = 3
+    GROUP BY m
+    ORDER BY m ASC
+    `,
+    { timeoutMs: 10_000 },
+  )
+  if (!rows.length) throw new Error('blob stats: empty')
+  const { buckets, idx } = monthBuckets(months)
+  const blobTx = new Array(months).fill(0)
+  const blobsPerTx = new Array(months).fill(0)
+  for (const r of rows) {
+    const i = idx.get(r.m.slice(0, 7))
+    if (i === undefined) continue
+    const txs = N(r.txs)
+    blobTx[i] = txs
+    blobsPerTx[i] = txs > 0 ? Math.round((N(r.blobs) / txs) * 100) / 100 : 0
+  }
+  return { available: true, months, buckets, blobTx, blobsPerTx, source: 'BlobLens · tx_daily_type_stats' }
+}
+
+async function getBlobStats(months: number): Promise<BlobStats> {
+  if (!clickhouseConfigured()) return emptyBlob(months)
+  const hit = blobCache.get(months)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+  try {
+    const data = await queryBlobStats(months)
+    blobCache.set(months, { at: Date.now(), data })
+    return data
+  } catch {
+    return hit?.data ?? emptyBlob(months)
+  }
+}
+
 export const networkProcedures = {
   getTxTypeMix: optionalAuthProcedure
     .input(z.object({ windowDays: z.number().int().min(1).max(365).default(30) }))
     .handler(async ({ input }): Promise<TxTypeMix> => getTxTypeMix(input.windowDays)),
+
+  getBlobStats: optionalAuthProcedure
+    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .handler(async ({ input }): Promise<BlobStats> => getBlobStats(input.months)),
 
   getTxTypeSeries: optionalAuthProcedure
     .input(z.object({ months: z.number().int().min(3).max(48).default(24) }))

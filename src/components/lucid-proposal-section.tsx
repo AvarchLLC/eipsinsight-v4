@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
+import { CopyAnchorButton } from '@/components/copy-anchor-button';
 import {
   ArrowUpRight,
   CalendarClock,
@@ -438,12 +439,15 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
 
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Chart 1: Weekly Sandwich Attacks */}
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div id="lucid-sandwich-volume" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Weekly Sandwich Attack Volume
             </p>
-            <span className="text-xs font-mono font-bold text-foreground">{compactNum(mev.totalSandwiches)} total</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-foreground">{compactNum(mev.totalSandwiches)} total</span>
+              <CopyAnchorButton anchor="lucid-sandwich-volume" />
+            </div>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -464,12 +468,15 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
         </div>
 
         {/* Chart 2: Extracted Bot Profit (USD) */}
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div id="lucid-bot-profit" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Extracted Bot Gross Profit (USD)
             </p>
-            <span className="text-xs font-mono font-bold text-emerald-500">{compactUsd(mev.botProfitUsd)} total</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-emerald-500">{compactUsd(mev.botProfitUsd)} total</span>
+              <CopyAnchorButton anchor="lucid-bot-profit" />
+            </div>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -504,12 +511,15 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
         </div>
 
         {/* Chart 3: Exploited Victim Trade Volume (USD) */}
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div id="lucid-victim-volume" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Exploited Victim Trade Volume (USD)
             </p>
-            <span className="text-xs font-mono font-bold text-amber-500">{compactUsd(mev.victimVolumeUsd)} total</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-amber-500">{compactUsd(mev.victimVolumeUsd)} total</span>
+              <CopyAnchorButton anchor="lucid-victim-volume" />
+            </div>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">
@@ -544,12 +554,15 @@ function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
         </div>
 
         {/* Chart 4: Active MEV Searcher Bots per Week */}
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div id="lucid-mev-bots" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
               Active MEV Searcher Bots per Week
             </p>
-            <span className="text-xs font-mono font-bold text-cyan-500">{mev.uniqueBots} unique bots</span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-cyan-500">{mev.uniqueBots} unique bots</span>
+              <CopyAnchorButton anchor="lucid-mev-bots" />
+            </div>
           </div>
           <div className="h-52 w-full">
             <ResponsiveContainer width="100%" height="100%">

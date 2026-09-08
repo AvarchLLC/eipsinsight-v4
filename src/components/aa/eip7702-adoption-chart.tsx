@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const C_ACCT = 'var(--chart-2)'; // green: unique delegated accounts
 const C_TX = 'var(--chart-1)'; // blue: 7702 transactions
@@ -50,22 +51,56 @@ export function Eip7702AdoptionChart() {
 
   useEffect(() => {
     let cancelled = false;
-    client.aa
-      .getUsageStats({ granularity: 'month', from: '2025-05-01' })
-      .then((s) => {
-        if (cancelled || !s || !s.series.length) return;
-        setRows(
-          s.series.map((r) => ({
-            bucket: fmtBucket(r.bucket.slice(0, 7)),
-            accounts: r.accounts7702,
-            txs: r.aa7702,
-          })),
-        );
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    // Transactions come from the fast daily rollup (7702 = tx_type 4), so the
+    // chart draws instantly. Unique accounts need a distinct-count the rollup
+    // does not store, so that series is fetched from the slower usage query with
+    // a few retries and merged in when it arrives.
+    (async () => {
+      let base: Array<{ bucket: string; ym: string; accounts: number; txs: number }> = [];
+      try {
+        const econ = await client.network.getTxTypeEconomics({ months: 24 });
+        const t = econ?.types.find((x) => x.txType === 4);
+        if (t) {
+          const start = econ.buckets.findIndex((b) => b >= '2025-05');
+          if (start >= 0) {
+            base = econ.buckets.slice(start).map((b, i) => ({ bucket: fmtBucket(b), ym: b, accounts: 0, txs: t.count[start + i] ?? 0 }));
+            if (!cancelled) {
+              setRows(base.map(({ bucket, accounts, txs }) => ({ bucket, accounts, txs })));
+              setLoading(false);
+            }
+          }
+        }
+      } catch {
+        // fall through to the usage query below
+      }
+
+      // Accounts (adoption breadth): retry the usage query, then merge.
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        try {
+          const s = await client.aa.getUsageStats({ granularity: 'month', from: '2025-05-01' });
+          if (cancelled) return;
+          if (s && s.series.length) {
+            const acctByYm = new Map(s.series.map((r) => [r.bucket.slice(0, 7), r.accounts7702]));
+            if (base.length) {
+              setRows(base.map((r) => ({ bucket: r.bucket, accounts: acctByYm.get(r.ym) ?? 0, txs: r.txs })));
+            } else {
+              setRows(
+                s.series.map((r) => ({ bucket: fmtBucket(r.bucket.slice(0, 7)), accounts: r.accounts7702, txs: r.aa7702 })),
+              );
+            }
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // ignore and retry
+        }
+        await sleep(2500);
+      }
+      if (!cancelled) setLoading(false);
+    })();
+
     return () => {
       cancelled = true;
     };
@@ -76,7 +111,7 @@ export function Eip7702AdoptionChart() {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">EIP-7702 account adoption</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">EIP-7702 account adoption <ChartInfo text="EIP-7702 adoption since Pectra: distinct delegated accounts (breadth) versus total 7702 transactions (activity) per month. Transactions load instantly; the accounts line fills in from a heavier query." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Distinct delegated accounts vs total 7702 transactions each month, since Pectra.
         </p>
