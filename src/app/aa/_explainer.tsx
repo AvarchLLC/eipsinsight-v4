@@ -26,11 +26,13 @@ export function AaExplainer() {
               What account abstraction is
             </h2>
             <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[11px] font-medium text-primary border border-primary/20">
-              Programmable Accounts
+              Programmable accounts
             </span>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Decoupling Ethereum transaction authorization and gas payment from hard-coded ECDSA keys.
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            An Ethereum account is normally just a private key: it signs one transaction at a time and has to hold ETH to
+            pay its own gas. Account abstraction lets the account run code instead, so it can bundle several actions into
+            one, let someone else pay the gas, and add safety features like recovery or spending limits.
           </p>
         </div>
         <ChevronDown
@@ -40,18 +42,26 @@ export function AaExplainer() {
 
       {open && (
         <div className="px-5 pb-5 sm:px-6 sm:pb-6 space-y-4 border-t border-border/60 pt-4">
+          <p className="rounded-lg bg-muted/40 p-3 text-sm leading-relaxed text-muted-foreground">
+            Think of it as upgrading from a plain door key to a smart lock. It is the same door, but the lock can now
+            enforce rules, let a guest in, or be re-keyed if you lose your phone. Account abstraction does that for an
+            Ethereum account: the account keeps working the same way, but it can now run its own rules.
+          </p>
           <div className="grid gap-4 text-sm leading-relaxed text-muted-foreground sm:grid-cols-2">
-            <p>
-              Traditional Ethereum EOAs tie identity directly to a single ECDSA private key that must hold ETH to pay gas
-              and can only sign one operation at a time. Account abstraction turns account behavior into programmable code:
-              enabling batching multiple transactions into a single action, gas payment in ERC-20 tokens, social recovery,
-              and gas sponsorship.
-            </p>
-            <p>
-              Two approaches operate on Ethereum mainnet today. <span className="text-foreground font-medium">EIP-7702</span> lets
-              EOAs temporarily delegate execution to smart contract code (live since Pectra). <span className="text-foreground font-medium">ERC-4337</span> operates
-              off-protocol using an alternative mempool and EntryPoint contract.
-            </p>
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <p className="mb-1 text-sm font-semibold text-foreground">EIP-7702: upgrade the account you already have</p>
+              <p>
+                A transaction that points your normal account at contract code, so it gains smart-account powers while
+                keeping the same address and key. Live on mainnet since the Pectra upgrade (2025).
+              </p>
+            </div>
+            <div className="rounded-lg border border-border/60 bg-muted/30 p-3">
+              <p className="mb-1 text-sm font-semibold text-foreground">ERC-4337: a separate smart-contract wallet</p>
+              <p>
+                A full smart-account wallet that runs off protocol through a shared EntryPoint contract, with no change to
+                Ethereum itself. Live on mainnet since 2023.
+              </p>
+            </div>
           </div>
 
           {/* Core Feature Badges */}
