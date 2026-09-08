@@ -50,22 +50,56 @@ export function Eip7702AdoptionChart() {
 
   useEffect(() => {
     let cancelled = false;
-    client.aa
-      .getUsageStats({ granularity: 'month', from: '2025-05-01' })
-      .then((s) => {
-        if (cancelled || !s || !s.series.length) return;
-        setRows(
-          s.series.map((r) => ({
-            bucket: fmtBucket(r.bucket.slice(0, 7)),
-            accounts: r.accounts7702,
-            txs: r.aa7702,
-          })),
-        );
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    // Transactions come from the fast daily rollup (7702 = tx_type 4), so the
+    // chart draws instantly. Unique accounts need a distinct-count the rollup
+    // does not store, so that series is fetched from the slower usage query with
+    // a few retries and merged in when it arrives.
+    (async () => {
+      let base: Array<{ bucket: string; ym: string; accounts: number; txs: number }> = [];
+      try {
+        const econ = await client.network.getTxTypeEconomics({ months: 24 });
+        const t = econ?.types.find((x) => x.txType === 4);
+        if (t) {
+          const start = econ.buckets.findIndex((b) => b >= '2025-05');
+          if (start >= 0) {
+            base = econ.buckets.slice(start).map((b, i) => ({ bucket: fmtBucket(b), ym: b, accounts: 0, txs: t.count[start + i] ?? 0 }));
+            if (!cancelled) {
+              setRows(base.map(({ bucket, accounts, txs }) => ({ bucket, accounts, txs })));
+              setLoading(false);
+            }
+          }
+        }
+      } catch {
+        // fall through to the usage query below
+      }
+
+      // Accounts (adoption breadth): retry the usage query, then merge.
+      for (let attempt = 0; attempt < 4 && !cancelled; attempt++) {
+        try {
+          const s = await client.aa.getUsageStats({ granularity: 'month', from: '2025-05-01' });
+          if (cancelled) return;
+          if (s && s.series.length) {
+            const acctByYm = new Map(s.series.map((r) => [r.bucket.slice(0, 7), r.accounts7702]));
+            if (base.length) {
+              setRows(base.map((r) => ({ bucket: r.bucket, accounts: acctByYm.get(r.ym) ?? 0, txs: r.txs })));
+            } else {
+              setRows(
+                s.series.map((r) => ({ bucket: fmtBucket(r.bucket.slice(0, 7)), accounts: r.accounts7702, txs: r.aa7702 })),
+              );
+            }
+            setLoading(false);
+            return;
+          }
+        } catch {
+          // ignore and retry
+        }
+        await sleep(2500);
+      }
+      if (!cancelled) setLoading(false);
+    })();
+
     return () => {
       cancelled = true;
     };
