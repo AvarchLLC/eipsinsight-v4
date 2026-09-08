@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const C_LEGACY = 'var(--chart-8)';
 const C_1559 = 'var(--chart-1)';
@@ -87,7 +88,7 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">Typed-transaction migration</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Typed-transaction migration <ChartInfo text="The shift to typed transactions since EIP-2718. Each line is a format's share of all transactions: legacy falling, EIP-1559 dominant, newer formats rising." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Share of mainnet transactions by format since EIP-2718: legacy falling, EIP-1559 dominant, newer typed formats rising.
         </p>

@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const COLORS: Record<string, string> = {
   'Contract calls': 'var(--chart-1)',
@@ -81,7 +82,7 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">L1 transaction composition</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">L1 transaction composition <ChartInfo text="Every mainnet transaction split by what it does: plain transfers, contract calls, blob transactions, and set-code (EIP-7702), per month. A truer picture than raw TPS." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Mainnet transactions by what they do, per month: transfers, contract calls, blobs, set-code.
         </p>

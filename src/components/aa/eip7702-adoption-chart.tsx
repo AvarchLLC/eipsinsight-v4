@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const C_ACCT = 'var(--chart-2)'; // green: unique delegated accounts
 const C_TX = 'var(--chart-1)'; // blue: 7702 transactions
@@ -110,7 +111,7 @@ export function Eip7702AdoptionChart() {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">EIP-7702 account adoption</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">EIP-7702 account adoption <ChartInfo text="EIP-7702 adoption since Pectra: distinct delegated accounts (breadth) versus total 7702 transactions (activity) per month. Transactions load instantly; the accounts line fills in from a heavier query." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Distinct delegated accounts vs total 7702 transactions each month, since Pectra.
         </p>

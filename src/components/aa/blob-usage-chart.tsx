@@ -16,6 +16,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const C_TX = 'var(--chart-4)';
 const C_PER = 'var(--chart-2)';
@@ -68,7 +69,7 @@ export function BlobUsageChart({ months = 24 }: { months?: number }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">Blob usage (EIP-4844)</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Blob usage (EIP-4844) <ChartInfo text="EIP-4844 blob usage: bars are blob transactions per month (L2 data-availability demand); the line is average blobs per transaction (how much data each carries)." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Blob transactions per month (bars) and average blobs per transaction (line): L2 data-availability demand and its intensity.
         </p>

@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 // Stable colour per transaction type (keyed by the label the procedure returns).
 const COLORS: Record<string, string> = {
@@ -89,7 +90,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">Transaction type market share</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Transaction type market share <ChartInfo text="Share of every mainnet transaction by its format (Legacy, EIP-2930, EIP-1559, EIP-4844, EIP-7702) each month, stacked to 100 percent. Shows how fast each new standard takes over." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Share of all mainnet transactions by typed-transaction format, per month.
         </p>

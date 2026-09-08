@@ -15,6 +15,7 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { ChartInfo } from '@/components/aa/chart-info';
 
 const C = 'var(--chart-1)';
 
@@ -82,7 +83,7 @@ export function Eip7702ActivationChart() {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3">
-        <p className="text-sm font-semibold text-foreground">EIP-7702 adoption after activation</p>
+        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">EIP-7702 adoption after activation <ChartInfo text="How fast EIP-7702 was taken up after going live in Pectra. Cumulative 7702 transactions by months since activation, with dashed marks near 30, 90, 180, and 365 days." /></p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           Cumulative 7702 transactions by months since Pectra, so adoption speed is comparable across feature launches.
         </p>

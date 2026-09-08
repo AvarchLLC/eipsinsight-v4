@@ -18,6 +18,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
+import { ChartInfo } from '@/components/aa/chart-info';
 import type { TxTypeEconomics } from '@/server/orpc/procedures/network';
 
 const COLORS: Record<string, string> = {
@@ -101,15 +102,15 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
 
   const hasData = rows.some((r) => labels.some((l) => (r[l] as number) > 0));
   const yFmt = metric === 'fail' ? (v: number) => `${v}%` : compact;
-  const yLabel = metric === 'gas' ? 'Gas used' : metric === 'fees' ? 'Fees (ETH)' : 'Failure rate (%)';
+  const yLabel = metric === 'gas' ? 'Gas used (gas units)' : metric === 'fees' ? 'Fees (ETH)' : 'Failure rate (%)';
   const yAxisLabel = { value: yLabel, angle: -90 as const, position: 'insideLeft' as const, style: { fontSize: 11, fill: CHART_AXIS, textAnchor: 'middle' as const } };
-  const valFmt = (v: number) => (metric === 'fail' ? `${v}%` : metric === 'fees' ? `${v.toLocaleString('en-US')} ETH` : v.toLocaleString('en-US'));
+  const valFmt = (v: number) => (metric === 'fail' ? `${v}%` : metric === 'fees' ? `${v.toLocaleString('en-US')} ETH` : `${v.toLocaleString('en-US')} gas`);
 
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-foreground">Economics by transaction type</p>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Economics by transaction type <ChartInfo text="Gas used, fees paid in ETH, and failure rate, split by transaction type per month. Use the toggle to switch metric." /></p>
           <p className="mt-0.5 text-xs text-muted-foreground">Gas, fees, and reliability split by transaction type, per month.</p>
         </div>
         <div className="flex shrink-0 gap-1 rounded-lg border border-border bg-card/60 p-0.5 text-[11px]">
