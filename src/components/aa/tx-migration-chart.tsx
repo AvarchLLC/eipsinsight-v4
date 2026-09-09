@@ -17,10 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
-
-const C_LEGACY = 'var(--chart-8)';
-const C_1559 = 'var(--chart-1)';
-const C_OTHER = 'var(--chart-4)';
+import { AA_BRUSH, typeColor } from '@/components/aa/chart-kit';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -81,9 +78,9 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
 
   const hasData = rows.length > 1;
   const lines = useMemo(() => [
-    { key: 'EIP-1559', color: C_1559 },
-    { key: 'Legacy', color: C_LEGACY },
-    { key: 'Other typed', color: C_OTHER },
+    { key: 'EIP-1559', color: typeColor('EIP-1559') },
+    { key: 'Legacy', color: typeColor('Legacy') },
+    { key: 'Other typed', color: 'var(--chart-3)' },
   ], []);
 
   return (
@@ -130,7 +127,7 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
                 {lines.map((l) => (
                   <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={2} dot={false} isAnimationActive={false} />
                 ))}
-                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                              <Brush dataKey="bucket" {...AA_BRUSH} />
               </LineChart>
             </ResponsiveContainer>
           </>
@@ -143,3 +140,4 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
     </div>
   );
 }
+

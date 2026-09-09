@@ -20,15 +20,8 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
 import { ChartInfo } from '@/components/aa/chart-info';
+import { AA_BRUSH, usdCompact, usdFull, typeColor } from '@/components/aa/chart-kit';
 import type { TxTypeEconomics } from '@/server/orpc/procedures/network';
-
-const COLORS: Record<string, string> = {
-  'EIP-1559': 'var(--chart-1)',
-  Legacy: 'var(--chart-8)',
-  'EIP-4844': 'var(--chart-4)',
-  'EIP-7702': 'var(--chart-2)',
-  'EIP-2930': 'var(--chart-6)',
-};
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -40,11 +33,13 @@ const TT_CONTENT = {
   color: 'var(--foreground)',
 } as const;
 
-type Metric = 'gas' | 'fees' | 'fail';
+// Value = fees paid in USD; Volume = number of transactions; plus gas and reliability.
+type Metric = 'value' | 'volume' | 'gas' | 'fail';
 const METRICS: { key: Metric; label: string }[] = [
-  { key: 'gas', label: 'Gas used' },
-  { key: 'fees', label: 'Fees (ETH)' },
-  { key: 'fail', label: 'Failure rate' },
+  { key: 'value', label: 'Value ($)' },
+  { key: 'volume', label: 'Volume' },
+  { key: 'gas', label: 'Gas' },
+  { key: 'fail', label: 'Fail rate' },
 ];
 
 const compact = (n: number) =>
@@ -56,13 +51,14 @@ function fmtBucket(ym: string): string {
 }
 
 /**
- * Per-transaction-type economics: gas used, fees paid (ETH), and failure rate,
- * month by month, from the pre-aggregated network.getTxTypeEconomics rollup.
- * Toggle picks the metric. Gas and fees stack; failure rate is a per-type line.
+ * Per-transaction-type economics, month by month, from the pre-aggregated
+ * network.getTxTypeEconomics rollup. A single toggle switches what's measured:
+ * Value (fees paid in USD), Volume (transaction count), Gas used, or Failure
+ * rate. Value/Volume/Gas stack; failure rate is a per-type line.
  */
 export function TxEconomicsChart({ months = 24 }: { months?: number }) {
   const [data, setData] = useState<TxTypeEconomics | null>(null);
-  const [metric, setMetric] = useState<Metric>('fees');
+  const [metric, setMetric] = useState<Metric>('value');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -88,13 +84,15 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
       const row: Record<string, number | string> = { bucket: fmtBucket(b) };
       for (const t of data.types) {
         row[t.label] =
-          metric === 'gas'
-            ? t.gasUsed[i]
-            : metric === 'fees'
-              ? Math.round((t.feesEth[i] ?? 0) * 100) / 100
-              : t.count[i] > 0
-                ? Math.round(((t.failed[i] ?? 0) / t.count[i]) * 10000) / 100
-                : 0;
+          metric === 'value'
+            ? Math.round(t.feesUsd[i] ?? 0)
+            : metric === 'volume'
+              ? t.count[i] ?? 0
+              : metric === 'gas'
+                ? t.gasUsed[i] ?? 0
+                : t.count[i] > 0
+                  ? Math.round(((t.failed[i] ?? 0) / t.count[i]) * 10000) / 100
+                  : 0;
       }
       return row;
     });
@@ -102,17 +100,32 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
   }, [data, metric]);
 
   const hasData = rows.some((r) => labels.some((l) => (r[l] as number) > 0));
-  const yFmt = metric === 'fail' ? (v: number) => `${v}%` : compact;
-  const yLabel = metric === 'gas' ? 'Gas used (gas units)' : metric === 'fees' ? 'Fees (ETH)' : 'Failure rate (%)';
+  const yFmt =
+    metric === 'fail' ? (v: number) => `${v}%` : metric === 'value' ? usdCompact : compact;
+  const yLabel =
+    metric === 'value'
+      ? 'Fees paid (USD)'
+      : metric === 'volume'
+        ? 'Transactions (txns)'
+        : metric === 'gas'
+          ? 'Gas used (gas units)'
+          : 'Failure rate (%)';
   const yAxisLabel = { value: yLabel, angle: -90 as const, position: 'insideLeft' as const, style: { fontSize: 11, fill: CHART_AXIS, textAnchor: 'middle' as const } };
-  const valFmt = (v: number) => (metric === 'fail' ? `${v}%` : metric === 'fees' ? `${v.toLocaleString('en-US')} ETH` : `${v.toLocaleString('en-US')} gas`);
+  const valFmt = (v: number) =>
+    metric === 'fail'
+      ? `${v}%`
+      : metric === 'value'
+        ? usdFull(v)
+        : metric === 'volume'
+          ? `${v.toLocaleString('en-US')} txns`
+          : `${v.toLocaleString('en-US')} gas`;
 
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Economics by transaction type <ChartInfo text="Gas used, fees paid in ETH, and failure rate, split by transaction type per month. Use the toggle to switch metric." /></p>
-          <p className="mt-0.5 text-xs text-muted-foreground">Gas, fees, and reliability split by transaction type, per month.</p>
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">Economics by transaction type <ChartInfo text="Split by transaction type per month. Value is fees paid in USD, Volume is the transaction count, Gas is gas used, and Fail rate is the share that reverted. Use the toggle to switch." /></p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Value ($), volume, gas, and reliability split by transaction type, per month.</p>
         </div>
         <div className="flex shrink-0 gap-1 rounded-lg border border-border bg-card/60 p-0.5 text-[11px]">
           {METRICS.map((m) => (
@@ -151,9 +164,9 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
                   <Tooltip contentStyle={TT_CONTENT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} formatter={(v: number, n: string) => [valFmt(v), n]} />
                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                   {labels.map((label) => (
-                    <Line key={label} type="monotone" dataKey={label} stroke={COLORS[label] ?? 'var(--chart-3)'} strokeWidth={2} dot={false} isAnimationActive={false} />
+                    <Line key={label} type="monotone" dataKey={label} stroke={typeColor(label)} strokeWidth={2} dot={false} isAnimationActive={false} />
                   ))}
-                                  <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                  <Brush dataKey="bucket" {...AA_BRUSH} />
                 </LineChart>
               ) : (
                 <AreaChart data={rows} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -163,9 +176,9 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
                   <Tooltip contentStyle={TT_CONTENT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} formatter={(v: number, n: string) => [valFmt(v), n]} />
                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                   {labels.map((label) => (
-                    <Area key={label} type="monotone" dataKey={label} stackId="econ" stroke={COLORS[label] ?? 'var(--chart-3)'} fill={COLORS[label] ?? 'var(--chart-3)'} fillOpacity={0.8} strokeWidth={0} isAnimationActive={false} />
+                    <Area key={label} type="monotone" dataKey={label} stackId="econ" stroke={typeColor(label)} fill={typeColor(label)} fillOpacity={0.8} strokeWidth={0} isAnimationActive={false} />
                   ))}
-                                  <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                  <Brush dataKey="bucket" {...AA_BRUSH} />
                 </AreaChart>
               )}
             </ResponsiveContainer>
@@ -174,8 +187,9 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
       </div>
 
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Gas and fees show each type&apos;s share of network resources; failure rate shows reliability differences. Live from mainnet.
+        Value is fees paid in USD; volume is the transaction count; gas shows resource use; fail rate shows reliability. Live from mainnet.
       </p>
     </div>
   );
 }
+

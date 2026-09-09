@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -16,14 +16,10 @@ import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { cn } from '@/lib/utils';
 import { ChartInfo } from '@/components/aa/chart-info';
-
-const COLORS: Record<string, string> = {
-  'Contract calls': 'var(--chart-1)',
-  'Plain transfers': 'var(--chart-2)',
-  'Blob (EIP-4844)': 'var(--chart-4)',
-  'Set-code (EIP-7702)': 'var(--chart-6)',
-};
+import { AA_BRUSH, usdCompact, usdFull, typeColor } from '@/components/aa/chart-kit';
+import type { TxComposition } from '@/server/orpc/procedures/network';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -43,15 +39,21 @@ function fmtBucket(ym: string): string {
   return Number.isNaN(d.getTime()) ? ym : d.toLocaleDateString('en-US', { month: 'short', year: '2-digit', timeZone: 'UTC' });
 }
 
+type Mode = 'volume' | 'value';
+const MODES: { key: Mode; label: string }[] = [
+  { key: 'volume', label: 'Volume' },
+  { key: 'value', label: 'Value ($)' },
+];
+
 /**
  * L1 transaction composition: every mainnet transaction split into plain
  * transfers, contract calls, blob transactions, and set-code (EIP-7702) each
- * month. A richer ecosystem story than raw TPS. Reads the pre-aggregated
- * network.getTxComposition rollup.
+ * month. Toggle between Volume (transaction count) and Value (fees paid in USD).
+ * Reads the pre-aggregated network.getTxComposition rollup.
  */
 export function L1CompositionChart({ months = 24 }: { months?: number }) {
-  const [rows, setRows] = useState<Array<Record<string, number | string>>>([]);
-  const [labels, setLabels] = useState<string[]>([]);
+  const [data, setData] = useState<TxComposition | null>(null);
+  const [mode, setMode] = useState<Mode>('volume');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -59,15 +61,7 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
     client.network
       .getTxComposition({ months })
       .then((s) => {
-        if (cancelled || !s || !s.buckets.length || !s.series.length) return;
-        setLabels(s.series.map((x) => x.label));
-        setRows(
-          s.buckets.map((b, i) => {
-            const row: Record<string, number | string> = { bucket: fmtBucket(b) };
-            for (const x of s.series) row[x.label] = x.counts[i] ?? 0;
-            return row;
-          }),
-        );
+        if (!cancelled && s && s.buckets.length && s.series.length) setData(s);
       })
       .catch(() => {})
       .finally(() => {
@@ -78,15 +72,45 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
     };
   }, [months]);
 
+  const { rows, labels } = useMemo(() => {
+    if (!data) return { rows: [] as Array<Record<string, number | string>>, labels: [] as string[] };
+    const labels = data.series.map((x) => x.label);
+    const rows = data.buckets.map((b, i) => {
+      const row: Record<string, number | string> = { bucket: fmtBucket(b) };
+      for (const x of data.series) row[x.label] = (mode === 'value' ? x.usd[i] : x.counts[i]) ?? 0;
+      return row;
+    });
+    return { rows, labels };
+  }, [data, mode]);
+
   const hasData = rows.some((r) => labels.some((l) => (r[l] as number) > 0));
+  const yFmt = mode === 'value' ? usdCompact : compact;
+  const yLabel = mode === 'value' ? 'Fees paid (USD, per month)' : 'Transactions (txns, per month)';
+  const valFmt = (v: number) => (mode === 'value' ? usdFull(v) : v.toLocaleString('en-US'));
 
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
-      <div className="mb-3">
-        <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">L1 transaction composition <ChartInfo text="Every mainnet transaction split by what it does: plain transfers, contract calls, blob transactions, and set-code (EIP-7702), per month. A truer picture than raw TPS." /></p>
-        <p className="mt-0.5 text-xs text-muted-foreground">
-          Mainnet transactions by what they do, per month: transfers, contract calls, blobs, set-code.
-        </p>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">L1 transaction composition <ChartInfo text="Every mainnet transaction split by what it does: plain transfers, contract calls, blob transactions, and set-code (EIP-7702), per month. Volume counts transactions; Value shows the fees each class paid in USD." /></p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Mainnet transactions by what they do, per month: transfers, contract calls, blobs, set-code.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-1 rounded-lg border border-border bg-card/60 p-0.5 text-[11px]">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              onClick={() => setMode(m.key)}
+              className={cn(
+                'rounded-md px-2 py-1 font-medium transition-colors',
+                mode === m.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="relative h-[320px]">
@@ -96,7 +120,7 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
           </div>
         ) : !hasData ? (
           <div className="flex h-full items-center justify-center px-6 text-center text-xs text-muted-foreground">
-            Composition data is being aggregated. Run the tx rollup backfill to populate history.
+            {mode === 'value' ? 'Fee value data is unavailable for this range.' : 'Composition data is being aggregated. Run the tx rollup backfill to populate history.'}
           </div>
         ) : (
           <>
@@ -110,13 +134,13 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
                   tickLine={false}
                   axisLine={false}
                   width={58}
-                  tickFormatter={compact}
-                  label={{ value: 'Transactions (per month)', angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: CHART_AXIS, textAnchor: 'middle' } }}
+                  tickFormatter={yFmt}
+                  label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: CHART_AXIS, textAnchor: 'middle' } }}
                 />
                 <Tooltip
                   contentStyle={TT_CONTENT}
                   labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(v: number, name: string) => [v.toLocaleString('en-US'), name]}
+                  formatter={(v: number, name: string) => [valFmt(v), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                 {labels.map((label) => (
@@ -125,14 +149,14 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
                     type="monotone"
                     dataKey={label}
                     stackId="comp"
-                    stroke={COLORS[label] ?? 'var(--chart-3)'}
-                    fill={COLORS[label] ?? 'var(--chart-3)'}
+                    stroke={typeColor(label)}
+                    fill={typeColor(label)}
                     fillOpacity={0.8}
                     strokeWidth={0}
                     isAnimationActive={false}
                   />
                 ))}
-                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                <Brush dataKey="bucket" {...AA_BRUSH} />
               </AreaChart>
             </ResponsiveContainer>
           </>
@@ -140,8 +164,11 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
       </div>
 
       <p className="mt-2 text-[11px] text-muted-foreground">
-        Contract calls and plain transfers dominate; blob and set-code volumes are new transaction classes. Live from mainnet.
+        {mode === 'value'
+          ? 'Value is the fees each transaction class paid, in USD. Live from mainnet.'
+          : 'Contract calls and plain transfers dominate; blob and set-code are new transaction classes. Live from mainnet.'}
       </p>
     </div>
   );
 }
+

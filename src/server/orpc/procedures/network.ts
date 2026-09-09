@@ -125,35 +125,28 @@ const emptySeries = (months: number): TxTypeSeries => ({
 })
 
 async function queryTxTypeSeries(months: number): Promise<TxTypeSeries> {
+  // Read the daily rollup, which now carries pre-Dencun history (loaded from the
+  // BigQuery public dataset) as well as the live days, so the type-share and
+  // migration charts reach back toward genesis on the widest window.
   const rows = await clickhouseQuery<SeriesRow>(
     `
-    SELECT
-      toStartOfMonth(block_timestamp) AS m,
-      tx_type                         AS tx_type,
-      count()                         AS c
-    FROM ethereum.transactions
-    WHERE is_deleted = 0
-      AND block_timestamp >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
+    SELECT toStartOfMonth(date) AS m, tx_type, sum(tx_count) AS c
+    FROM blob_lens.tx_daily_type_stats FINAL
+    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
     GROUP BY m, tx_type
     ORDER BY m ASC, tx_type ASC
     `,
-    { timeoutMs: 20_000 },
+    { timeoutMs: 15_000 },
   )
   if (!rows.length) throw new Error('tx type series: empty')
-  const buckets: string[] = []
-  const bucketIdx = new Map<string, number>()
-  for (const r of rows) {
-    const b = r.m.slice(0, 7) // YYYY-MM
-    if (!bucketIdx.has(b)) {
-      bucketIdx.set(b, buckets.length)
-      buckets.push(b)
-    }
-  }
+  const { buckets, idx } = monthBuckets(months)
   const byType = new Map<number, number[]>()
   for (const r of rows) {
+    const i = idx.get(r.m.slice(0, 7))
+    if (i === undefined) continue
     const t = N(r.tx_type)
-    const arr = byType.get(t) ?? new Array(buckets.length).fill(0)
-    arr[bucketIdx.get(r.m.slice(0, 7))!] = N(r.c)
+    const arr = byType.get(t) ?? new Array(months).fill(0)
+    arr[i] = N(r.c)
     byType.set(t, arr)
   }
   const series = [...byType.entries()]
@@ -163,7 +156,7 @@ async function queryTxTypeSeries(months: number): Promise<TxTypeSeries> {
     })
     // Present biggest cumulative footprint first.
     .sort((a, b) => b.counts.reduce((x, y) => x + y, 0) - a.counts.reduce((x, y) => x + y, 0))
-  return { available: true, months, buckets, series, source: 'BlobLens · ethereum.transactions (mainnet)' }
+  return { available: true, months, buckets, series, source: 'BlobLens · tx_daily_type_stats' }
 }
 
 async function getTxTypeSeries(months: number): Promise<TxTypeSeries> {
@@ -211,7 +204,8 @@ export interface TxComposition {
   available: boolean
   months: number
   buckets: string[]
-  series: Array<{ key: string; label: string; counts: number[] }>
+  /** counts = number of transactions; usd = fees paid in USD, both per class per month. */
+  series: Array<{ key: string; label: string; counts: number[]; usd: number[] }>
   source: string
 }
 
@@ -219,11 +213,14 @@ const compositionCache = new Map<number, { at: number; data: TxComposition }>()
 const emptyComposition = (months: number): TxComposition => ({ available: false, months, buckets: [], series: [], source: 'BlobLens · tx_daily_type_stats' })
 
 async function queryComposition(months: number): Promise<TxComposition> {
-  const rows = await clickhouseQuery<{ m: string; class: string; c: string }>(
+  const rows = await clickhouseQuery<{ m: string; class: string; c: string; usd: string }>(
     `
-    SELECT toStartOfMonth(date) AS m, class, sum(tx_count) AS c
-    FROM blob_lens.tx_daily_type_stats FINAL
-    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
+    SELECT toStartOfMonth(t.date) AS m, t.class AS class,
+           sum(t.tx_count) AS c,
+           sum(t.fees_eth * coalesce(p.price_usd, 0)) AS usd
+    FROM blob_lens.tx_daily_type_stats AS t FINAL
+    LEFT JOIN blob_lens.eth_daily_price AS p ON t.date = p.date
+    WHERE t.date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
     GROUP BY m, class
     ORDER BY m ASC
     `,
@@ -231,18 +228,23 @@ async function queryComposition(months: number): Promise<TxComposition> {
   )
   if (!rows.length) throw new Error('composition: empty')
   const { buckets, idx } = monthBuckets(months)
-  const byClass = new Map<string, number[]>()
+  const byCount = new Map<string, number[]>()
+  const byUsd = new Map<string, number[]>()
   for (const r of rows) {
     const i = idx.get(r.m.slice(0, 7))
     if (i === undefined) continue
-    const arr = byClass.get(r.class) ?? new Array(months).fill(0)
-    arr[i] = N(r.c)
-    byClass.set(r.class, arr)
+    const cArr = byCount.get(r.class) ?? new Array(months).fill(0)
+    cArr[i] = N(r.c)
+    byCount.set(r.class, cArr)
+    const uArr = byUsd.get(r.class) ?? new Array(months).fill(0)
+    uArr[i] = Math.round(N(r.usd))
+    byUsd.set(r.class, uArr)
   }
-  const series = CLASS_ORDER.filter((k) => byClass.has(k)).map((key) => ({
+  const series = CLASS_ORDER.filter((k) => byCount.has(k)).map((key) => ({
     key,
     label: CLASS_META[key]?.label ?? key,
-    counts: byClass.get(key)!,
+    counts: byCount.get(key)!,
+    usd: byUsd.get(key) ?? new Array(months).fill(0),
   }))
   return { available: true, months, buckets, series, source: 'BlobLens · tx_daily_type_stats' }
 }
@@ -265,7 +267,7 @@ export interface TxTypeEconomics {
   available: boolean
   months: number
   buckets: string[]
-  types: Array<{ txType: number; label: string; count: number[]; gasUsed: number[]; feesEth: number[]; failed: number[] }>
+  types: Array<{ txType: number; label: string; count: number[]; gasUsed: number[]; feesEth: number[]; feesUsd: number[]; failed: number[] }>
   source: string
 }
 
@@ -273,31 +275,35 @@ const economicsCache = new Map<number, { at: number; data: TxTypeEconomics }>()
 const emptyEconomics = (months: number): TxTypeEconomics => ({ available: false, months, buckets: [], types: [], source: 'BlobLens · tx_daily_type_stats' })
 
 async function queryEconomics(months: number): Promise<TxTypeEconomics> {
-  const rows = await clickhouseQuery<{ m: string; tx_type: number; c: string; gas: string; fees: string; failed: string }>(
+  const rows = await clickhouseQuery<{ m: string; tx_type: number; c: string; gas: string; fees: string; usd: string; failed: string }>(
     `
-    SELECT toStartOfMonth(date) AS m, tx_type,
-           sum(tx_count) AS c, sum(gas_used) AS gas, sum(fees_eth) AS fees, sum(failed) AS failed
-    FROM blob_lens.tx_daily_type_stats FINAL
-    WHERE date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
+    SELECT toStartOfMonth(t.date) AS m, t.tx_type AS tx_type,
+           sum(t.tx_count) AS c, sum(t.gas_used) AS gas, sum(t.fees_eth) AS fees,
+           sum(t.fees_eth * coalesce(p.price_usd, 0)) AS usd, sum(t.failed) AS failed
+    FROM blob_lens.tx_daily_type_stats AS t FINAL
+    LEFT JOIN blob_lens.eth_daily_price AS p ON t.date = p.date
+    WHERE t.date >= toStartOfMonth(today()) - INTERVAL ${months - 1} MONTH
     GROUP BY m, tx_type
     ORDER BY m ASC, tx_type ASC
     `,
     { timeoutMs: 10_000 },
   )
-  if (!rows.length) throw new Error('economics: empty')
   const { buckets, idx } = monthBuckets(months)
-  const byType = new Map<number, { count: number[]; gasUsed: number[]; feesEth: number[]; failed: number[] }>()
+  const byType = new Map<number, { count: number[]; gasUsed: number[]; feesEth: number[]; feesUsd: number[]; failed: number[] }>()
+  const blank = () => ({ count: new Array(months).fill(0), gasUsed: new Array(months).fill(0), feesEth: new Array(months).fill(0), feesUsd: new Array(months).fill(0), failed: new Array(months).fill(0) })
   for (const r of rows) {
     const i = idx.get(r.m.slice(0, 7))
     if (i === undefined) continue
     const t = N(r.tx_type)
-    const e = byType.get(t) ?? { count: new Array(months).fill(0), gasUsed: new Array(months).fill(0), feesEth: new Array(months).fill(0), failed: new Array(months).fill(0) }
+    const e = byType.get(t) ?? blank()
     e.count[i] = N(r.c)
     e.gasUsed[i] = N(r.gas)
     e.feesEth[i] = N(r.fees)
+    e.feesUsd[i] = Math.round(N(r.usd))
     e.failed[i] = N(r.failed)
     byType.set(t, e)
   }
+  if (!byType.size) throw new Error('economics: empty')
   const types = [...byType.entries()]
     .map(([txType, e]) => ({ txType, label: TX_TYPES[txType]?.label ?? `Type ${txType}`, ...e }))
     .sort((a, b) => b.count.reduce((x, y) => x + y, 0) - a.count.reduce((x, y) => x + y, 0))
@@ -374,18 +380,18 @@ export const networkProcedures = {
     .handler(async ({ input }): Promise<TxTypeMix> => getTxTypeMix(input.windowDays)),
 
   getBlobStats: optionalAuthProcedure
-    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .input(z.object({ months: z.number().int().min(1).max(150).default(24) }))
     .handler(async ({ input }): Promise<BlobStats> => getBlobStats(input.months)),
 
   getTxTypeSeries: optionalAuthProcedure
-    .input(z.object({ months: z.number().int().min(3).max(48).default(24) }))
+    .input(z.object({ months: z.number().int().min(3).max(150).default(24) }))
     .handler(async ({ input }): Promise<TxTypeSeries> => getTxTypeSeries(input.months)),
 
   getTxComposition: optionalAuthProcedure
-    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .input(z.object({ months: z.number().int().min(1).max(150).default(24) }))
     .handler(async ({ input }): Promise<TxComposition> => getTxComposition(input.months)),
 
   getTxTypeEconomics: optionalAuthProcedure
-    .input(z.object({ months: z.number().int().min(1).max(48).default(24) }))
+    .input(z.object({ months: z.number().int().min(1).max(150).default(24) }))
     .handler(async ({ input }): Promise<TxTypeEconomics> => getTxTypeEconomics(input.months)),
 }

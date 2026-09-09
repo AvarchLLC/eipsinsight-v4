@@ -205,7 +205,7 @@ export function AccountAbstractionSection() {
 
       {/* Timeline controls */}
       <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/60 p-2.5 text-xs">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Timeline</span>
+        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Usage timeline</span>
         {PRESETS.map((p) => (
           <button
             key={p.id}
@@ -248,8 +248,8 @@ export function AccountAbstractionSection() {
         </div>
       ) : (
         <>
-          {/* Stat cards */}
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {/* Stat strip: one container, dividers between the three stats. */}
+          <div className="grid grid-cols-1 divide-y divide-border rounded-xl border border-border bg-card/60 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
             <StatCard
               icon={<Fingerprint className="h-4 w-4" />}
               accent={C7702}
@@ -458,7 +458,7 @@ function StatCard({
   leading?: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/30 hover:bg-card/80">
+    <div className="p-4 transition-colors duration-200 hover:bg-muted/20">
       <div className="flex items-center justify-between">
         <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `color-mix(in srgb, ${accent} 15%, transparent)`, color: accent }}>
           {icon}

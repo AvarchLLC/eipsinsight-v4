@@ -17,15 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
-
-// Stable colour per transaction type (keyed by the label the procedure returns).
-const COLORS: Record<string, string> = {
-  'EIP-1559': 'var(--chart-1)',
-  Legacy: 'var(--chart-8)',
-  'EIP-4844': 'var(--chart-4)',
-  'EIP-7702': 'var(--chart-2)',
-  'EIP-2930': 'var(--chart-6)',
-};
+import { AA_BRUSH, typeColor } from '@/components/aa/chart-kit';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -135,14 +127,14 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
                     type="monotone"
                     dataKey={label}
                     stackId="share"
-                    stroke={COLORS[label] ?? 'var(--chart-3)'}
-                    fill={COLORS[label] ?? 'var(--chart-3)'}
+                    stroke={typeColor(label)}
+                    fill={typeColor(label)}
                     fillOpacity={0.85}
                     strokeWidth={0}
                     isAnimationActive={false}
                   />
                 ))}
-                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                              <Brush dataKey="bucket" {...AA_BRUSH} />
               </AreaChart>
             </ResponsiveContainer>
           </>
@@ -155,3 +147,4 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
     </div>
   );
 }
+
