@@ -17,6 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
+import { AA_BRUSH } from '@/components/aa/chart-kit';
 
 const C_ACCT = 'var(--chart-2)'; // green: unique delegated accounts
 const C_TX = 'var(--chart-1)'; // blue: 7702 transactions
@@ -150,7 +151,7 @@ export function Eip7702AdoptionChart() {
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                 <Line type="monotone" dataKey="accounts" name="Delegated accounts" stroke={C_ACCT} strokeWidth={2} dot={false} isAnimationActive={false} />
                 <Line type="monotone" dataKey="txs" name="7702 transactions" stroke={C_TX} strokeWidth={2} dot={false} isAnimationActive={false} />
-                              <Brush dataKey="bucket" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                              <Brush dataKey="bucket" {...AA_BRUSH} />
               </LineChart>
             </ResponsiveContainer>
           </>
@@ -163,3 +164,4 @@ export function Eip7702AdoptionChart() {
     </div>
   );
 }
+

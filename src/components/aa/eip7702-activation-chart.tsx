@@ -17,6 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
+import { AA_BRUSH } from '@/components/aa/chart-kit';
 
 const C = 'var(--chart-1)';
 
@@ -146,7 +147,7 @@ export function Eip7702ActivationChart() {
                   />
                 ))}
                 <Area type="monotone" dataKey="cumulative" stroke={C} strokeWidth={2} fill="url(#grad7702act)" dot={false} isAnimationActive={false} />
-                              <Brush dataKey="m" height={16} travellerWidth={8} stroke="var(--chart-3)" fill="transparent" tickFormatter={() => ""} />
+                              <Brush dataKey="m" {...AA_BRUSH} />
               </AreaChart>
             </ResponsiveContainer>
           </>
@@ -159,3 +160,4 @@ export function Eip7702ActivationChart() {
     </div>
   );
 }
+
