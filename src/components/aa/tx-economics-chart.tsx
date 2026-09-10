@@ -20,7 +20,7 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
 import { ChartInfo } from '@/components/aa/chart-info';
-import { AA_BRUSH, usdCompact, usdFull, typeColor } from '@/components/aa/chart-kit';
+import { AA_BRUSH, usdCompact, usdFull, typeColor , type NetRange } from '@/components/aa/chart-kit';
 import type { TxTypeEconomics } from '@/server/orpc/procedures/network';
 
 const TT_CONTENT = {
@@ -56,7 +56,7 @@ function fmtBucket(ym: string): string {
  * Value (fees paid in USD), Volume (transaction count), Gas used, or Failure
  * rate. Value/Volume/Gas stack; failure rate is a per-type line.
  */
-export function TxEconomicsChart({ months = 24 }: { months?: number }) {
+export function TxEconomicsChart({ range }: { range: NetRange }) {
   const [data, setData] = useState<TxTypeEconomics | null>(null);
   const [metric, setMetric] = useState<Metric>('value');
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
   useEffect(() => {
     let cancelled = false;
     client.network
-      .getTxTypeEconomics({ months })
+      .getTxTypeEconomics(range)
       .then((s) => {
         if (!cancelled && s && s.types.length) setData(s);
       })
@@ -75,7 +75,7 @@ export function TxEconomicsChart({ months = 24 }: { months?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [range]);
 
   const { rows, labels } = useMemo(() => {
     if (!data) return { rows: [] as Array<Record<string, number | string>>, labels: [] as string[] };

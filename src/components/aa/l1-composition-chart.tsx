@@ -18,7 +18,7 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
 import { ChartInfo } from '@/components/aa/chart-info';
-import { AA_BRUSH, usdCompact, usdFull, typeColor } from '@/components/aa/chart-kit';
+import { AA_BRUSH, usdCompact, usdFull, typeColor , type NetRange } from '@/components/aa/chart-kit';
 import type { TxComposition } from '@/server/orpc/procedures/network';
 
 const TT_CONTENT = {
@@ -51,7 +51,7 @@ const MODES: { key: Mode; label: string }[] = [
  * month. Toggle between Volume (transaction count) and Value (fees paid in USD).
  * Reads the pre-aggregated network.getTxComposition rollup.
  */
-export function L1CompositionChart({ months = 24 }: { months?: number }) {
+export function L1CompositionChart({ range }: { range: NetRange }) {
   const [data, setData] = useState<TxComposition | null>(null);
   const [mode, setMode] = useState<Mode>('volume');
   const [loading, setLoading] = useState(true);
@@ -59,7 +59,7 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
   useEffect(() => {
     let cancelled = false;
     client.network
-      .getTxComposition({ months })
+      .getTxComposition(range)
       .then((s) => {
         if (!cancelled && s && s.buckets.length && s.series.length) setData(s);
       })
@@ -70,7 +70,7 @@ export function L1CompositionChart({ months = 24 }: { months?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [range]);
 
   const { rows, labels } = useMemo(() => {
     if (!data) return { rows: [] as Array<Record<string, number | string>>, labels: [] as string[] };
