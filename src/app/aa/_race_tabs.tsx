@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AaTxRace } from '@/components/aa-tx-race';
-import { MempoolTxRace } from '@/components/mempool-tx-race';
+import { TxTypeRace } from '@/components/tx-type-race';
 import { Activity, Flame, Layers } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -60,7 +60,7 @@ export function AaRaceTabs({
         {activeTab === 'aa-race' ? (
           <AaTxRace granularity={granularity} from={from} to={to} />
         ) : (
-          <MempoolTxRace />
+          <TxTypeRace />
         )}
       </div>
     </section>
