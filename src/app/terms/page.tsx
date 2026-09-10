@@ -290,7 +290,7 @@ export default function TermsOfServicePage() {
                   Last updated: February 27, 2026
                 </span>
                 <Link
-                  href="/privacy"
+                  href="/privacy-policy"
                   className="inline-flex h-8 items-center gap-2 rounded-full border border-border bg-card px-3 text-xs font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
                 >
                   Privacy Policy
@@ -332,7 +332,7 @@ export default function TermsOfServicePage() {
                 Back to Home
               </Link>
               <div className="flex flex-wrap gap-4 text-sm">
-                <Link href="/privacy" className="text-muted-foreground hover:text-foreground">
+                <Link href="/privacy-policy" className="text-muted-foreground hover:text-foreground">
                   Privacy Policy
                 </Link>
                 <Link href="/about" className="text-muted-foreground hover:text-foreground">

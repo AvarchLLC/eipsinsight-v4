@@ -184,7 +184,7 @@ export default function NewsletterPage() {
 
               <p className="mt-5 text-center text-[10px] text-muted-foreground">
                 By subscribing you agree to our{' '}
-                <Link href="/privacy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>.
+                <Link href="/privacy-policy" className="underline hover:text-foreground transition-colors">Privacy Policy</Link>.
                 {' '}No spam, ever.
               </p>
 
