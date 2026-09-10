@@ -713,7 +713,7 @@ export default function TeamPage() {
               <Link href="/api-tokens" className="transition-colors hover:text-primary">
                 API
               </Link>
-              <Link href="/privacy" className="transition-colors hover:text-primary">
+              <Link href="/privacy-policy" className="transition-colors hover:text-primary">
                 Privacy
               </Link>
             </div>

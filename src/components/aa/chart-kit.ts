@@ -1,6 +1,12 @@
 // Shared bits for the /aa ecosystem charts: a consistent dataZoom brush and USD
 // formatters, so every chart's timeline and money labels look and behave the same.
 
+/** Range passed to the range-aware network.* ecosystem procedures: a months
+ *  window (default) or an explicit from/to (YYYY-MM / YYYY-MM-DD) for a custom range. */
+export type NetRange = { months?: number; from?: string; to?: string };
+/** Stable key for effect deps, so a new object with the same values doesn't refetch. */
+export const rangeDep = (r: NetRange): string => `${r.months ?? ''}|${r.from ?? ''}|${r.to ?? ''}`;
+
 // Recharts <Brush> config. Spread onto the element with an explicit dataKey, e.g.
 //   <Brush dataKey="bucket" {...AA_BRUSH} />
 // We deliberately leave tickFormatter unset so the brush shows the real bucket

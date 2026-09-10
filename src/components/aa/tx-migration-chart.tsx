@@ -17,7 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
-import { AA_BRUSH, typeColor } from '@/components/aa/chart-kit';
+import { AA_BRUSH, typeColor , type NetRange } from '@/components/aa/chart-kit';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -40,14 +40,14 @@ function fmtBucket(ym: string): string {
  * Covers "legacy vs typed" and "EIP-1559 adoption" in one view. Reads the
  * existing network.getTxTypeSeries.
  */
-export function TxMigrationChart({ months = 24 }: { months?: number }) {
+export function TxMigrationChart({ range }: { range: NetRange }) {
   const [rows, setRows] = useState<Array<{ bucket: string; Legacy: number; 'EIP-1559': number; 'Other typed': number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     client.network
-      .getTxTypeSeries({ months })
+      .getTxTypeSeries(range)
       .then((s) => {
         if (cancelled || !s || !s.buckets.length || !s.series.length) return;
         const find = (label: string) => s.series.find((t) => t.label === label)?.counts ?? new Array(s.buckets.length).fill(0);
@@ -74,7 +74,7 @@ export function TxMigrationChart({ months = 24 }: { months?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [range]);
 
   const hasData = rows.length > 1;
   const lines = useMemo(() => [

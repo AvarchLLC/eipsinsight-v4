@@ -18,7 +18,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
-import { AA_BRUSH } from '@/components/aa/chart-kit';
+import { AA_BRUSH , type NetRange } from '@/components/aa/chart-kit';
 
 const C_TX = 'var(--chart-4)';
 const C_PER = 'var(--chart-2)';
@@ -45,14 +45,14 @@ function fmtBucket(ym: string): string {
  * transaction, so L2 data-availability demand and its intensity are both
  * visible. Reads network.getBlobStats.
  */
-export function BlobUsageChart({ months = 24 }: { months?: number }) {
+export function BlobUsageChart({ range }: { range: NetRange }) {
   const [rows, setRows] = useState<Array<{ bucket: string; blobTx: number; blobsPerTx: number }>>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     client.network
-      .getBlobStats({ months })
+      .getBlobStats(range)
       .then((s) => {
         if (cancelled || !s || !s.buckets.length) return;
         setRows(s.buckets.map((b, i) => ({ bucket: fmtBucket(b), blobTx: s.blobTx[i] ?? 0, blobsPerTx: s.blobsPerTx[i] ?? 0 })));
@@ -64,7 +64,7 @@ export function BlobUsageChart({ months = 24 }: { months?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [range]);
 
   const hasData = rows.some((r) => r.blobTx > 0);
 

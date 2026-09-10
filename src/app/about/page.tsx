@@ -248,7 +248,7 @@ export default function AboutPage() {
             <div className="shrink-0">
               <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Legal</p>
               <div className="mt-2 flex flex-col gap-2">
-                <Link href="/privacy" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
+                <Link href="/privacy-policy" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">
                   Privacy Policy <ArrowRight className="h-3.5 w-3.5" />
                 </Link>
                 <Link href="/terms" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-primary">

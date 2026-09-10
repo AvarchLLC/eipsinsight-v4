@@ -93,6 +93,7 @@ export function AaTxRace({
       periodLabel={`${pretty(buckets[0], granularity)} – ${pretty(buckets[buckets.length - 1], granularity)}`}
       series={series}
       buckets={buckets}
+      endCards={false}
       footer="EIP-7702 is in-protocol (type 4); ERC-4337 runs off-protocol through the shared EntryPoint. Live from mainnet · EIPsInsight.com"
     />
   );

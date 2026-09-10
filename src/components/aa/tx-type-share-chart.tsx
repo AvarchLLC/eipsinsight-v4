@@ -17,7 +17,7 @@ import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartInfo } from '@/components/aa/chart-info';
-import { AA_BRUSH, typeColor } from '@/components/aa/chart-kit';
+import { AA_BRUSH, typeColor , type NetRange } from '@/components/aa/chart-kit';
 
 const TT_CONTENT = {
   background: 'var(--card)',
@@ -41,7 +41,7 @@ function fmtBucket(ym: string): string {
  * each typed-transaction format, month by month. Answers "how fast does each new
  * transaction standard take over?" Data from BlobLens via network.getTxTypeSeries.
  */
-export function TxTypeShareChart({ months = 24 }: { months?: number }) {
+export function TxTypeShareChart({ range }: { range: NetRange }) {
   const [rows, setRows] = useState<Array<Record<string, number | string>>>([]);
   const [labels, setLabels] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +49,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
   useEffect(() => {
     let cancelled = false;
     client.network
-      .getTxTypeSeries({ months })
+      .getTxTypeSeries(range)
       .then((s) => {
         if (cancelled || !s || !s.buckets.length || !s.series.length) return;
         // Order legend/stack largest-first (procedure already sorts series desc).
@@ -70,7 +70,7 @@ export function TxTypeShareChart({ months = 24 }: { months?: number }) {
     return () => {
       cancelled = true;
     };
-  }, [months]);
+  }, [range]);
 
   const hasData = rows.length > 1;
 

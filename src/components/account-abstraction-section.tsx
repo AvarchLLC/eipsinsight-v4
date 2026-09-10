@@ -16,7 +16,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Boxes, Fingerprint, Wallet, TrendingUp, Info, CalendarRange } from 'lucide-react';
+import { Boxes, Fingerprint, Wallet, TrendingUp, Info } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import type { AaUsageStats, AaValueSeries } from '@/server/orpc/procedures/aa';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
@@ -24,6 +24,7 @@ import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { cn } from '@/lib/utils';
 import { AaRaceTabs } from '@/app/aa/_race_tabs';
+import { useAaTimeframe } from '@/app/aa/_timeframe';
 
 const C7702 = 'var(--chart-1)'; // blue
 const C4337 = 'var(--chart-4)'; // amber
@@ -75,49 +76,13 @@ function fmtDay(iso: string): string {
   const d = new Date(`${iso}T00:00:00Z`);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
 }
-const todayISO = () => new Date().toISOString().slice(0, 10);
-function startOfWeekISO(): string {
-  const d = new Date();
-  const back = (d.getUTCDay() + 6) % 7; // Monday-based
-  d.setUTCDate(d.getUTCDate() - back);
-  return d.toISOString().slice(0, 10);
-}
-function startOfMonthISO(offset = 0): string {
-  const d = new Date();
-  d.setUTCMonth(d.getUTCMonth() + offset, 1);
-  return d.toISOString().slice(0, 10);
-}
-function endOfMonthISO(offset = 0): string {
-  const d = new Date();
-  d.setUTCMonth(d.getUTCMonth() + offset + 1, 0);
-  return d.toISOString().slice(0, 10);
-}
-
-type Preset = 'week' | 'month' | 'lastmonth' | 'monthly' | 'custom';
-const PRESETS: Array<{ id: Exclude<Preset, 'custom'>; label: string; granularity: Granularity; from?: string; to?: string }> = [
-  { id: 'week', label: 'This week', granularity: 'day', from: startOfWeekISO(), to: todayISO() },
-  { id: 'month', label: 'This month', granularity: 'day', from: startOfMonthISO(), to: todayISO() },
-  { id: 'lastmonth', label: 'Last month', granularity: 'day', from: startOfMonthISO(-1), to: endOfMonthISO(-1) },
-  { id: 'monthly', label: 'Monthly', granularity: 'month' },
-];
-
 export function AccountAbstractionSection() {
   const [stats, setStats] = useState<AaUsageStats | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Timeline controls: monthly by default; presets for week/month/last-month,
-  // plus a custom range with a day/week/month granularity toggle.
-  const [preset, setPreset] = useState<Preset>('monthly');
-  const [granularity, setGranularity] = useState<Granularity>('month');
-  const [from, setFrom] = useState<string>('');
-  const [to, setTo] = useState<string>('');
-
-  const applyPreset = (p: (typeof PRESETS)[number]) => {
-    setPreset(p.id);
-    setGranularity(p.granularity);
-    setFrom(p.from ?? '');
-    setTo(p.to ?? '');
-  };
+  // Timeframe comes from the shared page-level control (see AaTimeframeProvider),
+  // so this section and the ecosystem charts always show the same window.
+  const { from, to, granularity } = useAaTimeframe();
 
   useEffect(() => {
     let cancelled = false;
@@ -203,40 +168,7 @@ export function AccountAbstractionSection() {
         )}
       </div>
 
-      {/* Timeline controls */}
-      <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/60 p-2.5 text-xs">
-        <span className="text-[11px] uppercase tracking-wide text-muted-foreground">Usage timeline</span>
-        {PRESETS.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => applyPreset(p)}
-            className={cn('rounded-full border px-2.5 py-1', preset === p.id ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}
-          >
-            {p.label}
-          </button>
-        ))}
-        <button
-          onClick={() => { setPreset('custom'); if (!from) setFrom(startOfMonthISO()); if (!to) setTo(todayISO()); }}
-          className={cn('inline-flex items-center gap-1 rounded-full border px-2.5 py-1', preset === 'custom' ? 'border-primary/50 bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:text-foreground')}
-        >
-          <CalendarRange className="h-3.5 w-3.5" /> Custom
-        </button>
-        {preset === 'custom' && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <input type="date" value={from} max={to || todayISO()} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
-            <span className="text-muted-foreground">to</span>
-            <input type="date" value={to} min={from} max={todayISO()} onChange={(e) => setTo(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
-            <div className="ml-1 inline-flex items-center rounded-md border border-border bg-muted/40 p-0.5">
-              {(['day', 'week', 'month'] as Granularity[]).map((g) => (
-                <button key={g} onClick={() => setGranularity(g)} className={cn('rounded px-2 py-0.5 capitalize', granularity === g ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>
-                  {g}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {rangeLabel && <span className="ml-auto text-[11px] text-muted-foreground">{rangeLabel}</span>}
-      </div>
+      {rangeLabel && <p className="text-[11px] text-muted-foreground">Showing {rangeLabel} · change the timeframe above</p>}
 
       {loading ? (
         <div className="rounded-xl border border-border bg-card/60 py-16">
