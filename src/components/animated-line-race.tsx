@@ -94,6 +94,7 @@ export function AnimatedLineRace({
   footer,
   format = compact,
   durationMs = 4200,
+  endCards = true,
 }: {
   series: RaceSeries[];
   /** x-axis bucket labels (e.g. "2025-01"), aligned to every series' points. */
@@ -104,6 +105,9 @@ export function AnimatedLineRace({
   footer?: React.ReactNode;
   format?: (n: number) => string;
   durationMs?: number;
+  /** Full value cards at each line end (default). When false, a compact dot+label
+   *  legend is drawn instead — values come from the hover tooltip. */
+  endCards?: boolean;
 }) {
   const { ref, inView } = useInView<HTMLDivElement>();
   const [p, setP] = useState(0); // animation progress 0..1
@@ -330,32 +334,34 @@ export function AnimatedLineRace({
           );
         })}
 
-        {/* Legend cards */}
-        {cards.map(({ s, cur, y }) => (
-          <g key={`card${s.key}`} transform={`translate(${CARD_X}, ${y - CARD_H / 2})`}>
-            <rect
-              width={CARD_W}
-              height={CARD_H}
-              rx={8}
-              fill="var(--card)"
-              stroke="var(--border)"
-              strokeWidth={1}
-            />
-            <rect x={0} y={0} width={3} height={CARD_H} rx={1.5} fill={s.color} />
-            <circle cx={18} cy={CARD_H / 2} r={5} fill={s.color} />
-            <text x={32} y={19} fill="var(--foreground)" fontSize={12} fontWeight={600}>
-              {s.label}
-            </text>
-            {s.sub && (
-              <text x={32} y={33} fill="var(--muted-foreground)" fontSize={10}>
-                {s.sub}
-              </text>
-            )}
-            <text x={CARD_W - 12} y={CARD_H / 2 + 5} fill="var(--foreground)" fontSize={15} fontWeight={700} textAnchor="end">
-              {format(cur)}
-            </text>
-          </g>
-        ))}
+        {/* Legend: full value cards, or a compact dot+label when endCards is off. */}
+        {endCards
+          ? cards.map(({ s, cur, y }) => (
+              <g key={`card${s.key}`} transform={`translate(${CARD_X}, ${y - CARD_H / 2})`}>
+                <rect width={CARD_W} height={CARD_H} rx={8} fill="var(--card)" stroke="var(--border)" strokeWidth={1} />
+                <rect x={0} y={0} width={3} height={CARD_H} rx={1.5} fill={s.color} />
+                <circle cx={18} cy={CARD_H / 2} r={5} fill={s.color} />
+                <text x={32} y={19} fill="var(--foreground)" fontSize={12} fontWeight={600}>
+                  {s.label}
+                </text>
+                {s.sub && (
+                  <text x={32} y={33} fill="var(--muted-foreground)" fontSize={10}>
+                    {s.sub}
+                  </text>
+                )}
+                <text x={CARD_W - 12} y={CARD_H / 2 + 5} fill="var(--foreground)" fontSize={15} fontWeight={700} textAnchor="end">
+                  {format(cur)}
+                </text>
+              </g>
+            ))
+          : cards.map(({ s, y }) => (
+              <g key={`lbl${s.key}`} transform={`translate(${CARD_X}, ${y})`}>
+                <circle cx={4} cy={0} r={4} fill={s.color} />
+                <text x={15} y={4} fill="var(--foreground)" fontSize={12} fontWeight={600}>
+                  {s.label}
+                </text>
+              </g>
+            ))}
       </svg>
 
       {/* Hover tooltip */}
