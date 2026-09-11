@@ -24,6 +24,8 @@ export type OhPrItem = {
 // style calls (EIP Editing Office Hours now; EIPIP meetings later).
 export const OFFICE_HOUR_SERIES = new Set(["eipoh", "eipip", "ethproofs"]);
 
+import ethproofsTldr009 from "./ethproofs-009-tldr.json";
+import ethproofsDecisions009 from "./ethproofs-009-decisions.json";
 import ethproofsTldr from "./ethproofs-010-tldr.json";
 import ethproofsDecisions from "./ethproofs-010-decisions.json";
 
@@ -45,6 +47,22 @@ export type OhRecap = {
 };
 
 export const OFFICE_HOUR_RECAPS: OhRecap[] = [
+  {
+    series: "ethproofs",
+    meeting: 9,
+    dateISO: "2026-08-01",
+    displayDate: "Aug 1, 2026",
+    title: "EthProofs Call #9: Formal Verification",
+    youtube: "https://www.youtube.com/watch?v=6tExs7i1y9A",
+    issueUrl: "",
+    summary: "Call #9 focusing on formal verification across consensus, ZK systems, cryptography, compilers and the EVM.",
+    tldr: ethproofsTldr009,
+    keyDecisions: ethproofsDecisions009,
+    prs: [],
+    decisions: [],
+    actionItems: [],
+    nextMeeting: "Call #10",
+  },
   {
     series: "ethproofs",
     meeting: 10,

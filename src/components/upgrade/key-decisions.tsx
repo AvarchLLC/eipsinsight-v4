@@ -26,6 +26,7 @@ export interface KeyDecision {
  * PR — calling it an EIP is what confused readers.
  */
 export function EipLinkedText({ text }: { text: string }) {
+  if (!text) return null;
   // Also catch the "PR-" prefix in case the source ever uses it directly.
   const parts = text.split(/((?:EIP|PR)-\d+)/g);
   return (
