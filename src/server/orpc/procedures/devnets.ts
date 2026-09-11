@@ -35,7 +35,6 @@ export const devnetsProcedures = {
           series: true,
           devnet_number: true,
           title: true,
-          eip_section_title: true,
           source_url: true,
           genesis_time: true,
           active: true,
@@ -50,7 +49,6 @@ export const devnetsProcedures = {
         series: row.series,
         devnet_number: row.devnet_number,
         title: row.title,
-        eip_section_title: row.eip_section_title ?? null,
         source_url: row.source_url,
         genesis_time: row.genesis_time != null ? Number(row.genesis_time) : null,
         active: row.active,
@@ -125,7 +123,6 @@ export const devnetsProcedures = {
           row.spec_references,
           null
         ),
-        eip_section_title: row.eip_section_title ?? null,
         scraped_at: row.scraped_at?.toISOString() ?? null,
       }
     }),

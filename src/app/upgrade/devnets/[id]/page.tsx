@@ -293,7 +293,7 @@ export default async function DevnetDetailPage({ params }: Props) {
       {devnet.eips.length > 0 && (
         <section>
           <h2 className="dec-title mb-3 text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-            {devnet.eip_section_title || (devnet.id === 'glamsterdam-devnet-8' ? 'Glamsterdam EIPs in Platterburg Testnet scope' : 'EIPs in scope')}
+            {devnet.id === 'glamsterdam-devnet-8' ? 'Glamsterdam EIPs in Platterburg Testnet scope' : 'EIPs in scope'}
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 align-middle text-xs font-semibold text-muted-foreground">
               {devnet.eips.length}
             </span>

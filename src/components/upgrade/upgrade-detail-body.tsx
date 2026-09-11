@@ -565,11 +565,6 @@ export function UpgradeDetailBody({
                             </span>
                           )}
                         </div>
-                        {devnet.eip_section_title && (
-                          <p className="mt-1.5 text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                            {devnet.eip_section_title}
-                          </p>
-                        )}
                       </div>
 
                       <div className="mt-3 flex items-center justify-between border-t border-border/40 pt-2 text-[11px] text-muted-foreground">
