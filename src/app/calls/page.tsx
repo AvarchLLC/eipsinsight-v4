@@ -11,6 +11,7 @@ import {
   getCachedUpcomingCalls,
 } from '@/lib/upgrade-data.server';
 import { callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
+import { OFFICE_HOUR_RECAPS } from '@/data/office-hour-recaps';
 import { CallsBrowser } from '@/components/upgrade/calls-browser';
 
 export const revalidate = 300;
@@ -42,15 +43,29 @@ function formatUpcoming(call: { occurs_at: string | null; occurs_on: string | nu
     const date = new Date(call.occurs_at);
     return `${date.toISOString().slice(0, 10)} · ${date.toISOString().slice(11, 16)} UTC`;
   }
-  return call.occurs_on ?? 'Date TBD';
 }
 
 export default async function ProtocolCallsPage() {
-  const [upcoming, recent] = await Promise.all([
+  const [upcoming, recentDb] = await Promise.all([
     getCachedUpcomingCalls(),
     // Full history so past calls show (client-side series filter handles navigation).
     getCachedRecentCalls(300),
   ]);
+
+  const recent = [
+    ...recentDb,
+    ...OFFICE_HOUR_RECAPS.filter(r => r.series === 'ethproofs').map(r => ({
+      series: r.series,
+      call_id: r.meeting.toString(),
+      call_number: r.meeting.toString(),
+      display_name: r.title,
+      occurred_on: r.dateISO,
+      video_url: r.youtube,
+      issue_number: null,
+      has_transcript: true,
+      tldr: r.tldr
+    }))
+  ].sort((a, b) => new Date(b.occurred_on).getTime() - new Date(a.occurred_on).getTime());
 
   return (
     // No space-y on this container: UpgradeSection owns its vertical rhythm (divider + pt/pb).
