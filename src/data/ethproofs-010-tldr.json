@@ -1,0 +1,83 @@
+{
+  "Targets": [
+    "Release ZISK 1.1 with major prover optimizations while maintaining 128-bit security - 00:08:40",
+    "Expand automated research efforts through ZK Golf and snark.fest challenges - 00:22:04",
+    "Continue improving binary-field proving systems, recursion, proof sizes, and hardware acceleration - 00:36:00"
+  ],
+  "Decisions": [
+    "EF is moving away from Poseidon toward traditional hash functions; replacement hash still undecided - 00:01:36",
+    "Poseidon is not considered broken; dedicated cryptanalysis workshop planned - 00:02:13",
+    "Flock V2 announced with general circuit support, recursion, and 128-bit security - 00:36:00",
+    "Binary-field proving direction reaffirmed due to strong recent performance gains - 01:48:48",
+    "No decision made regarding Blake vs SHA standardization; discussion deferred - 00:25:00"
+  ],
+  "Highlights": {
+    "Binary Fields & Hash Function Direction": [
+      "EF discussed the shift away from Poseidon and toward traditional cryptographic hashes enabled by advances in binary-field proving systems - 00:01:36",
+      "Poseidon security concerns were clarified; upcoming workshop will gather cryptographers to evaluate the design more deeply - 00:02:13",
+      "Discussion focused on why binary fields make SHA-family and Blake-family hashes significantly more practical in ZK systems - 00:03:30"
+    ],
+    "ZISK 1.1 Updates": [
+      "ZISK 1.1 release timeline and engineering improvements presented - 00:08:40",
+      "Benchmarks on 4× RTX 5090 GPUs showed sub-10-second proving for nearly all blocks while preserving 128-bit security - 00:09:30",
+      "Discussion around maintaining post-quantum security while improving proving throughput - 00:11:00"
+    ],
+    "ZK Golf & Automated Circuit Optimization": [
+      "New SHA-256, Blake3 and Kangaroo12 optimization challenges introduced - 00:14:58",
+      "Recent submissions reduced circuit costs by roughly 26–29% compared with previous implementations - 00:15:13",
+      "Long-term vision discussed around creating formally verified optimized circuit libraries - 00:18:00",
+      "snark.fest expansion into x86 optimization research announced - 00:22:04"
+    ],
+    "Future Auto-Research Challenges": [
+      "New challenge proposed around proximity-gap conjectures and proof-system optimization - 00:26:40",
+      "Discussion focused on AI-assisted mathematical discovery and automated theorem exploration - 00:28:00"
+    ],
+    "Flock V2": [
+      "Flock V2 introduced as the next major evolution of the proving system - 00:36:00",
+      "Expanded from single-hash proving to support richer circuit structures and interconnected computations - 00:36:45",
+      "Recursive proving benchmarks and proof-size improvements presented - 00:38:00",
+      "Future roadmap discussed including AG Skip, improved lookups, smaller proofs and faster recursion - 00:41:00"
+    ],
+    "Binius 64 Architecture": [
+      "Multi-chip proving architecture presented to reduce expensive wiring constraints - 00:46:00",
+      "Discussion covered scaling computation across parallel subcircuits - 00:48:00",
+      "SECP256K1 proving examples shown as representative integer-heavy workloads - 00:51:00"
+    ],
+    "AG Skip & Binary Zero Check Improvements": [
+      "Novel algebraic-geometry construction introduced for binary sum-check optimization - 00:59:14",
+      "Genus-95 curve approach explained for reducing verification overhead - 01:03:00",
+      "Reported approximately 2× speedup for Flock's zero-check component - 01:07:00"
+    ],
+    "Binary Spartan": [
+      "Spartan adapted directly to binary fields using Liharto PCS - 01:12:03",
+      "Benchmarks demonstrated very high SHA-256 and Blake3 proving throughput - 01:13:30",
+      "Discussion covered applicability to real-world proving systems - 01:14:30"
+    ],
+    "Liharto & Bolt": [
+      "Liharto presented as a flexible multilinear polynomial commitment scheme - 01:15:54",
+      "Bolt introduced as an alternative coding approach replacing traditional Reed-Solomon-heavy designs - 01:18:00",
+      "Performance gains and future optimization opportunities discussed - 01:22:00"
+    ],
+    "Integer Multiplication & Field Switching": [
+      "Integer multiplication identified as one of the largest remaining bottlenecks in binary-field proving - 01:35:00",
+      "Field-switching techniques presented to bridge binary and prime-field computations - 01:36:30",
+      "Performance benchmarks and future optimization paths reviewed - 01:39:00"
+    ],
+    "LeanVMBB": [
+      "LeanVM migration toward binary fields and traditional hashing discussed - 01:42:19",
+      "Architecture changes explained, including memory representation choices - 01:44:00",
+      "Future goals include faster XMSS proving and lower recursion latency - 01:46:00"
+    ],
+    "Binary SP1 & GPU Proving": [
+      "SP1 team discussed binary-field arithmetization experiments - 01:50:00",
+      "Flock V2 highlighted as a possible foundation for future ZKVM designs - 01:52:00",
+      "GPU acceleration advantages using carryless multiplication instructions reviewed - 01:54:00",
+      "RTX 5090 benchmarks showing millions of Blake3 compressions per second presented - 01:56:00"
+    ],
+    "Compiler-Based Prover Acceleration": [
+      "Alternative proving architecture presented using compiler-generated GPU kernels - 02:00:00",
+      "Discussion focused on portability and avoiding hand-written hardware-specific optimizations - 02:01:30",
+      "Future vision of hardware-agnostic prover generation discussed - 02:03:00"
+    ]
+  }
+}

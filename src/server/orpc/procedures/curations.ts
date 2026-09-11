@@ -41,7 +41,7 @@ function serializeCuration(row: {
   tradeoffs: unknown
   stakeholder_impacts: unknown
   north_star: unknown
-  enterprise_impact: unknown
+  enterprise_impact?: unknown
   faq: unknown
   headliner_of: string | null
   headliner_note: string | null

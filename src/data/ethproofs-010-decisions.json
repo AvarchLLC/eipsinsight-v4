@@ -1,0 +1,22 @@
+[
+  {
+    "original_text": "EF is moving away from Poseidon toward traditional hash functions; replacement hash still undecided",
+    "timestamp": "00:01:36"
+  },
+  {
+    "original_text": "Poseidon is not considered broken; dedicated cryptanalysis workshop planned",
+    "timestamp": "00:02:13"
+  },
+  {
+    "original_text": "Flock V2 announced with general circuit support, recursion, and 128-bit security",
+    "timestamp": "00:36:00"
+  },
+  {
+    "original_text": "Binary-field proving direction reaffirmed due to strong recent performance gains",
+    "timestamp": "01:48:48"
+  },
+  {
+    "original_text": "No decision made regarding Blake vs SHA standardization; discussion deferred",
+    "timestamp": "00:25:00"
+  }
+]

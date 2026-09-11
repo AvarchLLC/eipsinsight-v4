@@ -8,7 +8,8 @@
  * than the raw meeting notes.
  */
 
-export type OhPrStatus = "MERGED" | "WAITING_ON_EDITOR" | "WAITING_ON_AUTHOR" | "OPEN";
+export type OhPrStatus =
+  "MERGED" | "WAITING_ON_EDITOR" | "WAITING_ON_AUTHOR" | "OPEN";
 
 export type OhPrItem = {
   repo: "ercs" | "eips" | "rips";
@@ -21,10 +22,13 @@ export type OhPrItem = {
 
 // Call series slugs used in /calls/<series>/<number> for static office-hour
 // style calls (EIP Editing Office Hours now; EIPIP meetings later).
-export const OFFICE_HOUR_SERIES = new Set(["eipoh", "eipip"]);
+export const OFFICE_HOUR_SERIES = new Set(["eipoh", "eipip", "ethproofs"]);
+
+import ethproofsTldr from "./ethproofs-010-tldr.json";
+import ethproofsDecisions from "./ethproofs-010-decisions.json";
 
 export type OhRecap = {
-  series: "eipoh" | "eipip";
+  series: "eipoh" | "eipip" | "ethproofs";
   meeting: number;
   dateISO: string; // yyyy-mm-dd
   displayDate: string;
@@ -36,9 +40,32 @@ export type OhRecap = {
   decisions: string[];
   actionItems: string[];
   nextMeeting: string;
+  tldr?: any;
+  keyDecisions?: any[];
 };
 
 export const OFFICE_HOUR_RECAPS: OhRecap[] = [
+  {
+    series: "ethproofs",
+    meeting: 10,
+    dateISO: "2026-09-02",
+    displayDate: "Sep 2, 2026",
+    title: "EthProofs Call #10: Binary Fields",
+    youtube: "https://www.youtube.com/watch?v=m2Jf2lLHfG0",
+    issueUrl: "",
+    summary:
+      "Call #10 focusing on the future of hash-based proof systems, moving away from prime fields to binary fields. Featuring updates on ZISK, zk.golf, snark.fast, a new auto research challenge on proximity gaps, and multiple presentations on binary fields.",
+    tldr: ethproofsTldr,
+    keyDecisions: ethproofsDecisions,
+    prs: [],
+    decisions: [
+      "EF is moving away from Poseidon and embracing traditional hash functions via new hash-friendly snark proof systems.",
+      "ZISK v1.1 is launching with significant optimizations and sub-10 second proofs on four 5090s.",
+      "Flock v2 introduces jagged PCS to support multiple hashes, grand product arguments, and can recursively verify its own circuit (2:1 recursion in 200ms).",
+    ],
+    actionItems: [],
+    nextMeeting: "Call #11 (Tentative: Oct 2nd)",
+  },
   {
     series: "eipoh",
     meeting: 112,
@@ -50,10 +77,38 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     summary:
       "Session #112 worked through the review queue and live author questions. ERC-8167 (Modular Dispatch Proxies) advanced to Last Call and the ML-DSA verification precompile EIP was reviewed and merged. Editors closed a batch of duplicate or outdated Meta EIP PRs and typo fixes, and clarified that a multi-author proposal needs approval from an existing co-author before it can merge. Authors were guided to use the Ethereum Magicians forum for public feedback and the EIPsInsight board to track the review queue.",
     prs: [
-      { repo: "ercs", pr: 1958, title: "Update ERC-8167: Move to Last Call", author: "wjmelements", status: "MERGED", note: "Modular Dispatch Proxies. Reviewed and approved; the dispatch-proxy standard advanced to Last Call." },
-      { repo: "eips", pr: 12048, title: "Add EIP: Precompiles for ML-DSA Verification", author: "shemnon", status: "MERGED", note: "Reviewed as well-written with proper citations and test cases. Merged." },
-      { repo: "eips", pr: 11962, title: "Update EIP-7716: Move to Draft", author: "OisinKyne", status: "WAITING_ON_AUTHOR", note: "Author asked what the block was. The eip-review-bot needs an approval from a co-author (an author other than the PR opener) before an editor can act." },
-      { repo: "ercs", pr: 1952, title: "Website: Fix the Auto Stagnant Bot", author: "Cybercentry", status: "WAITING_ON_AUTHOR", note: "Carried in the quick-actions queue; still waiting on the author." },
+      {
+        repo: "ercs",
+        pr: 1958,
+        title: "Update ERC-8167: Move to Last Call",
+        author: "wjmelements",
+        status: "MERGED",
+        note: "Modular Dispatch Proxies. Reviewed and approved; the dispatch-proxy standard advanced to Last Call.",
+      },
+      {
+        repo: "eips",
+        pr: 12048,
+        title: "Add EIP: Precompiles for ML-DSA Verification",
+        author: "shemnon",
+        status: "MERGED",
+        note: "Reviewed as well-written with proper citations and test cases. Merged.",
+      },
+      {
+        repo: "eips",
+        pr: 11962,
+        title: "Update EIP-7716: Move to Draft",
+        author: "OisinKyne",
+        status: "WAITING_ON_AUTHOR",
+        note: "Author asked what the block was. The eip-review-bot needs an approval from a co-author (an author other than the PR opener) before an editor can act.",
+      },
+      {
+        repo: "ercs",
+        pr: 1952,
+        title: "Website: Fix the Auto Stagnant Bot",
+        author: "Cybercentry",
+        status: "WAITING_ON_AUTHOR",
+        note: "Carried in the quick-actions queue; still waiting on the author.",
+      },
     ],
     decisions: [
       "ERC-8167 (Modular Dispatch Proxies) was approved to move to Last Call.",
@@ -82,14 +137,70 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     summary:
       "Session #111 worked through live and offline reviews of several ERC pull requests. Most needed only minor changes before approval. Sam Wilson gave immediate feedback on structure and formatting and deferred detailed review of the larger PRs to after the call. One submission was flagged for the wrong repository (interface-category proposals belong in the EIP repo, not ERC).",
     prs: [
-      { repo: "ercs", pr: 1909, title: "Add ERC: Index-Based Multi-Facet Proxy", author: "Arhemius", status: "MERGED", note: "Quick scan, no changes needed. Approved and merged." },
-      { repo: "ercs", pr: 1919, title: "Add ERC: Confidential Agent Policy Verdicts", author: "mzf11125", status: "MERGED", note: "Reviewed with no blocking issues. Merged." },
-      { repo: "ercs", pr: 1956, title: "Update ERC-5516: Move to Final", author: "LucasGrasso", status: "MERGED", note: "Approved after a quick review; one date field corrected before merge." },
-      { repo: "ercs", pr: 1935, title: "Add ERC: Reference-Relative Slippage Bounds", author: "zexoverz", status: "WAITING_ON_EDITOR", note: "A duplicate interface import was flagged. Author to remove the duplicate before merge." },
-      { repo: "ercs", pr: 1942, title: "Add ERC: Token Launch Abuse Detection and Remediation", author: "Cybercentry", status: "WAITING_ON_EDITOR", note: "Reference implementation is large. Sam recommended adding a README linking all relevant files and keeping the implementation minimal." },
-      { repo: "ercs", pr: 1910, title: "Add ERC: Agent Memory State Registry", author: "everest-an", status: "WAITING_ON_AUTHOR", note: "Reviewed and considered clean; currently waiting on the author." },
-      { repo: "ercs", pr: 1957, title: "Update ERC-8107: Move to Review", author: "KBryan", status: "WAITING_ON_AUTHOR", note: "Reviewed as solid, with a few small changes needed before approval." },
-      { repo: "ercs", pr: 1952, title: "Website: Fix the Auto Stagnant Bot", author: "Cybercentry", status: "WAITING_ON_AUTHOR", note: "Larger scope, deferred to offline review after the call." },
+      {
+        repo: "ercs",
+        pr: 1909,
+        title: "Add ERC: Index-Based Multi-Facet Proxy",
+        author: "Arhemius",
+        status: "MERGED",
+        note: "Quick scan, no changes needed. Approved and merged.",
+      },
+      {
+        repo: "ercs",
+        pr: 1919,
+        title: "Add ERC: Confidential Agent Policy Verdicts",
+        author: "mzf11125",
+        status: "MERGED",
+        note: "Reviewed with no blocking issues. Merged.",
+      },
+      {
+        repo: "ercs",
+        pr: 1956,
+        title: "Update ERC-5516: Move to Final",
+        author: "LucasGrasso",
+        status: "MERGED",
+        note: "Approved after a quick review; one date field corrected before merge.",
+      },
+      {
+        repo: "ercs",
+        pr: 1935,
+        title: "Add ERC: Reference-Relative Slippage Bounds",
+        author: "zexoverz",
+        status: "WAITING_ON_EDITOR",
+        note: "A duplicate interface import was flagged. Author to remove the duplicate before merge.",
+      },
+      {
+        repo: "ercs",
+        pr: 1942,
+        title: "Add ERC: Token Launch Abuse Detection and Remediation",
+        author: "Cybercentry",
+        status: "WAITING_ON_EDITOR",
+        note: "Reference implementation is large. Sam recommended adding a README linking all relevant files and keeping the implementation minimal.",
+      },
+      {
+        repo: "ercs",
+        pr: 1910,
+        title: "Add ERC: Agent Memory State Registry",
+        author: "everest-an",
+        status: "WAITING_ON_AUTHOR",
+        note: "Reviewed and considered clean; currently waiting on the author.",
+      },
+      {
+        repo: "ercs",
+        pr: 1957,
+        title: "Update ERC-8107: Move to Review",
+        author: "KBryan",
+        status: "WAITING_ON_AUTHOR",
+        note: "Reviewed as solid, with a few small changes needed before approval.",
+      },
+      {
+        repo: "ercs",
+        pr: 1952,
+        title: "Website: Fix the Auto Stagnant Bot",
+        author: "Cybercentry",
+        status: "WAITING_ON_AUTHOR",
+        note: "Larger scope, deferred to offline review after the call.",
+      },
     ],
     decisions: [
       "Interface-category submissions must go to the EIP repository, not ERC. Authors submitting interface-type proposals to ERC should be redirected.",
@@ -139,9 +250,17 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
 export const LATEST_OFFICE_HOUR_RECAP = OFFICE_HOUR_RECAPS[0];
 
 /** /calls/<series>/<number> path for a recap. */
-export const officeHourCallPath = (r: OhRecap) => `/calls/${r.series}/${r.meeting}`;
+export const officeHourCallPath = (r: OhRecap) =>
+  `/calls/${r.series}/${r.meeting}`;
 
 /** Look up a static office-hour recap by series slug + meeting number. */
-export function findOfficeHourRecap(series: string, number: string): OhRecap | null {
-  return OFFICE_HOUR_RECAPS.find((r) => r.series === series && String(r.meeting) === number) ?? null;
+export function findOfficeHourRecap(
+  series: string,
+  number: string,
+): OhRecap | null {
+  return (
+    OFFICE_HOUR_RECAPS.find(
+      (r) => r.series === series && r.meeting === parseInt(number, 10),
+    ) ?? null
+  );
 }
