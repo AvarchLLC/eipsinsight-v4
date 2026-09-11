@@ -1,0 +1,26 @@
+[
+  {
+    "original_text": "Ring Constant Client is being designed around the Lean consensus specification rather than implementing only a standalone basic client",
+    "timestamp": "00:03:25"
+  },
+  {
+    "original_text": "ZK-Lean is being developed as a Lean 4 framework for formally verifying the correctness of ZK statements",
+    "timestamp": "00:12:00"
+  },
+  {
+    "original_text": "Circuit verification should be designed around soundness and completeness by construction, rather than relying only on post-hoc verification",
+    "timestamp": "00:23:31"
+  },
+  {
+    "original_text": "For complex trace data structures, the formal proof layer will use an abstract specification interface so the efficient implementation can be developed independently",
+    "timestamp": "01:01:41"
+  },
+  {
+    "original_text": "AI/LLM-assisted formalization is being used as a practical workflow for generating and testing candidate proofs, with humans and theorem provers validating the results",
+    "timestamp": "01:44:14"
+  },
+  {
+    "original_text": "The longer-term direction is proof-producing verification rather than putting the verification tooling itself inside the trusted code base",
+    "timestamp": "01:22:21"
+  }
+]

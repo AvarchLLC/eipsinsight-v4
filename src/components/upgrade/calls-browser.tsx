@@ -62,6 +62,7 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     const g = searchParams.get('series');
     if (g === 'acd') return { group: 'acd', acd: searchParams.get('acd') ?? 'all' };
     if (g === 'breakouts') return { group: 'breakouts', acd: 'all' };
+    if (g === 'ethproofs') return { group: 'ethproofs', acd: 'all' };
     return DEFAULT_SERIES_FILTER;
   }, [searchParams]);
 

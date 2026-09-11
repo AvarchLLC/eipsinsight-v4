@@ -94,6 +94,7 @@ const mobileNavSections = [
       { title: "All Calls", href: "/calls", icon: Video },
       { title: "ACD Calls", href: "/calls?series=acd#recent", icon: Video },
       { title: "Breakout Calls", href: "/calls?series=breakouts#recent", icon: Video },
+      { title: "EthProof Calls", href: "/calls?series=ethproofs#recent", icon: Video },
       { title: "Decisions", href: "/decisions", icon: Video },
     ],
   },

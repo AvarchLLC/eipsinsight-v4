@@ -169,6 +169,7 @@ const sidebarSections: SidebarSection[] = [
           { title: "All Calls", href: "/calls" },
           { title: "ACD Calls", href: "/calls?series=acd#recent" },
           { title: "Breakout Calls", href: "/calls?series=breakouts#recent" },
+          { title: "EthProof Calls", href: "/calls?series=ethproofs#recent" },
           { title: "Decisions", href: "/decisions" },
         ],
       },
