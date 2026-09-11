@@ -7,7 +7,7 @@ import { callSeriesShort } from '@/data/call-series';
 export const ACD_SERIES = ['acdc', 'acde', 'acdt', 'acdtcl'] as const;
 export const isAcdSeries = (series: string) => (ACD_SERIES as readonly string[]).includes(series);
 
-export type SeriesGroup = 'all' | 'acd' | 'breakouts';
+export type SeriesGroup = 'all' | 'acd' | 'breakouts' | 'ethproofs';
 
 export interface SeriesFilterValue {
   group: SeriesGroup;
@@ -21,11 +21,12 @@ export const DEFAULT_SERIES_FILTER: SeriesFilterValue = { group: 'all', acd: 'al
 export function matchesSeries(series: string, f: SeriesFilterValue): boolean {
   if (f.group === 'all') return true;
   if (f.group === 'acd') return isAcdSeries(series) && (f.acd === 'all' || series === f.acd);
-  return !isAcdSeries(series); // breakouts
+  if (f.group === 'ethproofs') return series === 'ethproofs';
+  return !isAcdSeries(series) && series !== 'ethproofs'; // breakouts
 }
 
 /**
- * Grouped series filter: All · ACD · Breakouts, with a dropdown to narrow ACD
+ * Grouped series filter: All · ACD · Breakouts · EthProof, with a dropdown to narrow ACD
  * down to ACDC / ACDE / ACDT. Replaces the long flat list of per-series pills.
  */
 export function SeriesFilter({
@@ -39,7 +40,8 @@ export function SeriesFilter({
 }) {
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const acdTotal = ACD_SERIES.reduce((a, s) => a + (counts[s] ?? 0), 0);
-  const breakoutTotal = total - acdTotal;
+  const ethproofsTotal = counts['ethproofs'] ?? 0;
+  const breakoutTotal = total - acdTotal - ethproofsTotal;
 
   const pill = (selected: boolean) =>
     cn(
@@ -63,6 +65,13 @@ export function SeriesFilter({
         className={pill(value.group === 'breakouts')}
       >
         Breakouts <span className="text-[10px] opacity-70">{breakoutTotal}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange({ group: 'ethproofs', acd: 'all' })}
+        className={pill(value.group === 'ethproofs')}
+      >
+        EthProof <span className="text-[10px] opacity-70">{ethproofsTotal}</span>
       </button>
 
       {value.group === 'acd' && (
