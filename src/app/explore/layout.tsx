@@ -7,6 +7,7 @@ export const metadata: Metadata = buildMetadata({
     "Explore Ethereum proposal trends by year, status, category, and governance role.",
   path: "/explore",
   keywords: ["explore EIPs", "Ethereum proposal trends", "EIP status explorer"],
+  image: null,
 });
 
 export default function ExploreLayout({ children }: { children: React.ReactNode }) {

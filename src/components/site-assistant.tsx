@@ -41,6 +41,7 @@ type AssistantDataQuery = {
   rowCount: number;
 };
 
+
 type AssistantAnswerResult = {
   answer: string;
   confidence: "high" | "medium" | "low";

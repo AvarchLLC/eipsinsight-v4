@@ -50,7 +50,7 @@ export default function AnalyticsOverviewPage() {
         <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
           Analytics Dashboard
         </h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+        <p className="mt-1.5 w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
           Comprehensive insights into Ethereum standards governance and activity
         </p>
       </div>

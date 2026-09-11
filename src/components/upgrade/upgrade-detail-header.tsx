@@ -6,6 +6,23 @@ import { getCurrentPhase } from '@/data/fork-schedule';
 import { PhaseBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
 
+function renderNameWithHighlight(fullStr: string, highlight: string) {
+  const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
+  if (index === -1) return <strong className="font-bold text-foreground">{fullStr}</strong>;
+
+  const before = fullStr.slice(0, index);
+  const match = fullStr.slice(index, index + highlight.length);
+  const after = fullStr.slice(index + highlight.length);
+
+  return (
+    <span className="font-medium text-foreground">
+      {before}
+      <strong className="font-bold text-primary underline decoration-primary/50 underline-offset-2">{match}</strong>
+      {after}
+    </span>
+  );
+}
+
 export type UpgradeSubtab =
   | 'overview'
   | 'stakeholders'
@@ -72,7 +89,7 @@ export function UpgradeDetailHeader({
           className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          All upgrades
+          Go back to main upgrades page
         </Link>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -101,11 +118,47 @@ export function UpgradeDetailHeader({
           {metaEip && (
             <Link
               href={`/eip/${metaEip}`}
-              className="inline-flex items-center gap-1 text-primary transition-colors hover:text-primary/80"
+              className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/20 rounded-full px-2.5 py-0.5 text-xs transition-all"
             >
-              <FileText className="h-3.5 w-3.5" />
-              Meta EIP-{metaEip}
+              <FileText className="h-3.5 w-3.5 text-amber-500" />
+              <span>Meta EIP: <span className="font-semibold underline">EIP-{metaEip}</span></span>
             </Link>
+          )}
+          {entry?.mascot && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-primary/10 border border-primary/20 rounded-full px-2.5 py-0.5 text-xs">
+              <span>{entry.mascot.emoji}</span>
+              <span>Mascot: {entry.mascot.name}</span>
+              {entry.mascot.eip && (
+                <Link
+                  href={`/eip/${entry.mascot.eip}`}
+                  className="text-primary hover:underline text-[11px] ml-0.5"
+                  title="Selected per EIP-8066 process"
+                >
+                  (EIP-{entry.mascot.eip})
+                </Link>
+              )}
+            </span>
+          )}
+          {entry?.executionName && entry?.consensusName && (
+            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-purple-500/10 border border-purple-500/20 rounded-full px-2.5 py-0.5 text-xs">
+              <Layers className="h-3.5 w-3.5 text-purple-500" />
+              {entry.nameOriginDetails ? (
+                <span>
+                  {renderNameWithHighlight(entry.nameOriginDetails.clName, entry.nameOriginDetails.clHighlight)} (CL) + {renderNameWithHighlight(entry.nameOriginDetails.elName, entry.nameOriginDetails.elHighlight)} (EL)
+                </span>
+              ) : (
+                <span>{entry.executionName} (EL) + {entry.consensusName} (CL)</span>
+              )}
+              {entry.nameOriginDetails?.eip && (
+                <Link
+                  href={`/eip/${entry.nameOriginDetails.eip}`}
+                  className="text-primary hover:underline text-[11px] ml-0.5 font-medium"
+                  title="Naming convention per EIP-8133"
+                >
+                  (EIP-{entry.nameOriginDetails.eip})
+                </Link>
+              )}
+            </span>
           )}
           {entry?.activationDate && (
             <span className="inline-flex items-center gap-1">
@@ -119,12 +172,6 @@ export function UpgradeDetailHeader({
               Block {entry.activationBlock.toLocaleString()}
             </span>
           )}
-          {entry?.executionName && entry?.consensusName && (
-            <span className="inline-flex items-center gap-1">
-              <Layers className="h-3.5 w-3.5" />
-              {entry.executionName} (EL) + {entry.consensusName} (CL)
-            </span>
-          )}
         </div>
 
         <div className="mt-5 hidden sm:block">
@@ -134,7 +181,7 @@ export function UpgradeDetailHeader({
         {/* Subtab bar — segmented pill control so the sections read clearly as tabs */}
         {subtabs.length > 0 && (
           <div className="mt-5 pb-4">
-            <nav className="inline-flex max-w-full flex-wrap gap-1 rounded-xl border border-border bg-muted/50 p-1">
+            <nav className="flex w-full flex-wrap gap-1.5 rounded-xl border border-border bg-muted/50 p-1.5 sm:inline-flex sm:w-auto">
               {[{ id: 'overview' as const, label: 'Overview', href: `/upgrade/${slug}` }, ...subtabs].map(
                 (tab) => (
                   <Link

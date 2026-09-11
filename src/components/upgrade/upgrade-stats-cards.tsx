@@ -14,6 +14,10 @@ import { upgradeMetaEIPs } from '@/data/network-upgrades';
 
 interface UpgradeStatsCardsProps {
   totalUpgrades?: number;
+  executionEipCount?: number;
+  consensusEipCount?: number;
+  totalEipsDeployed?: number;
+  metaEipCount?: number;
   independentIncludedAuthors?: number;
   activeTable?: 'core' | 'meta' | 'execution' | 'consensus' | 'authors' | null;
   onSelectTable?: (mode: 'core' | 'meta' | 'execution' | 'consensus' | 'authors') => void;
@@ -107,9 +111,11 @@ function StatCard({
 }
 
 export function UpgradeStatsCards({
-  // All defaults derive from the static timeline so the cards, the chart, and the
-  // /upgrade page can't disagree. Callers may still override totalUpgrades.
   totalUpgrades = TOTAL_NETWORK_UPGRADES,
+  executionEipCount = EXECUTION_EIP_COUNT,
+  consensusEipCount = CONSENSUS_EIP_COUNT,
+  totalEipsDeployed = TOTAL_EIPS_DEPLOYED,
+  metaEipCount = META_EIP_COUNT,
   independentIncludedAuthors = 0,
   activeTable = null,
   onSelectTable,
@@ -121,7 +127,7 @@ export function UpgradeStatsCards({
         accent="indigo"
         label="Total Network Upgrades"
         value={totalUpgrades}
-        sublabel="Activated forks across execution and consensus layers"
+        sublabel="Network upgrades tracked across execution and consensus layers"
         hint="See the timeline →"
         href="#upgrade-charts"
       />
@@ -129,8 +135,8 @@ export function UpgradeStatsCards({
         icon={Code}
         accent="blue"
         label="Execution Layer"
-        value={EXECUTION_EIP_COUNT}
-        sublabel="EIPs · Protocol & EVM"
+        value={executionEipCount}
+        sublabel="Core EIPs · Execution Layer"
         hint="Click to view EIPs →"
         active={activeTable === 'execution'}
         onClick={() => onSelectTable?.('execution')}
@@ -139,8 +145,8 @@ export function UpgradeStatsCards({
         icon={Layers}
         accent="violet"
         label="Consensus Layer"
-        value={CONSENSUS_EIP_COUNT}
-        sublabel="EIPs · Beacon Chain"
+        value={consensusEipCount}
+        sublabel="Core EIPs · Consensus Layer"
         hint="Click to view EIPs →"
         active={activeTable === 'consensus'}
         onClick={() => onSelectTable?.('consensus')}
@@ -148,9 +154,9 @@ export function UpgradeStatsCards({
       <StatCard
         icon={Network}
         accent="emerald"
-        label="EIPs Deployed"
-        value={TOTAL_EIPS_DEPLOYED}
-        sublabel="EIPs deployed in upgrades (EL + CL)"
+        label="Core EIPs Deployed"
+        value={totalEipsDeployed}
+        sublabel="Core EIPs deployed across upgrades (EL + CL)"
         hint="Click to view EIPs →"
         active={activeTable === 'core'}
         onClick={() => onSelectTable?.('core')}
@@ -159,8 +165,8 @@ export function UpgradeStatsCards({
         icon={FileText}
         accent="rose"
         label="Hard Fork Meta EIPs"
-        value={META_EIP_COUNT}
-        sublabel="Meta EIPs paired with upgrades"
+        value={metaEipCount}
+        sublabel="Meta EIPs paired with network upgrades"
         hint="Click to view EIPs →"
         active={activeTable === 'meta'}
         onClick={() => onSelectTable?.('meta')}

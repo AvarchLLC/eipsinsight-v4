@@ -7,6 +7,7 @@ export const metadata: Metadata = buildMetadata({
     "Browse Ethereum standards resources including blogs, docs, videos, FAQs, and ecosystem news.",
   path: "/resources",
   keywords: ["Ethereum resources", "EIP docs", "Ethereum governance guides"],
+  image: null,
 });
 
 export default function ResourcesLayout({ children }: { children: React.ReactNode }) {

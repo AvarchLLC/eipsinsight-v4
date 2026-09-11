@@ -449,28 +449,26 @@ export default function DependenciesPage() {
   return (
     <div className="min-h-screen bg-background">
       <div className="page-shell py-6">
-        <header className="mb-6">
+        <header className="mb-6 space-y-2.5">
           <Link
             href="/tools"
-            className="mb-2 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground mb-1"
           >
             <ArrowLeft className="h-4 w-4" />
             Back to Tools
           </Link>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-                Upgrade Dependencies
-              </h1>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
-                Track how hard forks reuse older EIPs, which upgrades contribute the biggest building blocks, and where direct dependencies turn into longer inherited chains.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Upgrade Dependencies
+            </h1>
+            <div className="inline-flex items-center gap-2 rounded-xl border border-border bg-card/60 px-3 py-2 text-xs text-muted-foreground shrink-0">
               <Sparkles className="h-3.5 w-3.5 text-primary" />
               Middle ground between full graph exploration and upgrade context
             </div>
           </div>
+          <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
+            Track how hard forks reuse older EIPs, which upgrades contribute the biggest building blocks, and where direct dependencies turn into longer inherited chains.
+          </p>
         </header>
 
         <section className="mb-4 rounded-xl border border-border bg-card/60 p-4">

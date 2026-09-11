@@ -2,9 +2,21 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, X, ArrowRight, FileText, Users, GitPullRequest, Loader2 } from 'lucide-react';
+import { Search, X, ArrowRight, FileText, Users, GitPullRequest, Loader2, Package } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
+import { upgradeRegistry } from '@/data/upgrade-registry';
+
+interface UpgradeResult {
+  kind: 'upgrade';
+  slug: string;
+  name: string;
+  status: string;
+  tagline: string;
+  executionName?: string;
+  consensusName?: string;
+  headliners?: Array<{ eip: number; title: string }>;
+}
 
 interface ProposalResult {
   kind: 'proposal';
@@ -38,7 +50,7 @@ interface PRResult {
   state: string | null;
 }
 
-type SearchResult = ProposalResult | AuthorResult | PRResult;
+type SearchResult = UpgradeResult | ProposalResult | AuthorResult | PRResult;
 
 type AuthorSearchRaw = Partial<AuthorResult> & {
   name: string;
@@ -68,10 +80,12 @@ export function SearchBar() {
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<{
+    upgrades: UpgradeResult[];
     proposals: ProposalResult[];
     authors: AuthorResult[];
     prs: PRResult[];
   }>({
+    upgrades: [],
     proposals: [],
     authors: [],
     prs: [],
@@ -95,7 +109,7 @@ export function SearchBar() {
   // Debounced search
   useEffect(() => {
     if (!query.trim()) {
-      setResults({ proposals: [], authors: [], prs: [] });
+      setResults({ upgrades: [], proposals: [], authors: [], prs: [] });
       setShowDropdown(false);
       setLoading(false);
       return;
@@ -110,6 +124,34 @@ export function SearchBar() {
     const timeoutId = setTimeout(async () => {
       try {
         const searchQuery = query.trim();
+        const q = searchQuery.toLowerCase();
+
+        // Search upgradeRegistry for matching upgrades
+        const matchingUpgrades: UpgradeResult[] = Object.values(upgradeRegistry)
+          .filter((entry) => {
+            return (
+              entry.name.toLowerCase().includes(q) ||
+              entry.slug.toLowerCase().includes(q) ||
+              (entry.executionName && entry.executionName.toLowerCase().includes(q)) ||
+              (entry.consensusName && entry.consensusName.toLowerCase().includes(q)) ||
+              (entry.tagline && entry.tagline.toLowerCase().includes(q)) ||
+              (entry.headliners &&
+                entry.headliners.some(
+                  (h) => h.title.toLowerCase().includes(q) || String(h.eip).includes(q)
+                ))
+            );
+          })
+          .map((entry) => ({
+            kind: 'upgrade' as const,
+            slug: entry.slug,
+            name: entry.name,
+            status: entry.status,
+            tagline: entry.tagline,
+            executionName: entry.executionName,
+            consensusName: entry.consensusName,
+            headliners: entry.headliners,
+          }));
+
         const [proposalsRes, authorsRes, prsRes] = await Promise.allSettled([
           client.search.searchProposals({ query: searchQuery, limit: 50 }),
           client.search.searchAuthors({ query: searchQuery, limit: 20 }),
@@ -129,6 +171,7 @@ export function SearchBar() {
 
         // Fix: Convert proposals' repo property to union type
         setResults({
+          upgrades: matchingUpgrades,
           proposals: proposals.map(p => ({
             ...p,
             // Map repo string to allowed values ("eip" | "erc" | "rip"), fallback to "eip" if unknown
@@ -151,7 +194,7 @@ export function SearchBar() {
       } catch (err) {
         if (cancelled) return;
         console.error('Search error:', err);
-        setResults({ proposals: [], authors: [], prs: [] });
+        setResults({ upgrades: [], proposals: [], authors: [], prs: [] });
         // Keep dropdown open to show "No results found" fallback instead of appearing broken.
         setShowDropdown(true);
       } finally {
@@ -167,7 +210,9 @@ export function SearchBar() {
 
   // Handler for clicking a result (must be defined before keyboard effect)
   const handleResultClick = useCallback((result: SearchResult) => {
-    if (result.kind === 'proposal') {
+    if (result.kind === 'upgrade') {
+      router.push(`/upgrade/${result.slug}`);
+    } else if (result.kind === 'proposal') {
       router.push(`/${result.repo}/${result.number}`);
     } else if (result.kind === 'author') {
       router.push(`/people/${encodeURIComponent(result.name)}`);
@@ -238,7 +283,8 @@ export function SearchBar() {
   }, [selectedIndex, showDropdown]);
 
 
-  const allResults = [
+  const allResults: SearchResult[] = [
+    ...results.upgrades,
     ...results.proposals,
     ...results.authors,
     ...results.prs,
@@ -262,7 +308,7 @@ export function SearchBar() {
           <input
             ref={inputRef}
             type="text"
-            placeholder="Search EIPs, ERCs, RIPs, authors, status…"
+            placeholder="Search EIPs, upgrades (e.g. Glamsterdam, Pectra), authors, status…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
@@ -322,25 +368,83 @@ export function SearchBar() {
           className="absolute z-50 mt-2 w-full overflow-hidden rounded-xl border border-border bg-card/95 shadow-2xl backdrop-blur-xl"
         >
           {loading ? (
-            <div className="p-8 text-center">
-              <Loader2 className="mx-auto mb-3 h-7 w-7 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Searching...</p>
+            <div className="p-6 text-center">
+              <Loader2 className="mx-auto mb-2 h-6 w-6 animate-spin text-primary" />
+              <p className="text-xs text-muted-foreground">Searching...</p>
             </div>
           ) : !hasResults ? (
-            <div className="p-8 text-center">
-              <Search className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-              <p className="mb-1 text-base font-semibold text-foreground">
+            <div className="p-6 text-center">
+              <Search className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+              <p className="mb-1 text-sm font-semibold text-foreground">
                 No results found
               </p>
-              <p className="text-sm text-muted-foreground">
-                Try searching for an EIP number, title, author, or status
+              <p className="text-xs text-muted-foreground">
+                Try searching for an upgrade (e.g. Glamsterdam), EIP number, title, or author
               </p>
             </div>
           ) : (
             <div
-              className="max-h-[70vh] overflow-y-auto overscroll-contain space-y-0 pr-2"
+              className="max-h-[380px] overflow-y-auto overscroll-contain divide-y divide-border/60"
               style={{ scrollbarGutter: 'stable both-edges' }}
             >
+              {/* Upgrades Section */}
+              {results.upgrades.length > 0 && (
+                <div className="border-b border-border/80">
+                  <div className="sticky top-0 z-10 border-b border-border bg-muted/90 px-3.5 py-1.5 backdrop-blur-sm">
+                    <h3 className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      <Package className="h-3 w-3 text-violet-500" />
+                      Network Upgrades ({results.upgrades.length})
+                    </h3>
+                  </div>
+                  <div className="max-h-48 overflow-y-auto divide-y divide-border/50">
+                    {results.upgrades.slice(0, 4).map((result, index) => {
+                      const isSelected = selectedIndex === index;
+                      return (
+                        <div
+                          key={`upgrade-${result.slug}`}
+                          data-index={index}
+                          onClick={() => handleResultClick(result)}
+                          className={cn(
+                            "cursor-pointer p-3 transition-all",
+                            isSelected
+                              ? "border-l-2 border-l-primary bg-primary/10"
+                              : "hover:bg-muted/50"
+                          )}
+                        >
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-foreground text-xs sm:text-sm">
+                                {result.name}
+                              </span>
+                              <span className="px-1.5 py-0.2 text-[10px] font-semibold rounded-full border border-violet-500/30 bg-violet-500/15 text-violet-600 dark:text-violet-300">
+                                {result.status}
+                              </span>
+                            </div>
+                            <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" />
+                          </div>
+                          <p className="text-[11px] text-muted-foreground line-clamp-1 mb-1">
+                            {result.tagline}
+                          </p>
+                          {result.headliners && result.headliners.length > 0 && (
+                            <div className="flex flex-wrap gap-1 items-center">
+                              <span className="text-[9px] font-semibold text-muted-foreground uppercase">Key EIPs:</span>
+                              {result.headliners.map((h) => (
+                                <span
+                                  key={h.eip}
+                                  className="inline-flex items-center rounded border border-border bg-background/80 px-1 py-0.2 text-[10px] font-mono font-medium text-foreground"
+                                >
+                                  EIP-{h.eip}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* Proposals Section */}
               {results.proposals.length > 0 && (
                 <div className="border-b border-border/80">
@@ -358,13 +462,14 @@ export function SearchBar() {
                     style={{ scrollbarGutter: 'stable both-edges' }}
                   >
                     {results.proposals.map((result, index) => {
+                      const globalIndex = results.upgrades.length + index;
                       const statusColor = statusColors[result.status] || statusColors['Draft'];
-                      const isSelected = selectedIndex === index;
+                      const isSelected = selectedIndex === globalIndex;
                       
                       return (
                         <div
                           key={`proposal-${result.repo}-${result.number}`}
-                          data-index={index}
+                          data-index={globalIndex}
                           onClick={() => handleResultClick(result)}
                           className={cn(
                             "cursor-pointer border-b border-border/60 p-3.5 transition-all last:border-0",
@@ -430,7 +535,7 @@ export function SearchBar() {
                     style={{ scrollbarGutter: 'stable both-edges' }}
                   >
                     {results.authors.map((result, index) => {
-                      const globalIndex = results.proposals.length + index;
+                      const globalIndex = results.upgrades.length + results.proposals.length + index;
                       const isSelected = selectedIndex === globalIndex;
                       
                       return (
@@ -488,7 +593,7 @@ export function SearchBar() {
                     style={{ scrollbarGutter: 'stable both-edges' }}
                   >
                     {results.prs.map((result, index) => {
-                      const globalIndex = results.proposals.length + results.authors.length + index;
+                      const globalIndex = results.upgrades.length + results.proposals.length + results.authors.length + index;
                       const isSelected = selectedIndex === globalIndex;
                       
                       return (

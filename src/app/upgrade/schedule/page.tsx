@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
+  ArrowLeft,
   CalendarClock,
   Check,
   CheckCircle2,
@@ -8,6 +9,7 @@ import {
   FlaskConical,
   Pin,
 } from 'lucide-react';
+import { ShareButtons } from '@/components/share-buttons';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
@@ -30,7 +32,7 @@ import { getCachedUpgradeComposition } from '@/lib/upgrade-data.server';
 import { UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { SchedulePlanner } from '@/components/upgrade/schedule-planner';
 
-export const revalidate = 3600;
+export const revalidate = 300;
 
 export const metadata: Metadata = buildMetadata({
   title: 'Upgrade Schedule',
@@ -277,25 +279,46 @@ async function ForkScheduleCard({ slug, today }: { slug: string; today: string }
 export default async function UpgradeSchedulePage() {
   const today = new Date().toISOString().slice(0, 10);
   const allDevnets = await getCachedDevnetList();
-  // Live networks first, then the newest specs from in-progress series.
+  const seen = new Set<string>();
   const highlightedDevnets = [
-    ...allDevnets.filter((devnet) => devnet.active),
-    ...allDevnets.filter(
-      (devnet) => !devnet.active && ['glamsterdam', 'bal', 'epbs'].includes(devnet.series)
-    ),
-  ].slice(0, 6);
+    ...allDevnets.filter((d) => d.active),
+    ...allDevnets.filter((d) => !d.active && ['glamsterdam', 'bal', 'epbs'].includes(d.series)),
+  ]
+    .filter((d) => {
+      if (seen.has(d.id)) return false;
+      seen.add(d.id);
+      return true;
+    })
+    .slice(0, 6);
 
   return (
     <div className="mx-auto w-full max-w-6xl space-y-10 px-4 pb-12 pt-8 sm:px-6">
-      <header>
-        <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-          Upgrade schedule
-        </h1>
-        <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Where each in-progress upgrade stands - scoping, devnets, testnets, mainnet - with
-          confirmed dates pinned from AllCoreDevs decisions and the rest projected.
+      <header className="space-y-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <Link
+              href="/upgrade"
+              className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary mb-2"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Go back to main upgrades page
+            </Link>
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Upgrade schedule
+            </h1>
+          </div>
+          <ShareButtons
+            text="Ethereum Upgrade Schedule: Phase-by-phase timelines for upcoming Ethereum network upgrades on EIPsInsight"
+            hashtags={['Ethereum', 'EIPs']}
+            className="shrink-0"
+          />
+        </div>
+        <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Where each in-progress upgrade stands across scoping, devnets, testnets, and mainnet, with
+          confirmed dates pinned from AllCoreDevs decisions and projections for remaining milestones.
         </p>
       </header>
+      <hr className="border-border/60" />
 
       {/* Interactive planning sandbox + Gantt timeline (client) */}
       <SchedulePlanner />
@@ -346,9 +369,17 @@ export default async function UpgradeSchedulePage() {
                   <span className="truncate text-sm font-semibold text-foreground">
                     {devnet.title ?? devnet.id}
                   </span>
-                  {devnet.active && (
+                  {devnet.active ? (
                     <span className="ml-auto shrink-0 rounded-full border border-emerald-500/30 bg-emerald-500/15 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:text-emerald-300">
                       live
+                    </span>
+                  ) : devnet.canceled ? (
+                    <span className="ml-auto shrink-0 rounded-full border border-amber-500/30 bg-amber-500/15 px-2 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                      canceled
+                    </span>
+                  ) : (
+                    <span className="ml-auto shrink-0 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-600 dark:text-red-400">
+                      inactive
                     </span>
                   )}
                 </div>
@@ -365,6 +396,16 @@ export default async function UpgradeSchedulePage() {
           </div>
         </section>
       )}
+
+      <div className="pt-6 border-t border-border/60 flex items-center justify-between">
+        <Link
+          href="/upgrade"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+        >
+          <ArrowLeft className="h-3.5 w-3.5" />
+          Go back to main upgrades page
+        </Link>
+      </div>
     </div>
   );
 }

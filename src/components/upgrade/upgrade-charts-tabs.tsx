@@ -19,7 +19,7 @@ const TABS: { key: ChartTab; label: string }[] = [
 ];
 
 export function UpgradeChartsTabs() {
-  const [tab, setTab] = useState<ChartTab>('timeline');
+  const [tab, setTab] = useState<ChartTab>('distribution');
 
   return (
     <div className="space-y-4">

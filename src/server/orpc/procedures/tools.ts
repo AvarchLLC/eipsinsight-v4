@@ -2,11 +2,14 @@ import { optionalAuthProcedure, type Ctx } from './types'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
 
-async function getRepoIds(repo?: string): Promise<number[] | null> {
-  if (!repo) return null;
+const REPO_TYPE: Record<string, string> = { eips: 'EIPS', ercs: 'ERCS', rips: 'RIPS' };
+
+async function getRepoIds(repo?: string | string[]): Promise<number[] | null> {
+  const list = (Array.isArray(repo) ? repo : repo ? [repo] : []).map((r) => REPO_TYPE[r]).filter(Boolean);
+  if (list.length === 0) return null; // null = all repos
   const rows = await prisma.$queryRawUnsafe<Array<{ id: number }>>(
-    `SELECT id FROM repositories WHERE LOWER(type) = LOWER($1)`,
-    repo === 'eips' ? 'EIPS' : repo === 'ercs' ? 'ERCS' : 'RIPS'
+    `SELECT id FROM repositories WHERE UPPER(type) = ANY($1::text[])`,
+    list
   );
   return rows.map((r) => r.id);
 }
@@ -362,6 +365,7 @@ const repoIds = await getRepoIds(input.repo);
   getOpenPRBoard: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      repos: z.array(z.enum(['eips', 'ercs', 'rips'])).optional(),
       govState: z.union([z.string(), z.array(z.string())]).optional(),
       processType: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
@@ -372,12 +376,24 @@ const repoIds = await getRepoIds(input.repo);
       // Editorial signals the scheduler computes in pr_governance_state.
       needsAttention: z.boolean().optional(),
       hasConflicts: z.boolean().optional(),
+      ciFailing: z.boolean().optional(),
     }))
     .handler(async ({ context, input }) => {
-const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts } = input;
+const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, needsAttention, hasConflicts, ciFailing } = input;
       const offset = (page - 1) * pageSize;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
       const processTypes = typeof processType === 'string' ? [processType] : (processType ?? []);
+
+      // CI columns come from a separate scheduler migration; degrade gracefully
+      // (no CI flag) if it hasn't run yet, rather than 500ing the whole board.
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
 
       // Whitelisted so the raw query can never take user-controlled SQL.
       const ORDER_COLUMNS = { wait: 'f.wait_days', pr: 'f.pr_number', created: 'f.created_at' } as const;
@@ -402,6 +418,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
         ethbot_review: boolean;
         author_is_preamble_author: boolean;
         has_participants: boolean;
+        ci_failing: boolean;
         total_count: bigint;
       }>>(`
         WITH base AS (
@@ -432,13 +449,14 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
             COALESCE(gs.has_stagnant_preamble_status, false) AS stagnant_preamble,
             COALESCE(gs.ethbot_needs_editor_review, false) AS ethbot_review,
             COALESCE(gs.opened_by_preamble_author, false) AS author_is_preamble_author,
-            COALESCE(gs.has_other_participants, false) AS has_participants
+            COALESCE(gs.has_other_participants, false) AS has_participants,
+            ${ciExpr} AS ci_failing
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
             AND COALESCE(gs.category, '') != 'Tooling'
         ),
         filtered AS (
@@ -452,12 +470,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
             ))
             AND ($7::boolean IS NULL OR needs_attention = $7)
             AND ($8::boolean IS NULL OR has_conflicts = $8)
+            AND ($9::boolean IS NULL OR ci_failing = $9)
         )
         SELECT f.*, (SELECT COUNT(*) FROM filtered)::bigint AS total_count
         FROM filtered f
         ORDER BY ${orderColumn} ${orderDirection}, f.pr_number DESC
         LIMIT $5 OFFSET $6
-      `, repo || null, govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null);
+      `, (input.repos && input.repos.length ? input.repos : repo ? [repo] : null), govStates.length ? govStates : null, processTypes.length ? processTypes : null, search || null, pageSize, offset, needsAttention ?? null, hasConflicts ?? null, ciFailing ?? null);
 
       const total = results.length > 0 ? Number(results[0].total_count) : 0;
 
@@ -484,6 +503,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
           ethbotReview: r.ethbot_review,
           authorIsPreambleAuthor: r.author_is_preamble_author,
           hasParticipants: r.has_participants,
+          ciFailing: r.ci_failing ?? false,
         })),
       };
     }),
@@ -492,11 +512,13 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
   getOpenPRBoardStats: optionalAuthProcedure
     .input(z.object({
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      repos: z.array(z.enum(['eips', 'ercs', 'rips'])).optional(),
       govState: z.union([z.string(), z.array(z.string())]).optional(),
       search: z.string().optional(),
     }))
     .handler(async ({ context, input }) => {
-const { repo, govState, search } = input;
+const { repo, repos, govState, search } = input;
+const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
 
       // Process type counts (filtered by govState + search, NOT by processType)
@@ -523,7 +545,11 @@ const { repo, govState, search } = input;
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
+            -- Match the board list + other facet counts, which drop Tooling PRs
+            -- entirely. Without this, Tooling rows were folded into "Content Edit"
+            -- and inflated its count (e.g. 14) while the list showed 0.
+            AND COALESCE(gs.category, '') != 'Tooling'
         )
         SELECT process_type, COUNT(*)::bigint AS count
         FROM base
@@ -535,7 +561,7 @@ const { repo, govState, search } = input;
           ))
         GROUP BY process_type
         ORDER BY count DESC
-      `, repo || null, govStates.length ? govStates : null, search || null);
+      `, repoArg, govStates.length ? govStates : null, search || null);
 
       // Governance state counts (NOT filtered by govState—so user sees all state counts)
       const gsResults = await prisma.$queryRawUnsafe<Array<{
@@ -566,7 +592,7 @@ const { repo, govState, search } = input;
         LEFT JOIN pr_governance_state gs
           ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
         WHERE p.state = 'open'
-          AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+          AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
           AND ($2::text IS NULL OR (
             p.pr_number::text LIKE '%' || $2 || '%'
             OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
@@ -575,11 +601,21 @@ const { repo, govState, search } = input;
           AND COALESCE(gs.category, '') != 'Tooling'
         GROUP BY state, label
         ORDER BY count DESC
-      `, repo || null, search || null);
+      `, repoArg, search || null);
+
+      // CI columns come from a separate scheduler migration (degrade gracefully).
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
 
       // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
       const signalResults = await prisma.$queryRawUnsafe<Array<{
-        needs_attention: bigint; has_conflicts: bigint;
+        needs_attention: bigint; has_conflicts: bigint; ci_failing: bigint;
       }>>(`
         WITH base AS (
           SELECT
@@ -594,18 +630,20 @@ const { repo, govState, search } = input;
               END
             ) AS gov_state,
             COALESCE(gs.needs_editor_attention, false) AS needs_attention,
-            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts
+            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts,
+            ${ciExpr} AS ci_failing
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
-            AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
+            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
             AND COALESCE(gs.category, '') != 'Tooling'
         )
         SELECT
           COUNT(*) FILTER (WHERE needs_attention)::bigint AS needs_attention,
-          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts
+          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts,
+          COUNT(*) FILTER (WHERE ci_failing)::bigint AS ci_failing
         FROM base
         WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
           AND ($3::text IS NULL OR (
@@ -613,7 +651,7 @@ const { repo, govState, search } = input;
             OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
             OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
           ))
-      `, repo || null, govStates.length ? govStates : null, search || null);
+      `, repoArg, govStates.length ? govStates : null, search || null);
 
       return {
         processTypes: ptResults.map(r => ({ type: r.process_type, count: Number(r.count) })),
@@ -621,6 +659,7 @@ const { repo, govState, search } = input;
         totalOpen: gsResults.reduce((sum, r) => sum + Number(r.count), 0),
         needsAttention: Number(signalResults[0]?.needs_attention ?? 0),
         hasConflicts: Number(signalResults[0]?.has_conflicts ?? 0),
+        ciFailing: Number(signalResults[0]?.ci_failing ?? 0),
       };
     }),
 
@@ -640,6 +679,7 @@ const { repo, govState, search } = input;
         repo_short: string;
         is_new: boolean;
         wait_days: number;
+        waiting_state: string | null;
         bucket: string;
       }>>(`
         WITH glam AS (
@@ -660,6 +700,7 @@ const { repo, govState, search } = input;
             p.labels @> ARRAY['s-draft']::text[] AS is_s_draft,
             (SELECT COUNT(*) FROM unnest(p.labels) l WHERE l LIKE 's-%') AS status_label_count,
             GREATEST(EXTRACT(DAY FROM (NOW() - COALESCE(gs.waiting_since, p.created_at, NOW())))::int, 0) AS wait_days,
+            gs.current_state AS waiting_state,
             LOWER(COALESCE(p.title, '')) AS lt,
             NULLIF((regexp_match(p.title, '(?:EIP|ERC)-(\\d+)'))[1], '')::int AS eip_num
           FROM pull_requests p
@@ -668,7 +709,7 @@ const { repo, govState, search } = input;
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
         )
-        SELECT pr_number, title, author, repo_name, repo_short, is_new, wait_days,
+        SELECT pr_number, title, author, repo_name, repo_short, is_new, wait_days, waiting_state,
           CASE
             WHEN is_status_change AND lt ~ 'move to final' THEN 'final'
             WHEN is_status_change AND lt ~ 'move to last call' THEN 'lastcall'
@@ -677,8 +718,14 @@ const { repo, govState, search } = input;
             ELSE 'draft'
           END AS bucket
         FROM base
-        WHERE (is_status_change AND lt ~ 'move to (final|last call|review)')
-           OR (is_s_draft AND status_label_count = 1 AND (is_new OR is_status_change))
+        WHERE
+          -- The office-hour agenda is the editor's review list, so only surface
+          -- PRs that are actually waiting on an editor (not blocked on the author).
+          waiting_state = 'WAITING_ON_EDITOR'
+          AND (
+            (is_status_change AND lt ~ 'move to (final|last call|review)')
+            OR (is_s_draft AND status_label_count = 1 AND (is_new OR is_status_change))
+          )
         ORDER BY repo_short, pr_number DESC
       `);
 
@@ -691,6 +738,7 @@ const { repo, govState, search } = input;
         url: `https://github.com/${r.repo_name}/pull/${r.pr_number}`,
         isNew: r.is_new,
         waitDays: r.wait_days,
+        waitingState: r.waiting_state,
         bucket: r.bucket as 'final' | 'lastcall' | 'review' | 'glamsterdam' | 'draft',
       }));
     }),
@@ -735,6 +783,20 @@ const { repo, govState, search } = input;
         return { ready: false as const, total: 0, totalPages: 1, rows: [] };
       }
 
+      // The CI columns land in a separate scheduler migration, so between
+      // deploying this code and running that migration they may not exist yet.
+      // Degrade gracefully (no CI flag) instead of 500ing the whole agenda.
+      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+        `SELECT EXISTS (
+           SELECT 1 FROM information_schema.columns
+           WHERE table_name = 'pr_governance_state'
+             AND column_name = 'has_failing_required_checks'
+         ) AS has_ci_cols`
+      );
+      const ciSelect = has_ci_cols
+        ? `COALESCE(g.has_failing_required_checks, false) AS ci_failing, g.ci_state, g.failing_checks`
+        : `false AS ci_failing, NULL::text AS ci_state, NULL::text[] AS failing_checks`;
+
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
         title: string;
@@ -745,6 +807,9 @@ const { repo, govState, search } = input;
         mentions: unknown;
         next_call_on: string | null;
         waiting_state: string | null;
+        ci_failing: boolean;
+        ci_state: string | null;
+        failing_checks: string[] | null;
         total_count: bigint;
       }>>(
         `
@@ -764,6 +829,7 @@ const { repo, govState, search } = input;
             LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short,
             TO_CHAR(p.created_at, 'YYYY-MM-DD') AS created_at,
             g.current_state AS waiting_state,
+            ${ciSelect},
             pe.eip_number,
             a.issue_number, a.issue_title, a.issue_url, a.series, a.call_number,
             a.occurs_on, a.mentioned_by, a.snippet, a.source, a.source_url
@@ -783,6 +849,7 @@ const { repo, govState, search } = input;
         grouped AS (
           SELECT
             pr_number, title, author, repo_short, created_at, waiting_state,
+            ci_failing, ci_state, failing_checks,
             ARRAY_AGG(DISTINCT eip_number) AS eip_numbers,
             -- TO_CHAR, not the bare DATE: node-postgres hydrates DATE columns into
             -- JS Date objects at local midnight, so a 2025-03-13 call comes back as
@@ -799,7 +866,8 @@ const { repo, govState, search } = input;
               'eip', eip_number
             )) AS mentions
           FROM matched
-          GROUP BY pr_number, title, author, repo_short, created_at, waiting_state
+          GROUP BY pr_number, title, author, repo_short, created_at, waiting_state,
+                   ci_failing, ci_state, failing_checks
         )
         SELECT *, COUNT(*) OVER()::bigint AS total_count
         FROM grouped
@@ -829,6 +897,9 @@ const { repo, govState, search } = input;
           eipNumbers: r.eip_numbers ?? [],
           nextCallOn: r.next_call_on,
           waitingOn: r.waiting_state,
+          ciFailing: r.ci_failing ?? false,
+          ciState: r.ci_state,
+          failingChecks: r.failing_checks ?? [],
           mentions: (r.mentions ?? []) as Array<{
             issueNumber: number;
             issueTitle: string | null;

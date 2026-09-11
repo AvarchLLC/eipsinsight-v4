@@ -140,7 +140,7 @@ export default function EditorReviewQueueSection({
           </div>
           <p className={sectionSubtitleClass}>
             Open PRs currently waiting on editor action in the{' '}
-            <Link href="/board" className="text-primary underline-offset-2 hover:underline">
+            <Link href="/officehours/board" className="text-primary underline-offset-2 hover:underline">
               Editing Board
             </Link>
             .

@@ -1,0 +1,907 @@
+[
+{
+"start": "00:00:00",
+"end": "00:00:02",
+"text": "Cybercentry: Good evening."
+},
+{
+"start": "00:00:03",
+"end": "00:00:05",
+"text": "Pooja Ranjan: Evening."
+},
+{
+"start": "00:00:05",
+"end": "00:00:07",
+"text": "Pooja Ranjan: If everyone can just drop."
+},
+{
+"start": "00:00:07",
+"end": "00:00:14",
+"text": "Pooja Ranjan: their Pr. In the chat. It will be easier to pick it up from there when Sam joins. Okay, he's already here."
+},
+{
+"start": "00:00:18",
+"end": "00:00:20",
+"text": "Pooja Ranjan: Yes, ma'am."
+},
+{
+"start": "00:00:21",
+"end": "00:00:24",
+"text": "Arhemius: duplicated in case someone could not see."
+},
+{
+"start": "00:00:25",
+"end": "00:00:26",
+"text": "Sam: Hello."
+},
+{
+"start": "00:00:26",
+"end": "00:00:31",
+"text": "Pooja Ranjan: Yeah, yeah, sorry. Yeah, now I can see it here."
+},
+{
+"start": "00:00:37",
+"end": "00:00:39",
+"text": "Pooja Ranjan: Hmm. Okay."
+},
+{
+"start": "00:00:42",
+"end": "00:00:48",
+"text": "Pooja Ranjan: Alright, I think we will wait for just one minute, and we can get started."
+},
+{
+"start": "00:01:11",
+"end": "00:01:16",
+"text": "Pooja Ranjan: Akash, can you please confirm when the stream is moved over?"
+},
+{
+"start": "00:01:28",
+"end": "00:01:29",
+"text": "Akash | ECH: Yeah, we are live."
+},
+{
+"start": "00:01:31",
+"end": "00:01:32",
+"text": "Pooja Ranjan: Thank you."
+},
+{
+"start": "00:01:32",
+"end": "00:01:40",
+"text": "Pooja Ranjan: Welcome to EIP Editing Office Hour meeting number 111. This is added."
+},
+{
+"start": "00:01:40",
+"end": "00:01:49",
+"text": "Pooja Ranjan: on Ethereum slash PM repo. Issue number is 2192. We are joined by Editor Sam Wilson here."
+},
+{
+"start": "00:01:49",
+"end": "00:01:56",
+"text": "Pooja Ranjan: Today on agenda, we have a few PRs related to ACD. We are joined by some authors to…"
+},
+{
+"start": "00:01:56",
+"end": "00:02:00",
+"text": "Pooja Ranjan: Maybe we can get started with the…"
+},
+{
+"start": "00:02:00",
+"end": "00:02:05",
+"text": "Pooja Ranjan: I don't know. If you want to go ahead and get started with authors, then we have the PR."
+},
+{
+"start": "00:02:04",
+"end": "00:02:06",
+"text": "Sam: Yeah, we could do some authors. Yeah."
+},
+{
+"start": "00:02:06",
+"end": "00:02:13",
+"text": "Pooja Ranjan: Yep. So the first one is ERC PR number 1942."
+},
+{
+"start": "00:02:13",
+"end": "00:02:17",
+"text": "Sam: One, nine, four, two."
+},
+{
+"start": "00:02:18",
+"end": "00:02:20",
+"text": "Pooja Ranjan: on ERC."
+},
+{
+"start": "00:02:26",
+"end": "00:02:28",
+"text": "Sam: All right."
+},
+{
+"start": "00:02:28",
+"end": "00:02:32",
+"text": "Pooja Ranjan: And we are joined by Cyber Century in case there is any question."
+},
+{
+"start": "00:02:33",
+"end": "00:02:37",
+"text": "Sam: Cool. Did you have any specific questions about this or just want to review?"
+},
+{
+"start": "00:02:37",
+"end": "00:02:42",
+"text": "Cybercentry: Hey, Sam. Yeah, it's, um, it's just a review on this one. It's, um…"
+},
+{
+"start": "00:02:42",
+"end": "00:02:46",
+"text": "Cybercentry: It's been running through the mill now for a few weeks."
+},
+{
+"start": "00:02:46",
+"end": "00:02:50",
+"text": "Cybercentry: reference implementations complete."
+},
+{
+"start": "00:02:50",
+"end": "00:02:53",
+"text": "Cybercentry: And it's your first look."
+},
+{
+"start": "00:02:50",
+"end": "00:02:51",
+"text": "Sam: Okay."
+},
+{
+"start": "00:02:55",
+"end": "00:03:02",
+"text": "Sam: Uh, token launch would be statutory remediation, statutory proposal that's planned, uh…"
+},
+{
+"start": "00:03:02",
+"end": "00:03:04",
+"text": "Sam: Alright."
+},
+{
+"start": "00:03:06",
+"end": "00:03:20",
+"text": "Sam: Uh, this is to be used by token buyers, and we're finding their buyers, but I'm going to install reachable on a specificity project. I have 11 buyers, which profile, score from version 12, single biggest factor."
+},
+{
+"start": "00:03:24",
+"end": "00:03:26",
+"text": "Sam: Talk."
+},
+{
+"start": "00:08:01",
+"end": "00:08:02",
+"text": "Sam: Okay…"
+},
+{
+"start": "00:11:54",
+"end": "00:11:57",
+"text": "Sam: Mm-hmm. Mm-hmm."
+},
+{
+"start": "00:11:59",
+"end": "00:12:02",
+"text": "Sam: Okay…"
+},
+{
+"start": "00:12:02",
+"end": "00:12:05",
+"text": "Sam: So… Seems fine, um…"
+},
+{
+"start": "00:12:07",
+"end": "00:12:18",
+"text": "Sam: Yeah, there's quite a bit left here, so I'm probably just going to save this for after the call. Um, the only other immediate comment that I'd like to make is, um…"
+},
+{
+"start": "00:12:20",
+"end": "00:12:24",
+"text": "Sam: Your reference implementation seems quite large."
+},
+{
+"start": "00:12:26",
+"end": "00:12:37",
+"text": "Sam: Which isn't necessarily a bad thing, but you might want to add a README that actually links to all of the relevant files, because it doesn't generate directory listings, so you won't be able to navigate to them."
+},
+{
+"start": "00:12:37",
+"end": "00:12:39",
+"text": "Sam: And, um…"
+},
+{
+"start": "00:12:40",
+"end": "00:12:53",
+"text": "Sam: try to keep it minimal, like, I haven't looked at it, I don't know, maybe it is minimal, but, um, yeah, just a note on keeping it nice, small, and compact. Um, yeah, so I'll finish this up after, and we'll move on to the next, uh, the next author."
+},
+{
+"start": "00:12:52",
+"end": "00:12:54",
+"text": "Cybercentry: Thank you, Sam."
+},
+{
+"start": "00:12:53",
+"end": "00:12:55",
+"text": "Pooja Ranjan: Okay."
+},
+{
+"start": "00:12:55",
+"end": "00:13:02",
+"text": "Pooja Ranjan: From the same author, I guess there is a PR for 1952, which is about the stagnant bot for the second review."
+},
+{
+"start": "00:13:02",
+"end": "00:13:05",
+"text": "Pooja Ranjan: 1 9 5 2."
+},
+{
+"start": "00:13:04",
+"end": "00:13:06",
+"text": "Sam: Yep."
+},
+{
+"start": "00:13:07",
+"end": "00:13:08",
+"text": "Sam: Two."
+},
+{
+"start": "00:13:19",
+"end": "00:13:22",
+"text": "Sam: Alright, what's going on here?"
+},
+{
+"start": "00:13:54",
+"end": "00:14:02",
+"text": "Sam: Okay, so this is completely replacing it with a different, okay. So yeah, this will also be something I review offline."
+},
+{
+"start": "00:14:02",
+"end": "00:14:20",
+"text": "Pooja Ranjan: Very well. Yeah, I mean, I understand this is, like, for big or new PRs, it would be, like, longer review time, so we can maybe touch on whatever is here, and, yeah, address any question. The next one is by Arthur Arimas, and the PR number is 1909."
+},
+{
+"start": "00:14:21",
+"end": "00:14:24",
+"text": "Sam: 1 9 0 9."
+},
+{
+"start": "00:14:58",
+"end": "00:15:01",
+"text": "Sam: Okay, this one should be nice and quick then."
+},
+{
+"start": "00:15:24",
+"end": "00:15:27",
+"text": "Sam: Okay."
+},
+{
+"start": "00:15:27",
+"end": "00:15:33",
+"text": "Sam: Give this a quick little scan here, and I think we'll be good. So…"
+},
+{
+"start": "00:15:33",
+"end": "00:15:36",
+"text": "Sam: That's that. And then…"
+},
+{
+"start": "00:15:52",
+"end": "00:15:57",
+"text": "Sam: Yeah, and that hasn't changed, so I'm okay with this. Let's go."
+},
+{
+"start": "00:16:05",
+"end": "00:16:08",
+"text": "Sam: All right, where are we off to next?"
+},
+{
+"start": "00:16:08",
+"end": "00:16:14",
+"text": "Pooja Ranjan: The next is 1910 and author is Avris Holding."
+},
+{
+"start": "00:16:08",
+"end": "00:16:09",
+"text": "Arhemius: Thank you."
+},
+{
+"start": "00:16:42",
+"end": "00:16:43",
+"text": "Sam: Okay."
+},
+{
+"start": "00:16:43",
+"end": "00:16:45",
+"text": "Sam: Okay."
+},
+{
+"start": "00:17:46",
+"end": "00:17:47",
+"text": "Sam: Okay."
+},
+{
+"start": "00:17:49",
+"end": "00:17:54",
+"text": "Sam: Agent Memory State Registry. Authorized codes to provide agent memory state transitions. Okay."
+},
+{
+"start": "00:17:56",
+"end": "00:18:03",
+"text": "Sam: CRC defines a minimal registry interface for committing authorized state transitions of autonomous agent memory without placing a memory in common."
+},
+{
+"start": "00:22:23",
+"end": "00:22:26",
+"text": "Sam: Okay."
+},
+{
+"start": "00:22:27",
+"end": "00:22:30",
+"text": "Sam: Okay…"
+},
+{
+"start": "00:22:57",
+"end": "00:23:00",
+"text": "Sam: So that's easy enough."
+},
+{
+"start": "00:23:00",
+"end": "00:23:01",
+"text": "Sam: And…"
+},
+{
+"start": "00:23:02",
+"end": "00:23:09",
+"text": "Sam: And then we need to add some two in there. And then this is pretty decent. All right."
+},
+{
+"start": "00:23:13",
+"end": "00:23:15",
+"text": "Sam: Where are we off to next, Pooja?"
+},
+{
+"start": "00:23:15",
+"end": "00:23:21",
+"text": "Pooja Ranjan: So the next is a PR number 1919 by Faisal Firdani."
+},
+{
+"start": "00:23:21",
+"end": "00:23:24",
+"text": "Sam: 1919."
+},
+{
+"start": "00:23:26",
+"end": "00:23:29",
+"text": "Sam: And just to review, or were there specific questions?"
+},
+{
+"start": "00:23:30",
+"end": "00:23:36",
+"text": "Pooja Ranjan: Faisal, I see there are two PR numbers. If you have any particular questions, please share."
+},
+{
+"start": "00:23:46",
+"end": "00:23:47",
+"text": "Sam: Let's see."
+},
+{
+"start": "00:23:46",
+"end": "00:23:48",
+"text": "Pooja Ranjan: Uh, looks like, uh…"
+},
+{
+"start": "00:23:48",
+"end": "00:23:52",
+"text": "Pooja Ranjan: He dropped or maybe disconnected."
+},
+{
+"start": "00:23:52",
+"end": "00:23:55",
+"text": "Pooja Ranjan: Would you want to go to the next author who's on the call?"
+},
+{
+"start": "00:23:54",
+"end": "00:23:55",
+"text": "Zexo: um…"
+},
+{
+"start": "00:23:55",
+"end": "00:23:59",
+"text": "Zexo: I, I just need only review, yeah, sorry, my connection."
+},
+{
+"start": "00:23:55",
+"end": "00:23:57",
+"text": "Pooja Ranjan: Oh."
+},
+{
+"start": "00:23:58",
+"end": "00:24:00",
+"text": "Pooja Ranjan: No problem. Please go ahead."
+},
+{
+"start": "00:24:00",
+"end": "00:24:03",
+"text": "Zexo: Yeah, I just finished the last treatment."
+},
+{
+"start": "00:24:04",
+"end": "00:24:06",
+"text": "Zexo: Mmhm."
+},
+{
+"start": "00:24:27",
+"end": "00:24:28",
+"text": "Sam: Okay."
+},
+{
+"start": "00:25:02",
+"end": "00:25:05",
+"text": "Sam: Tenants approved. The proposal is divided."
+},
+{
+"start": "00:26:20",
+"end": "00:26:24",
+"text": "Sam: Okay, there are quite a few changes here, so."
+},
+{
+"start": "00:26:24",
+"end": "00:26:25",
+"text": "Sam: Okay."
+},
+{
+"start": "00:26:35",
+"end": "00:26:48",
+"text": "Sam: Okay, confidential agent policy verdict. So, pre-execution law denying interference for agent actions from zero knowledge against the policy never disclosed on-chain. Okay, this policy…"
+},
+{
+"start": "00:26:49",
+"end": "00:26:54",
+"text": "Sam: Except this number revealed on a chain plus a domain, which is ."
+},
+{
+"start": "00:26:54",
+"end": "00:26:56",
+"text": "Sam: Two."
+},
+{
+"start": "00:26:56",
+"end": "00:27:11",
+"text": "Sam: The policy engine evaluates a candidate action against a real set and admits proof whose public inputs bind the verdictorian agent identity. The 7812 policy route, the decision was made against that agreement to the action. The action permitted to execute it and expire in a single-use notifier."
+},
+{
+"start": "00:27:11",
+"end": "00:27:15",
+"text": "Sam: Refresh the page."
+},
+{
+"start": "00:31:48",
+"end": "00:31:51",
+"text": "Sam: As far as I can tell, this looks fine."
+},
+{
+"start": "00:31:51",
+"end": "00:31:53",
+"text": "Sam: Have merch, I'm just gonna grab some water."
+},
+{
+"start": "00:31:54",
+"end": "00:31:56",
+"text": "Pooja Ranjan: All right."
+},
+{
+"start": "00:31:56",
+"end": "00:31:58",
+"text": "Zexo: Alright, thank you."
+},
+{
+"start": "00:32:22",
+"end": "00:32:26",
+"text": "Sam: All right, I'm back. So where are we off to next?"
+},
+{
+"start": "00:32:26",
+"end": "00:32:32",
+"text": "Pooja Ranjan: Next, we have 1935 by the same author."
+},
+{
+"start": "00:32:32",
+"end": "00:32:34",
+"text": "Pooja Ranjan: I guess he made two PFs."
+},
+{
+"start": "00:32:36",
+"end": "00:32:38",
+"text": "Sam: Okay."
+},
+{
+"start": "00:32:59",
+"end": "00:33:05",
+"text": "Zexo: Yeah, I think I made a mistake here. I bring another interface into assets, so…"
+},
+{
+"start": "00:33:05",
+"end": "00:33:07",
+"text": "Sam: Okay, yeah, yeah."
+},
+{
+"start": "00:33:07",
+"end": "00:33:08",
+"text": "Sam: Okay."
+},
+{
+"start": "00:33:13",
+"end": "00:33:19",
+"text": "Sam: It's not like it's, um, super important, it's just better if we don't have a bunch of duplicates."
+},
+{
+"start": "00:33:19",
+"end": "00:33:24",
+"text": "Zexo: Yeah, yeah, I just know it. This is in this day, yeah."
+},
+{
+"start": "00:35:40",
+"end": "00:35:43",
+"text": "Zexo: Yeah, that makes sense."
+},
+{
+"start": "00:35:45",
+"end": "00:35:47",
+"text": "Zexo: God bless you, Vietnam."
+},
+{
+"start": "00:37:18",
+"end": "00:37:23",
+"text": "Sam: Yeah, I think this looks good. Just get rid of that."
+},
+{
+"start": "00:37:25",
+"end": "00:37:29",
+"text": "Sam: Interface and this is good to go."
+},
+{
+"start": "00:37:33",
+"end": "00:37:35",
+"text": "Zexo: Okay, cool. Thank you, Samuel."
+},
+{
+"start": "00:37:35",
+"end": "00:37:41",
+"text": "Sam: Oh, no worries. And we should probably try and get some of these. Oh, go ahead."
+},
+{
+"start": "00:37:38",
+"end": "00:37:39",
+"text": "Pooja Ranjan: The last…"
+},
+{
+"start": "00:37:40",
+"end": "00:37:47",
+"text": "Pooja Ranjan: Yeah, yeah, there's a last one on the chat, and that is 1957. Maybe after that, we can get to the final and last columns, yeah."
+},
+{
+"start": "00:37:46",
+"end": "00:37:48",
+"text": "Sam: Sure."
+},
+{
+"start": "00:37:48",
+"end": "00:37:50",
+"text": "Pooja Ranjan: Author is found."
+},
+{
+"start": "00:37:53",
+"end": "00:37:57",
+"text": "Sam: Move to review. Okay."
+},
+{
+"start": "00:38:11",
+"end": "00:38:13",
+"text": "Sam: All right."
+},
+{
+"start": "00:38:38",
+"end": "00:38:53",
+"text": "Sam: CRC defines a trust register that enables agents to establish and query transitive trust relationships as ENFs names is identified. Trust is expressed at four levels, unknown, none, marginal, full, and propagates CRC on the GNU Privacy Guard Web of Trust model."
+},
+{
+"start": "00:38:53",
+"end": "00:38:55",
+"text": "Sam: And."
+},
+{
+"start": "00:39:18",
+"end": "00:39:28",
+"text": "Sam: Okay, so you see there's one defines been approached for multi-party issue coordination."
+},
+{
+"start": "00:39:28",
+"end": "00:39:36",
+"text": "Sam: And defers everything above them, including repudiation to modules and security considerations. Name the gap directly."
+},
+{
+"start": "00:39:38",
+"end": "00:39:46",
+"text": "Sam: A participant can sign collecting intents, mitigate with multi-level slashing reputation. Okay, the CRC provides that trust delegation module."
+},
+{
+"start": "00:39:46",
+"end": "00:39:53",
+"text": "Sam: For coordinating, agents need answers too. Should I include this agent in my coordination? Can I trust the agent's strengths? Okay."
+},
+{
+"start": "00:39:55",
+"end": "00:40:01",
+"text": "Sam: Uh, solves the bootstrap problem. How do you establish trust without an agent, without a centralized registrar?"
+},
+{
+"start": "00:40:01",
+"end": "00:40:03",
+"text": "Sam: the…"
+},
+{
+"start": "00:41:01",
+"end": "00:41:06",
+"text": "Sam: Yeah, there's names already done."
+},
+{
+"start": "00:41:49",
+"end": "00:41:53",
+"text": "Sam: Okay, the CCIP or HP and ERC, yeah, okay."
+},
+{
+"start": "00:41:58",
+"end": "00:42:00",
+"text": "Sam: Okay."
+},
+{
+"start": "00:42:00",
+"end": "00:42:04",
+"text": "Sam: Okay."
+},
+{
+"start": "00:43:12",
+"end": "00:43:16",
+"text": "Sam: 1, 2, 6, 7…"
+},
+{
+"start": "00:43:16",
+"end": "00:43:18",
+"text": "Sam: Should be up here. Yep."
+},
+{
+"start": "00:43:18",
+"end": "00:43:20",
+"text": "Sam: Awesome."
+},
+{
+"start": "00:46:09",
+"end": "00:46:14",
+"text": "Sam: All right, that looks pretty good. I think just a few small changes and that'll be good to go."
+},
+{
+"start": "00:46:15",
+"end": "00:46:18",
+"text": "Pooja Ranjan: All right, so if we go through the…"
+},
+{
+"start": "00:46:15",
+"end": "00:46:18",
+"text": "Sam: And now let's get some of these ACD ones."
+},
+{
+"start": "00:46:18",
+"end": "00:46:30",
+"text": "Pooja Ranjan: So, ACD1s are all new PRs, and it will take time. I believe miscellaneous is the one that requires your attention most. For some reason, it is not accepting interface as a category."
+},
+{
+"start": "00:46:23",
+"end": "00:46:24",
+"text": "Sam: Okay."
+},
+{
+"start": "00:46:26",
+"end": "00:46:28",
+"text": "Sam: Okay."
+},
+{
+"start": "00:46:33",
+"end": "00:46:39",
+"text": "Sam: Oh, because interface has to go in the EIP's repository."
+},
+{
+"start": "00:46:33",
+"end": "00:46:35",
+"text": "Pooja Ranjan: And there is a…"
+},
+{
+"start": "00:46:39",
+"end": "00:46:41",
+"text": "Pooja Ranjan: ERCs, you mean? But…"
+},
+{
+"start": "00:46:41",
+"end": "00:46:42",
+"text": "Sam: EIP."
+},
+{
+"start": "00:46:41",
+"end": "00:46:51",
+"text": "Pooja Ranjan: Oh, okay, got it, got it. So should we just leave a note for the author here that make it into EIP repository instead of ERC? Will that help?"
+},
+{
+"start": "00:46:52",
+"end": "00:46:54",
+"text": "Sam: Yeah, um…"
+},
+{
+"start": "00:46:57",
+"end": "00:47:02",
+"text": "Pooja Ranjan: Yeah, I was surprised, like, why interface is not being accepted here?"
+},
+{
+"start": "00:47:02",
+"end": "00:47:04",
+"text": "Pooja Ranjan: Alright."
+},
+{
+"start": "00:47:04",
+"end": "00:47:12",
+"text": "Pooja Ranjan: But if I remember correctly, there was time when we discussed that there could be some ERC which would be interface, right?"
+},
+{
+"start": "00:47:12",
+"end": "00:47:18",
+"text": "Sam: Um, maybe. I don't know if we ever decided anything on it, um…"
+},
+{
+"start": "00:47:17",
+"end": "00:47:25",
+"text": "Pooja Ranjan: Yeah, okay. No, I mean, it's good that let's keep it out because that's easier to read the structure. So yeah, that makes sense."
+},
+{
+"start": "00:47:25",
+"end": "00:47:27",
+"text": "Pooja Ranjan: Wait a minute."
+},
+{
+"start": "00:47:34",
+"end": "00:47:35",
+"text": "Sam: Cool."
+},
+{
+"start": "00:47:35",
+"end": "00:47:43",
+"text": "Pooja Ranjan: Okay, cool. Next, we can look into proposal moving into final. The PR number is 1956 on ERC."
+},
+{
+"start": "00:47:43",
+"end": "00:47:45",
+"text": "Sam: Okay, cool."
+},
+{
+"start": "00:47:48",
+"end": "00:47:53",
+"text": "Sam: So you said next week or do that now? Let's see, do we have time for this right now?"
+},
+{
+"start": "00:47:51",
+"end": "00:47:55",
+"text": "Pooja Ranjan: Oh, no, no, we can do it now, yeah. So the next is…"
+},
+{
+"start": "00:48:10",
+"end": "00:48:13",
+"text": "Sam: Yeah, nothing new on there. All right."
+},
+{
+"start": "00:48:14",
+"end": "00:48:17",
+"text": "Sam: Let's give this a quick read here…"
+},
+{
+"start": "00:49:35",
+"end": "00:49:39",
+"text": "Sam: Cool. That's nice and easy to approve."
+},
+{
+"start": "00:49:39",
+"end": "00:49:41",
+"text": "Sam: Awesome."
+},
+{
+"start": "00:49:41",
+"end": "00:49:43",
+"text": "Sam: I think that's, uh…"
+},
+{
+"start": "00:49:41",
+"end": "00:49:42",
+"text": "Pooja Ranjan: And we…"
+},
+{
+"start": "00:49:43",
+"end": "00:49:44",
+"text": "Sam: Gonna be about it for me."
+},
+{
+"start": "00:49:45",
+"end": "00:49:47",
+"text": "Sam: Unless there's something else, Greg, we can do?"
+},
+{
+"start": "00:49:45",
+"end": "00:49:46",
+"text": "Pooja Ranjan: Awesome."
+},
+{
+"start": "00:49:47",
+"end": "00:49:52",
+"text": "Pooja Ranjan: I don't know, there are last calls, but it might take time, if you would want to."
+},
+{
+"start": "00:49:52",
+"end": "00:49:54",
+"text": "Pooja Ranjan: There are two last calls."
+},
+{
+"start": "00:49:53",
+"end": "00:49:56",
+"text": "Sam: Let's see if…"
+},
+{
+"start": "00:50:07",
+"end": "00:50:11",
+"text": "Sam: How big is this file? Just generally."
+},
+{
+"start": "00:50:11",
+"end": "00:50:13",
+"text": "Sam: And."
+},
+{
+"start": "00:50:18",
+"end": "00:50:23",
+"text": "Sam: Why is the copyright getting moved down there? That's strange."
+},
+{
+"start": "00:50:23",
+"end": "00:50:25",
+"text": "Sam: Doesn't matter, though."
+},
+{
+"start": "00:50:25",
+"end": "00:50:34",
+"text": "Sam: I could probably do this one. Okay. Classic Jefferson Security C20."
+},
+{
+"start": "00:50:49",
+"end": "00:50:52",
+"text": "Sam: When's your last call deadline? So…"
+},
+{
+"start": "00:50:56",
+"end": "00:50:59",
+"text": "Sam: So, this will have to be changed to…"
+},
+{
+"start": "00:51:04",
+"end": "00:51:06",
+"text": "Sam: 09…"
+},
+{
+"start": "00:51:09",
+"end": "00:51:11",
+"text": "Sam: Oh, 8."
+},
+{
+"start": "00:52:22",
+"end": "00:52:29",
+"text": "Sam: Cool. I'm okay with this one getting approved. Awesome. Thanks everyone. We'll see you next week."
+},
+{
+"start": "00:52:29",
+"end": "00:52:33",
+"text": "Pooja Ranjan: Thank you, Sam. Thank you, everyone, for joining us here today. Take care."
+}
+]

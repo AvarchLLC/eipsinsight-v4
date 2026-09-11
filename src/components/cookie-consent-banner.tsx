@@ -129,7 +129,7 @@ export function CookieConsentBanner() {
                   <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-sm">
                     🍪 We use cookies to enhance your experience, preserve preferences, and understand site usage.{' '}
                     <NextLink
-                      href="/privacy"
+                      href="/privacy-policy"
                       className="font-medium text-primary underline underline-offset-3 hover:text-primary/80 transition-colors"
                     >
                       Learn more

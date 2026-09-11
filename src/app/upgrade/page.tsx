@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { statusBadgeClass } from '@/lib/proposal-status';
 import { getInProgressUpgrades, upgradeRegistry } from '@/data/upgrade-registry';
 import type { UpgradeRegistryEntry } from '@/data/upgrade-registry';
-import { rawData, pairedUpgradeNames, upgradeDescriptions } from '@/data/network-upgrades';
+import { rawData, pairedUpgradeNames, upgradeDescriptions, upgradeMetaEIPs } from '@/data/network-upgrades';
 import { STAGE_ORDER, stageDefinition, stageLabel } from '@/lib/upgrade-stages';
 import { getCachedRecentActivity } from '@/lib/upgrade-data.server';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
@@ -110,6 +110,7 @@ interface LiveUpgradeRow {
   date: string;
   name: string;
   slug?: string;
+  metaEip?: string;
   eipCount: number;
   tagline: string;
 }
@@ -139,7 +140,8 @@ function buildLiveUpgrades(): LiveUpgradeRow[] {
       (forkNames.length > 1 ? forkNames.join(' / ') : (reg?.name ?? forkNames[0]));
     const eipCount = new Set(entries.flatMap((e) => e.eips).filter(isRealEip)).size;
     const tagline = reg?.tagline ?? upgradeDescriptions[forkNames[0]] ?? '';
-    return { date, name, slug: reg?.slug, eipCount, tagline };
+    const metaEip = entries.map((e) => upgradeMetaEIPs[e.upgrade]).find(Boolean);
+    return { date, name, slug: reg?.slug, metaEip, eipCount, tagline };
   });
 
   rows.sort((a, b) => (a.date < b.date ? 1 : -1));
@@ -156,21 +158,23 @@ export default async function UpgradeIndexPage() {
   return (
     <div className="mx-auto w-full max-w-6xl divide-y divide-border/50 px-4 pb-12 pt-8 sm:px-6 [&>*:first-child]:pt-0 [&>*]:py-10">
       {/* Hero */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-            Ethereum upgrades, tracked live
-          </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-            What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
-            there - parsed automatically from meta-EIP commits.
-          </p>
+      <header className="space-y-2.5">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+              Ethereum upgrades, tracked live
+            </h1>
+          </div>
+          <ShareButtons
+            text="Ethereum upgrades, tracked live: what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
+            hashtags={['Ethereum', 'EIPs']}
+            className="shrink-0"
+          />
         </div>
-        <ShareButtons
-          text="Ethereum upgrades, tracked live — what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
-          hashtags={['Ethereum', 'EIPs']}
-          className="shrink-0"
-        />
+        <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
+          What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
+          there, parsed automatically from meta-EIP commits.
+        </p>
       </header>
 
       {/* Upgrade Directory — top of page */}
@@ -197,9 +201,9 @@ export default async function UpgradeIndexPage() {
           accent="violet"
           title="Network upgrades"
           sectionId="network-upgrades"
-          description="The last shipped fork, the one being built now, and what's next — where each stands today."
+          description="The last shipped fork, the one being built now, and what's next, showing where each stands today."
         />
-        <UpgradeTimelineStrip liveCount={2} />
+        <UpgradeTimelineStrip liveCount={4} />
       </section>
 
       {/* Timeline View — schedule preview */}
@@ -339,7 +343,7 @@ export default async function UpgradeIndexPage() {
           accent="green"
           title="Live on mainnet"
           sectionId="live"
-          description="All 22 activated network upgrades, newest first."
+          description={`All ${liveUpgrades.length} activated network upgrades, newest first.`}
           action={
             <Link
               href="/upgrade/archive"
@@ -357,6 +361,7 @@ export default async function UpgradeIndexPage() {
                 <tr className="border-b border-border/70 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <th className="px-4 py-3">Upgrade</th>
                   <th className="px-4 py-3">Activated</th>
+                  <th className="px-4 py-3">Meta EIP</th>
                   <th className="hidden px-4 py-3 sm:table-cell">EIPs</th>
                   <th className="hidden px-4 py-3 md:table-cell">Highlights</th>
                   <th className="px-4 py-3" />
@@ -381,6 +386,18 @@ export default async function UpgradeIndexPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{entry.date}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {entry.metaEip ? (
+                        <Link
+                          href={`/eip/${entry.metaEip.replace('EIP-', '')}`}
+                          className="font-mono text-xs text-primary hover:underline"
+                        >
+                          {entry.metaEip}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                    </td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
                       {entry.eipCount || '—'}
                     </td>
@@ -407,7 +424,7 @@ export default async function UpgradeIndexPage() {
           accent="indigo"
           title="Upgrade analytics"
           sectionId="analytics"
-          description="The numbers behind the upgrades — click any card to see the EIPs, meta EIPs, or authors behind it."
+          description="The numbers behind the upgrades. Click any card to see the EIPs, meta EIPs, or authors behind it."
         />
         <UpgradeStatsPanel />
       </section>

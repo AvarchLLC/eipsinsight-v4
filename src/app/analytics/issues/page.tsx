@@ -310,6 +310,11 @@ export default function IssuesAnalyticsPage() {
         ) : (
           <p className="text-sm text-muted-foreground">No monthly data available.</p>
         )}
+        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          <strong className="text-foreground">Created</strong> and <strong className="text-foreground">Closed</strong> count issues
+          by what happened to them within each month. <strong className="text-foreground">Open EOM</strong> ={" "}
+          <em>Open at End of Month</em>: issues still open on the last day of that month (the running backlog).
+        </p>
       </Section>
 
       <Section id="issue-labels" title="Label distribution" icon={<BarChart3 className="h-4 w-4" />}>

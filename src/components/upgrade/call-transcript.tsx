@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo } from 'react';
-import { Search, Clock, ExternalLink } from 'lucide-react';
+import { Search, Clock, ExternalLink, Copy, Check } from 'lucide-react';
 
 export interface TranscriptCue {
   start: string;
@@ -27,6 +27,7 @@ interface CallTranscriptProps {
 
 export function CallTranscript({ cues, videoUrl }: CallTranscriptProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [copied, setCopied] = useState<'plain' | 'stamped' | null>(null);
 
   const isYoutube = useMemo(() => {
     if (!videoUrl) return false;
@@ -38,6 +39,20 @@ export function CallTranscript({ cues, videoUrl }: CallTranscriptProps) {
     const query = searchQuery.toLowerCase();
     return cues.filter((cue) => cue.text.toLowerCase().includes(query));
   }, [cues, searchQuery]);
+
+  const copyTranscript = async (mode: 'plain' | 'stamped') => {
+    const text =
+      mode === 'stamped'
+        ? filteredCues.map((c) => `[${c.start}] ${c.text}`).join('\n')
+        : filteredCues.map((c) => c.text).join('\n');
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(mode);
+      setTimeout(() => setCopied(null), 1800);
+    } catch {
+      // Clipboard blocked (insecure context / permissions) — no-op.
+    }
+  };
 
   const getTimestampLink = (startStr: string) => {
     if (!videoUrl) return '#';
@@ -56,18 +71,40 @@ export function CallTranscript({ cues, videoUrl }: CallTranscriptProps) {
         <div>
           <h3 className="font-semibold text-foreground text-sm">Transcript</h3>
           <p className="text-xs text-muted-foreground">
-            Search conversation cues. Click timestamps to jump to video recording.
+            Search or copy the conversation. Click timestamps to jump to the recording.
           </p>
         </div>
-        <div className="relative w-full sm:w-64">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search transcript..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-md border border-input bg-background/50 pl-8 pr-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-          />
+        <div className="flex w-full items-center gap-2 sm:w-auto">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search transcript..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-md border border-input bg-background/50 pl-8 pr-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => copyTranscript('plain')}
+            disabled={filteredCues.length === 0}
+            title="Copy transcript text"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input bg-background/50 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            {copied === 'plain' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
+            {copied === 'plain' ? 'Copied' : 'Copy'}
+          </button>
+          <button
+            type="button"
+            onClick={() => copyTranscript('stamped')}
+            disabled={filteredCues.length === 0}
+            title="Copy transcript with timestamps"
+            className="flex shrink-0 items-center gap-1.5 rounded-md border border-input bg-background/50 px-2.5 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+          >
+            {copied === 'stamped' ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Clock className="h-3.5 w-3.5" />}
+            {copied === 'stamped' ? 'Copied' : 'With times'}
+          </button>
         </div>
       </div>
 

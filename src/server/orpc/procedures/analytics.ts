@@ -6461,15 +6461,19 @@ export const analyticsProcedures = {
     .input(z.object({
       limit: z.number().optional().default(10),
       monthYear: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      fromMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
+      toMonth: z.string().regex(/^\d{4}-\d{2}$/).optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
       const now = new Date();
-      const baseDate = input.monthYear
-        ? new Date(`${input.monthYear}-01T00:00:00.000Z`)
-        : new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-      const nextDate = new Date(Date.UTC(baseDate.getUTCFullYear(), baseDate.getUTCMonth() + 1, 1));
-      const monthStart = `${baseDate.getUTCFullYear()}-${String(baseDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
+      const defaultMonth = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+      const effectiveFrom = input.fromMonth ?? input.monthYear ?? defaultMonth;
+      const effectiveTo = input.toMonth ?? input.monthYear ?? defaultMonth;
+
+      const monthStart = `${effectiveFrom}-01`;
+      const [toYear, toMon] = effectiveTo.split('-').map(Number);
+      const nextDate = new Date(Date.UTC(toYear, toMon, 1));
       const nextMonth = `${nextDate.getUTCFullYear()}-${String(nextDate.getUTCMonth() + 1).padStart(2, '0')}-01`;
 
       const allEditors = Array.from(CANONICAL_EIP_EDITORS);
@@ -6872,6 +6876,7 @@ export const analyticsProcedures = {
   getEventDayActivity: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
@@ -6890,14 +6895,15 @@ export const analyticsProcedures = {
         JOIN repositories r ON pe.repository_id = r.id
         WHERE LOWER(pe.actor) = ANY($3::text[])
           AND pe.created_at >= $1::date
-          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND pe.created_at < (COALESCE($4::text, $1::text))::date + INTERVAL '1 day'
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
         GROUP BY DATE_TRUNC('hour', pe.created_at)
         ORDER BY hour ASC
         `,
         targetDate,
         input.repo ?? null,
-        CANONICAL_EIP_EDITOR_LOWER
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.to ?? null
       );
       return results.map((r) => ({
         hour: r.hour.toISOString(),
@@ -6909,19 +6915,23 @@ export const analyticsProcedures = {
   getEventDayTotalPRs: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      // Without `to`: keep the blitz window (15:30–18:00 UTC) so /eipoh100 is
+      // unchanged. With `to`: count distinct PRs across the full day range.
       const [row] = await prisma.$queryRawUnsafe<Array<{ total_prs: bigint }>>(
         `
         SELECT COUNT(DISTINCT pe.pr_number)::bigint AS total_prs
         FROM pr_events pe
         WHERE LOWER(pe.actor) = ANY($2::text[])
-          AND pe.created_at >= $1::date + INTERVAL '15 hours 30 minutes'
-          AND pe.created_at < $1::date + INTERVAL '18 hours'
+          AND pe.created_at >= CASE WHEN $3::text IS NULL THEN $1::date + INTERVAL '15 hours 30 minutes' ELSE $1::date END
+          AND pe.created_at < CASE WHEN $3::text IS NULL THEN $1::date + INTERVAL '18 hours' ELSE ($3)::date + INTERVAL '1 day' END
         `,
         targetDate,
-        CANONICAL_EIP_EDITOR_LOWER
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.to ?? null
       );
       return { totalPRs: Number(row?.total_prs ?? 0) };
     }),
@@ -6929,6 +6939,8 @@ export const analyticsProcedures = {
   getEventDayEditorLeaderboard: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      // Optional range end (inclusive). Omit for a single day (unchanged).
+      to: z.string().optional(),
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
@@ -6953,14 +6965,15 @@ export const analyticsProcedures = {
         JOIN repositories r ON pe.repository_id = r.id
         WHERE LOWER(pe.actor) = ANY($3::text[])
           AND pe.created_at >= $1::date
-          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND pe.created_at < (COALESCE($4::text, $1::text))::date + INTERVAL '1 day'
           AND ($2::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($2))
         GROUP BY pe.actor
         ORDER BY prs_reviewed DESC, total_events DESC
         `,
         targetDate,
         input.repo ?? null,
-        CANONICAL_EIP_EDITOR_LOWER
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.to ?? null
       );
       return results.map((r) => ({
         editor: r.editor,
@@ -7008,6 +7021,7 @@ export const analyticsProcedures = {
   getEventDayStatusChanges: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
@@ -7023,12 +7037,13 @@ export const analyticsProcedures = {
           COUNT(DISTINCT se.eip_id)::bigint AS count
         FROM eip_status_events se
         WHERE se.changed_at >= $1::date
-          AND se.changed_at < $1::date + INTERVAL '1 day'
+          AND se.changed_at < (COALESCE($2::text, $1::text))::date + INTERVAL '1 day'
           AND se.eip_id != 8136
         GROUP BY se.from_status, se.to_status
         ORDER BY count DESC
         `,
-        targetDate
+        targetDate,
+        input.to ?? null
       );
       return results.map((r) => ({
         fromStatus: r.from_status ?? '—',
@@ -7039,9 +7054,60 @@ export const analyticsProcedures = {
       }));
     }),
 
+  /**
+   * The individual proposals whose status changed in the window (not just the
+   * aggregate transition counts). Used by the Office Hours "Status changes"
+   * card so editors can see exactly which EIP/ERC/RIP moved, and jump to it.
+   */
+  getEventDayStatusChangeList: optionalAuthProcedure
+    .input(z.object({
+      date: z.string().optional(),
+      to: z.string().optional(),
+    }))
+    .handler(async ({ input }) => {
+      const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
+      const results = await prisma.$queryRawUnsafe<Array<{
+        eip: string;
+        eip_type: string;
+        title: string;
+        from_status: string | null;
+        to_status: string;
+        changed_at: Date;
+      }>>(
+        `
+        SELECT
+          e.eip_number::text AS eip,
+          CASE WHEN s.category = 'ERC' THEN 'ERC' WHEN r.name LIKE '%RIPs%' THEN 'RIP' ELSE 'EIP' END AS eip_type,
+          e.title,
+          se.from_status,
+          se.to_status,
+          se.changed_at
+        FROM eip_status_events se
+        JOIN eips e ON se.eip_id = e.id
+        LEFT JOIN eip_snapshots s ON s.eip_id = e.id
+        LEFT JOIN repositories r ON se.repository_id = r.id
+        WHERE se.changed_at >= $1::date
+          AND se.changed_at < (COALESCE($2::text, $1::text))::date + INTERVAL '1 day'
+          AND se.eip_id != 8136
+        ORDER BY se.changed_at DESC
+        `,
+        targetDate,
+        input.to ?? null
+      );
+      return results.map((r) => ({
+        eip: r.eip,
+        eipType: r.eip_type,
+        title: r.title,
+        fromStatus: r.from_status ?? '—',
+        toStatus: r.to_status,
+        changedAt: r.changed_at.toISOString(),
+      }));
+    }),
+
   getEventDayHourlyByType: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
@@ -7059,12 +7125,13 @@ export const analyticsProcedures = {
         JOIN repositories r ON pe.repository_id = r.id
         WHERE LOWER(pe.actor) = ANY($2::text[])
           AND pe.created_at >= $1::date
-          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND pe.created_at < (COALESCE($3::text, $1::text))::date + INTERVAL '1 day'
         GROUP BY DATE_TRUNC('hour', pe.created_at), LOWER(SPLIT_PART(r.name, '/', 2))
         ORDER BY hour ASC
         `,
         targetDate,
-        CANONICAL_EIP_EDITOR_LOWER
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.to ?? null
       );
       return results.map((r) => ({
         hour: r.hour.toISOString(),
@@ -7076,6 +7143,7 @@ export const analyticsProcedures = {
   getEventDayProposalBreakdown: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
@@ -7098,12 +7166,13 @@ export const analyticsProcedures = {
         LEFT JOIN eip_snapshots s ON s.eip_id = e.id
         LEFT JOIN repositories r ON se.repository_id = r.id
         WHERE se.changed_at >= $1::date
-          AND se.changed_at < $1::date + INTERVAL '18 hours'
+          AND se.changed_at < CASE WHEN $2::text IS NULL THEN $1::date + INTERVAL '18 hours' ELSE ($2)::date + INTERVAL '1 day' END
           AND se.eip_id != 8136
         GROUP BY proposal_type, COALESCE(NULLIF(s.category, ''), NULLIF(s.type, ''), 'Unknown'), se.to_status
         ORDER BY prs_checked DESC
         `,
-        targetDate
+        targetDate,
+        input.to ?? null
       );
       return results.map(r => ({
         category: r.category ?? 'Unknown',
@@ -7116,6 +7185,7 @@ export const analyticsProcedures = {
   getEventDayPRList: optionalAuthProcedure
     .input(z.object({
       date: z.string().optional(),
+      to: z.string().optional(),
     }))
     .handler(async ({ input }) => {
       const targetDate = input.date ?? new Date().toISOString().slice(0, 10);
@@ -7151,13 +7221,14 @@ export const analyticsProcedures = {
         LEFT JOIN pull_request_eips pei ON pei.pr_number = pe.pr_number AND pei.repository_id = pe.repository_id
         WHERE LOWER(pe.actor) = ANY($2::text[])
           AND pe.created_at >= $1::date
-          AND pe.created_at < $1::date + INTERVAL '1 day'
+          AND pe.created_at < (COALESCE($3::text, $1::text))::date + INTERVAL '1 day'
         GROUP BY pe.pr_number, r.name, repo_type, pr.title, pr.state, pr.merged_at
         ORDER BY MAX(pe.created_at) DESC
         LIMIT 200
         `,
         targetDate,
-        CANONICAL_EIP_EDITOR_LOWER
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.to ?? null
       );
       return results.map(r => ({
         prNumber: r.pr_number,

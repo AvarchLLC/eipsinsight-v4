@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+  AlertTriangle,
   CalendarClock,
   ChevronDown,
   ExternalLink,
@@ -49,6 +50,9 @@ type Row = {
   eipNumbers: number[];
   nextCallOn: string | Date | null;
   waitingOn: string | null;
+  ciFailing: boolean;
+  ciState: string | null;
+  failingChecks: string[];
   mentions: Mention[];
 };
 
@@ -118,6 +122,7 @@ export function AgendaPrsPanel() {
     rows: Row[];
   } | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
+  const [ciOnly, setCiOnly] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 300);
@@ -139,6 +144,10 @@ export function AgendaPrsPanel() {
     if (page > 1) p.set('acd_page', String(page));
     else p.delete('acd_page');
     const qs = p.toString();
+    // Only navigate when the query string actually changes. Without this guard,
+    // router.replace churns the searchParams identity, which re-fires this effect
+    // (searchParams is a dep) and spins an infinite /board navigation loop.
+    if (qs === searchParams.toString()) return;
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
   }, [series, window, waitingOn, debounced, page, pathname, router, searchParams]);
 
@@ -196,34 +205,45 @@ export function AgendaPrsPanel() {
     };
   }, [series, window, waitingOn, debounced, page]);
 
-  const rows = useMemo(() => data?.rows ?? [], [data]);
+  const allRows = useMemo(() => data?.rows ?? [], [data]);
+  const ciFailingCount = useMemo(() => allRows.filter((r) => r.ciFailing).length, [allRows]);
+  // Client-side "CI-blocked" view over the loaded page: reclassified PRs move to
+  // the author bucket, so this lets editors still pull up exactly the ones held
+  // up by failing CI.
+  const rows = useMemo(() => (ciOnly ? allRows.filter((r) => r.ciFailing) : allRows), [allRows, ciOnly]);
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1.5">
-          {SERIES.map((s) => (
-            <button
-              key={s.key || 'all'}
-              type="button"
-              onClick={() => changeSeries(s.key)}
-              className={cn(
-                'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-medium transition-colors',
-                series === s.key
-                  ? 'border-primary/50 bg-primary/10 text-foreground'
-                  : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
-              )}
-            >
-              {s.label}
-            </button>
-          ))}
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+      {/* Filters — each control is a self-contained segmented group so related
+          items (esp. "Waiting on" + its options) never split across rows on
+          small screens; the row wraps *between* groups, never inside one. */}
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {/* Repo / series — segmented */}
+          <div className="inline-flex shrink-0 items-center gap-0.5 rounded-lg border border-border bg-card/70 p-0.5">
+            {SERIES.map((s) => (
+              <button
+                key={s.key || 'all'}
+                type="button"
+                onClick={() => changeSeries(s.key)}
+                className={cn(
+                  'inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium transition-colors',
+                  series === s.key
+                    ? 'bg-primary/15 text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Upcoming toggle */}
           <button
             type="button"
             onClick={() => changeWindow(window === 'all' ? 'upcoming' : 'all')}
             className={cn(
-              'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
+              'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors',
               window === 'upcoming'
                 ? 'border-primary/50 bg-primary/10 text-foreground'
                 : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
@@ -234,37 +254,63 @@ export function AgendaPrsPanel() {
             Upcoming calls only
           </button>
 
-          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-          <span className="text-[11px] font-medium text-muted-foreground">Waiting on</span>
-          {([
-            ['', 'All'],
-            ['editor', 'Editors'],
-            ['author', 'Authors'],
-          ] as const).map(([value, label]) => (
+          {/* Waiting on — label + options stay together as one unit */}
+          <div className="inline-flex shrink-0 items-center gap-1.5">
+            <span className="text-[11px] font-medium text-muted-foreground">Waiting on</span>
+            <div className="inline-flex items-center gap-0.5 rounded-lg border border-border bg-card/70 p-0.5">
+              {([
+                ['', 'All'],
+                ['editor', 'Editors'],
+                ['author', 'Authors'],
+              ] as const).map(([value, label]) => (
+                <button
+                  key={value || 'any'}
+                  type="button"
+                  onClick={() => changeWaitingOn(value)}
+                  className={cn(
+                    'inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium transition-colors',
+                    waitingOn === value
+                      ? 'bg-primary/15 text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                  title={
+                    value === 'editor'
+                      ? 'Only PRs currently waiting on an editor'
+                      : value === 'author'
+                        ? 'Only PRs currently waiting on the author'
+                        : 'All PRs regardless of who they wait on'
+                  }
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* CI-blocked quick filter — surfaces PRs held up by failing required CI
+              (they've been reclassified to "Waiting on Author"). */}
+          {ciFailingCount > 0 && (
             <button
-              key={value || 'any'}
               type="button"
-              onClick={() => changeWaitingOn(value)}
+              onClick={() => setCiOnly((v) => !v)}
               className={cn(
-                'inline-flex h-8 items-center rounded-md border px-2.5 text-xs font-medium transition-colors',
-                waitingOn === value
-                  ? 'border-primary/50 bg-primary/10 text-foreground'
-                  : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
+                'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-medium transition-colors',
+                ciOnly
+                  ? 'border-red-500/50 bg-red-500/15 text-red-700 dark:text-red-300'
+                  : 'border-border bg-card/70 text-muted-foreground hover:border-red-500/40'
               )}
-              title={
-                value === 'editor'
-                  ? 'Only PRs currently waiting on an editor'
-                  : value === 'author'
-                    ? 'Only PRs currently waiting on the author'
-                    : 'All PRs regardless of who they wait on'
-              }
+              title="Show only PRs blocked by failing required CI"
             >
-              {label}
+              <AlertTriangle className="h-3.5 w-3.5" />
+              CI-blocked
+              <span className="rounded-full bg-red-500/20 px-1.5 text-[10px] font-semibold text-red-700 dark:text-red-300">
+                {ciFailingCount}
+              </span>
             </button>
-          ))}
+          )}
         </div>
 
-        <div className="relative w-full sm:max-w-xs">
+        <div className="relative w-full lg:max-w-xs">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             value={search}
@@ -361,6 +407,23 @@ export function AgendaPrsPanel() {
                               ? 'Waiting: author'
                               : row.waitingOn.replace(/_/g, ' ').toLowerCase()}
                         </span>
+                      )}
+
+                      {row.ciFailing && (
+                        <a
+                          href={`https://github.com/ethereum/${REPO_PATH[row.repo] ?? 'EIPs'}/pull/${row.prNumber}/checks`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full border border-red-500/30 bg-red-500/15 px-1.5 py-0.5 text-[10px] font-medium text-red-700 hover:bg-red-500/25 dark:text-red-300"
+                          title={
+                            row.failingChecks.length > 0
+                              ? `Required CI failing: ${row.failingChecks.join(', ')} — the author must fix these before an editor can merge.`
+                              : 'Required CI checks are failing — the author must fix these before an editor can merge.'
+                          }
+                        >
+                          <AlertTriangle className="h-3 w-3" />
+                          CI failing
+                        </a>
                       )}
 
                       <span className="inline-flex shrink-0 flex-wrap items-center gap-1">

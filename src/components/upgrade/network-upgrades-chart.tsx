@@ -441,13 +441,19 @@ export function NetworkUpgradesChart() {
             {allDates.map((date) => {
               const x = xScale(date);
               if (x == null) return null;
+              const formattedDate = new Date(`${date}T00:00:00Z`).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+                timeZone: 'UTC',
+              });
 
               return (
                 <g key={`date-badge-${date}`}>
                   <rect
-                    x={x + xScale.bandwidth() / 2 - 35}
+                    x={x + xScale.bandwidth() / 2 - 42}
                     y={height - margin.bottom + 75}
-                    width={70}
+                    width={84}
                     height={16}
                     fill="#1A202C"
                     stroke="#4A5568"
@@ -457,13 +463,13 @@ export function NetworkUpgradesChart() {
                   />
                   <text
                     x={x + xScale.bandwidth() / 2}
-                    y={height - margin.bottom + 85}
+                    y={height - margin.bottom + 86}
                     textAnchor="middle"
                     fontSize="8"
                     fill="#CBD5E0"
                     fontWeight="600"
                   >
-                    {new Date(date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                    {formattedDate}
                   </text>
                 </g>
               );
@@ -744,10 +750,11 @@ export function NetworkUpgradesChart() {
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     <span>
                       📅{' '}
-                      {new Date(hoveredData.date).toLocaleDateString('en-US', {
+                      {new Date(`${hoveredData.date}T00:00:00Z`).toLocaleDateString('en-US', {
                         month: 'short',
                         day: 'numeric',
                         year: 'numeric',
+                        timeZone: 'UTC',
                       })}
                     </span>
                     {upgradeData?.blockNumber && (

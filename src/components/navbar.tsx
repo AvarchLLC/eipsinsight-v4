@@ -22,6 +22,9 @@ import {
   Info,
   ArrowUpRight,
   Flame,
+  Video,
+  CalendarClock,
+  Boxes,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -33,7 +36,6 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { usePersonaStore } from "@/stores/personaStore";
 import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
 import { PERSONAS, PERSONA_LIST, type Persona } from "@/lib/persona";
-import { FEATURES } from "@/lib/features";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -77,12 +79,38 @@ const mobileNavSections = [
     label: "Upgrades",
     items: [
       { title: "Overview", href: "/upgrade", icon: Package },
-      { title: "EIP Upgrade Directory", href: "/upgrade/eips", icon: Package },
-      { title: "Archive", href: "/upgrade/archive", icon: Package },
-      { title: "Pectra", href: "/upgrade/pectra", icon: Package },
-      { title: "Fusaka", href: "/upgrade/fusaka", icon: Package },
-      { title: "Glamsterdam", href: "/upgrade/glamsterdam", icon: Package },
+      { title: "Upgrade EIP Directory", href: "/upgrade/eips", icon: Package },
       { title: "Hegotá", href: "/upgrade/hegota", icon: Package },
+      { title: "Glamsterdam", href: "/upgrade/glamsterdam", icon: Package },
+      { title: "Fusaka", href: "/upgrade/fusaka", icon: Package },
+      { title: "Previous Upgrades", href: "/upgrade/archive", icon: Package },
+      { title: "Devnets", href: "/upgrade/devnets", icon: Package },
+      { title: "Schedule", href: "/upgrade/schedule", icon: Package },
+    ],
+  },
+  {
+    label: "Protocol Calls",
+    items: [
+      { title: "All Calls", href: "/calls", icon: Video },
+      { title: "ACD Calls", href: "/calls?series=acd#recent", icon: Video },
+      { title: "Breakout Calls", href: "/calls?series=breakouts#recent", icon: Video },
+      { title: "Decisions", href: "/decisions", icon: Video },
+    ],
+  },
+  {
+    label: "EIP Office Hours",
+    items: [
+      { title: "Overview", href: "/officehours", icon: CalendarClock },
+      { title: "Board", href: "/officehours/board", icon: CalendarClock },
+      { title: "PR Analytics", href: "/officehours/prs", icon: CalendarClock },
+      { title: "Calls", href: "/officehours/calls", icon: CalendarClock },
+    ],
+  },
+  {
+    label: "EIPIP Meetings",
+    items: [
+      { title: "Overview", href: "/eipip", icon: CalendarClock },
+      { title: "Meetings", href: "/eipip/calls", icon: CalendarClock },
     ],
   },
   {
@@ -91,7 +119,7 @@ const mobileNavSections = [
       { title: "Analytics Home", href: "/analytics", icon: LineChart },
       { title: "EIPs", href: "/analytics/eips", icon: LineChart },
       { title: "PRs", href: "/analytics/prs", icon: LineChart },
-      { title: "Editors Leadership Board", href: "/analytics/editors", icon: LineChart },
+      { title: "Editors Leaderboard", href: "/analytics/editors", icon: LineChart },
       { title: "Reviewers", href: "/analytics/reviewers", icon: LineChart },
       { title: "Authors", href: "/analytics/authors", icon: LineChart },
       { title: "Contributors", href: "/analytics/contributors", icon: LineChart },
@@ -103,10 +131,10 @@ const mobileNavSections = [
     label: "Tools",
     items: [
       { title: "Tools Home", href: "/tools", icon: Wrench },
-      { title: "Open PR Board", href: "/board", icon: Wrench },
       { title: "EIP Builder", href: "/eip-builder", icon: Wrench },
-      { title: "Dependencies", href: "/dependencies", icon: Wrench },
       { title: "Timeline", href: "/timeline", icon: Wrench },
+      { title: "Dependencies", href: "/dependencies", icon: Wrench },
+      { title: "Account Abstraction", href: "/aa", icon: Boxes },
     ],
   },
   {
@@ -116,6 +144,8 @@ const mobileNavSections = [
       { title: "Blogs", href: "/resources/blogs", icon: BookOpen },
       { title: "Videos", href: "/resources/videos", icon: BookOpen },
       { title: "News", href: "/resources/news", icon: BookOpen },
+      { title: "FAQ", href: "/resources/faq", icon: BookOpen },
+      { title: "Milestones", href: "/resources/milestones", icon: BookOpen },
       { title: "About Us", href: "/about", icon: Info },
     ],
   },
@@ -173,6 +203,8 @@ export default function Navbar() {
   const { data: session } = useSession();
   const { persona, setPersona, isHydrated } = usePersonaStore();
   const { syncPersonaToServer, isAuthenticated } = usePersonaSyncOnChange();
+  // Persona is being deprecated — the navbar switcher stays wired but hidden.
+  const SHOW_PERSONA_SWITCHER: boolean = false;
 
   const userName = session?.user?.name ?? session?.user?.email;
 
@@ -259,18 +291,29 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* CENTER: Search (Desktop) - Flex grow to center */}
+          {/* CENTER: full search bar when there's room (lg+); a clear search
+              icon-link on medium widths where the sidebar squeezes the header so
+              the field doesn't collapse into an ambiguous, "unresponsive" sliver. */}
           <div className="hidden md:flex min-w-0 flex-1 justify-center px-2 lg:px-4">
-            <div className="w-full max-w-xl">
+            <div className="hidden w-full max-w-xl xl:block">
               <SearchBar />
             </div>
+            <Link
+              href="/search"
+              aria-label="Search EIPs, ERCs, RIPs"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground xl:hidden"
+            >
+              <Search className="h-4 w-4" />
+              <span>Search</span>
+            </Link>
           </div>
 
           {/* RIGHT: Theme + Persona + Profile (Desktop) */}
           <div className="hidden md:flex items-center justify-end gap-1.5 shrink-0 basis-[220px] min-w-[220px]">
             <ThemeToggle variant="switch" className="shrink-0" />
             {/* Compact Persona Switcher */}
-            {FEATURES.PERSONA_SWITCHER && isHydrated && (
+            {/* Persona switcher removed from navbar (persona is being deprecated). */}
+            {SHOW_PERSONA_SWITCHER && isHydrated && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <div className="relative">
@@ -445,19 +488,19 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="border-t border-border bg-background/98 backdrop-blur-xl md:hidden">
           <div className="space-y-3 px-4 py-4">
-            {/* Mobile Search */}
-            <div className="relative">
+            {/* Mobile Search — links to the full search page (the bare input here
+                had no handlers, so it did nothing when tapped). */}
+            <Link
+              href="/search"
+              onClick={() => setMobileOpen(false)}
+              className={cn(
+                "relative flex h-9 w-full items-center rounded-md border border-border bg-muted/60 px-10 text-sm text-muted-foreground",
+                "transition-colors hover:border-primary/40 hover:text-foreground"
+              )}
+            >
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="search"
-                placeholder="Search EIPs, ERCs, RIPs, authors…"
-                className={cn(
-                  "h-9 w-full rounded-md border border-border bg-muted/60 px-10 text-sm text-foreground",
-                  "placeholder:text-muted-foreground",
-                  "focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                )}
-              />
-            </div>
+              Search EIPs, ERCs, RIPs, authors…
+            </Link>
 
             {/* Mobile Navigation (compact + expandable) */}
             <div className="space-y-3">
@@ -559,7 +602,8 @@ export default function Navbar() {
             {/* Mobile Persona + Auth Row */}
             <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
               {/* Persona */}
-              {FEATURES.PERSONA_SWITCHER && isHydrated && (
+              {/* Persona switcher removed from navbar (persona is being deprecated). */}
+            {SHOW_PERSONA_SWITCHER && isHydrated && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <button 

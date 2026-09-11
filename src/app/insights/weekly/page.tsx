@@ -7,10 +7,8 @@ import {
   CalendarClock,
   FileText,
   GitMerge,
-  Loader2,
   PhoneCall,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
 } from "lucide-react";
 import {
@@ -28,6 +26,7 @@ import { cn } from "@/lib/utils";
 import { statusBadgeClass } from "@/lib/proposal-status";
 import { CHART_SERIES, CHART_AXIS, CHART_GRID } from "@/lib/chart-colors";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { PageHeader } from "@/components/header";
 
 type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
 
@@ -96,23 +95,22 @@ export default function WeeklyStoryPage() {
   const hasActivity = activity.some((a) => a.value > 0);
 
   return (
-    <div className="page-shell space-y-8 py-8">
-      {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary">
-            <Sparkles className="h-3.5 w-3.5" />
-            Weekly recap
-          </div>
-          <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight sm:text-4xl">
-            This week in EIPs
-          </h1>
-          <p className="mt-1.5 max-w-2xl text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-            {loading || !data
-              ? "A short, data-driven story of the latest movement across proposals, pull requests, and protocol calls."
-              : buildNarrative(data, days)}
-          </p>
-        </div>
+    <div className="w-full space-y-6 pb-6">
+      <PageHeader
+        eyebrow="Insights"
+        indicator={{ icon: "sparkles", label: "Weekly", pulse: !loading && !!data }}
+        title="This week in EIPs"
+        description={
+          loading || !data
+            ? "A short, data-driven story of the latest movement across proposals, pull requests, and protocol calls."
+            : buildNarrative(data, days)
+        }
+        sectionId="weekly"
+        padding="px-0"
+        paddingY="pt-4 pb-3"
+      />
+      {/* Range selector */}
+      <div className="flex justify-end">
         <div className="flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-card/60 p-1">
           {RANGE_OPTIONS.map((opt) => (
             <button
@@ -131,7 +129,7 @@ export default function WeeklyStoryPage() {
             </button>
           ))}
         </div>
-      </header>
+      </div>
 
       {loading ? (
         <div className="rounded-xl border border-border bg-card/60 py-16">

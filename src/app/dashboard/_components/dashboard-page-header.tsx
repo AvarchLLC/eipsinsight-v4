@@ -34,26 +34,15 @@ export function DashboardPageHeader() {
   return (
     <section className="relative w-full">
       <div className="space-y-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1 space-y-1.5">
-            <motion.h1
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl"
-            >
-              Governance Dashboard
-            </motion.h1>
-            <motion.p
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.05 }}
-              className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base"
-            >
-              Ethereum proposals by category, status, and repository - with downloadable reports.
-              Powered by <span className="text-foreground/80">EIPsInsight</span>.
-            </motion.p>
-          </div>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <motion.h1
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl"
+          >
+            Governance Dashboard
+          </motion.h1>
 
           <motion.button
             onClick={() => setIsOpen(!isOpen)}
@@ -76,6 +65,15 @@ export function DashboardPageHeader() {
             )} />
           </motion.button>
         </div>
+        <motion.p
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.05 }}
+          className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base"
+        >
+          Ethereum proposals by category, status, and repository - with downloadable reports.
+          Powered by <span className="text-foreground/80">EIPsInsight</span>.
+        </motion.p>
 
         <AnimatePresence>
           {isOpen && (

@@ -710,9 +710,13 @@ export const cancunTimeline: TimelineDataPoint[] = [
   },
 ];
 
+import { rawData } from '@/data/network-upgrades';
+import { upgradeRegistry } from '@/data/upgrade-registry';
+
 // Helper function to get timeline data for a specific upgrade
 export function getUpgradeTimelineData(slug: string): TimelineDataPoint[] | null {
-  switch (slug.toLowerCase()) {
+  const lc = slug.toLowerCase();
+  switch (lc) {
     case 'frontier':
       return frontierTimeline;
     case 'homestead':
@@ -743,7 +747,26 @@ export function getUpgradeTimelineData(slug: string): TimelineDataPoint[] | null
       return pectraTimeline;
     case 'fusaka':
       return fusakaTimeline;
-    default:
+    default: {
+      const reg = upgradeRegistry[lc];
+      const match = rawData.find(
+        (r) =>
+          r.upgrade.toLowerCase().replace(/[^a-z0-9]/g, '-') === lc ||
+          (reg && r.upgrade === reg.name)
+      );
+      if (match) {
+        return [
+          {
+            date: match.date,
+            included: match.eips.filter((e) => e.startsWith('EIP-') && !e.endsWith('-removed')),
+            scheduled: [],
+            declined: [],
+            considered: [],
+            proposed: [],
+          },
+        ];
+      }
       return null;
+    }
   }
 }

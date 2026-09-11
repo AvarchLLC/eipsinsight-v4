@@ -107,7 +107,7 @@ export default function FAQPage() {
           <h1 className="mt-3 dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
             Frequently Asked Questions
           </h1>
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-1.5 w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
             Quick answers about EIPs, governance, and how EIPsInsight works.
           </p>
         </header>

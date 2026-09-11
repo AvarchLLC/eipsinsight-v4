@@ -93,6 +93,34 @@ export const callsProcedures = {
       }))
     }),
 
+  /**
+   * Upcoming "EIP Editing Office Hour" meetings (from the agenda issues we
+   * ingest). Used by /office-hours as quick-jumps to a meeting's date. Only
+   * upcoming meetings are collected, so this is a shortcut to the next few — the
+   * page's date picker covers any past date.
+   */
+  listOfficeHourMeetings: optionalAuthProcedure
+    .input(z.object({ limit: z.number().int().min(1).max(60).optional().default(20) }))
+    .handler(async ({ input }) => {
+      const rows = await prisma.protocol_calls_upcoming.findMany({
+        where: {
+          occurs_on: { not: null },
+          OR: [
+            { title: { contains: 'Office Hour', mode: 'insensitive' } },
+            { title: { contains: 'Editing Office', mode: 'insensitive' } },
+          ],
+        },
+        orderBy: [{ occurs_on: 'asc' }],
+        take: input.limit,
+      })
+      return rows.map(row => ({
+        title: row.title,
+        date: row.occurs_on!.toISOString().slice(0, 10),
+        issue_number: row.issue_number,
+        issue_url: row.issue_url,
+      }))
+    }),
+
   getCall: optionalAuthProcedure
     .input(z.object({
       series: z.string(),

@@ -8,6 +8,7 @@ import { ArrowLeft, TrendingUp, Filter, Search, Info, ChevronDown, ChevronUp, Do
 import { client } from '@/lib/orpc';
 import { TrendingList, type TrendingProposalRow } from './_components/trending-list';
 import { TrendingHeatmap } from './_components/trending-heatmap';
+import { ExploreTabsHeader } from '../_components/explore-tabs-header';
 
 type RepoFilter = 'all' | 'eips' | 'ercs' | 'rips';
 type SortFilter = 'score_desc' | 'recent_desc' | 'delta_desc';
@@ -180,46 +181,9 @@ function TrendingPageContent() {
 
   return (
     <div className="relative min-h-screen w-full bg-background">
-      <section className="w-full pb-2 pt-4">
+      <ExploreTabsHeader />
+      <section className="w-full pb-2 pt-2">
         <div className="mx-auto w-full px-3 sm:px-4 lg:px-5 xl:px-6">
-          <Link href="/explore" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Explore
-          </Link>
-
-          <motion.header initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className="mb-4 mt-3">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-                  Explore Trending
-                </h1>
-                <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  See what is trending, why it is trending, and jump directly into proposals, PRs, and timelines.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowInfo((prev) => !prev)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-muted/60 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/10 hover:text-foreground"
-              >
-                <Info className="h-4 w-4" />
-                How trending works
-                {showInfo ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
-            </div>
-            {showInfo && (
-              <div className="mt-3 rounded-lg border border-border bg-card/60 p-3">
-                <p className="text-sm text-muted-foreground">
-                  We combine PR activity, discussion, and governance movement in {windowLabel}.
-                </p>
-                <div className="mt-2 grid gap-2 sm:grid-cols-3">
-                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">PR events <strong className="ml-1 text-primary">×2</strong></div>
-                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Comments <strong className="ml-1 text-primary">×1</strong></div>
-                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-xs text-muted-foreground">Status changes <strong className="ml-1 text-primary">×3</strong></div>
-                </div>
-              </div>
-            )}
-          </motion.header>
 
           <div className="sticky top-16 z-20 rounded-xl border border-border bg-card/80 p-3 backdrop-blur-xl">
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-6">

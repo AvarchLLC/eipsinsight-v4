@@ -1356,7 +1356,7 @@ export default function EIPOH100Page() {
               { key: "eips",     href: "/analytics/eips",         icon: FileText,       title: "EIP Analytics",               cta: "Explore EIPs",      blurb: "Analyze proposal activity and lifecycle progress." },
               { key: "upgrades", href: "/upgrade",                 icon: Network,        title: "Network Upgrades",            cta: "Explore Upgrades",  blurb: "Follow upgrade timelines and protocol rollout context." },
               { key: "editors",  href: "/analytics/editors",       icon: Trophy,         title: "Editors Insights",            cta: "Explore Editors",   blurb: "View editorial workload and contribution metrics." },
-              { key: "board",    href: "/board",                   icon: LayoutDashboard, title: "PR Board",                   cta: "Open Board",        blurb: "Review queue, governance states, and PR assignments." },
+              { key: "board",    href: "/officehours/board",                   icon: LayoutDashboard, title: "PR Board",                   cta: "Open Board",        blurb: "Review queue, governance states, and PR assignments." },
               { key: "monthly",  href: "/insights",                icon: ArrowUpDown,    title: "Monthly Insights",            cta: "Explore Monthly",   blurb: "Open month-by-month standards and governance insights." },
             ] as const).map(({ key, href, icon: Icon, title, cta, blurb }) => (
               <Link

@@ -41,6 +41,8 @@ function serializeCuration(row: {
   tradeoffs: unknown
   stakeholder_impacts: unknown
   north_star: unknown
+  enterprise_impact: unknown
+  faq: unknown
   headliner_of: string | null
   headliner_note: string | null
   layer: string | null
@@ -54,6 +56,11 @@ function serializeCuration(row: {
     layer: row.layer === 'EL' || row.layer === 'CL' ? row.layer : null,
     benefits: Array.isArray(row.benefits) ? (row.benefits as string[]) : [],
     tradeoffs: Array.isArray(row.tradeoffs) ? (row.tradeoffs as string[]) : [],
+    faq: Array.isArray(row.faq)
+      ? (row.faq as Array<{ question?: string; answer?: string }>)
+          .map((f) => ({ question: String(f?.question ?? '').trim(), answer: String(f?.answer ?? '').trim() }))
+          .filter((f) => f.question && f.answer)
+      : [],
     stakeholder_impacts:
       row.stakeholder_impacts && typeof row.stakeholder_impacts === 'object'
         ? (row.stakeholder_impacts as Record<string, { description?: string }>)
@@ -61,6 +68,15 @@ function serializeCuration(row: {
     north_star:
       row.north_star && typeof row.north_star === 'object'
         ? (row.north_star as Record<string, { description?: string }>)
+        : null,
+    enterprise_impact:
+      row.enterprise_impact && typeof row.enterprise_impact === 'object'
+        ? (row.enterprise_impact as {
+            tier?: string
+            summary?: string
+            organizations?: Array<{ role?: string; level?: string; why?: string }>
+            readiness?: string
+          })
         : null,
     headliner_of: row.headliner_of,
     headliner_note: row.headliner_note,

@@ -38,6 +38,17 @@ const nextConfig: NextConfig = {
         destination: '/upgrade/schedule',
         permanent: false,
       },
+      // Aliases for the Lucid / encrypted-mempool project page.
+      {
+        source: '/mempool',
+        destination: '/lucid',
+        permanent: false,
+      },
+      {
+        source: '/encrypted-mempool',
+        destination: '/lucid',
+        permanent: false,
+      },
       // Analytics merged into the main /upgrade page (#analytics section).
       {
         source: '/upgrade/analytics',
@@ -253,6 +264,26 @@ const nextConfig: NextConfig = {
         destination: 'https://docs.eipsinsight.com/',
         permanent: true,
       },
+      {
+        source: '/office-hours',
+        destination: '/officehours',
+        permanent: true,
+      },
+            {
+        source: '/oh',
+        destination: '/officehours',
+        permanent: true,
+      },
+                  {
+        source: '/office-hour',
+        destination: '/officehours',
+        permanent: true,
+      },
+                        {
+        source: '/officehour',
+        destination: '/officehours',
+        permanent: true,
+      }
     ];
   },
 };

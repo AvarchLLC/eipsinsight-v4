@@ -4,10 +4,12 @@ import Link from "next/link";
 import { Bug, Globe, Heart, Linkedin, Twitter, Youtube } from "lucide-react";
 import { ThemedLogoGif } from "@/components/themed-logo-gif";
 
-const productLinks = [
+const baseProductLinks = [
   { name: "All", href: "/standards" },
   { name: "Status", href: "/standards?view=status" },
-  { name: "March 2026 Insights", href: "/insights/2026/3" },
+];
+
+const staticOtherLinks = [
   { name: "About Us", href: "/about" },
   { name: "Resources", href: "/resources" },
 ];
@@ -27,6 +29,18 @@ const socialLinks = [
 ];
 
 export default function Footer() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const monthName = now.toLocaleString("en-US", { month: "long" });
+
+  const productLinks = [
+    { name: "All", href: "/standards" },
+    { name: "Status", href: "/standards?view=status" },
+    { name: `${monthName} ${year} Insights`, href: `/insights/${year}/${month}` },
+    { name: "About Us", href: "/about" },
+    { name: "Resources", href: "/resources" },
+  ];
   return (
     <footer className="relative border-t border-border bg-background">
       <div className="absolute inset-x-0 top-0 h-px bg-linear-to-r from-transparent via-primary/50 to-transparent" />
@@ -48,7 +62,15 @@ export default function Footer() {
             </Link>
 
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-muted-foreground">
-              Build With <Heart className="mx-1 inline h-3.5 w-3.5 text-primary" /> by Avarch
+              Build With <Heart className="mx-1 inline h-3.5 w-3.5 text-primary" /> by{" "}
+              <a
+                href="https://avarch.org"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium text-foreground underline-offset-2 hover:text-primary hover:underline"
+              >
+                Avarch
+              </a>
             </p>
 
             <p className="mt-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

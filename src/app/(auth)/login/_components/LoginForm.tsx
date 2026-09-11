@@ -183,7 +183,7 @@ export default function LoginForm() {
             <div className="text-center text-xs text-muted-foreground">
               By continuing, you agree to our{" "}
               <Link href="/terms" className="text-primary hover:text-primary/80 hover:underline">Terms of Service</Link>{" "}and{" "}
-              <Link href="/privacy" className="text-primary hover:text-primary/80 hover:underline">Privacy Policy</Link>
+              <Link href="/privacy-policy" className="text-primary hover:text-primary/80 hover:underline">Privacy Policy</Link>
             </div>
 
             <div className="rounded-lg border border-amber-400/30 bg-amber-500/10 p-3 text-xs text-amber-700 dark:text-amber-300">

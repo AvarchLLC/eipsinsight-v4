@@ -39,6 +39,12 @@ export const env = createEnv({
     COHERE_API_KEY: z.string().min(1).optional(),
     GROQ_API_KEY: z.string().min(1).optional(),
 
+    // BlobLens ClickHouse (optional) — powers the MEV metrics on /lucid.
+    // Reachable from the app server over the internal ba-data network.
+    CLICKHOUSE_URL: z.string().url().optional(),
+    CLICKHOUSE_USER: z.string().min(1).optional(),
+    CLICKHOUSE_PASSWORD: z.string().optional(),
+
     REDIS_URL: z.string().url(),
   },
 
