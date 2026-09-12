@@ -43,6 +43,7 @@ function formatUpcoming(call: { occurs_at: string | null; occurs_on: string | nu
     const date = new Date(call.occurs_at);
     return `${date.toISOString().slice(0, 10)} · ${date.toISOString().slice(11, 16)} UTC`;
   }
+  return call.occurs_on ?? 'Date TBD';
 }
 
 export default async function ProtocolCallsPage() {
