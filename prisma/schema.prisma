@@ -407,6 +407,9 @@ model protocol_calls {
   tldr              Json?
   key_decisions     Json?
   display_name      String?
+  /// Inline WebVTT transcript for series we index ourselves (e.g. ethproofs),
+  /// where there is no ACDbot GitHub artifact to fetch. NULL for ACDbot series.
+  transcript_vtt    String?   @db.Text
   source_updated_at DateTime? @db.Timestamptz(6)
   created_at        DateTime  @default(now()) @db.Timestamptz(6)
   updated_at        DateTime  @default(now()) @db.Timestamptz(6)
