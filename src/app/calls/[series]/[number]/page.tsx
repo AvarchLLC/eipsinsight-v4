@@ -39,6 +39,7 @@ import {
   getRemoteSeries,
   fetchTranscriptCues,
   fetchChatMessages,
+  parseVtt,
 } from '@/lib/call-artifacts';
 
 export const revalidate = 300;
@@ -59,14 +60,16 @@ async function getTranscriptCues(series: string, callId: string) {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
-  if (OFFICE_HOUR_SERIES.has(resolvedParams.series)) {
-    const recap = findOfficeHourRecap(resolvedParams.series, resolvedParams.number);
-    return recap
-      ? buildMetadata({ title: recap.title, description: `Recording, summary, decisions, and transcript for ${recap.title}.`, path: `/calls/${recap.series}/${recap.meeting}`, image: null })
-      : {};
-  }
   const call = await getCachedCall(resolvedParams.series, resolvedParams.number);
-  if (!call) return {};
+  if (!call) {
+    if (OFFICE_HOUR_SERIES.has(resolvedParams.series)) {
+      const recap = findOfficeHourRecap(resolvedParams.series, resolvedParams.number);
+      return recap
+        ? buildMetadata({ title: recap.title, description: `Recording, summary, decisions, and transcript for ${recap.title}.`, path: `/calls/${recap.series}/${recap.meeting}`, image: null })
+        : {};
+    }
+    return {};
+  }
   return buildMetadata({
     title: callDisplayName(call),
     description: `Recording, summary, decisions, and transcript for ${callDisplayName(call)}.`,
@@ -88,17 +91,16 @@ export async function generateStaticParams() {
 export default async function CallDetailPage({ params }: Props) {
   const { series, number } = await params;
 
-  // Static office-hour / EIPIP calls aren't in the protocol_calls pipeline yet;
-  // render them from curated recap data.
-  if (OFFICE_HOUR_SERIES.has(series)) {
-    const recap = findOfficeHourRecap(series, number);
-    if (recap) return <OfficeHourCallView recap={recap} />;
-    notFound();
-  }
-
+  // DB-first: once the scheduler ingests a call (e.g. ethproofs, with an inline
+  // transcript), the full DB-backed view below takes over. Static office-hour /
+  // EIPIP recaps are only the fallback for calls not yet in the pipeline.
   const call = await getCachedCall(series, number);
 
   if (!call) {
+    if (OFFICE_HOUR_SERIES.has(series)) {
+      const recap = findOfficeHourRecap(series, number);
+      if (recap) return <OfficeHourCallView recap={recap} />;
+    }
     notFound();
   }
 
@@ -106,7 +108,13 @@ export default async function CallDetailPage({ params }: Props) {
   const remoteSeries = getRemoteSeries(call.series);
 
   const [transcriptCues, chatMessages] = await Promise.all([
-    call.has_transcript ? getTranscriptCues(call.series, call.call_id) : Promise.resolve(null),
+    // Self-indexed series carry the transcript inline (transcript_vtt); ACDbot
+    // series are fetched from GitHub. Either way we end up with parsed cues.
+    call.transcript_vtt
+      ? Promise.resolve(parseVtt(call.transcript_vtt))
+      : call.has_transcript
+        ? getTranscriptCues(call.series, call.call_id)
+        : Promise.resolve(null),
     call.has_chat ? fetchChatMessages(call.series, call.call_id) : Promise.resolve(null),
   ]);
 

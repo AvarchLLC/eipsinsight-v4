@@ -160,6 +160,9 @@ export const callsProcedures = {
         has_chat: row.has_chat,
         tldr: row.tldr ?? null,
         key_decisions: row.key_decisions ?? null,
+        // Inline transcript for self-indexed series (ethproofs); null for ACDbot
+        // series, where the app fetches the VTT from GitHub instead.
+        transcript_vtt: row.transcript_vtt ?? null,
       }
     }),
 
