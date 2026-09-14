@@ -20,16 +20,28 @@ import { clickhouseConfigured, clickhouseQuery } from '@/lib/clickhouse'
  * `gross_profit_weth * eth_price` (ETH-denominated leg); victim volume is
  * `victim_volume_weth * eth_price`. We deliberately never read the raw
  * `victim_volume_usd` column — it is corrupted upstream (sums to quadrillions).
+ *
+ * Winsorization: a handful of artifact protocol-day rows (mispriced tokens /
+ * decimals bugs — the same dates spike in both legs) carry an implausible
+ * per-attack gross profit. Combined per-attack profit is ~$3 at the median but
+ * the tail reaches tens of thousands of dollars. We cap the *combined* profit
+ * (stablecoin + ETH leg) at $10,000 per sandwich
+ * (`least(usd + weth*price, sandwiches * CAP)`), which clips ~4.3% of rows
+ * (219 of ~5,073) and takes the headline "extracted value" from ~$7.6B to
+ * ~$5.95B since Dencun, while leaving genuine volatility (and Uniswap v3's real
+ * per-trade dominance) intact. Keep this documented so the figure is defensible.
  */
 
 const CACHE_TTL_MS = 300_000 // 5 min
+const PROFIT_CAP_PER_ATTACK = 10_000 // USD, combined per-sandwich gross profit — see winsorization note above
 
 const N = (v: unknown): number => {
   const n = typeof v === 'string' ? Number(v) : (v as number)
   return Number.isFinite(n) ? n : 0
 }
 
-const PROFIT_SQL = 'sum(s.gross_profit_usd) + sum(s.gross_profit_weth * coalesce(p.price_usd, 2500.0))'
+// Combined-leg gross profit, winsorized at CAP per sandwich (both legs together).
+const PROFIT_SQL = `sum(least(s.gross_profit_usd + s.gross_profit_weth * coalesce(p.price_usd, 2500.0), s.sandwiches * ${PROFIT_CAP_PER_ATTACK}.0))`
 const VICTIM_SQL = 'sum(s.victim_volume_weth * coalesce(p.price_usd, 2500.0))'
 
 type StatsRow = {
