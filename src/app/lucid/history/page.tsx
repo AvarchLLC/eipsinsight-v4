@@ -5,29 +5,24 @@ import Link from 'next/link';
 import {
   History,
   GitBranch,
-  ShieldAlert,
   Layers,
   ArrowRight,
-  Sparkles,
-  BookOpen,
   Lock,
-  EyeOff,
   Scale,
-  Zap,
-  Users,
-  ShieldCheck,
   Cpu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type FilterCategory = 'all' | 'mev-pipeline' | 'eips';
 
+type StepStatus = 'Historical' | 'Live' | 'In Development' | 'Proposed' | 'Superseded' | 'Draft';
+
 interface EvolutionaryStep {
   step: string;
   title: string;
   category: 'mev-pipeline' | 'eips';
   tag: string;
-  status: 'Historical' | 'Live' | 'In Development' | 'Proposed';
+  status: StepStatus;
   description: string;
   significance: string;
   link?: string;
@@ -84,7 +79,7 @@ const STEPS: EvolutionaryStep[] = [
     title: 'EIP-7547: Inclusion Lists',
     category: 'eips',
     tag: 'EIP-7547',
-    status: 'Superseded' as any,
+    status: 'Superseded',
     description: 'Proposed allowing individual block proposers to specify transactions that builders must include in their payloads.',
     significance: 'First major effort to restore proposer inclusion authority under Proposer-Builder Separation.',
     link: '/eip/7547',
@@ -168,10 +163,10 @@ export default function LucidHistoryPage() {
           </div>
           <div className="shrink-0 flex sm:flex-col gap-2">
             <a
-              href="#quick-ref"
+              href="#pipeline"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-violet-700 transition-colors"
             >
-              <BookOpen className="h-4 w-4" /> Quick Reference
+              <GitBranch className="h-4 w-4" /> Evolution Pipeline
             </a>
             <a
               href="#mev-types"
@@ -288,7 +283,7 @@ export default function LucidHistoryPage() {
               <div
                 className={cn(
                   'absolute -left-[31px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-background transition-transform group-hover:scale-125',
-                  s.status === 'Proposed' || s.status === 'Live'
+                  s.status === 'Proposed' || s.status === 'Live' || s.status === 'In Development'
                     ? 'bg-violet-500 ring-4 ring-violet-500/20'
                     : 'bg-muted-foreground/60'
                 )}
@@ -311,6 +306,10 @@ export default function LucidHistoryPage() {
                           ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
                           : s.status === 'Proposed'
                           ? 'border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-300'
+                          : s.status === 'In Development'
+                          ? 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400'
+                          : s.status === 'Superseded'
+                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400'
                           : 'border-border bg-muted text-muted-foreground'
                       )}
                     >
@@ -458,75 +457,6 @@ export default function LucidHistoryPage() {
             <p className="font-semibold text-foreground">Frame Transactions</p>
             <p className="text-muted-foreground text-[11px]">Integrates native Account Abstraction frames with sealed transaction tickets.</p>
           </Link>
-        </div>
-      </section>
-
-      {/* 6. Quick Reference Summary Card */}
-      <section id="quick-ref" className="rounded-2xl border border-violet-500/40 bg-gradient-to-br from-violet-500/10 via-card to-background p-6 space-y-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-600 text-white font-bold text-lg shadow-xs">
-            10
-          </div>
-          <div>
-            <h2 className="text-xl font-bold tracking-tight text-foreground">
-              6. Quick Reference: The Mempool to LUCID Mental Chain
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              The 10-step mental model for understanding Ethereum transaction ordering evolution.
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3 rounded-xl border border-border/80 bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-violet-500" /> The 10-Step Progression
-            </h3>
-            <ol className="space-y-1.5 text-xs text-muted-foreground list-decimal list-inside leading-relaxed">
-              <li className="pl-1"><strong className="text-foreground">Public Mempool:</strong> Pending transaction gossip pool.</li>
-              <li className="pl-1"><strong className="text-foreground">MEV:</strong> Profit extracted by reordering/sandwiching trades.</li>
-              <li className="pl-1"><strong className="text-foreground">Searchers:</strong> Capture MEV opportunities in candidate bundles.</li>
-              <li className="pl-1"><strong className="text-foreground">Builders:</strong> Construct high-profit blocks under PBS.</li>
-              <li className="pl-1"><strong className="text-foreground">Censorship Risk:</strong> Builder concentration creates inclusion control.</li>
-              <li className="pl-1"><strong className="text-foreground">FOCIL (EIP-7805):</strong> Committee inclusion lists enforced by attesters.</li>
-              <li className="pl-1"><strong className="text-foreground">Private Relays:</strong> Protected users from MEV but fragmented liquidity.</li>
-              <li className="pl-1"><strong className="text-foreground">Encrypted Mempool:</strong> Keeps inclusion public but intent hidden.</li>
-              <li className="pl-1"><strong className="text-foreground">LUCID (EIP-8184):</strong> Commit-before-reveal transaction pipeline.</li>
-              <li className="pl-1"><strong className="text-foreground">Decoupled Execution:</strong> Payload execution shifted off critical attestation path.</li>
-            </ol>
-          </div>
-
-          <div className="space-y-3 rounded-xl border border-border/80 bg-card p-4">
-            <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-emerald-500" /> 6 EIP Numbers to Know Cold
-            </h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="font-mono font-bold text-foreground">EIP-2718</span>
-                <span className="text-muted-foreground">Typed Transaction Envelopes</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="font-mono font-bold text-foreground">EIP-7732</span>
-                <span className="text-muted-foreground">Enshrined PBS &amp; PTC Committees</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="font-mono font-bold text-foreground">EIP-7805</span>
-                <span className="text-muted-foreground">FOCIL Inclusion Lists</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="font-mono font-bold text-violet-500">EIP-8184</span>
-                <span className="text-muted-foreground">LUCID Encrypted Mempool</span>
-              </div>
-              <div className="flex items-center justify-between border-b border-border/60 pb-1.5">
-                <span className="font-mono font-bold text-foreground">EIP-7886</span>
-                <span className="text-muted-foreground">Delayed Payload Execution</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="font-mono font-bold text-foreground">EIP-8141</span>
-                <span className="text-muted-foreground">Frame Transactions &amp; AA</span>
-              </div>
-            </div>
-          </div>
         </div>
       </section>
     </div>
