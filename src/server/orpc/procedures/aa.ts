@@ -94,6 +94,8 @@ export interface AaUsageStats {
     accounts7702: number
     /** 7702 as a percent of all mainnet transactions in that bucket. */
     share7702Pct: number
+    /** ERC-4337 EntryPoint txs as a percent of all mainnet transactions in that bucket. */
+    share4337Pct: number
     ep06: number
     ep07: number
     ep08: number
@@ -172,13 +174,15 @@ async function querySeries(g: Granularity, from: string, to: string): Promise<Aa
     const ep07 = N(w.ep07)
     const ep08 = N(w.ep08)
     const aa7702 = N(w.aa7702)
+    const aa4337 = ep06 + ep07 + ep08
     const total = N(w.total)
     return {
       bucket: w.bucket,
       aa7702,
-      aa4337: ep06 + ep07 + ep08,
+      aa4337,
       accounts7702: N(w.accts7702),
       share7702Pct: total > 0 ? Math.round((aa7702 / total) * 10000) / 100 : 0,
+      share4337Pct: total > 0 ? Math.round((aa4337 / total) * 10000) / 100 : 0,
       ep06,
       ep07,
       ep08,

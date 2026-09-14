@@ -233,7 +233,7 @@ export function AccountAbstractionSection() {
                 : view === 'value'
                   ? 'USD value moved inside AA transactions (stablecoins + WETH transfers). The outer tx value is ~0, so this measures the real economic flow.'
                   : shareMode === 'trend'
-                    ? 'EIP-7702 as a percent of all mainnet transactions over time.'
+                    ? 'EIP-7702 and ERC-4337 as a percent of all mainnet transactions over time.'
                     : `EIP-7702 vs ERC-4337 split of account-abstraction transactions in ${pieBucketLabel}${pieAaSharePct != null ? `: AA is ${pieAaSharePct}% of all mainnet transactions` : ''}.`}
             </p>
             <div className="relative h-[300px] w-full">
@@ -273,12 +273,14 @@ export function AccountAbstractionSection() {
                   <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
                     <defs>
                       <linearGradient id="gShare" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C7702} stopOpacity={0.35} /><stop offset="100%" stopColor={C7702} stopOpacity={0.02} /></linearGradient>
+                      <linearGradient id="gShare4337" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={C4337} stopOpacity={0.35} /><stop offset="100%" stopColor={C4337} stopOpacity={0.02} /></linearGradient>
                     </defs>
                     <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
                     <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={58} tickFormatter={(v) => `${v}%`} label={yLabel('% of all txs')} />
-                    <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v}%`, 'EIP-7702 share']} />
+                    <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [`${v}%`, name === 'share7702Pct' ? 'EIP-7702 share' : 'ERC-4337 share']} />
                     <Area type="monotone" dataKey="share7702Pct" stroke={C7702} strokeWidth={2} fill="url(#gShare)" />
+                    <Area type="monotone" dataKey="share4337Pct" stroke={C4337} strokeWidth={2} fill="url(#gShare4337)" />
                   </AreaChart>
                 ) : (
                   <PieChart>
