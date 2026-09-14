@@ -3,41 +3,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'motion/react';
-import { CopyAnchorButton } from '@/components/copy-anchor-button';
 import {
   ArrowUpRight,
   CalendarClock,
   CheckSquare,
-  Crosshair,
   ExternalLink,
-  FileText,
   Lock,
   ListChecks,
   Play,
   ShieldAlert,
-  Sparkles,
-  Users,
   Video,
   ShieldCheck,
-  TrendingUp,
 } from 'lucide-react';
-import {
-  Area,
-  AreaChart,
-  Bar,
-  BarChart,
-  Brush,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
 import { client } from '@/lib/orpc';
-import type { MempoolMevStats } from '@/server/orpc/procedures/mev';
-import { CHART_AXIS, CHART_GRID, CHART_SERIES } from '@/lib/chart-colors';
 import { cn } from '@/lib/utils';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { MevAnalytics } from '@/components/lucid/mev-analytics';
 
 type Tldr = {
   meeting?: string;
@@ -119,7 +100,6 @@ function parseActionItems(value: unknown): string[] {
 export function LucidProposalSection({ featured = false }: { featured?: boolean } = {}) {
   const [calls, setCalls] = useState<Call[]>([]);
   const [loading, setLoading] = useState(true);
-  const [mev, setMev] = useState<MempoolMevStats | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -132,12 +112,6 @@ export function LucidProposalSection({ featured = false }: { featured?: boolean 
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
-    client.mev
-      .getMempoolStats()
-      .then((s) => {
-        if (!cancelled && s?.available) setMev(s);
-      })
-      .catch(() => {});
     return () => {
       cancelled = true;
     };
@@ -223,61 +197,7 @@ export function LucidProposalSection({ featured = false }: { featured?: boolean 
               </span>
             }
           />
-          <p className="mb-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Because today&apos;s mempool is unencrypted, searchers can inspect pending swaps and <strong className="text-foreground">sandwich</strong> victim trades (front-running & back-running). Lucid encrypts transactions until block execution to render sandwiching impossible.
-          </p>
-
-          {mev ? (
-            <div className="space-y-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <Metric
-                  icon={Crosshair}
-                  accent="text-rose-500"
-                  label="Sandwich Attacks"
-                  value={compactNum(mev.totalSandwiches)}
-                  sub="detected post-Dencun"
-                />
-                <Metric
-                  icon={Users}
-                  accent="text-orange-500"
-                  label="Unique Victims"
-                  value={compactNum(mev.uniqueVictims)}
-                  sub="swaps exploited"
-                />
-                <Metric
-                  icon={ShieldAlert}
-                  accent="text-amber-500"
-                  label="Extracted Value"
-                  value={compactUsd(mev.botProfitUsd)}
-                  sub="bot gross profit"
-                />
-                <Metric
-                  icon={TrendingUp}
-                  accent="text-violet-500"
-                  label="Blocks Sandwiched"
-                  value={mev.blocksSandwichedPct != null ? `${mev.blocksSandwichedPct}%` : '-'}
-                  sub="last 30 days"
-                />
-              </div>
-
-              {/* The detailed MEV graphs live on the featured Lucid hub, not on each proposal page. */}
-              {featured
-                ? mev.weekly.length > 1 && <MevWeeklyChart mev={mev} />
-                : mev.weekly.length > 1 && (
-                    <Link
-                      href="/lucid#lucid-mev"
-                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
-                    >
-                      <TrendingUp className="h-3.5 w-3.5" /> See the full weekly MEV analytics on the Lucid hub
-                      <ArrowUpRight className="h-3.5 w-3.5" />
-                    </Link>
-                  )}
-            </div>
-          ) : (
-            <div className="py-8">
-              <InlineBrandLoader size="sm" label="Loading mainnet MEV protection statistics..." />
-            </div>
-          )}
+          <MevAnalytics featured={featured} />
         </motion.div>
       </section>
 
@@ -421,207 +341,6 @@ function MeetingCard({ call }: { call: Call }) {
       </div>
     </li>
   );
-}
-
-const CHART_TOOLTIP = {
-  borderRadius: '8px',
-  border: '1px solid var(--border)',
-  backgroundColor: 'var(--background)',
-  fontSize: '12px',
-} as const;
-
-type WeekPoint = MempoolMevStats['weekly'][number] & { label: string; avgProfitPerAttack: number };
-
-function MevWeeklyChart({ mev }: { mev: MempoolMevStats }) {
-  const data: WeekPoint[] = mev.weekly.map((w) => ({
-    ...w,
-    label: weekLabel(w.week),
-    avgProfitPerAttack: w.sandwiches > 0 ? Math.round(w.botProfitUsd / w.sandwiches) : 0,
-  }));
-
-  return (
-    <div className="mt-4 space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-bold tracking-tight text-foreground flex items-center gap-2">
-          <TrendingUp className="h-4 w-4 text-violet-500" />
-          Mainnet MEV Extraction Analytics (Post-Dencun)
-        </h3>
-        <span className="text-[11px] text-muted-foreground">26-week weekly trend</span>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* Chart 1: Weekly Sandwich Attacks */}
-        <div id="lucid-sandwich-volume" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Weekly Sandwich Attack Volume
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-foreground">{compactNum(mev.totalSandwiches)} total</span>
-              <CopyAnchorButton anchor="lucid-sandwich-volume" />
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={40} tickFormatter={(v: number) => compactNum(v)} />
-                <Tooltip
-                  cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
-                  contentStyle={CHART_TOOLTIP}
-                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(value: number) => [Number(value).toLocaleString(), 'Sandwich Attacks']}
-                />
-                <Bar dataKey="sandwiches" fill="var(--chart-1)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-1)" fill="transparent" tickFormatter={() => ''} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 2: Extracted Bot Profit (USD) */}
-        <div id="lucid-bot-profit" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Extracted Bot Gross Profit (USD)
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-emerald-500">{compactUsd(mev.botProfitUsd)} total</span>
-              <CopyAnchorButton anchor="lucid-bot-profit" />
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-2)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--chart-2)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={48} tickFormatter={(v: number) => compactUsd(v)} />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP}
-                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(value: number) => [compactUsd(value), 'Bot Profit (USD)']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="botProfitUsd"
-                  stroke="var(--chart-2)"
-                  strokeWidth={2}
-                  fill="url(#profitGrad)"
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  isAnimationActive={false}
-                />
-                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-2)" fill="transparent" tickFormatter={() => ''} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 3: Exploited Victim Trade Volume (USD) */}
-        <div id="lucid-victim-volume" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Exploited Victim Trade Volume (USD)
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-amber-500">{compactUsd(mev.victimVolumeUsd)} total</span>
-              <CopyAnchorButton anchor="lucid-victim-volume" />
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="victimGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="var(--chart-4)" stopOpacity={0.35} />
-                    <stop offset="100%" stopColor="var(--chart-4)" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={52} tickFormatter={(v: number) => compactUsd(v)} />
-                <Tooltip
-                  contentStyle={CHART_TOOLTIP}
-                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(value: number) => [compactUsd(value), 'Victim Volume (USD)']}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="victimUsd"
-                  stroke="var(--chart-4)"
-                  strokeWidth={2}
-                  fill="url(#victimGrad)"
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  isAnimationActive={false}
-                />
-                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-4)" fill="transparent" tickFormatter={() => ''} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 4: Active MEV Searcher Bots per Week */}
-        <div id="lucid-mev-bots" className="scroll-mt-28 rounded-xl border border-border bg-card/60 p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              Active MEV Searcher Bots per Week
-            </p>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-cyan-500">{mev.uniqueBots} unique bots</span>
-              <CopyAnchorButton anchor="lucid-mev-bots" />
-            </div>
-          </div>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                <CartesianGrid vertical={false} stroke={CHART_GRID} strokeDasharray="3 3" />
-                <XAxis dataKey="label" stroke={CHART_AXIS} tick={{ fontSize: 11 }} interval="preserveStartEnd" minTickGap={24} />
-                <YAxis stroke={CHART_AXIS} tick={{ fontSize: 11 }} width={36} tickFormatter={(v: number) => String(v)} />
-                <Tooltip
-                  cursor={{ fill: 'var(--muted)', opacity: 0.4 }}
-                  contentStyle={CHART_TOOLTIP}
-                  labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }}
-                  formatter={(value: number) => [Number(value).toLocaleString(), 'Active Searcher Bots']}
-                />
-                <Bar dataKey="activeBots" fill="var(--chart-5)" radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                <Brush dataKey="label" height={18} travellerWidth={8} stroke="var(--chart-5)" fill="transparent" tickFormatter={() => ''} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function weekLabel(day: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}/.test(day)) return day;
-  return new Date(`${day.slice(0, 10)}T00:00:00Z`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    timeZone: 'UTC',
-  });
-}
-
-function compactNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return String(n);
-}
-
-function compactUsd(n: number): string {
-  if (n >= 1_000_000_000) return `$${(n / 1_000_000_000).toFixed(1)}B`;
-  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(0)}M`;
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
 }
 
 function Metric({
