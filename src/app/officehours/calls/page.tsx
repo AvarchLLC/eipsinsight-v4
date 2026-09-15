@@ -26,15 +26,19 @@ export default function OfficeHoursCallsTab() {
     client.calls.listOfficeHourMeetings({ limit: 40 }).then(setMeetings).catch(() => setMeetings([]));
   }, []);
 
+  // This tab is EIP Editing Office Hours + EIPIP only. OFFICE_HOUR_RECAPS also
+  // carries other series (e.g. ethproofs), which belong on their own /calls pages.
+  const recaps = OFFICE_HOUR_RECAPS.filter((r) => r.series === "eipoh" || r.series === "eipip");
+
   if (meetings === null) return <div className="py-16"><InlineBrandLoader size="md" label="Loading calls…" /></div>;
 
   return (
     <div className="space-y-4">
       {/* Static recaps of past office hours (verified against the governance backend). */}
-      {OFFICE_HOUR_RECAPS.length > 0 && (
+      {recaps.length > 0 && (
         <div className="space-y-3">
           <div className="text-[11px] font-mono uppercase tracking-wide text-muted-foreground">Recaps</div>
-          {OFFICE_HOUR_RECAPS.map((r) => <OfficeHourRecapCompact key={r.meeting} recap={r} />)}
+          {recaps.map((r) => <OfficeHourRecapCompact key={r.meeting} recap={r} />)}
         </div>
       )}
 
