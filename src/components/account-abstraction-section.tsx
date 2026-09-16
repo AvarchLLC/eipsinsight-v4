@@ -22,6 +22,7 @@ import type { AaUsageStats, AaValueSeries } from '@/server/orpc/procedures/aa';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartWatermark } from '@/components/chart-watermark';
+import { ChartCard } from '@/components/chart-card';
 import { cn } from '@/lib/utils';
 import { AaRaceTabs } from '@/app/aa/_race_tabs';
 import { useAaTimeframe } from '@/app/aa/_timeframe';
@@ -208,34 +209,39 @@ export function AccountAbstractionSection() {
           </div>
 
           {/* Combined trend card: Volume vs Share (+ pie for distribution) */}
-          <div className="rounded-xl border border-border bg-card/60 p-4">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-xs">
-                <button onClick={() => setView('volume')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'volume' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Volume</button>
-                <button onClick={() => setView('value')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'value' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Value</button>
-                <button onClick={() => setView('share')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'share' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Tx share</button>
-              </div>
-              {view === 'volume' || view === 'value' ? (
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: C7702 }} /> EIP-7702</span>
-                  <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: C4337 }} /> ERC-4337</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-[11px]">
-                  <button onClick={() => setShareMode('trend')} className={cn('rounded-md px-2 py-0.5', shareMode === 'trend' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Trend</button>
-                  <button onClick={() => setShareMode('pie')} className={cn('rounded-md px-2 py-0.5', shareMode === 'pie' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Distribution</button>
-                </div>
-              )}
-            </div>
-            <p className="mb-2 text-[11px] text-muted-foreground">
-              {view === 'volume'
+          <ChartCard
+            id="aa-usage-over-time"
+            title="Usage over time"
+            description={
+              view === 'volume'
                 ? 'How many transactions each mechanism handled per period.'
                 : view === 'value'
                   ? 'USD value moved inside AA transactions (stablecoins + WETH transfers). The outer tx value is ~0, so this measures the real economic flow.'
                   : shareMode === 'trend'
                     ? 'EIP-7702 and ERC-4337 as a percent of all mainnet transactions over time.'
-                    : `EIP-7702 vs ERC-4337 split of account-abstraction transactions in ${pieBucketLabel}${pieAaSharePct != null ? `: AA is ${pieAaSharePct}% of all mainnet transactions` : ''}.`}
-            </p>
+                    : `EIP-7702 vs ERC-4337 split of account-abstraction transactions in ${pieBucketLabel}${pieAaSharePct != null ? `: AA is ${pieAaSharePct}% of all mainnet transactions` : ''}.`
+            }
+            toolbar={
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-xs">
+                  <button onClick={() => setView('volume')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'volume' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Volume</button>
+                  <button onClick={() => setView('value')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'value' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Value</button>
+                  <button onClick={() => setView('share')} className={cn('rounded-md px-2.5 py-1 font-medium', view === 'share' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Tx share</button>
+                </div>
+                {view === 'volume' || view === 'value' ? (
+                  <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: C7702 }} /> EIP-7702</span>
+                    <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: C4337 }} /> ERC-4337</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center rounded-lg border border-border bg-muted/50 p-0.5 text-[11px]">
+                    <button onClick={() => setShareMode('trend')} className={cn('rounded-md px-2 py-0.5', shareMode === 'trend' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Trend</button>
+                    <button onClick={() => setShareMode('pie')} className={cn('rounded-md px-2 py-0.5', shareMode === 'pie' ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground')}>Distribution</button>
+                  </div>
+                )}
+              </div>
+            }
+          >
             <div className="relative h-[300px] w-full">
               <ChartWatermark position="center" />
               <ResponsiveContainer width="100%" height="100%">
@@ -293,19 +299,23 @@ export function AccountAbstractionSection() {
                 )}
               </ResponsiveContainer>
             </div>
-          </div>
+          </ChartCard>
 
           {/* Animated Growth Race & Mempool Mix synced with Timeline controls */}
           <AaRaceTabs granularity={granularity} from={from} to={to} />
 
           {/* Unique 7702 accounts per week + EntryPoint version split, side by side */}
           <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <div className="rounded-xl border border-border bg-card/60 p-4">
-              <h3 className="mb-1 text-sm font-semibold text-foreground">Unique EIP-7702 accounts</h3>
-              <p className="mb-2 text-[11px] text-muted-foreground">
-                How many <span className="text-foreground">different wallets</span> used 7702 each week (adoption breadth). The
-                trend above counts total transactions, so a few busy accounts can lift it; this counts distinct addresses.
-              </p>
+            <ChartCard
+              id="aa-unique-7702-accounts"
+              title="Unique EIP-7702 accounts"
+              description={
+                <>
+                  How many <span className="text-foreground">different wallets</span> used 7702 each week (adoption breadth). The
+                  trend above counts total transactions, so a few busy accounts can lift it; this counts distinct addresses.
+                </>
+              }
+            >
               <div className="relative h-[220px] w-full">
                 <ChartWatermark position="center" />
                 <ResponsiveContainer width="100%" height="100%">
@@ -323,21 +333,25 @@ export function AccountAbstractionSection() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </ChartCard>
 
-            <div className="rounded-xl border border-border bg-card/60 p-4">
-              <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                <h3 className="text-sm font-semibold text-foreground">ERC-4337 EntryPoint versions</h3>
+            <ChartCard
+              id="aa-entrypoint-versions"
+              title="ERC-4337 EntryPoint versions"
+              description={
+                <>
+                  ERC-4337 ships as a smart-contract called the <span className="text-foreground">EntryPoint</span>, released in
+                  versions v0.6, v0.7 and v0.8. This shows how usage is moving to the newer releases (higher = more adopted).
+                </>
+              }
+              toolbar={
                 <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
                   <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP06 }} /> v0.6</span>
                   <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP07 }} /> v0.7</span>
                   <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm" style={{ background: CEP08 }} /> v0.8</span>
                 </div>
-              </div>
-              <p className="mb-2 text-[11px] text-muted-foreground">
-                ERC-4337 ships as a smart-contract called the <span className="text-foreground">EntryPoint</span>, released in
-                versions v0.6, v0.7 and v0.8. This shows how usage is moving to the newer releases (higher = more adopted).
-              </p>
+              }
+            >
               <div className="relative h-[220px] w-full">
                 <ChartWatermark position="center" />
                 <ResponsiveContainer width="100%" height="100%">
@@ -357,7 +371,7 @@ export function AccountAbstractionSection() {
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
-            </div>
+            </ChartCard>
           </div>
 
           {/* Methodology / caveats */}

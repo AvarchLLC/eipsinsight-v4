@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 import { client } from '@/lib/orpc';
 import { ChartWatermark } from '@/components/chart-watermark';
+import { CopyLinkButton } from '@/components/header';
 import type { AaUsageStats, AaValueSeries } from '@/server/orpc/procedures/aa';
 
 const C7702 = 'var(--chart-1)'; // blue
@@ -54,6 +55,9 @@ function fmtMonth(b: string): string {
 
 const AXIS = { fontSize: 11, fill: 'var(--muted-foreground)' } as const;
 
+const chartSlug = (s: string) =>
+  `chart-${s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
 function ChartCard({
   title,
   desc,
@@ -63,15 +67,23 @@ function ChartCard({
   desc: string;
   children: React.ReactNode;
 }) {
+  const id = chartSlug(title);
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4">
-      <p className="text-sm font-semibold text-foreground">{title}</p>
+    <section id={id} className="group scroll-mt-24 rounded-xl border border-border bg-card/60 p-4">
+      <div className="flex items-center gap-1.5">
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+        <CopyLinkButton
+          sectionId={id}
+          tooltipLabel="Copy chart link"
+          className="h-6 w-6 opacity-0 transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+        />
+      </div>
       <p className="mb-2 text-[12px] leading-relaxed text-muted-foreground">{desc}</p>
       <div className="relative h-[240px] w-full">
         <ChartWatermark position="center" />
         {children}
       </div>
-    </div>
+    </section>
   );
 }
 

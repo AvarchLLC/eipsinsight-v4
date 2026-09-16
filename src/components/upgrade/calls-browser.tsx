@@ -3,7 +3,16 @@
 import { useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { ExternalLink, Github, Video, Search, ChevronRight, ChevronDown } from 'lucide-react';
+import {
+  ExternalLink,
+  Github,
+  Video,
+  Search,
+  ChevronRight,
+  ChevronDown,
+  CalendarClock,
+  History,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
@@ -26,17 +35,42 @@ export interface RecentCall {
   tldr: unknown;
 }
 
-function SeriesBadge({ series }: { series: string }) {
+export interface UpcomingCall {
+  series: string | null;
+  title: string;
+  issue_number: number | null;
+  issue_url: string | null;
+  occurs_at: string | null;
+  occurs_on: string | null;
+}
+
+function SeriesBadge({ series }: { series: string | null }) {
   return (
     <span
       className={cn(
         'inline-flex w-16 shrink-0 items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-        callSeriesBadgeClass(series)
+        series ? callSeriesBadgeClass(series) : 'border-border bg-muted text-muted-foreground'
       )}
     >
-      {callSeriesShort(series)}
+      {series ? callSeriesShort(series) : '—'}
     </span>
   );
+}
+
+/** The stored series, or one inferred from the title when the feed left it null. */
+function upcomingSeries(call: UpcomingCall): string {
+  if (call.series) return call.series;
+  if (/EIPIP|Improvement Process/i.test(call.title)) return 'eipip';
+  if (/Office Hour|Editing Office/i.test(call.title)) return 'eipoh';
+  return 'unknown';
+}
+
+function formatUpcoming(call: UpcomingCall): string {
+  if (call.occurs_at) {
+    const date = new Date(call.occurs_at);
+    return `${date.toISOString().slice(0, 10)} · ${date.toISOString().slice(11, 16)} UTC`;
+  }
+  return call.occurs_on ?? 'Date TBD';
 }
 
 // Recent calls list reveals in batches — how many to show first, and per click.
@@ -49,7 +83,14 @@ const STEP = 13;
  * reveal the summary on click; the list shows a batch at a time (Show more)
  * rather than dumping all ~300 calls at once.
  */
-export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
+export function CallsBrowser({
+  calls,
+  upcoming,
+}: {
+  calls: RecentCall[];
+  /** Upcoming calls, rendered between the filter bar and the list and filtered by the same series tabs. */
+  upcoming?: UpcomingCall[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -63,6 +104,8 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     if (g === 'acd') return { group: 'acd', acd: searchParams.get('acd') ?? 'all' };
     if (g === 'breakouts') return { group: 'breakouts', acd: 'all' };
     if (g === 'ethproofs') return { group: 'ethproofs', acd: 'all' };
+    if (g === 'eipip') return { group: 'eipip', acd: 'all' };
+    if (g === 'eipoh') return { group: 'eipoh', acd: 'all' };
     return DEFAULT_SERIES_FILTER;
   }, [searchParams]);
 
@@ -113,6 +156,18 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
     });
   }, [calls, series, search]);
 
+  // Upcoming honours the same series tabs + search box as the recent list. The
+  // scheduling feed sometimes leaves series null (e.g. EIPIP/office-hour agenda
+  // issues), so fall back to inferring it from the title.
+  const upcomingFiltered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return (upcoming ?? []).filter((c) => {
+      if (!matchesSeries(upcomingSeries(c), series)) return false;
+      if (!q) return true;
+      return `${c.title} ${c.series ?? ''}`.toLowerCase().includes(q);
+    });
+  }, [upcoming, series, search]);
+
   // Which cards are expanded. Independent (not an accordion) so an editor can open
   // several summaries side by side. Keyed by series+call_id.
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
@@ -152,6 +207,63 @@ export function CallsBrowser({ calls }: { calls: RecentCall[] }) {
           />
         </div>
       </div>
+
+      {upcoming && (
+        <div>
+          <div className="h-px w-full bg-border/60" aria-hidden />
+          <section id="upcoming" className="scroll-mt-24 pt-5">
+            <div className="mb-3 flex items-center gap-2">
+              <CalendarClock className="h-5 w-5 shrink-0 text-primary" />
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                Upcoming
+              </h2>
+            </div>
+            <p className="mb-3 max-w-4xl text-sm leading-relaxed text-muted-foreground">
+              Parsed from open agenda issues on ethereum/pm.
+            </p>
+            {upcomingFiltered.length === 0 ? (
+              <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
+                No upcoming calls {series.group === 'all' && !search.trim() ? 'right now' : 'match this filter'} - check back after the next scheduler sync.
+              </p>
+            ) : (
+              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+                <ul className="divide-y divide-border/60">
+                  {upcomingFiltered.map((call) => (
+                    <li
+                      key={`${call.issue_number}-${call.title}`}
+                      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3"
+                    >
+                      <SeriesBadge series={call.series ?? (upcomingSeries(call) === 'unknown' ? null : upcomingSeries(call))} />
+                      <div className="min-w-0 flex-1">
+                        <a
+                          href={call.issue_url ?? '#'}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+                        >
+                          {call.title}
+                        </a>
+                      </div>
+                      <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
+                        <CalendarClock className="h-3.5 w-3.5" />
+                        {formatUpcoming(call)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+
+          <div className="mt-6 h-px w-full bg-border/60" aria-hidden />
+          <div className="mb-3 mt-5 flex items-center gap-2">
+            <History className="h-5 w-5 shrink-0 text-primary" />
+            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+              Recent calls
+            </h2>
+          </div>
+        </div>
+      )}
 
       {/* Call list — collapsed cards, revealed a batch at a time. */}
       {filtered.length === 0 ? (
