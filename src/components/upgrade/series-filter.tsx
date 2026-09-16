@@ -7,7 +7,7 @@ import { callSeriesShort } from '@/data/call-series';
 export const ACD_SERIES = ['acdc', 'acde', 'acdt', 'acdtcl'] as const;
 export const isAcdSeries = (series: string) => (ACD_SERIES as readonly string[]).includes(series);
 
-export type SeriesGroup = 'all' | 'acd' | 'breakouts' | 'ethproofs';
+export type SeriesGroup = 'all' | 'acd' | 'breakouts' | 'ethproofs' | 'eipip' | 'eipoh';
 
 export interface SeriesFilterValue {
   group: SeriesGroup;
@@ -22,7 +22,10 @@ export function matchesSeries(series: string, f: SeriesFilterValue): boolean {
   if (f.group === 'all') return true;
   if (f.group === 'acd') return isAcdSeries(series) && (f.acd === 'all' || series === f.acd);
   if (f.group === 'ethproofs') return series === 'ethproofs';
-  return !isAcdSeries(series) && series !== 'ethproofs'; // breakouts
+  if (f.group === 'eipip') return series === 'eipip';
+  if (f.group === 'eipoh') return series === 'eipoh';
+  // breakouts: everything that isn't ACD, EthProofs, or an editorial call series.
+  return !isAcdSeries(series) && series !== 'ethproofs' && series !== 'eipip' && series !== 'eipoh';
 }
 
 /**
@@ -41,7 +44,9 @@ export function SeriesFilter({
   const total = Object.values(counts).reduce((a, b) => a + b, 0);
   const acdTotal = ACD_SERIES.reduce((a, s) => a + (counts[s] ?? 0), 0);
   const ethproofsTotal = counts['ethproofs'] ?? 0;
-  const breakoutTotal = total - acdTotal - ethproofsTotal;
+  const eipipTotal = counts['eipip'] ?? 0;
+  const eipohTotal = counts['eipoh'] ?? 0;
+  const breakoutTotal = total - acdTotal - ethproofsTotal - eipipTotal - eipohTotal;
 
   const pill = (selected: boolean) =>
     cn(
@@ -72,6 +77,20 @@ export function SeriesFilter({
         className={pill(value.group === 'ethproofs')}
       >
         EthProof <span className="text-[10px] opacity-70">{ethproofsTotal}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange({ group: 'eipip', acd: 'all' })}
+        className={pill(value.group === 'eipip')}
+      >
+        EIPIP <span className="text-[10px] opacity-70">{eipipTotal}</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => onChange({ group: 'eipoh', acd: 'all' })}
+        className={pill(value.group === 'eipoh')}
+      >
+        EIP OH <span className="text-[10px] opacity-70">{eipohTotal}</span>
       </button>
 
       {value.group === 'acd' && (

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { optionalAuthProcedure } from './types'
 import { clickhouseConfigured, clickhouseQuery } from '@/lib/clickhouse'
+import { redis } from '@/lib/redis'
 
 /**
  * Account Abstraction usage metrics for the /aa dashboard.
@@ -146,9 +147,6 @@ async function getTotals() {
   return data
 }
 
-// ── Trend series (per granularity + range). Cached per key. ──
-const seriesCache = new Map<string, { at: number; data: AaUsageStats['series'] }>()
-
 async function querySeries(g: Granularity, from: string, to: string): Promise<AaUsageStats['series']> {
   const rows = await clickhouseQuery<SeriesRow>(
     `
@@ -190,34 +188,79 @@ async function querySeries(g: Granularity, from: string, to: string): Promise<Aa
   })
 }
 
-async function getSeries(g: Granularity, from: string, to: string) {
-  const key = `${g}:${from}:${to}`
-  const hit = seriesCache.get(key)
-  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
-  const data = await querySeries(g, from, to)
-  seriesCache.set(key, { at: Date.now(), data })
-  return data
+// ── Usage stats: durable stale-while-revalidate cache ──
+//
+// The ClickHouse queries behind this are heavy (10-20s cold), so a fresh
+// serverless instance or an expired TTL used to surface a live timeout as the
+// "temporarily unavailable" banner. Instead we keep a last-good copy that never
+// expires — in memory and mirrored to Redis so it survives restarts — and serve
+// it immediately while refreshing in the background. The banner only ever shows
+// on the very first request when nothing has ever been cached AND the live query
+// fails, which is rare and self-heals on the next successful refresh.
+const USAGE_REDIS_TTL_S = 24 * 3600
+const usageGood = new Map<string, AaUsageStats>() // last good result, never evicted
+const usageAt = new Map<string, number>() // when each key was last refreshed
+const usageInflight = new Map<string, Promise<void>>()
+
+const usageRedisKey = (key: string) => `aa:usage:v1:${key}`
+
+async function refreshUsage(key: string, g: Granularity, from: string, to: string): Promise<void> {
+  const [totals, series] = await Promise.all([getTotals(), querySeries(g, from, to)])
+  const data: AaUsageStats = {
+    available: true,
+    ...totals,
+    since7702: SEVEN702_START,
+    granularity: g,
+    from,
+    to,
+    series,
+    source: 'BlobLens · ethereum.transactions (mainnet)',
+    sourceUrl: 'https://eipsinsight.com',
+  }
+  usageGood.set(key, data)
+  usageAt.set(key, Date.now())
+  try {
+    await redis().set(usageRedisKey(key), JSON.stringify(data), 'EX', USAGE_REDIS_TTL_S)
+  } catch {
+    // Redis is a best-effort mirror; the in-memory copy still serves this process.
+  }
 }
 
 async function getAaUsageStats(g: Granularity, from: string, to: string): Promise<AaUsageStats> {
   if (!clickhouseConfigured()) return emptyStats(g, from, to)
-  try {
-    const [totals, series] = await Promise.all([getTotals(), getSeries(g, from, to)])
-    return {
-      available: true,
-      ...totals,
-      since7702: SEVEN702_START,
-      granularity: g,
-      from,
-      to,
-      series,
-      source: 'BlobLens · ethereum.transactions (mainnet)',
-      sourceUrl: 'https://eipsinsight.com',
+  const key = `${g}:${from}:${to}`
+
+  // Cold start (no in-memory copy yet): seed last-good from Redis so a restarted
+  // instance serves the previous good result instead of blocking on ClickHouse.
+  if (!usageGood.has(key)) {
+    try {
+      const raw = await redis().get(usageRedisKey(key))
+      if (raw) usageGood.set(key, JSON.parse(raw) as AaUsageStats)
+    } catch {
+      // No Redis / miss — fall through to a live query below.
     }
-  } catch {
-    // Never cache a failure; the underlying caches only hold successful results.
-    return { ...emptyStats(g, from, to), ...(totalsCache?.data ?? {}) }
   }
+
+  const good = usageGood.get(key)
+  const fresh = good != null && (usageAt.get(key) ?? 0) > Date.now() - CACHE_TTL_MS
+  if (fresh) return good
+
+  // Trigger a refresh (deduped per key). Failures are swallowed so a timing-out
+  // ClickHouse never rejects the request when we already have a good copy.
+  if (!usageInflight.has(key)) {
+    const p = refreshUsage(key, g, from, to)
+      .catch(() => {})
+      .finally(() => usageInflight.delete(key))
+    usageInflight.set(key, p)
+  }
+
+  // Serve stale immediately while the refresh runs in the background.
+  if (good != null) return good
+
+  // Nothing cached anywhere yet — wait for this first refresh, then return
+  // whatever it produced (or the empty state if even that failed).
+  await usageInflight.get(key)
+  return usageGood.get(key) ?? emptyStats(g, from, to)
 }
 
 // ── Adoption index (7702, since Pectra). Its own cache — the uniq scan is ~10s. ──

@@ -109,6 +109,21 @@ export const CALL_SERIES: Record<string, CallSeriesMeta> = {
     short: 'SSZ',
     badgeClass: 'border-zinc-500/30 bg-zinc-500/15 text-zinc-600 dark:text-zinc-300',
   },
+  ethproofs: {
+    label: 'EthProofs',
+    short: 'EthProofs',
+    badgeClass: 'border-teal-500/30 bg-teal-500/15 text-teal-700 dark:text-teal-300',
+  },
+  eipip: {
+    label: 'EIP Improvement Process',
+    short: 'EIPIP',
+    badgeClass: 'border-blue-500/30 bg-blue-500/15 text-blue-700 dark:text-blue-300',
+  },
+  eipoh: {
+    label: 'EIP Editing Office Hours',
+    short: 'EIP OH',
+    badgeClass: 'border-primary/30 bg-primary/10 text-primary',
+  },
 };
 
 export function isOneOffSeries(series: string): boolean {
