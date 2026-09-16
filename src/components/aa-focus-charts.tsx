@@ -76,12 +76,13 @@ function ChartCard({
 }
 
 /**
- * Focused usage charts for the EIP-7702 sub-tab.
+ * Focused usage charts for the AA sub-tabs.
  * `mode="7702"` → live 7702 usage (transactions, accounts, value moved).
+ * `mode="4337"` → live ERC-4337 EntryPoint activity and the v0.6/0.7/0.8 split.
  * `mode="demand"` → combined AA demand (7702 + 4337), used on proposal pages
  * for not-yet-live native AA (EIP-8141) to show the market it would serve.
  */
-export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | 'demand' }) {
+export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | '4337' | 'demand' }) {
   const [stats, setStats] = useState<AaUsageStats | null>(null);
   const [value, setValue] = useState<AaValueSeries | null>(null);
   const [loading, setLoading] = useState(true);
@@ -117,6 +118,10 @@ export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | 'demand' }) {
         combined: s.aa7702 + s.aa4337,
         accounts7702: s.accounts7702,
         share7702Pct: s.share7702Pct,
+        share4337Pct: s.share4337Pct,
+        ep06: s.ep06,
+        ep07: s.ep07,
+        ep08: s.ep08,
       })),
     [stats],
   );
@@ -192,6 +197,89 @@ export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | 'demand' }) {
             </AreaChart>
           </ResponsiveContainer>
         </ChartCard>
+      </div>
+    );
+  }
+
+  if (mode === '4337') {
+    const total4337 = stats.total4337;
+    const latest = txSeries[txSeries.length - 1];
+    const hasVersions = txSeries.some((s) => s.ep06 + s.ep07 + s.ep08 > 0);
+    return (
+      <div className="space-y-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Stat label="Total EntryPoint txs" value={fmtInt(total4337)} accent={C4337} />
+          <Stat label="Latest month" value={fmtInt(latest?.aa4337 ?? 0)} />
+          <Stat label="Share of all txs (latest)" value={`${latest?.share4337Pct ?? 0}%`} />
+          <Stat
+            label="v0.6 / v0.7 / v0.8 (latest)"
+            value={`${fmtCompact(latest?.ep06 ?? 0)} / ${fmtCompact(latest?.ep07 ?? 0)} / ${fmtCompact(latest?.ep08 ?? 0)}`}
+          />
+        </div>
+
+        <ChartCard
+          title="ERC-4337 EntryPoint transactions per month"
+          desc="Transactions sent to the canonical ERC-4337 EntryPoint contracts (v0.6, v0.7, v0.8) on mainnet each month. A conservative floor for smart-account (bundler) activity."
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={txSeries} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+              <defs>
+                <linearGradient id="g4337tx" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor={C4337} stopOpacity={0.45} />
+                  <stop offset="100%" stopColor={C4337} stopOpacity={0.04} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+              <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={false} minTickGap={16} />
+              <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmtCompact} width={44} />
+              <Tooltip
+                contentStyle={TT_CONTENT}
+                labelStyle={TT_LABEL}
+                itemStyle={TT_ITEM}
+                formatter={(v: number) => [fmtInt(v), 'EntryPoint txs']}
+              />
+              <Area type="monotone" dataKey="aa4337" stroke={C4337} strokeWidth={2} fill="url(#g4337tx)" isAnimationActive={false} />
+            </AreaChart>
+          </ResponsiveContainer>
+        </ChartCard>
+
+        {hasVersions && (
+          <ChartCard
+            title="EntryPoint version split per month"
+            desc="How EntryPoint activity divides across v0.6, v0.7, and v0.8 each month, a migration signal as the ecosystem moves to newer versions."
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={txSeries} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gep06" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="var(--chart-8)" stopOpacity={0.5} />
+                    <stop offset="100%" stopColor="var(--chart-8)" stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gep07" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={C4337} stopOpacity={0.5} />
+                    <stop offset="100%" stopColor={C4337} stopOpacity={0.05} />
+                  </linearGradient>
+                  <linearGradient id="gep08" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={CACCT} stopOpacity={0.5} />
+                    <stop offset="100%" stopColor={CACCT} stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={false} minTickGap={16} />
+                <YAxis tick={AXIS} tickLine={false} axisLine={false} tickFormatter={fmtCompact} width={44} />
+                <Tooltip
+                  contentStyle={TT_CONTENT}
+                  labelStyle={TT_LABEL}
+                  itemStyle={TT_ITEM}
+                  formatter={(v: number, name: string) => [fmtInt(v), name]}
+                />
+                <Area type="monotone" dataKey="ep06" name="v0.6" stackId="ep" stroke="var(--chart-8)" strokeWidth={2} fill="url(#gep06)" isAnimationActive={false} />
+                <Area type="monotone" dataKey="ep07" name="v0.7" stackId="ep" stroke={C4337} strokeWidth={2} fill="url(#gep07)" isAnimationActive={false} />
+                <Area type="monotone" dataKey="ep08" name="v0.8" stackId="ep" stroke={CACCT} strokeWidth={2} fill="url(#gep08)" isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </ChartCard>
+        )}
       </div>
     );
   }
