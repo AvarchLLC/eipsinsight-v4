@@ -94,9 +94,21 @@ jobs:
             pm2 reload eips-insight-v4 || pm2 start npm --name eips-insight-v4 --cwd $BASE_DIR/current -- start -- -p 3001
 
             echo "Running health check on port 3001"
-            sleep 8
-            if ! curl -fs http://localhost:3001/ > /dev/null; then
-              echo "Health check failed, rolling back"
+            # Poll for up to ~60s: a freshly reloaded PM2 process can take longer
+            # than a single 8s wait to bind the port and serve the SSR homepage,
+            # so a one-shot curl was rolling back healthy deploys.
+            HEALTHY=0
+            for i in $(seq 1 20); do
+              if curl -fs --max-time 10 http://localhost:3001/ > /dev/null; then
+                HEALTHY=1
+                echo "Health check passed after $((i * 3))s"
+                break
+              fi
+              sleep 3
+            done
+
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "Health check failed after ~60s, rolling back"
 
               PREVIOUS_RELEASE=$(ls -dt $RELEASES_DIR/* | sed -n '2p')
               if [ -n "$PREVIOUS_RELEASE" ]; then
