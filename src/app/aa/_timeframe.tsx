@@ -53,7 +53,7 @@ const PRESETS: { id: Exclude<PresetId, 'custom'>; label: string; months: number 
  * ecosystem charts so there is a single control instead of one per section.
  */
 export function AaTimeframeProvider({ children }: { children: React.ReactNode }) {
-  const [preset, setPreset] = useState<PresetId>('2y');
+  const [preset, setPreset] = useState<PresetId>('dencun');
   const [granularity, setGranularity] = useState<Granularity>('month');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');

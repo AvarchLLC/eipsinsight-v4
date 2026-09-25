@@ -164,7 +164,7 @@ export function TxEconomicsChart({ range }: { range: NetRange }) {
                   <Tooltip contentStyle={TT_CONTENT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} formatter={(v: number, n: string) => [valFmt(v), n]} />
                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                   {labels.map((label) => (
-                    <Line key={label} type="monotone" dataKey={label} stroke={typeColor(label)} strokeWidth={2} dot={false} isAnimationActive={false} />
+                    <Line key={label} type="monotone" dataKey={label} stroke={typeColor(label)} strokeWidth={2} dot={false} isAnimationActive={true} />
                   ))}
                   <Brush dataKey="bucket" {...AA_BRUSH} />
                 </LineChart>
@@ -176,7 +176,7 @@ export function TxEconomicsChart({ range }: { range: NetRange }) {
                   <Tooltip contentStyle={TT_CONTENT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} formatter={(v: number, n: string) => [valFmt(v), n]} />
                   <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                   {labels.map((label) => (
-                    <Area key={label} type="monotone" dataKey={label} stackId="econ" stroke={typeColor(label)} fill={typeColor(label)} fillOpacity={0.8} strokeWidth={0} isAnimationActive={false} />
+                    <Area key={label} type="monotone" dataKey={label} stackId="econ" stroke={typeColor(label)} fill={typeColor(label)} fillOpacity={0.8} strokeWidth={0} isAnimationActive={true} />
                   ))}
                   <Brush dataKey="bucket" {...AA_BRUSH} />
                 </AreaChart>

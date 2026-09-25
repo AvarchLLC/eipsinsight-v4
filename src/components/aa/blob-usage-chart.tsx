@@ -119,8 +119,8 @@ export function BlobUsageChart({ range }: { range: NetRange }) {
                   formatter={(v: number, name: string) => [name === 'Blobs per tx' ? v.toFixed(2) : v.toLocaleString('en-US'), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
-                <Bar yAxisId="tx" dataKey="blobTx" name="Blob transactions" fill={C_TX} radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={false} />
-                <Line yAxisId="per" type="monotone" dataKey="blobsPerTx" name="Blobs per tx" stroke={C_PER} strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Bar yAxisId="tx" dataKey="blobTx" name="Blob transactions" fill={C_TX} radius={[3, 3, 0, 0]} maxBarSize={22} isAnimationActive={true} />
+                <Line yAxisId="per" type="monotone" dataKey="blobsPerTx" name="Blobs per tx" stroke={C_PER} strokeWidth={2} dot={false} isAnimationActive={true} />
                               <Brush dataKey="bucket" {...AA_BRUSH} />
               </ComposedChart>
             </ResponsiveContainer>

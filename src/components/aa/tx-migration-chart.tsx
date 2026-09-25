@@ -125,7 +125,7 @@ export function TxMigrationChart({ range }: { range: NetRange }) {
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
                 {lines.map((l) => (
-                  <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={2} dot={false} isAnimationActive={false} />
+                  <Line key={l.key} type="monotone" dataKey={l.key} stroke={l.color} strokeWidth={2} dot={false} isAnimationActive={true} />
                 ))}
                               <Brush dataKey="bucket" {...AA_BRUSH} />
               </LineChart>

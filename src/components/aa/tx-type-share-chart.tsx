@@ -131,7 +131,7 @@ export function TxTypeShareChart({ range }: { range: NetRange }) {
                     fill={typeColor(label)}
                     fillOpacity={0.85}
                     strokeWidth={0}
-                    isAnimationActive={false}
+                    isAnimationActive={true}
                   />
                 ))}
                               <Brush dataKey="bucket" {...AA_BRUSH} />
