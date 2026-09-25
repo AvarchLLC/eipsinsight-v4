@@ -103,15 +103,20 @@ function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         {proposal.tags && proposal.tags.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {proposal.tags.slice(0, 2).map((tag, idx) => (
-              <span
-                key={idx}
-                className="inline-flex items-center gap-0.5 rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
-              >
-                <Tag className="h-2 w-2" />
-                {tag}
-              </span>
-            ))}
+            {proposal.tags.slice(0, 2).map((tag, idx) => {
+              // Defensive: upstream (Ethereum Magicians) may return tag objects; never render an object as a child.
+              const label = typeof tag === 'string' ? tag : ((tag as { name?: string; slug?: string })?.name ?? (tag as { slug?: string })?.slug ?? '');
+              if (!label) return null;
+              return (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-0.5 rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
+                >
+                  <Tag className="h-2 w-2" />
+                  {label}
+                </span>
+              );
+            })}
           </div>
         )}
         {proposal.category && (
