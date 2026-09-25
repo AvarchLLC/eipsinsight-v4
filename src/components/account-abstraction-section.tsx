@@ -6,6 +6,7 @@ import {
   AreaChart,
   Bar,
   BarChart,
+  Brush,
   CartesianGrid,
   Cell,
   Legend,
@@ -19,10 +20,12 @@ import {
 import { Boxes, Fingerprint, Wallet, TrendingUp, Info } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import type { AaUsageStats, AaValueSeries } from '@/server/orpc/procedures/aa';
+import { AA_BRUSH } from '@/components/aa/chart-kit';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartWatermark } from '@/components/chart-watermark';
 import { ChartCard } from '@/components/chart-card';
+import { CopyLinkButton } from '@/components/header';
 import { cn } from '@/lib/utils';
 import { AaRaceTabs } from '@/app/aa/_race_tabs';
 import { useAaTimeframe } from '@/app/aa/_timeframe';
@@ -149,13 +152,14 @@ export function AccountAbstractionSection() {
   const pieBucketLabel = stats?.series?.length ? fmtBucket(stats.series[stats.series.length - 1].bucket, stats.granularity) : '';
 
   return (
-    <section className="space-y-5">
+    <section id="aa-usage" className="scroll-mt-24 space-y-5">
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="flex items-center gap-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+          <h2 className="group flex items-center gap-2 text-xl font-bold tracking-tight text-foreground sm:text-2xl">
             <Boxes className="h-5 w-5 text-primary" />
             Account Abstraction usage on mainnet
+            <CopyLinkButton sectionId="aa-usage" tooltipLabel="Copy section link" className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" />
           </h2>
           <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
             The two account-abstraction mechanisms live on Ethereum today, measured directly on-chain: EIP-7702 (Set EOA
@@ -255,8 +259,10 @@ export function AccountAbstractionSection() {
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
                     <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={62} tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : String(v))} label={yLabel('Transactions')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [fmtInt(v), name === 'aa7702' ? 'EIP-7702' : 'ERC-4337']} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'aa7702' ? 'EIP-7702' : 'ERC-4337')} />
                     <Area type="monotone" dataKey="aa7702" stroke={C7702} strokeWidth={2} fill="url(#g7702)" />
                     <Area type="monotone" dataKey="aa4337" stroke={C4337} strokeWidth={2} fill="url(#g4337)" />
+                    <Brush dataKey="label" {...AA_BRUSH} />
                   </AreaChart>
                 ) : view === 'value' ? (
                   valueData.length === 0 ? (
@@ -271,8 +277,10 @@ export function AccountAbstractionSection() {
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
                     <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={64} tickFormatter={(v) => fmtUsd(v)} label={yLabel('USD moved')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [fmtUsd(v), name === 'value7702Usd' ? 'EIP-7702 value' : 'ERC-4337 value']} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'value7702Usd' ? 'EIP-7702 value' : 'ERC-4337 value')} />
                     <Area type="monotone" dataKey="value7702Usd" stackId="val" stroke={C7702} strokeWidth={2} fill="url(#gv7702)" />
                     <Area type="monotone" dataKey="value4337Usd" stackId="val" stroke={C4337} strokeWidth={2} fill="url(#gv4337)" />
+                    <Brush dataKey="label" {...AA_BRUSH} />
                   </AreaChart>
                   )
                 ) : shareMode === 'trend' ? (
@@ -285,13 +293,15 @@ export function AccountAbstractionSection() {
                     <XAxis dataKey="label" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={{ stroke: CHART_GRID }} minTickGap={20} />
                     <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={58} tickFormatter={(v) => `${v}%`} label={yLabel('% of all txs')} />
                     <Tooltip contentStyle={TT_CONTENT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, name: string) => [`${v}%`, name === 'share7702Pct' ? 'EIP-7702 share' : 'ERC-4337 share']} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} formatter={(v) => (v === 'share7702Pct' ? 'EIP-7702 share' : 'ERC-4337 share')} />
                     <Area type="monotone" dataKey="share7702Pct" stroke={C7702} strokeWidth={2} fill="url(#gShare)" />
                     <Area type="monotone" dataKey="share4337Pct" stroke={C4337} strokeWidth={2} fill="url(#gShare4337)" />
+                    <Brush dataKey="label" {...AA_BRUSH} />
                   </AreaChart>
                 ) : (
                   <PieChart>
                     <Tooltip contentStyle={TT_CONTENT} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [fmtInt(v), n]} />
-                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={2} isAnimationActive={false}>
+                    <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={55} outerRadius={95} paddingAngle={2} isAnimationActive={true}>
                       {pieData.map((d) => <Cell key={d.name} fill={d.color} />)}
                     </Pie>
                     <Legend wrapperStyle={{ fontSize: 11 }} />
@@ -316,7 +326,7 @@ export function AccountAbstractionSection() {
                 </>
               }
             >
-              <div className="relative h-[220px] w-full">
+              <div className="relative h-[250px] w-full">
                 <ChartWatermark position="center" />
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -329,7 +339,8 @@ export function AccountAbstractionSection() {
                       itemStyle={TT_ITEM}
                       formatter={(v: number) => [fmtInt(v), 'unique accounts']}
                     />
-                    <Bar dataKey="accounts7702" fill={CACCT} radius={[3, 3, 0, 0]} />
+                    <Bar dataKey="accounts7702" fill={CACCT} radius={[3, 3, 0, 0]} isAnimationActive={true} />
+                    <Brush dataKey="label" {...AA_BRUSH} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -352,7 +363,7 @@ export function AccountAbstractionSection() {
                 </div>
               }
             >
-              <div className="relative h-[220px] w-full">
+              <div className="relative h-[250px] w-full">
                 <ChartWatermark position="center" />
                 <ResponsiveContainer width="100%" height="100%">
                   <AreaChart data={chartData} margin={{ top: 6, right: 8, left: 0, bottom: 0 }}>
@@ -368,6 +379,7 @@ export function AccountAbstractionSection() {
                     <Area type="monotone" dataKey="ep06" stackId="ep" stroke={CEP06} fill={CEP06} fillOpacity={0.5} />
                     <Area type="monotone" dataKey="ep07" stackId="ep" stroke={CEP07} fill={CEP07} fillOpacity={0.5} />
                     <Area type="monotone" dataKey="ep08" stackId="ep" stroke={CEP08} fill={CEP08} fillOpacity={0.5} />
+                    <Brush dataKey="label" {...AA_BRUSH} />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>

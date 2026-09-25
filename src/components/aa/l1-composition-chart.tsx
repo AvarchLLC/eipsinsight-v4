@@ -153,7 +153,7 @@ export function L1CompositionChart({ range }: { range: NetRange }) {
                     fill={typeColor(label)}
                     fillOpacity={0.8}
                     strokeWidth={0}
-                    isAnimationActive={false}
+                    isAnimationActive={true}
                   />
                 ))}
                 <Brush dataKey="bucket" {...AA_BRUSH} />

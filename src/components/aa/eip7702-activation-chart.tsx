@@ -146,7 +146,7 @@ export function Eip7702ActivationChart() {
                     label={{ value: mk.label, position: 'top', style: { fontSize: 10, fill: 'var(--muted-foreground)' } }}
                   />
                 ))}
-                <Area type="monotone" dataKey="cumulative" stroke={C} strokeWidth={2} fill="url(#grad7702act)" dot={false} isAnimationActive={false} />
+                <Area type="monotone" dataKey="cumulative" stroke={C} strokeWidth={2} fill="url(#grad7702act)" dot={false} isAnimationActive={true} />
                               <Brush dataKey="m" {...AA_BRUSH} />
               </AreaChart>
             </ResponsiveContainer>

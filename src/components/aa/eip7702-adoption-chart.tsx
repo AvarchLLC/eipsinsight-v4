@@ -149,8 +149,8 @@ export function Eip7702AdoptionChart() {
                   formatter={(v: number, name: string) => [v.toLocaleString('en-US'), name]}
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} iconType="circle" />
-                <Line type="monotone" dataKey="accounts" name="Delegated accounts" stroke={C_ACCT} strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Line type="monotone" dataKey="txs" name="7702 transactions" stroke={C_TX} strokeWidth={2} dot={false} isAnimationActive={false} />
+                <Line type="monotone" dataKey="accounts" name="Delegated accounts" stroke={C_ACCT} strokeWidth={2} dot={false} isAnimationActive={true} />
+                <Line type="monotone" dataKey="txs" name="7702 transactions" stroke={C_TX} strokeWidth={2} dot={false} isAnimationActive={true} />
                               <Brush dataKey="bucket" {...AA_BRUSH} />
               </LineChart>
             </ResponsiveContainer>

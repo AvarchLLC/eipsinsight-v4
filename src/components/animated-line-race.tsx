@@ -132,14 +132,23 @@ export function AnimatedLineRace({
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const [hover, setHover] = useState<{ idx: number; left: number; top: number } | null>(null);
+  // Optional in-chart datazoom over the x-axis (indices into the full buckets).
+  const [win, setWin] = useState<{ a: number; b: number } | null>(null);
 
-  const n = buckets.length;
-  if (n < 2 || !series.length) return null;
+  const fullN = buckets.length;
+  if (fullN < 2 || !series.length) return null;
+
+  // Datazoom window: default to the full range; the slider below narrows it.
+  const a = win ? Math.max(0, Math.min(win.a, fullN - 2)) : 0;
+  const b = win ? Math.min(fullN - 1, Math.max(win.b, a + 1)) : fullN - 1;
+  const wbuckets = buckets.slice(a, b + 1);
+  const wseries = series.map((s) => ({ ...s, points: s.points.slice(a, b + 1) }));
+  const n = wbuckets.length;
 
   // ── Scales ──
   let maxV = 0;
   let minPos = Infinity;
-  for (const s of series) {
+  for (const s of wseries) {
     for (const v of s.points) {
       if (v > maxV) maxV = v;
       if (v > 0 && v < minPos) minPos = v;
@@ -186,7 +195,7 @@ export function AnimatedLineRace({
 
   // Endpoint cards: y from current value, collision-resolved top→bottom.
   const endX = xOf(cutoff);
-  const cards = series
+  const cards = wseries
     .map((s) => ({ s, cur: valueAt(s.points), y: yOf(valueAt(s.points)) }))
     .sort((a, b) => a.y - b.y);
   const gap = CARD_H + 6;
@@ -228,7 +237,7 @@ export function AnimatedLineRace({
   const hoverX = hover ? xOf(hover.idx) : 0;
   // Tooltip rows for the hovered bucket, biggest first.
   const hoverRows = hover
-    ? [...series]
+    ? [...wseries]
         .map((s) => ({ s, v: fin(s.points[hover.idx]) }))
         .sort((a, b) => b.v - a.v)
     : [];
@@ -291,7 +300,7 @@ export function AnimatedLineRace({
             fontSize={11}
             textAnchor={idx === 0 ? 'start' : idx === n - 1 ? 'end' : 'middle'}
           >
-            {fmtBucket(buckets[idx])}
+            {fmtBucket(wbuckets[idx])}
           </text>
         ))}
 
@@ -301,7 +310,7 @@ export function AnimatedLineRace({
         )}
 
         {/* Lines */}
-        {series.map((s) => (
+        {wseries.map((s) => (
           <path
             key={s.key}
             d={pathUpTo(s.points)}
@@ -317,7 +326,7 @@ export function AnimatedLineRace({
         {hover && (
           <g pointerEvents="none">
             <line x1={hoverX} y1={PLOT_T} x2={hoverX} y2={PLOT_B} stroke="var(--foreground)" strokeWidth={1} opacity={0.35} />
-            {series.map((s) => (
+            {wseries.map((s) => (
               <circle key={`h${s.key}`} cx={hoverX} cy={yOf(fin(s.points[hover.idx]))} r={3.5} fill={s.color} stroke="var(--card)" strokeWidth={1.5} />
             ))}
           </g>
@@ -374,7 +383,7 @@ export function AnimatedLineRace({
             transform: `translate(${hover.left > 320 ? 'calc(-100% - 14px)' : '14px'}, -50%)`,
           }}
         >
-            <p className="mb-1.5 font-semibold text-foreground">{fmtBucket(buckets[hover.idx])}</p>
+            <p className="mb-1.5 font-semibold text-foreground">{fmtBucket(wbuckets[hover.idx])}</p>
             <div className="space-y-1">
               {hoverRows.map(({ s, v }) => (
                 <div key={s.key} className="flex items-center justify-between gap-4">
@@ -389,6 +398,49 @@ export function AnimatedLineRace({
           </div>
         )}
       </div>
+
+      {/* In-chart datazoom: two handles windowing the shared x-axis. */}
+      {fullN > 4 && (
+        <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
+          <span className="shrink-0 font-medium">Zoom</span>
+          <input
+            type="range"
+            min={0}
+            max={fullN - 2}
+            value={a}
+            onChange={(e) => {
+              const na = Number(e.target.value);
+              setWin({ a: na, b: Math.max(na + 1, b) });
+            }}
+            className="h-1 flex-1 cursor-pointer accent-[var(--chart-3)]"
+            aria-label="Zoom start"
+          />
+          <input
+            type="range"
+            min={1}
+            max={fullN - 1}
+            value={b}
+            onChange={(e) => {
+              const nb = Number(e.target.value);
+              setWin({ a: Math.min(a, nb - 1), b: nb });
+            }}
+            className="h-1 flex-1 cursor-pointer accent-[var(--chart-3)]"
+            aria-label="Zoom end"
+          />
+          <span className="shrink-0 tabular-nums">
+            {fmtBucket(buckets[a])} – {fmtBucket(buckets[b])}
+          </span>
+          {win && (
+            <button
+              type="button"
+              onClick={() => setWin(null)}
+              className="shrink-0 rounded border border-border px-1.5 py-0.5 font-medium transition-colors hover:text-foreground"
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      )}
 
       {footer && <div className="mt-3 border-t border-border pt-2 text-[11px] text-muted-foreground">{footer}</div>}
     </div>

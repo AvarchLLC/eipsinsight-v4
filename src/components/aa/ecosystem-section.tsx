@@ -1,6 +1,7 @@
 'use client';
 
 import { Activity } from 'lucide-react';
+import { CopyLinkButton } from '@/components/header';
 import { AA_TERMS } from '@/components/aa/chart-kit';
 import { useAaTimeframe } from '@/app/aa/_timeframe';
 import { TxTypeShareChart } from '@/components/aa/tx-type-share-chart';
@@ -11,16 +12,23 @@ import { TxMigrationChart } from '@/components/aa/tx-migration-chart';
 import { BlobUsageChart } from '@/components/aa/blob-usage-chart';
 import { Eip7702ActivationChart } from '@/components/aa/eip7702-activation-chart';
 
-/** A labelled group of related charts: a small heading, then a 2-up grid. */
+const groupSlug = (s: string) =>
+  `aa-${s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`;
+
+/** A labelled group of related charts: a small heading with a copy link, then a 2-up grid. */
 function ChartGroup({ title, hint, children }: { title: string; hint: string; children: React.ReactNode }) {
+  const id = groupSlug(title);
   return (
-    <div className="space-y-3">
-      <div className="border-l-2 border-primary/40 pl-2.5">
-        <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
+    <section id={id} className="scroll-mt-24 space-y-3">
+      <div className="group border-l-2 border-primary/40 pl-2.5">
+        <div className="flex items-center gap-1.5">
+          <h3 className="text-sm font-semibold tracking-tight text-foreground">{title}</h3>
+          <CopyLinkButton sectionId={id} tooltipLabel="Copy section link" className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" />
+        </div>
         <p className="text-xs text-muted-foreground">{hint}</p>
       </div>
       <div className="grid gap-4 xl:grid-cols-2">{children}</div>
-    </div>
+    </section>
   );
 }
 
@@ -34,11 +42,14 @@ export function AaEcosystemSection() {
   const { range } = useAaTimeframe();
 
   return (
-    <section className="space-y-6">
-      <div className="flex items-center gap-2">
+    <section id="aa-ecosystem" className="scroll-mt-24 space-y-6">
+      <div className="group flex items-center gap-2">
         <Activity className="h-5 w-5 text-primary" />
         <div>
-          <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">Ethereum ecosystem view</h2>
+          <div className="flex items-center gap-1.5">
+            <h2 className="text-base font-semibold tracking-tight text-foreground sm:text-lg">Ethereum ecosystem view</h2>
+            <CopyLinkButton sectionId="aa-ecosystem" tooltipLabel="Copy section link" className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100" />
+          </div>
           <p className="text-xs text-muted-foreground">
             Where account abstraction sits inside all mainnet activity: transaction mix, composition, and economics.
           </p>
