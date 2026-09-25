@@ -363,7 +363,11 @@ try {
           const replies = topic.reply_count || 0;
           const views = topic.views || 0;
           const likes = topic.like_count || 0;
-          const tags = topic.tags || [];
+          // Ethereum Magicians (Discourse) now returns tags as objects ({ id, name, slug })
+          // rather than plain strings. Normalize to string[] so the client renders text, not objects.
+          const tags = ((topic.tags as unknown[]) || [])
+            .map((t) => (typeof t === 'string' ? t : ((t as { name?: string; slug?: string })?.name ?? (t as { slug?: string })?.slug ?? '')))
+            .filter((t): t is string => Boolean(t));
           const lastActivityAt = topic.last_posted_at || topic.created_at || new Date().toISOString();
           const magiciansUrl = `https://ethereum-magicians.org/t/${topic.slug}/${topic.id}`;
           
