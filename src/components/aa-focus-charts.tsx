@@ -179,7 +179,7 @@ export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | '4337' | 'dem
         </div>
         <ChartCard
           title="Account-abstraction demand today"
-          desc="Combined EIP-7702 + ERC-4337 transactions per month — the existing AA activity that native, in-protocol AA (EIP-8141) is designed to serve. Not EIP-8141's own usage; it is not live yet."
+          desc="Combined EIP-7702 + ERC-4337 transactions per month. The existing AA activity that native, in-protocol AA (EIP-8141) would serve. Not EIP-8141's own usage; it is not live yet."
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={txSeries} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
@@ -338,7 +338,7 @@ export function AaFocusCharts({ mode = '7702' }: { mode?: '7702' | '4337' | 'dem
 
       <ChartCard
         title="Unique EIP-7702 accounts per month"
-        desc="Distinct wallets (from_address) that sent at least one 7702 transaction that month — a breadth-of-adoption signal, not raw volume."
+        desc="Distinct wallets (from_address) that sent at least one 7702 transaction that month. A breadth-of-adoption signal, not raw volume."
       >
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={txSeries} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>

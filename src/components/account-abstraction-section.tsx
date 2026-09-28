@@ -32,7 +32,7 @@ import { useAaTimeframe } from '@/app/aa/_timeframe';
 
 const C7702 = 'var(--chart-1)'; // blue
 const C4337 = 'var(--chart-4)'; // amber
-const CACCT = 'var(--chart-2)'; // green — unique accounts
+const CACCT = 'var(--chart-2)'; // green - unique accounts
 
 // Solid, high-contrast tooltip so it reads over the chart (was faint/transparent).
 const TT_CONTENT = {
@@ -104,7 +104,7 @@ export function AccountAbstractionSection() {
     [stats],
   );
   const rangeLabel = stats
-    ? `${stats.granularity} · ${fmtDay(stats.from)} – ${fmtDay(stats.to)}`
+    ? `${stats.granularity} · ${fmtDay(stats.from)} to ${fmtDay(stats.to)}`
     : '';
 
   const leader = useMemo(() => {
@@ -133,7 +133,7 @@ export function AccountAbstractionSection() {
     [valueSeries],
   );
 
-  // Pie shows the AA split (7702 vs 4337) — legible. AA is ~1% of all txs, so a
+  // Pie shows the AA split (7702 vs 4337) - legible. AA is ~1% of all txs, so a
   // whole-network pie would be a single grey slice; that share goes in the caption.
   const pieData = useMemo(() => {
     const last = stats?.series?.[stats.series.length - 1];

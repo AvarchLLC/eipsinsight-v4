@@ -54,17 +54,17 @@ export function AaExplainer() {
 
       {open && (
         <div className="space-y-5 border-t border-border/60 px-5 pb-5 pt-4 sm:px-6 sm:pb-6">
-          {/* The two mechanisms that deliver AA on Ethereum today — light left-rule, no heavy cards. */}
+          {/* The two mechanisms that deliver AA on Ethereum today - light left-rule, no heavy cards. */}
           <div className="grid gap-x-8 gap-y-4 sm:grid-cols-2">
             <div className="border-l-2 border-primary/50 pl-3">
-              <p className="text-sm font-semibold text-foreground">EIP-7702 — upgrade the account you already have</p>
+              <p className="text-sm font-semibold text-foreground">EIP-7702: upgrade the account you already have</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 A protocol-level transaction type (set-code, type 4) that points a normal EOA at contract code, so it
                 gains smart-account powers while keeping the same address and key. Live since the Pectra upgrade (2025).
               </p>
             </div>
             <div className="border-l-2 border-border pl-3">
-              <p className="text-sm font-semibold text-foreground">ERC-4337 — a separate smart-contract wallet</p>
+              <p className="text-sm font-semibold text-foreground">ERC-4337: a separate smart-contract wallet</p>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
                 An application-layer standard: smart-account wallets submit UserOperations through a shared EntryPoint
                 contract, with no change to the protocol itself. Live on mainnet since 2023.
@@ -72,7 +72,7 @@ export function AaExplainer() {
             </div>
           </div>
 
-          {/* What AA enables — a plain icon row, not four bordered boxes. */}
+          {/* What AA enables - a plain icon row, not four bordered boxes. */}
           <div className="flex flex-wrap gap-x-6 gap-y-2 border-t border-border/40 pt-4">
             {ENABLES.map((e) => (
               <div key={e.label} className="flex items-center gap-2 text-xs">

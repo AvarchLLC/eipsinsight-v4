@@ -17,7 +17,7 @@ export const revalidate = 300;
 
 // Curated tracker for EIP-8141 (Frame Transactions / native AA). Facts are sourced
 // from the Native AA breakouts (/aa/calls) and All Core Devs calls; each timeline
-// row and devnet release links to a public source. Snapshot dated below — the live
+// row and devnet release links to a public source. Snapshot dated below - the live
 // source of truth is the Calls tab, which auto-updates from ethereum/pm.
 const AS_OF = 'September 2026';
 
@@ -30,7 +30,7 @@ const TIMELINE: MileStone[] = [
   },
   {
     date: 'Aug 27, 2026',
-    label: "SFI'd for Hegota (ACDE #244) — spec may still change",
+    label: "SFI'd for Hegota (ACDE #244), spec may still change",
     kind: 'done',
   },
   {
@@ -95,7 +95,7 @@ const RELATED: Related[] = [
   { eip: '8130', title: 'Direct dispatch / codeless accounts', blurb: 'Base-led design; collaboration underway with 8141 on a shared tx type or account interoperability.' },
   { eip: '8037', title: 'Child-frame state-gas reservoir', blurb: 'Cross-frame state-gas fix approved for Glamsterdam; consistency work landed in the frames devnet.' },
   { eip: '8272', title: 'Recent Roots', blurb: 'Proposed to move out of the tx envelope into a canonical frame/mempool rule to avoid a protocol change.' },
-  { eip: '7778', title: 'Block-level gas accounting', blurb: 'Accounts block execution gas before refunds — the accounting model the frame tests build on.' },
+  { eip: '7778', title: 'Block-level gas accounting', blurb: 'Accounts block execution gas before refunds. The accounting model the frame tests build on.' },
 ];
 
 export default function Eip8141Tab() {
@@ -117,7 +117,7 @@ export default function Eip8141Tab() {
           EIP-8141 is the leading native account-abstraction design (Frames): unlike EIP-7702 and ERC-4337, it builds AA
           directly into the protocol. It is scheduled for inclusion as the Hegota headliner and is being hardened in the
           Native AA breakouts, with a live spec-test devnet (frames-devnet) and reference clients. It is not live on a
-          public network yet, but the frames-devnet is actively producing frame transactions — switch to{' '}
+          public network yet, but the frames-devnet is actively producing frame transactions. Switch to{' '}
           <span className="font-medium text-foreground">Devnet activity</span> for live metrics, or stay on{' '}
           <span className="font-medium text-foreground">Proposal &amp; status</span> for the proposal, releases, and
           calls shaping it.
@@ -246,8 +246,8 @@ export default function Eip8141Tab() {
       {/* Existing AA demand (7702 + 4337) that native, in-protocol AA would serve. */}
       <AaFocusCharts mode="demand" />
       <div className="rounded-xl border border-border bg-muted/30 p-3 text-[12px] leading-relaxed text-muted-foreground">
-        The chart above is existing account-abstraction activity (EIP-7702 + ERC-4337), not EIP-8141&apos;s own usage —
-        it is the demand native, in-protocol AA would serve. Once Frames activate on a public testnet, their own usage
+        The chart above is existing account-abstraction activity (EIP-7702 + ERC-4337), not EIP-8141&apos;s own usage.
+        It is the demand native, in-protocol AA would serve. Once Frames activate on a public testnet, their own usage
         charts will appear here. For the latest decisions, see the{' '}
         <Link href="/aa/calls" className="text-primary hover:underline">Calls</Link> tab.
       </div>
