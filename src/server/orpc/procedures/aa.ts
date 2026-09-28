@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { optionalAuthProcedure } from './types'
 import { clickhouseConfigured, clickhouseQuery } from '@/lib/clickhouse'
 import { redis } from '@/lib/redis'
+import { prisma } from '@/lib/prisma'
 
 /**
  * Account Abstraction usage metrics for the /aa dashboard.
@@ -358,8 +359,235 @@ async function getValueSeries(g: Granularity, from: string, to: string): Promise
   return data
 }
 
+// ---------------------------------------------------------------------------
+// EIP-8141 Frame Transaction devnet activity (frames-devnet-*).
+// Indexed into Postgres by the scheduler (frames_devnet_* tables) from the live
+// devnet execution RPC. This procedure reads those aggregates for the /aa/eip-8141
+// "Devnet" view. See eipsinsight_scheduler/src/devnets/frames_activity.ts.
+// ---------------------------------------------------------------------------
+
+export interface FramesDevnetHistBucket {
+  bucket: string
+  count: number
+}
+export interface FramesDevnetSeriesPoint {
+  t: string
+  frameTxs: number
+  frames: number
+  signatures: number
+  blocks: number
+  gasUsed: number
+  success: number
+  fail: number
+  successRate: number | null
+  gasPerFrame: number | null
+  avgFramesPerBlock: number
+  avgFramesPerTx: number
+  cumulativeFrameTxs: number
+  cumulativeFrames: number
+  cumulativeSignatures: number
+}
+export interface FramesDevnetData {
+  available: boolean
+  network: string | null
+  status: 'live' | 'ended' | null
+  chainId: string | null
+  genesisTime: string | null
+  activationBlock: number | null
+  activationTime: string | null
+  headBlock: number | null
+  lastIndexedBlock: number | null
+  lastSeen: string | null
+  totals: {
+    frameTxs: number
+    frames: number
+    signatures: number
+    gas: number
+    valueWei: string
+    blocks: number
+    success: number
+    fail: number
+  }
+  derived: {
+    avgFramesPerTx: number
+    avgSignaturesPerTx: number
+    avgBlockTimeSec: number | null
+    daysLive: number | null
+    successRate: number | null
+    gasPerFrame: number | null
+  }
+  series: FramesDevnetSeriesPoint[]
+  histograms: {
+    framesPerTx: FramesDevnetHistBucket[]
+    sigPerTx: FramesDevnetHistBucket[]
+    frameMode: FramesDevnetHistBucket[]
+    frameFlags: FramesDevnetHistBucket[]
+    sigScheme: FramesDevnetHistBucket[]
+  }
+}
+
+const framesUnavailable = (network: string): FramesDevnetData => ({
+  available: false,
+  network,
+  status: null,
+  chainId: null,
+  genesisTime: null,
+  activationBlock: null,
+  activationTime: null,
+  headBlock: null,
+  lastIndexedBlock: null,
+  lastSeen: null,
+  totals: { frameTxs: 0, frames: 0, signatures: 0, gas: 0, valueWei: '0', blocks: 0, success: 0, fail: 0 },
+  derived: { avgFramesPerTx: 0, avgSignaturesPerTx: 0, avgBlockTimeSec: null, daysLive: null, successRate: null, gasPerFrame: null },
+  series: [],
+  histograms: { framesPerTx: [], sigPerTx: [], frameMode: [], frameFlags: [], sigScheme: [] },
+})
+
+const framesCache = new Map<string, { at: number; data: FramesDevnetData }>()
+
+async function getFramesDevnet(network: string): Promise<FramesDevnetData> {
+  const cached = framesCache.get(network)
+  if (cached && Date.now() - cached.at < 60_000) return cached.data
+  try {
+    const metaRows = await prisma.$queryRawUnsafe<Array<Record<string, unknown>>>(
+      `SELECT network, chain_id, genesis_time, activation_block, activation_time,
+              head_block, last_indexed_block, last_seen, status,
+              total_frame_txs, total_frames, total_signatures, total_gas, total_value_wei,
+              total_success, total_fail
+       FROM frames_devnet_meta WHERE network = $1 LIMIT 1`,
+      network,
+    )
+    if (!metaRows.length) return framesUnavailable(network)
+    const m = metaRows[0]
+
+    const seriesRows = await prisma.$queryRawUnsafe<
+      Array<{ t: Date; frame_txs: bigint; frames: bigint; sigs: bigint; blocks: bigint; gas: bigint; success: bigint; fail: bigint }>
+    >(
+      `SELECT date_trunc('hour', block_time) AS t,
+              SUM(frame_tx_count)::bigint AS frame_txs,
+              SUM(frame_count)::bigint AS frames,
+              SUM(signature_count)::bigint AS sigs,
+              COUNT(*)::bigint AS blocks,
+              SUM(gas_used)::bigint AS gas,
+              SUM(success_count)::bigint AS success,
+              SUM(fail_count)::bigint AS fail
+       FROM frames_devnet_blocks WHERE network = $1
+       GROUP BY 1 ORDER BY 1`,
+      network,
+    )
+
+    const histRows = await prisma.$queryRawUnsafe<Array<{ dimension: string; bucket: string; count: bigint }>>(
+      `SELECT dimension, bucket, count FROM frames_devnet_histograms WHERE network = $1`,
+      network,
+    )
+
+    const num = (v: unknown) => (v == null ? 0 : Number(v as bigint | number | string))
+    let cumTx = 0
+    let cumFr = 0
+    let cumSig = 0
+    const series: FramesDevnetSeriesPoint[] = seriesRows.map((r) => {
+      const frameTxs = num(r.frame_txs)
+      const frames = num(r.frames)
+      const signatures = num(r.sigs)
+      const blocks = num(r.blocks)
+      const gasUsed = num(r.gas)
+      const success = num(r.success)
+      const fail = num(r.fail)
+      cumTx += frameTxs
+      cumFr += frames
+      cumSig += signatures
+      return {
+        t: (r.t instanceof Date ? r.t : new Date(r.t)).toISOString(),
+        frameTxs,
+        frames,
+        signatures,
+        blocks,
+        gasUsed,
+        success,
+        fail,
+        successRate: success + fail > 0 ? +((100 * success) / (success + fail)).toFixed(2) : null,
+        gasPerFrame: frames ? Math.round(gasUsed / frames) : null,
+        avgFramesPerBlock: blocks ? +(frames / blocks).toFixed(2) : 0,
+        avgFramesPerTx: frameTxs ? +(frames / frameTxs).toFixed(2) : 0,
+        cumulativeFrameTxs: cumTx,
+        cumulativeFrames: cumFr,
+        cumulativeSignatures: cumSig,
+      }
+    })
+
+    const byDim = (dimension: string): FramesDevnetHistBucket[] =>
+      histRows
+        .filter((h) => h.dimension === dimension)
+        .map((h) => ({ bucket: h.bucket, count: num(h.count) }))
+        .sort((a, b) => b.count - a.count)
+
+    // Derive headline totals from the per-block table (idempotent) rather than the
+    // meta running-counters, which can drift if a reset/backfill overlaps the live
+    // indexer. Per-block rows use ON CONFLICT DO NOTHING, so these sums are exact.
+    const frameTxs = series.reduce((s, p) => s + p.frameTxs, 0)
+    const frames = series.reduce((s, p) => s + p.frames, 0)
+    const signatures = series.reduce((s, p) => s + p.signatures, 0)
+    const success = series.reduce((s, p) => s + p.success, 0)
+    const fail = series.reduce((s, p) => s + p.fail, 0)
+    const gas = series.reduce((s, p) => s + p.gasUsed, 0)
+    const blockCount = series.reduce((s, p) => s + p.blocks, 0)
+    const activationTime = m.activation_time ? new Date(m.activation_time as string) : null
+    const lastSeen = m.last_seen ? new Date(m.last_seen as string) : null
+    const spanSec = activationTime && lastSeen ? (lastSeen.getTime() - activationTime.getTime()) / 1000 : null
+    const blocks = blockCount > 0 ? blockCount : num(m.head_block) - num(m.activation_block) + 1
+
+    const data: FramesDevnetData = {
+      available: true,
+      network: String(m.network),
+      status: (m.status as 'live' | 'ended') ?? 'live',
+      chainId: m.chain_id ? String(m.chain_id) : null,
+      genesisTime: m.genesis_time ? new Date(m.genesis_time as string).toISOString() : null,
+      activationBlock: m.activation_block == null ? null : num(m.activation_block),
+      activationTime: activationTime ? activationTime.toISOString() : null,
+      headBlock: m.head_block == null ? null : num(m.head_block),
+      lastIndexedBlock: m.last_indexed_block == null ? null : num(m.last_indexed_block),
+      lastSeen: lastSeen ? lastSeen.toISOString() : null,
+      totals: {
+        frameTxs,
+        frames,
+        signatures,
+        gas,
+        valueWei: m.total_value_wei == null ? '0' : String(m.total_value_wei),
+        blocks: blocks > 0 ? blocks : series.reduce((s, p) => s + p.blocks, 0),
+        success,
+        fail,
+      },
+      derived: {
+        avgFramesPerTx: frameTxs ? +(frames / frameTxs).toFixed(2) : 0,
+        avgSignaturesPerTx: frameTxs ? +(signatures / frameTxs).toFixed(2) : 0,
+        avgBlockTimeSec: spanSec && blocks > 1 ? +(spanSec / (blocks - 1)).toFixed(1) : null,
+        daysLive: spanSec ? +(spanSec / 86400).toFixed(1) : null,
+        successRate: success + fail > 0 ? +((100 * success) / (success + fail)).toFixed(2) : null,
+        gasPerFrame: frames ? Math.round(gas / frames) : null,
+      },
+      series,
+      histograms: {
+        framesPerTx: byDim('frames_per_tx').sort((a, b) => Number(a.bucket) - Number(b.bucket)),
+        sigPerTx: byDim('sig_per_tx').sort((a, b) => Number(a.bucket) - Number(b.bucket)),
+        frameMode: byDim('frame_mode'),
+        frameFlags: byDim('frame_flags'),
+        sigScheme: byDim('sig_scheme'),
+      },
+    }
+    framesCache.set(network, { at: Date.now(), data })
+    return data
+  } catch {
+    return framesUnavailable(network)
+  }
+}
+
 export const aaProcedures = {
   getAdoptionIndex: optionalAuthProcedure.handler(async (): Promise<AaAdoption> => getAdoption()),
+
+  /** EIP-8141 frame-transaction devnet activity (default: frames-devnet-0). */
+  getFramesDevnet: optionalAuthProcedure
+    .input(z.object({ network: z.string().regex(/^[a-z0-9-]+$/).default('frames-devnet-0') }))
+    .handler(async ({ input }): Promise<FramesDevnetData> => getFramesDevnet(input.network)),
 
   getValueSeries: optionalAuthProcedure
     .input(

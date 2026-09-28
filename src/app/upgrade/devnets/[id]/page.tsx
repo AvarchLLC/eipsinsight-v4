@@ -384,6 +384,26 @@ export default async function DevnetDetailPage({ params }: Props) {
         </section>
       )}
 
+      {(devnet.id.startsWith('frames-devnet') || devnet.eips.some((e) => e.number === 8141)) && (
+        <Link
+          href="/aa/eip-8141"
+          className="group flex items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4 transition-colors hover:bg-primary/10"
+        >
+          <div className="flex items-center gap-3">
+            <Radio className="h-5 w-5 shrink-0 text-primary" />
+            <div>
+              <p className="text-sm font-semibold text-foreground">Live EIP-8141 frame-transaction activity</p>
+              <p className="text-xs text-muted-foreground">
+                Frames processed, batching, modes, and signatures on this devnet — charted from the execution RPC.
+              </p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+            View activity <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </span>
+        </Link>
+      )}
+
       {infoEips.length > 0 && (
         <div className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 text-xs leading-relaxed text-muted-foreground">
           <div className="flex items-center gap-2 font-semibold text-foreground mb-1.5">

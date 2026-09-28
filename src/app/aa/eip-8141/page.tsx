@@ -10,6 +10,8 @@ import {
   Server,
 } from 'lucide-react';
 import { AaFocusCharts } from '@/components/aa-focus-charts';
+import { Eip8141ViewSwitch } from '@/components/aa/eip8141-view-switch';
+import { FramesDevnetPanel } from '@/components/aa/frames-devnet-panel';
 
 export const revalidate = 300;
 
@@ -115,7 +117,9 @@ export default function Eip8141Tab() {
           EIP-8141 is the leading native account-abstraction design (Frames): unlike EIP-7702 and ERC-4337, it builds AA
           directly into the protocol. It is scheduled for inclusion as the Hegota headliner and is being hardened in the
           Native AA breakouts, with a live spec-test devnet (frames-devnet) and reference clients. It is not live on a
-          public network yet, so there is no on-chain usage to chart — this tab tracks the proposal, the devnet, and the
+          public network yet, but the frames-devnet is actively producing frame transactions — switch to{' '}
+          <span className="font-medium text-foreground">Devnet activity</span> for live metrics, or stay on{' '}
+          <span className="font-medium text-foreground">Proposal &amp; status</span> for the proposal, releases, and
           calls shaping it.
         </p>
         <div className="mt-4 flex flex-wrap gap-2">
@@ -128,6 +132,10 @@ export default function Eip8141Tab() {
         </div>
       </section>
 
+      <Eip8141ViewSwitch
+        devnet={<FramesDevnetPanel />}
+        overview={
+      <div className="space-y-4">
       {/* Inclusion status timeline */}
       <section className="rounded-xl border border-border bg-card/60 p-6">
         <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
@@ -243,6 +251,9 @@ export default function Eip8141Tab() {
         charts will appear here. For the latest decisions, see the{' '}
         <Link href="/aa/calls" className="text-primary hover:underline">Calls</Link> tab.
       </div>
+      </div>
+        }
+      />
     </div>
   );
 }
