@@ -43,7 +43,7 @@ export const TYPE_COLOR: Record<string, string> = {
   'EIP-1559': 'var(--chart-1)',
   'EIP-4844': 'var(--chart-4)',
   'EIP-7702': 'var(--chart-2)',
-  // Composition classes (what a transaction does) — same colour for the same concept
+  // Composition classes (what a transaction does) - same colour for the same concept
   'Contract calls': 'var(--chart-1)',
   'Plain transfers': 'var(--chart-5)',
   'Blob (EIP-4844)': 'var(--chart-4)',
