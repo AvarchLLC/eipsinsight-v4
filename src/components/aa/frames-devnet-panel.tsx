@@ -17,7 +17,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, Boxes, CheckCircle2, GitMerge, Layers, PenLine, Radio, Timer } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, Coins, GitMerge, Layers, PenLine, Radio, Timer, Zap } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID, chartColor } from '@/lib/chart-colors';
 import { AA_BRUSH } from '@/components/aa/chart-kit';
@@ -42,6 +42,30 @@ const TT = {
 
 const compact = (n: number) =>
   n >= 1e9 ? `${(n / 1e9).toFixed(2)}B` : n >= 1e6 ? `${(n / 1e6).toFixed(2)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : `${n}`;
+
+// Normalize a bucket to canonical hex ("1" and "0x1" both -> "0x1"), because
+// different clients serialize mode/scheme as decimal or hex.
+const normHex = (b: string): string => {
+  if (b == null) return b;
+  const n = b.startsWith('0x') ? parseInt(b, 16) : Number(b);
+  return Number.isNaN(n) ? b : '0x' + n.toString(16);
+};
+// EIP-8141 spec semantics, so the raw hex buckets read as what they mean.
+const MODE_LABEL: Record<string, string> = {
+  '0x0': 'Entrypoint',
+  '0x1': 'Validation',
+  '0x2': 'Execution',
+};
+const modeLabel = (b: string) => MODE_LABEL[normHex(b)] ?? `mode ${b}`;
+// Signature schemes + their spec gas cost (EIP-8141 §Signatures).
+const SCHEME: Record<string, { name: string; gas: number }> = {
+  '0x0': { name: 'SECP256K1', gas: 2800 },
+  '0x1': { name: 'P256', gas: 6700 },
+};
+const schemeInfo = (b: string) => SCHEME[normHex(b)] ?? { name: `scheme ${b}`, gas: 0 };
+const FRAME_TX_INTRINSIC = 15000;
+const FRAME_PER_FRAME = 475;
+const PLAIN_TRANSFER_GAS = 21000; // relatable baseline for normal users
 
 function fmtHour(iso: string): string {
   const d = new Date(iso);
@@ -171,10 +195,54 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
   }
 
   const isLive = data.status === 'live';
-  const modeData = data.histograms.frameMode.map((h, i) => ({ name: h.bucket, value: h.count, fill: chartColor(i) }));
-  const flagData = data.histograms.frameFlags.map((h) => ({ name: h.bucket, value: h.count }));
   const fptData = data.histograms.framesPerTx.map((h) => ({ name: h.bucket, value: h.count }));
-  const sptData = data.histograms.sigPerTx.map((h) => ({ name: h.bucket, value: h.count }));
+
+  // Merge histogram buckets by their semantic label (clients emit "0x1" and "1").
+  const mergeBy = (buckets: { bucket: string; count: number }[]) => {
+    const m = new Map<string, number>();
+    for (const b of buckets) m.set(modeLabel(b.bucket), (m.get(modeLabel(b.bucket)) ?? 0) + b.count);
+    return m;
+  };
+  const frameCountByPurpose = mergeBy(data.histograms.frameMode);
+  const gasByPurposeMap = mergeBy(data.histograms.gasByMode);
+  // Purpose mix (share of frames).
+  const purposeData = Array.from(frameCountByPurpose.entries())
+    .map(([name, value], i) => ({ name, value, fill: chartColor(i) }))
+    .sort((a, b) => b.value - a.value);
+  // Average gas a single frame is allowed, by purpose. THIS is the readable
+  // "what does validation cost vs execution" answer, not raw multi-billion totals.
+  const gasPerFrameByPurpose = Array.from(gasByPurposeMap.entries())
+    .map(([name, gas], i) => ({
+      name,
+      value: Math.round(gas / (frameCountByPurpose.get(name) || 1)),
+      fill: chartColor(i),
+    }))
+    .sort((a, b) => b.value - a.value);
+
+  // Signature economics, deduped by canonical scheme, count x spec gas cost.
+  const schemeAgg = new Map<string, { name: string; gasEach: number; count: number }>();
+  for (const h of data.histograms.sigScheme) {
+    const info = schemeInfo(h.bucket);
+    const cur = schemeAgg.get(info.name) ?? { name: info.name, gasEach: info.gas, count: 0 };
+    cur.count += h.count;
+    schemeAgg.set(info.name, cur);
+  }
+  const schemeRows = Array.from(schemeAgg.values())
+    .map((r) => ({ ...r, totalGas: r.count * r.gasEach }))
+    .sort((a, b) => b.count - a.count);
+  const totalSigGas = schemeRows.reduce((s, r) => s + r.totalGas, 0);
+  const dominantScheme = schemeRows[0];
+  const validationGasPerTx = data.totals.frameTxs ? Math.round(totalSigGas / data.totals.frameTxs) : 0;
+
+  // Where the gas of one native-AA transaction goes (a composition normal users get).
+  const perFrame = data.totals.frameTxs ? data.totals.frames / data.totals.frameTxs : 0;
+  const costParts = [
+    { name: 'Base fee (intrinsic)', gas: FRAME_TX_INTRINSIC, fill: chartColor(0) },
+    { name: 'Per-frame overhead', gas: Math.round(FRAME_PER_FRAME * perFrame), fill: chartColor(2) },
+    { name: 'Signature check', gas: validationGasPerTx, fill: chartColor(4) },
+  ];
+  const effectiveCostPerTx = costParts.reduce((s, p) => s + p.gas, 0);
+  const vsTransfer = effectiveCostPerTx / PLAIN_TRANSFER_GAS;
 
   // "vs mainnet AA": transactions per day. Devnet is a synthetic stress test;
   // mainnet 7702 + 4337 are organic. Uses the latest full month divided by 30.
@@ -182,7 +250,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
   const lastMonth = usage && usage.available && usage.series.length ? usage.series[usage.series.length - 1] : null;
   const comparison = lastMonth
     ? [
-        { name: 'Frames devnet', value: Math.round(data.totals.frameTxs / daysLive), fill: chartColor(2), tag: 'native AA · devnet' },
+        { name: 'Devnet EIP-8141', value: Math.round(data.totals.frameTxs / daysLive), fill: chartColor(2), tag: 'native AA · devnet' },
         { name: 'Mainnet EIP-7702', value: Math.round(lastMonth.aa7702 / 30), fill: chartColor(0), tag: 'set-code · mainnet' },
         { name: 'Mainnet ERC-4337', value: Math.round(lastMonth.aa4337 / 30), fill: chartColor(1), tag: 'bundler · mainnet' },
       ]
@@ -232,10 +300,10 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         <Stat icon={Layers} label="Frames executed" value={compact(data.totals.frames)} sub={`${data.derived.avgFramesPerTx} / tx avg`} />
         <Stat icon={CheckCircle2} label="Success rate" value={data.derived.successRate != null ? `${data.derived.successRate}%` : 'n/a'} sub={`${compact(data.totals.fail)} failed`} />
         <Stat icon={GitMerge} label="Batching" value={`${data.derived.avgFramesPerTx}×`} sub="frames per tx" />
-        <Stat icon={PenLine} label="Signatures" value={compact(data.totals.signatures)} sub={`${data.derived.avgSignaturesPerTx} / tx avg`} />
+        <Stat icon={PenLine} label="Sig scheme" value={dominantScheme?.scheme ?? 'n/a'} sub={dominantScheme ? `${dominantScheme.gasEach.toLocaleString()} gas each` : ''} />
+        <Stat icon={Zap} label="Validation gas / tx" value={compact(validationGasPerTx)} sub="signature verification" />
+        <Stat icon={Coins} label="Effective cost / tx" value={compact(effectiveCostPerTx)} sub="intrinsic + frames + sig" />
         <Stat icon={Boxes} label="Blocks" value={compact(data.totals.blocks)} sub={`since block ${data.activationBlock}`} />
-        <Stat icon={Timer} label="Block time" value={data.derived.avgBlockTimeSec ? `${data.derived.avgBlockTimeSec}s` : 'n/a'} sub="avg" />
-        <Stat icon={Radio} label="Days live" value={data.derived.daysLive ? `${data.derived.daysLive}` : 'n/a'} sub={isLive ? 'and counting' : 'total'} />
       </div>
 
       {/* Chart controls: granularity toggle. Drag the slider under any time chart to zoom a range. */}
@@ -295,30 +363,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         </div>
       </ChartCard>
 
-      {/* Throughput: frame txs per hour + avg frames/block */}
-      <ChartCard
-        id="frames-throughput"
-        title="Throughput over time"
-        description="Frame transactions per hour and the average number of frames packed into each block."
-      >
-        <div className="relative h-[260px] w-full">
-          <ChartWatermark />
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartSeries} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-              <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
-              <XAxis dataKey="t" tickFormatter={tickFmt} tick={{ fontSize: 11, fill: CHART_AXIS }} minTickGap={40} />
-              <YAxis yAxisId="l" tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={48} />
-              <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: CHART_AXIS }} width={38} />
-              <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} labelFormatter={(l) => `${tickFmt(String(l))} UTC`} />
-              <Line yAxisId="l" type="monotone" dataKey="frameTxs" name="Frame txs / hr" stroke={chartColor(0)} strokeWidth={2} dot={false} isAnimationActive={false} />
-              <Line yAxisId="r" type="monotone" dataKey="avgFramesPerBlock" name="Avg frames / block" stroke={chartColor(2)} strokeWidth={2} dot={false} isAnimationActive={false} />
-              <Brush dataKey="t" tickFormatter={tickFmt} {...AA_BRUSH} />
-              </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </ChartCard>
-
-      {/* Reliability + efficiency */}
+      {/* Reliability + validation cost */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ChartCard
           id="frames-success"
@@ -346,27 +391,54 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         </ChartCard>
 
         <ChartCard
-          id="frames-efficiency"
-          title="Gas per frame & block liveness"
-          description="Average gas each frame consumes, and how many blocks the devnet produces per hour."
+          id="frames-gas-by-purpose"
+          title="Gas per frame: validation vs execution"
+          description="The average gas a single frame is allowed, split by job. Validation (checking who you are) is cheap; execution (doing the actual work) is where the gas goes. This is the readable answer to 'is native-AA validation expensive?'"
         >
-          <div className="relative h-[240px] w-full">
+          <div className="relative h-[220px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={chartSeries} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="t" tickFormatter={tickFmt} tick={{ fontSize: 11, fill: CHART_AXIS }} minTickGap={40} />
-                <YAxis yAxisId="l" tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={48} />
-                <YAxis yAxisId="r" orientation="right" tick={{ fontSize: 11, fill: CHART_AXIS }} width={34} />
-                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} labelFormatter={(l) => `${tickFmt(String(l))} UTC`} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Line yAxisId="l" type="monotone" dataKey="gasPerFrame" name="Gas / frame" stroke={chartColor(1)} strokeWidth={2} dot={false} connectNulls isAnimationActive={false} />
-                <Line yAxisId="r" type="monotone" dataKey="blocks" name="Blocks / hr" stroke={chartColor(3)} strokeWidth={2} dot={false} isAnimationActive={false} />
-                <Brush dataKey="t" tickFormatter={tickFmt} {...AA_BRUSH} />
-              </LineChart>
+              <BarChart data={gasPerFrameByPurpose} layout="vertical" margin={{ top: 8, right: 56, bottom: 4, left: 8 }}>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: CHART_AXIS }} width={84} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [`${v.toLocaleString()} gas / frame`, 'Avg']} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false} label={{ position: 'right', formatter: (v: number) => `${compact(v)}`, fontSize: 11, fill: CHART_AXIS }}>
+                  {gasPerFrameByPurpose.map((d, i) => (
+                    <Cell key={i} fill={d.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
       </div>
+
+      {/* Cost of one native-AA transaction (normal-user friendly composition) */}
+      <ChartCard
+        id="frames-cost-breakdown"
+        title="What one native-AA transaction costs"
+        description="Where the gas of a single frame transaction goes: the base fee, the per-frame overhead, and verifying your signature. For context, a plain ETH transfer is 21,000 gas."
+      >
+        <div className="relative h-[110px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart layout="vertical" data={[{ name: 'cost', ...Object.fromEntries(costParts.map((p) => [p.name, p.gas])) }]} margin={{ top: 8, right: 12, bottom: 4, left: 8 }} stackOffset="none">
+              <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
+              <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
+              <YAxis type="category" dataKey="name" hide />
+              <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number, n) => [`${v.toLocaleString()} gas`, n as string]} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              {costParts.map((p, i) => (
+                <Bar key={p.name} dataKey={p.name} stackId="c" fill={p.fill} isAnimationActive={false} radius={i === costParts.length - 1 ? [0, 4, 4, 0] : undefined} />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+        <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+          Total: <span className="font-semibold text-foreground">{effectiveCostPerTx.toLocaleString()} gas</span> per frame
+          transaction, about <span className="font-semibold text-foreground">{vsTransfer.toFixed(1)}×</span> a plain ETH
+          transfer (21,000). Full account abstraction for roughly the cost of a normal send.
+        </p>
+      </ChartCard>
 
       {/* Distributions */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -389,57 +461,63 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         </ChartCard>
 
         <ChartCard
-          id="sigs-per-tx"
-          title="Signatures per transaction"
-          description="How many signatures authorize each frame transaction."
+          id="frames-purpose"
+          title="Frame purpose mix"
+          description="What each frame is for, per the EIP-8141 spec: VERIFY frames validate the transaction, SENDER frames execute the user's operations, ENTRYPOINT is the default."
         >
           <div className="relative h-[240px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={sptData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
-                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_AXIS }} label={{ value: 'signatures in tx', position: 'insideBottom', offset: -2, fontSize: 10, fill: CHART_AXIS }} />
-                <YAxis tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={44} />
-                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [v.toLocaleString(), 'txs']} />
-                <Bar dataKey="value" fill={chartColor(4)} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              <BarChart data={purposeData} layout="vertical" margin={{ top: 8, right: 16, bottom: 4, left: 8 }}>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: CHART_AXIS }} width={84} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [`${v.toLocaleString()} frames`, 'Count']} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+                  {purposeData.map((d, i) => (
+                    <Cell key={i} fill={d.fill} />
+                  ))}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </ChartCard>
       </div>
 
-      {/* Frame modes & flags (full width) */}
-      <div className="grid grid-cols-1 gap-4">
-        <ChartCard
-          id="frames-modes"
-          title="Frame modes & flags"
-          description="Which frame execution modes and flags the devnet workload exercises."
-        >
-          <div className="relative grid h-[240px] w-full grid-cols-2 gap-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={modeData} layout="vertical" margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
-                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: CHART_AXIS }} width={44} />
-                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [v.toLocaleString(), 'frames']} labelFormatter={(l) => `mode ${l}`} />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false}>
-                  {modeData.map((d, i) => (
-                    <Cell key={i} fill={d.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={flagData} layout="vertical" margin={{ top: 8, right: 12, bottom: 4, left: 8 }}>
-                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
-                <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: CHART_AXIS }} width={44} />
-                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [v.toLocaleString(), 'frames']} labelFormatter={(l) => `flags ${l}`} />
-                <Bar dataKey="value" fill={chartColor(3)} radius={[0, 4, 4, 0]} isAnimationActive={false} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </ChartCard>
-      </div>
+      {/* Signature validation cost (spec-grounded) */}
+      <ChartCard
+        id="frames-sig-cost"
+        title="Signature validation cost"
+        description="Every signature must verify before any frame runs. Cost per scheme is fixed by the EIP-8141 spec (SECP256K1 = 2,800 gas, P256 = 6,700). Schemes 0x2+ are reserved for post-quantum; none have appeared on the devnet yet."
+      >
+        <div className="space-y-2">
+          {schemeRows.map((r, i) => {
+            const pct = totalSigGas ? Math.round((100 * r.totalGas) / totalSigGas) : 0;
+            return (
+              <div key={i} className="rounded-lg border border-border bg-background/60 p-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-sm font-semibold text-foreground">{r.scheme}</span>
+                    <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {r.gasEach.toLocaleString()} gas / sig
+                    </span>
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {compact(r.count)} sigs · {compact(r.totalGas)} gas total
+                  </span>
+                </div>
+                <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: chartColor(i) }} />
+                </div>
+              </div>
+            );
+          })}
+          <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
+            Post-quantum watch: this devnet runs {dominantScheme?.scheme ?? 'a single scheme'} today. The moment a reserved
+            scheme (0x2+, e.g. a hash-based or lattice signature) shows up, it appears here, the first on-chain signal of
+            post-quantum native AA.
+          </p>
+        </div>
+      </ChartCard>
 
       {/* Why this matters: throughput vs today's mainnet AA demand */}
       {comparison && (
