@@ -423,6 +423,7 @@ export interface FramesDevnetData {
     frameMode: FramesDevnetHistBucket[]
     frameFlags: FramesDevnetHistBucket[]
     sigScheme: FramesDevnetHistBucket[]
+    gasByMode: FramesDevnetHistBucket[]
   }
 }
 
@@ -440,7 +441,7 @@ const framesUnavailable = (network: string): FramesDevnetData => ({
   totals: { frameTxs: 0, frames: 0, signatures: 0, gas: 0, valueWei: '0', blocks: 0, success: 0, fail: 0 },
   derived: { avgFramesPerTx: 0, avgSignaturesPerTx: 0, avgBlockTimeSec: null, daysLive: null, successRate: null, gasPerFrame: null },
   series: [],
-  histograms: { framesPerTx: [], sigPerTx: [], frameMode: [], frameFlags: [], sigScheme: [] },
+  histograms: { framesPerTx: [], sigPerTx: [], frameMode: [], frameFlags: [], sigScheme: [], gasByMode: [] },
 })
 
 const framesCache = new Map<string, { at: number; data: FramesDevnetData }>()
@@ -572,6 +573,7 @@ async function getFramesDevnet(network: string): Promise<FramesDevnetData> {
         frameMode: byDim('frame_mode'),
         frameFlags: byDim('frame_flags'),
         sigScheme: byDim('sig_scheme'),
+        gasByMode: byDim('gas_by_mode'),
       },
     }
     framesCache.set(network, { at: Date.now(), data })
