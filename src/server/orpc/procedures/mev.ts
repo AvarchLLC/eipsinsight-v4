@@ -286,8 +286,78 @@ const rangeInput = z
   })
   .optional()
 
+// ── Attack rate: what share of DEX trades get sandwiched, over a window ──────
+// Peer-review ask (Jannik, Encrypt the Mempool): % of trades attacked is more
+// telling than raw counts. Denominator is every swap across the tracked DEX
+// families; numerator is detected sandwiches. Sandwiches only cover mapped pools
+// (~75%), so the share is a conservative floor.
+const SWAP_TOPICS = [
+  '0xc42079f94a6350d7e6235f29174924f928cc2ac818eb64fed8004e115fbcca67', // Uniswap v3
+  '0xd78ad95fa46c994b6551d0da85fc275fe613ce37657fb8d5e3d130840159d822', // Uniswap v2 / forks
+  '0xb2e76ae99761dc136e598d4a629bb347eccb9532a5f8bbd72e18467c3c34cc98', // Curve CryptoSwap
+  '0xc2c0245e056d5fb095f04cd6373bc770802ebd1e6c918eb78fdef843cdb37b0f', // DODO
+]
+
+export interface AttackRate {
+  available: boolean
+  windowDays: number
+  totalSwaps: number
+  sandwichedTrades: number
+  pctAttacked: number
+}
+
+const emptyAttackRate = (days: number): AttackRate => ({
+  available: false,
+  windowDays: days,
+  totalSwaps: 0,
+  sandwichedTrades: 0,
+  pctAttacked: 0,
+})
+
+const attackRateCache = new Map<number, { at: number; data: AttackRate }>()
+
+async function getAttackRate(days: number): Promise<AttackRate> {
+  const d = Math.min(90, Math.max(1, Math.round(days)))
+  if (!clickhouseConfigured()) return emptyAttackRate(d)
+  const hit = attackRateCache.get(d)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+  const blocks = d * 7200
+  const topics = SWAP_TOPICS.map((t) => `'${t}'`).join(',')
+  try {
+    const rows = await clickhouseQuery<{ total_swaps: string; sandwiched: string }>(
+      `WITH (SELECT max(block_number) FROM blob_lens.mev_sandwiches FINAL) AS mx
+       SELECT
+         (SELECT count() FROM ethereum.logs
+            WHERE block_number BETWEEN mx - ${blocks} AND mx AND is_deleted = 0
+              AND topic0 IN (${topics})) AS total_swaps,
+         (SELECT count() FROM blob_lens.mev_sandwiches FINAL
+            WHERE block_number BETWEEN mx - ${blocks} AND mx) AS sandwiched`,
+      { timeoutMs: 20_000 },
+    )
+    const r = rows?.[0]
+    const total = N(r?.total_swaps)
+    const sw = N(r?.sandwiched)
+    if (total <= 0) return emptyAttackRate(d)
+    const data: AttackRate = {
+      available: true,
+      windowDays: d,
+      totalSwaps: total,
+      sandwichedTrades: sw,
+      pctAttacked: Math.round((10000 * sw) / total) / 100,
+    }
+    attackRateCache.set(d, { at: Date.now(), data })
+    return data
+  } catch {
+    return emptyAttackRate(d)
+  }
+}
+
 export const mevProcedures = {
   getMempoolStats: optionalAuthProcedure
     .input(rangeInput)
     .handler(async ({ input }): Promise<MempoolMevStats> => getMempoolMevStats(input ?? {})),
+
+  getAttackRate: optionalAuthProcedure
+    .input(z.object({ days: z.number().int().min(1).max(90).default(7) }))
+    .handler(async ({ input }): Promise<AttackRate> => getAttackRate(input?.days ?? 7)),
 }
