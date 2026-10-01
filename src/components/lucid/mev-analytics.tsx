@@ -19,7 +19,9 @@ import {
 } from 'recharts';
 import {
   ArrowUpRight,
+  Coins,
   Crosshair,
+  Percent,
   ShieldAlert,
   TrendingUp,
   Users,
@@ -71,6 +73,7 @@ export function MevAnalytics({ featured = false }: { featured?: boolean }) {
   const [custom, setCustom] = useState<{ from: string; to: string } | null>(null);
   const [mev, setMev] = useState<MempoolMevStats | null>(null);
   const [loadedKey, setLoadedKey] = useState<string | null>(null);
+  const [attackRate, setAttackRate] = useState<Awaited<ReturnType<typeof client.mev.getAttackRate>> | null>(null);
 
   const range: Range = useMemo(() => {
     if (custom) return { from: custom.from, to: custom.to };
@@ -99,6 +102,22 @@ export function MevAnalytics({ featured = false }: { featured?: boolean }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dep]);
+
+  // Rolling 7-day "% of trades attacked" (independent of the timeframe control).
+  useEffect(() => {
+    let cancelled = false;
+    client.mev
+      .getAttackRate({ days: 7 })
+      .then((r) => {
+        if (!cancelled) setAttackRate(r?.available ? r : null);
+      })
+      .catch(() => {
+        if (!cancelled) setAttackRate(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const rangeLabel = useMemo(() => {
     if (custom) return `${custom.from} → ${custom.to}`;
@@ -140,10 +159,24 @@ export function MevAnalytics({ featured = false }: { featured?: boolean }) {
       ) : (
         <div className={cn('space-y-5 transition-opacity', loading && 'opacity-60')}>
           {/* Range-scoped headline metrics */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Metric icon={Crosshair} accent="text-rose-500" label="Sandwich Attacks" value={compactNum(mev.totalSandwiches)} sub={rangeLabel} />
             <Metric icon={Users} accent="text-orange-500" label="Unique Victims" value={compactNum(mev.uniqueVictims)} sub="swaps exploited" />
             <Metric icon={ShieldAlert} accent="text-amber-500" label="Extracted Value" value={usdCompact(mev.botProfitUsd)} sub="bot gross profit" />
+            <Metric
+              icon={Coins}
+              accent="text-emerald-500"
+              label="Avg / Attack"
+              value={mev.totalSandwiches > 0 ? usdCompact(mev.botProfitUsd / mev.totalSandwiches) : '-'}
+              sub="gross, winsorized"
+            />
+            <Metric
+              icon={Percent}
+              accent="text-cyan-500"
+              label="Trades Attacked"
+              value={attackRate ? `${attackRate.pctAttacked}%` : '-'}
+              sub="of DEX swaps, last 7d"
+            />
             <Metric
               icon={TrendingUp}
               accent="text-violet-500"

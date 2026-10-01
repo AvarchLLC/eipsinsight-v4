@@ -300,7 +300,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         <Stat icon={Layers} label="Frames executed" value={compact(data.totals.frames)} sub={`${data.derived.avgFramesPerTx} / tx avg`} />
         <Stat icon={CheckCircle2} label="Success rate" value={data.derived.successRate != null ? `${data.derived.successRate}%` : 'n/a'} sub={`${compact(data.totals.fail)} failed`} />
         <Stat icon={GitMerge} label="Batching" value={`${data.derived.avgFramesPerTx}×`} sub="frames per tx" />
-        <Stat icon={PenLine} label="Sig scheme" value={dominantScheme?.scheme ?? 'n/a'} sub={dominantScheme ? `${dominantScheme.gasEach.toLocaleString()} gas each` : ''} />
+        <Stat icon={PenLine} label="Sig scheme" value={dominantScheme?.name ?? 'n/a'} sub={dominantScheme ? `${dominantScheme.gasEach.toLocaleString()} gas each` : ''} />
         <Stat icon={Zap} label="Validation gas / tx" value={compact(validationGasPerTx)} sub="signature verification" />
         <Stat icon={Coins} label="Effective cost / tx" value={compact(effectiveCostPerTx)} sub="intrinsic + frames + sig" />
         <Stat icon={Boxes} label="Blocks" value={compact(data.totals.blocks)} sub={`since block ${data.activationBlock}`} />
@@ -496,7 +496,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
               <div key={i} className="rounded-lg border border-border bg-background/60 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="font-mono text-sm font-semibold text-foreground">{r.scheme}</span>
+                    <span className="font-mono text-sm font-semibold text-foreground">{r.name}</span>
                     <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
                       {r.gasEach.toLocaleString()} gas / sig
                     </span>
@@ -512,7 +512,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
             );
           })}
           <p className="pt-1 text-[11px] leading-relaxed text-muted-foreground">
-            Post-quantum watch: this devnet runs {dominantScheme?.scheme ?? 'a single scheme'} today. The moment a reserved
+            Post-quantum watch: this devnet runs {dominantScheme?.name ?? 'a single scheme'} today. The moment a reserved
             scheme (0x2+, e.g. a hash-based or lattice signature) shows up, it appears here, the first on-chain signal of
             post-quantum native AA.
           </p>
