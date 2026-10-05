@@ -1,47 +1,39 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { FileText, Radio } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type View = 'overview' | 'devnet';
-
 /**
- * Segmented toggle for the EIP-8141 tab: switch between the curated proposal
- * tracker ("Overview") and the live frames-devnet activity charts ("Devnet").
+ * Route-based tabs for the EIP-8141 section: the curated proposal tracker lives
+ * at /aa/eip-8141 and the live frames-devnet charts at /aa/eip-8141/devnet, so
+ * each view is linkable and shareable.
  */
-export function Eip8141ViewSwitch({ overview, devnet }: { overview: ReactNode; devnet: ReactNode }) {
-  const [view, setView] = useState<View>('overview');
-  const opts: { key: View; label: string; icon: typeof Radio }[] = [
-    { key: 'overview', label: 'Proposal & status', icon: FileText },
-    { key: 'devnet', label: 'Devnet activity', icon: Radio },
+export function Eip8141ViewTabs() {
+  const pathname = usePathname();
+  const onDevnet = Boolean(pathname?.startsWith('/aa/eip-8141/devnet'));
+  const opts = [
+    { href: '/aa/eip-8141', label: 'Proposal & status', icon: FileText, active: !onDevnet, live: false },
+    { href: '/aa/eip-8141/devnet', label: 'Devnet activity', icon: Radio, active: onDevnet, live: true },
   ];
   return (
-    <div className="space-y-4">
-      <div className="inline-flex rounded-lg border border-border bg-card/60 p-0.5">
-        {opts.map((o) => {
-          const active = view === o.key;
-          return (
-            <button
-              key={o.key}
-              type="button"
-              onClick={() => setView(o.key)}
-              className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
-                active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground',
-              )}
-              aria-pressed={active}
-            >
-              <o.icon className="h-3.5 w-3.5" />
-              {o.label}
-              {o.key === 'devnet' && (
-                <span className="ml-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />
-              )}
-            </button>
-          );
-        })}
-      </div>
-      {view === 'overview' ? overview : devnet}
+    <div className="inline-flex rounded-lg border border-border bg-card/60 p-0.5">
+      {opts.map((o) => (
+        <Link
+          key={o.href}
+          href={o.href}
+          aria-current={o.active ? 'page' : undefined}
+          className={cn(
+            'inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+            o.active ? 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground',
+          )}
+        >
+          <o.icon className="h-3.5 w-3.5" />
+          {o.label}
+          {o.live && <span className="ml-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" aria-hidden />}
+        </Link>
+      ))}
     </div>
   );
 }

@@ -407,7 +407,12 @@ export interface FramesDevnetData {
     blocks: number
     success: number
     fail: number
+    uniqueSenders: number
   }
+  /** Cumulative distinct senders over time (adoption breadth). */
+  sendersSeries: Array<{ t: string; cumulativeSenders: number }>
+  /** Signature-scheme counts per time bucket (long format: pivot in the UI). Powers the PQ-emergence trend. */
+  schemeSeries: Array<{ t: string; scheme: string; count: number }>
   derived: {
     avgFramesPerTx: number
     avgSignaturesPerTx: number
@@ -438,9 +443,11 @@ const framesUnavailable = (network: string): FramesDevnetData => ({
   headBlock: null,
   lastIndexedBlock: null,
   lastSeen: null,
-  totals: { frameTxs: 0, frames: 0, signatures: 0, gas: 0, valueWei: '0', blocks: 0, success: 0, fail: 0 },
+  totals: { frameTxs: 0, frames: 0, signatures: 0, gas: 0, valueWei: '0', blocks: 0, success: 0, fail: 0, uniqueSenders: 0 },
   derived: { avgFramesPerTx: 0, avgSignaturesPerTx: 0, avgBlockTimeSec: null, daysLive: null, successRate: null, gasPerFrame: null },
   series: [],
+  sendersSeries: [],
+  schemeSeries: [],
   histograms: { framesPerTx: [], sigPerTx: [], frameMode: [], frameFlags: [], sigScheme: [], gasByMode: [] },
 })
 
@@ -522,6 +529,46 @@ async function getFramesDevnet(network: string): Promise<FramesDevnetData> {
         .map((h) => ({ bucket: h.bucket, count: num(h.count) }))
         .sort((a, b) => b.count - a.count)
 
+    const numLocal = (v: unknown) => (v == null ? 0 : Number(v as bigint | number | string))
+    // Unique senders + per-time scheme mix. These live in separate tables added
+    // later (migration 1784200000000); guard so an un-migrated DB still serves
+    // the rest of the panel instead of failing the whole query.
+    let sendersSeries: FramesDevnetData['sendersSeries'] = []
+    let schemeSeries: FramesDevnetData['schemeSeries'] = []
+    let uniqueSenders = 0
+    try {
+      const senderRows = await prisma.$queryRawUnsafe<Array<{ t: Date; new_senders: bigint }>>(
+        `SELECT date_trunc('hour', b.block_time) AS t, COUNT(*)::bigint AS new_senders
+         FROM frames_devnet_senders s
+         JOIN frames_devnet_blocks b ON b.network = s.network AND b.block_number = s.first_block
+         WHERE s.network = $1
+         GROUP BY 1 ORDER BY 1`,
+        network,
+      )
+      let cumS = 0
+      sendersSeries = senderRows.map((r) => {
+        cumS += numLocal(r.new_senders)
+        return { t: (r.t instanceof Date ? r.t : new Date(r.t)).toISOString(), cumulativeSenders: cumS }
+      })
+      uniqueSenders = cumS
+
+      const schemeRows = await prisma.$queryRawUnsafe<Array<{ t: Date; scheme: string; c: bigint }>>(
+        `SELECT date_trunc('hour', b.block_time) AS t, bs.scheme AS scheme, SUM(bs.count)::bigint AS c
+         FROM frames_devnet_block_scheme bs
+         JOIN frames_devnet_blocks b ON b.network = bs.network AND b.block_number = bs.block_number
+         WHERE bs.network = $1
+         GROUP BY 1, 2 ORDER BY 1`,
+        network,
+      )
+      schemeSeries = schemeRows.map((r) => ({
+        t: (r.t instanceof Date ? r.t : new Date(r.t)).toISOString(),
+        scheme: String(r.scheme),
+        count: numLocal(r.c),
+      }))
+    } catch {
+      // Tables not present yet — leave the new series empty; panel still renders.
+    }
+
     // Derive headline totals from the per-block table (idempotent) rather than the
     // meta running-counters, which can drift if a reset/backfill overlaps the live
     // indexer. Per-block rows use ON CONFLICT DO NOTHING, so these sums are exact.
@@ -557,7 +604,10 @@ async function getFramesDevnet(network: string): Promise<FramesDevnetData> {
         blocks: blocks > 0 ? blocks : series.reduce((s, p) => s + p.blocks, 0),
         success,
         fail,
+        uniqueSenders,
       },
+      sendersSeries,
+      schemeSeries,
       derived: {
         avgFramesPerTx: frameTxs ? +(frames / frameTxs).toFixed(2) : 0,
         avgSignaturesPerTx: frameTxs ? +(signatures / frameTxs).toFixed(2) : 0,

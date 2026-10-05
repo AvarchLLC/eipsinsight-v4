@@ -17,7 +17,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, Boxes, CheckCircle2, Coins, GitMerge, Layers, PenLine, Radio, Timer, Zap } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, Coins, GitMerge, Layers, PenLine, Radio, Timer, Users, Zap } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { CHART_AXIS, CHART_GRID, chartColor } from '@/lib/chart-colors';
 import { AA_BRUSH } from '@/components/aa/chart-kit';
@@ -63,9 +63,16 @@ const SCHEME: Record<string, { name: string; gas: number }> = {
   '0x1': { name: 'P256', gas: 6700 },
 };
 const schemeInfo = (b: string) => SCHEME[normHex(b)] ?? { name: `scheme ${b}`, gas: 0 };
+// EIP-8141 frame flags. Bit 2 (0x4) marks an atomic batch (all-or-nothing frames).
+const ATOMIC_BATCH_BIT = 0x4;
+const FLAG_LABEL: Record<string, string> = { '0x0': 'Standard', '0x4': 'Atomic batch' };
+const flagLabel = (b: string) => FLAG_LABEL[normHex(b)] ?? `flags ${normHex(b)}`;
 const FRAME_TX_INTRINSIC = 15000;
 const FRAME_PER_FRAME = 475;
 const PLAIN_TRANSFER_GAS = 21000; // relatable baseline for normal users
+// Max verified (validation) gas on frames-devnet-0, raised from 100K in
+// Frame Transaction Breakout #5 (Sep 22 2026) to support complex test scenarios.
+const MAX_VERIFIED_GAS = 500000;
 
 function fmtHour(iso: string): string {
   const d = new Date(iso);
@@ -234,6 +241,47 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
   const dominantScheme = schemeRows[0];
   const validationGasPerTx = data.totals.frameTxs ? Math.round(totalSigGas / data.totals.frameTxs) : 0;
 
+  // Signatures-per-tx distribution (how many keys authorize one frame tx).
+  const sptData = data.histograms.sigPerTx.map((h) => ({ name: h.bucket, value: h.count }));
+
+  // Atomic-batch adoption from the frame_flags histogram (bit 0x4 per spec).
+  // Merge by label so decimal/hex duplicates ("4" and "0x4") collapse.
+  const flagMap = new Map<string, number>();
+  for (const h of data.histograms.frameFlags) {
+    flagMap.set(flagLabel(h.bucket), (flagMap.get(flagLabel(h.bucket)) ?? 0) + h.count);
+  }
+  const flagsData = Array.from(flagMap.entries())
+    .map(([name, value], i) => ({ name, value, fill: chartColor(i) }))
+    .sort((a, b) => b.value - a.value);
+  let atomicFrames = 0;
+  let flaggedFrames = 0;
+  for (const h of data.histograms.frameFlags) {
+    const n = parseInt(normHex(h.bucket), 16);
+    flaggedFrames += h.count;
+    if (Number.isFinite(n) && (n & ATOMIC_BATCH_BIT) !== 0) atomicFrames += h.count;
+  }
+  const atomicPct = flaggedFrames ? Math.round((1000 * atomicFrames) / flaggedFrames) / 10 : 0;
+
+  // Gas efficiency: how much of the gas frames reserve do they actually burn,
+  // and how much of the 500K validation cap a typical tx uses.
+  const totalAllowance = Array.from(gasByPurposeMap.values()).reduce((s, v) => s + v, 0);
+  const gasUtilPct = totalAllowance ? Math.min(100, Math.round((1000 * data.totals.gas) / totalAllowance) / 10) : 0;
+  const verifyHeadroomPct = Math.min(100, Math.round((1000 * validationGasPerTx) / MAX_VERIFIED_GAS) / 10);
+
+  // Unique senders over time (adoption breadth) — from the senders table.
+  const hasSenders = data.sendersSeries.length > 0;
+  // Signature scheme mix over time — pivot long rows into stacked series by scheme name.
+  const schemeNames = Array.from(new Set(data.schemeSeries.map((r) => schemeInfo(r.scheme).name)));
+  const schemeByT = new Map<string, Record<string, number | string>>();
+  for (const r of data.schemeSeries) {
+    const name = schemeInfo(r.scheme).name;
+    const row = schemeByT.get(r.t) ?? { t: r.t };
+    row[name] = ((row[name] as number) ?? 0) + r.count;
+    schemeByT.set(r.t, row);
+  }
+  const schemeChart = Array.from(schemeByT.values()).sort((a, b) => String(a.t).localeCompare(String(b.t)));
+  const hasSchemeSeries = schemeChart.length > 1 && schemeNames.length > 0;
+
   // Where the gas of one native-AA transaction goes (a composition normal users get).
   const perFrame = data.totals.frameTxs ? data.totals.frames / data.totals.frameTxs : 0;
   const costParts = [
@@ -304,6 +352,9 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         <Stat icon={Zap} label="Validation gas / tx" value={compact(validationGasPerTx)} sub="signature verification" />
         <Stat icon={Coins} label="Effective cost / tx" value={compact(effectiveCostPerTx)} sub="intrinsic + frames + sig" />
         <Stat icon={Boxes} label="Blocks" value={compact(data.totals.blocks)} sub={`since block ${data.activationBlock}`} />
+        {hasSenders && (
+          <Stat icon={Users} label="Unique senders" value={compact(data.totals.uniqueSenders)} sub="distinct accounts" />
+        )}
       </div>
 
       {/* Chart controls: granularity toggle. Drag the slider under any time chart to zoom a range. */}
@@ -362,6 +413,35 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
           </ResponsiveContainer>
         </div>
       </ChartCard>
+
+      {/* Adoption breadth: distinct accounts over time */}
+      {hasSenders && (
+        <ChartCard
+          id="frames-unique-senders"
+          title="Unique senders over time"
+          description="Cumulative distinct accounts that have sent at least one frame transaction. The breadth of accounts exercising native AA, not just the raw transaction count."
+        >
+          <div className="relative h-[240px] w-full">
+            <ChartWatermark />
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={data.sendersSeries} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <defs>
+                  <linearGradient id="sendersFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={chartColor(3)} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={chartColor(3)} stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="t" tickFormatter={tickFmt} tick={{ fontSize: 11, fill: CHART_AXIS }} minTickGap={40} />
+                <YAxis tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={44} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} labelFormatter={(l) => `${tickFmt(String(l))} UTC`} formatter={(v: number) => [v.toLocaleString(), 'senders']} />
+                <Area type="monotone" dataKey="cumulativeSenders" name="Unique senders" stroke={chartColor(3)} strokeWidth={2} fill="url(#sendersFill)" isAnimationActive={false} />
+                <Brush dataKey="t" tickFormatter={tickFmt} {...AA_BRUSH} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      )}
 
       {/* Reliability + validation cost */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -483,6 +563,86 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         </ChartCard>
       </div>
 
+      {/* Signatures per tx + atomic-batch adoption */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <ChartCard
+          id="frames-sigs-per-tx"
+          title="Signatures per transaction"
+          description="How many signatures authorize a single frame transaction. More than one means multi-key or role-separated authorization (e.g. a session key plus an owner)."
+        >
+          <div className="relative h-[240px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={sptData} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 11, fill: CHART_AXIS }} label={{ value: 'signatures in tx', position: 'insideBottom', offset: -2, fontSize: 10, fill: CHART_AXIS }} />
+                <YAxis tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={44} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [v.toLocaleString(), 'txs']} />
+                <Bar dataKey="value" fill={chartColor(4)} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+
+        <ChartCard
+          id="frames-atomic-batch"
+          title="Atomic batch adoption"
+          description="Frames flagged as part of an atomic batch (EIP-8141 flag bit 0x4): either every frame in the batch succeeds or the whole transaction reverts. A core native-AA capability ERC-4337 cannot offer in-protocol."
+        >
+          <div className="relative h-[200px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={flagsData} layout="vertical" margin={{ top: 8, right: 56, bottom: 4, left: 8 }}>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" tickFormatter={compact} tick={{ fontSize: 10, fill: CHART_AXIS }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fill: CHART_AXIS }} width={96} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} formatter={(v: number) => [`${v.toLocaleString()} frames`, 'Count']} />
+                <Bar dataKey="value" radius={[0, 4, 4, 0]} isAnimationActive={false} label={{ position: 'right', formatter: (v: number) => compact(v), fontSize: 11, fill: CHART_AXIS }}>
+                  {flagsData.map((d, i) => (
+                    <Cell key={i} fill={d.fill} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+            <span className="font-semibold text-foreground">{atomicPct}%</span> of frames run inside an atomic batch.
+          </p>
+        </ChartCard>
+      </div>
+
+      {/* Gas efficiency: reserved vs burned, and validation headroom under the 500K cap */}
+      <ChartCard
+        id="frames-gas-efficiency"
+        title="Gas efficiency"
+        description="How much of the gas frames reserve actually gets used, and how much of the 500K max-verified-gas cap a typical transaction spends on validation."
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">Frame gas utilization</span>
+              <span className="font-mono tabular-nums text-muted-foreground">{gasUtilPct}%</span>
+            </div>
+            <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full" style={{ width: `${gasUtilPct}%`, backgroundColor: chartColor(2) }} />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {compact(data.totals.gas)} gas used of {compact(totalAllowance)} reserved across all frames.
+            </p>
+          </div>
+          <div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-medium text-foreground">Validation headroom</span>
+              <span className="font-mono tabular-nums text-muted-foreground">{verifyHeadroomPct}%</span>
+            </div>
+            <div className="mt-1.5 h-2.5 w-full overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full" style={{ width: `${verifyHeadroomPct}%`, backgroundColor: chartColor(4) }} />
+            </div>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              {compact(validationGasPerTx)} validation gas / tx against the {compact(MAX_VERIFIED_GAS)} cap (raised in Breakout #5).
+            </p>
+          </div>
+        </div>
+      </ChartCard>
+
       {/* Signature validation cost (spec-grounded) */}
       <ChartCard
         id="frames-sig-cost"
@@ -518,6 +678,32 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
           </p>
         </div>
       </ChartCard>
+
+      {/* Signature scheme mix over time (post-quantum emergence signal) */}
+      {hasSchemeSeries && (
+        <ChartCard
+          id="frames-scheme-over-time"
+          title="Signature scheme mix over time"
+          description="Which signature schemes authorize frame transactions, per hour. The first appearance of a reserved scheme (0x2+) would be the on-chain signal of post-quantum native AA emerging."
+        >
+          <div className="relative h-[240px] w-full">
+            <ChartWatermark />
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={schemeChart} margin={{ top: 8, right: 12, bottom: 4, left: 4 }}>
+                <CartesianGrid stroke={CHART_GRID} strokeDasharray="3 3" vertical={false} />
+                <XAxis dataKey="t" tickFormatter={tickFmt} tick={{ fontSize: 11, fill: CHART_AXIS }} minTickGap={40} />
+                <YAxis tickFormatter={compact} tick={{ fontSize: 11, fill: CHART_AXIS }} width={48} />
+                <Tooltip contentStyle={TT} labelStyle={{ color: 'var(--foreground)', fontWeight: 600 }} itemStyle={{ color: 'var(--foreground)' }} labelFormatter={(l) => `${tickFmt(String(l))} UTC`} formatter={(v: number, n) => [v.toLocaleString(), n as string]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {schemeNames.map((name, i) => (
+                  <Area key={name} type="monotone" dataKey={name} name={name} stackId="scheme" stroke={chartColor(i)} fill={chartColor(i)} fillOpacity={0.25} strokeWidth={2} isAnimationActive={false} />
+                ))}
+                <Brush dataKey="t" tickFormatter={tickFmt} {...AA_BRUSH} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </ChartCard>
+      )}
 
       {/* Why this matters: throughput vs today's mainnet AA demand */}
       {comparison && (
