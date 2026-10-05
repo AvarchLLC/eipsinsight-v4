@@ -24,7 +24,7 @@ export function AaShell({ children }: { children: React.ReactNode }) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-4 px-4 py-6 sm:px-6">
+    <div className="mx-auto max-w-[1600px] space-y-4 px-4 py-6 sm:px-6">
       <header className="flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/15 text-primary">
           <Boxes className="h-4.5 w-4.5" />
