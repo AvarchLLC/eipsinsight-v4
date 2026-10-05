@@ -5,6 +5,7 @@ import type { UpgradeRegistryEntry } from '@/data/upgrade-registry';
 import { getCurrentPhase } from '@/data/fork-schedule';
 import { PhaseBadge, UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { UpgradeTimelineStrip } from '@/components/upgrade/upgrade-timeline-strip';
+import { UpgradeCountdown } from '@/components/upgrade/upgrade-countdown';
 
 function renderNameWithHighlight(fullStr: string, highlight: string) {
   const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
@@ -177,6 +178,9 @@ export function UpgradeDetailHeader({
         <div className="mt-5 hidden sm:block">
           <UpgradeTimelineStrip currentSlug={slug} />
         </div>
+
+        {/* Live activation countdown (renders only for forks with a config) */}
+        <UpgradeCountdown slug={slug} />
 
         {/* Subtab bar — segmented pill control so the sections read clearly as tabs */}
         {subtabs.length > 0 && (
