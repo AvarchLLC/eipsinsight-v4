@@ -66,7 +66,7 @@ export const PQ_EIPS: PqEip[] = [
     status: 'Draft',
     upgrade: 'Hegota',
     upgradeStatus: 'SFI',
-    note: 'Flexible signature schemes at the account layer are the on-ramp for PQ signatures in transactions.',
+    note: 'Flexible signature schemes at the account layer are the on-ramp for PQ signatures in transactions. Live as the native option on the PQTS testnet (v0.2).',
   },
   {
     number: 8288,
@@ -78,7 +78,7 @@ export const PQ_EIPS: PqEip[] = [
     dependsOn: [8141],
     status: 'Draft',
     upgradeStatus: 'Proposed',
-    note: 'STARK-based aggregation of hash-based signatures; the scalability piece for PQ at validator scale.',
+    note: 'In-mempool aggregation of hash-based signatures; the scalability piece for PQ. Implementation underway on the PQTS testnet (v0.3) via LeanVM + Lean-SPHINCS; contributors wanted.',
   },
   {
     number: 8292,
@@ -177,6 +177,14 @@ export const PQ_GAPS: PqGap[] = [
     research: 'Available',
     eip: 'Not identified',
     action: 'Define the EIP boundary between account-layer signatures (8141) and a precompile.',
+  },
+  {
+    title: 'EIP-8288 in-mempool signature aggregation',
+    milestone: 'M*',
+    research: 'Available',
+    eip: 'EIP-8288',
+    champion: 'Antonio Sanso · Riva Labs · Emil',
+    action: 'Help implement LeanVM + Lean-SPHINCS aggregation on the PQTS v0.3 testnet; the breakout is actively seeking contributors (PQTS #16).',
   },
   {
     title: 'leanVM specification boundary',
@@ -372,4 +380,61 @@ export const PQ_MIGRATION: MigrationCategory[] = [
   { name: 'Bridges', group: 'Ecosystem', current: 'Various signatures', pqCandidate: 'TBD', eips: [], readiness: 'none' },
   { name: 'Exchanges', group: 'Ecosystem', current: 'secp256k1', pqCandidate: 'TBD', eips: [], readiness: 'none' },
   { name: 'Infrastructure (RPC, indexers)', group: 'Ecosystem', current: 'secp256k1', pqCandidate: 'TBD', eips: [], readiness: 'none' },
+];
+
+// ── PQTS testnet ─────────────────────────────────────────────────────────────
+// The Post-Quantum Transaction Signatures breakout (chaired by Antonio Sanso, EF)
+// runs a research testnet exercising PQ signatures end to end. Sourced from the
+// PQTS breakout calls (/calls/pqts); facts from Breakout #16 (Sep 30 2026).
+
+export interface PqtsPhase {
+  version: string;
+  status: 'live' | 'in-progress' | 'planned';
+  summary: string;
+  schemes: string[];
+  eips: number[];
+}
+
+export const PQTS_TESTNET = {
+  chair: 'Antonio Sanso (EF)',
+  contributors: ['Riva Labs', 'Emil (LeanVM)', 'Julius', 'EF DevOps'],
+  callsHref: '/calls/pqts',
+  phases: [
+    {
+      version: 'v0.1',
+      status: 'live',
+      summary: 'Non-native account abstraction (ERC-4337) with a SPHINCS+ variant.',
+      schemes: ['SPHINCS+'],
+      eips: [],
+    },
+    {
+      version: 'v0.2',
+      status: 'live',
+      summary: 'Choose ERC-4337 or native Frame transactions (EIP-8141, headed for Hegota).',
+      schemes: ['SPHINCS+'],
+      eips: [8141],
+    },
+    {
+      version: 'v0.3',
+      status: 'in-progress',
+      summary: 'In-mempool signature aggregation (EIP-8288) via LeanVM + Lean-SPHINCS. Contributors wanted.',
+      schemes: ['Lean-SPHINCS', 'LeanVM'],
+      eips: [8288],
+    },
+  ] as PqtsPhase[],
+};
+
+// PQ signature schemes seen across the PQTS work.
+export interface PqScheme {
+  name: string;
+  family: string;
+  use: string;
+  note?: string;
+}
+
+export const PQ_SCHEMES: PqScheme[] = [
+  { name: 'SPHINCS+', family: 'Hash-based (stateless)', use: 'Transaction signatures', note: 'Runs on the PQTS testnet today.' },
+  { name: 'Lean-SPHINCS / LeanVM', family: 'Hash-based + aggregation', use: 'Signature aggregation', note: 'Aggregation-friendly variant targeted for EIP-8288.' },
+  { name: 'XMSS', family: 'Hash-based (stateful)', use: 'Validator keys', note: 'Candidate to replace BLS validator keys (EIP-8310).' },
+  { name: 'ML-DSA (Dilithium)', family: 'Lattice-based', use: 'Transaction signatures', note: 'NIST standard; a 6x-optimized EVM verifier was demoed by Fireblocks (PQTS #14).' },
 ];

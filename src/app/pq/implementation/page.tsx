@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, FlaskConical, KeyRound, Radio, Video } from 'lucide-react';
 import {
   PQ_EIPS,
   PQ_EL_CLIENTS,
@@ -7,6 +7,8 @@ import {
   IMPL_STATE_ORDER,
   IMPL_STATE_LABEL,
   implFor,
+  PQTS_TESTNET,
+  PQ_SCHEMES,
   type ImplState,
 } from '@/data/pq-registry';
 
@@ -107,6 +109,72 @@ export default function PqImplementationPage() {
             <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${stateClass[s]}`}>
               {IMPL_STATE_LABEL[s]}
             </span>
+          ))}
+        </div>
+      </section>
+
+      {/* PQTS research testnet (from the PQTS breakout calls) */}
+      <section className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
+            <FlaskConical className="h-4 w-4 text-blue-500" /> PQTS research testnet
+          </h3>
+          <Link href={PQTS_TESTNET.callsHref} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
+            <Video className="h-3.5 w-3.5" /> PQTS breakout calls
+          </Link>
+        </div>
+        <p className="mt-1 text-[11px] text-muted-foreground">
+          End-to-end PQ signatures exercised on a live research testnet. Chaired by {PQTS_TESTNET.chair}; contributors: {PQTS_TESTNET.contributors.join(', ')}.
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {PQTS_TESTNET.phases.map((p) => (
+            <div key={p.version} className="rounded-lg border border-border bg-background/60 p-3.5">
+              <div className="flex items-center justify-between">
+                <span className="font-mono text-xs font-bold text-foreground">{p.version}</span>
+                <span
+                  className={
+                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' +
+                    (p.status === 'live'
+                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                      : p.status === 'in-progress'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+                        : 'border-border bg-muted/50 text-muted-foreground')
+                  }
+                >
+                  {p.status === 'live' && <Radio className="h-2.5 w-2.5" />}
+                  {p.status === 'live' ? 'live' : p.status === 'in-progress' ? 'in progress' : 'planned'}
+                </span>
+              </div>
+              <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">{p.summary}</p>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {p.eips.map((n) => (
+                  <Link key={n} href={`/eip/${n}`} className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary hover:bg-primary/15">
+                    EIP-{n}
+                  </Link>
+                ))}
+                {p.schemes.map((s) => (
+                  <span key={s} className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">{s}</span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* PQ signature schemes in play */}
+      <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+        <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
+          <KeyRound className="h-4 w-4 text-primary" /> PQ signature schemes in play
+        </h3>
+        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+          {PQ_SCHEMES.map((s) => (
+            <div key={s.name} className="rounded-lg border border-border bg-background/60 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-mono text-xs font-semibold text-foreground">{s.name}</span>
+                <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">{s.family}</span>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground"><span className="font-medium text-foreground/80">{s.use}.</span> {s.note}</p>
+            </div>
           ))}
         </div>
       </section>
