@@ -443,7 +443,7 @@ export function UpgradeDetailBody({
                         EIP-{metaEip}
                       </Link>
                       <span className="ml-1.5 text-muted-foreground">
-                        — Official specification track & scope container for {name}.
+                        · Official specification track & scope container for {name}.
                       </span>
                     </div>
                   </div>
@@ -463,7 +463,7 @@ export function UpgradeDetailBody({
                       </span>
                       {entry.nameOriginDetails.eip && (
                         <span className="ml-1.5 text-muted-foreground">
-                          — per Hardfork Naming Conventions (
+                          · per Hardfork Naming Conventions (
                           <Link
                             href={`/eip/${entry.nameOriginDetails.eip}`}
                             className="text-primary underline font-medium"
@@ -488,7 +488,7 @@ export function UpgradeDetailBody({
                       <span className="font-semibold text-foreground">Upgrade Mascot: {entry.mascot.name}</span>
                       {entry.mascot.processNote && (
                         <span className="ml-1.5 text-muted-foreground">
-                          — {entry.mascot.processNote}
+                          · {entry.mascot.processNote}
                           {entry.mascot.eip && (
                             <Link href={`/eip/${entry.mascot.eip}`} className="ml-1 text-primary underline">
                               (EIP-{entry.mascot.eip})

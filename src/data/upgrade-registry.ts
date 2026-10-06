@@ -79,7 +79,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
       clName: 'Gloas',
       clHighlight: 'Gl',
       elName: 'Amsterdam',
-      elHighlight: 'erdam',
+      elHighlight: 'Amsterdam',
       eip: 8133,
     },
     mascot: {

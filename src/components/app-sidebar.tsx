@@ -214,6 +214,20 @@ const sidebarSections: SidebarSection[] = [
           { title: "EIP-8184 Spec", href: "/eip/8184" },
         ],
       },
+      {
+        title: "Post-Quantum Readiness",
+        icon: Shield,
+        href: "/pq",
+        items: [
+          { title: "Overview", href: "/pq" },
+          { title: "EIP Registry", href: "/pq/eips" },
+          { title: "Roadmap Coverage", href: "/pq/roadmap" },
+          { title: "Dependencies", href: "/pq/dependencies" },
+          { title: "Implementation", href: "/pq/implementation" },
+          { title: "Migration", href: "/pq/migration" },
+          { title: "Gaps & Blockers", href: "/pq/gaps" },
+        ],
+      },
     ],
   },
   {
