@@ -3,6 +3,9 @@
   "version": "0.4.0",
   "private": true,
   "scripts": {
+    "gen:routes": "node scripts/gen-route-sources.mjs",
+    "prebuild": "node scripts/gen-route-sources.mjs",
+    "predev": "node scripts/gen-route-sources.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",

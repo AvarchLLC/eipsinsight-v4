@@ -132,11 +132,6 @@ const recommendedReading = [
   { title: "Explore High-Impact EIPs", href: "/explore/trending" },
 ];
 
-const partnerRoleMap: Record<string, string> = {
-  EtherWorld: "Media & ecosystem amplification",
-  "ECH (Ethereum Cat Herders)": "Coordination & standards operations",
-};
-
 const teamAvatarMap: Record<string, string> = {
   "Pooja Ranjan": "/team/pooja_ranjan.jpg",
   "Yash Kamal Chaturvedi": "/team/yash.jpg",
@@ -520,15 +515,25 @@ export default function ResourcesPage() {
                 href={partner.website}
                 target="_blank"
                 rel="noreferrer"
-                className="rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
+                className="group flex items-center gap-4 rounded-xl border border-border bg-card/60 p-4 transition-all duration-200 hover:border-primary/40 hover:bg-primary/5"
               >
-                <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
-                  {partner.name}
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                </h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {partnerRoleMap[partner.name] || "Ecosystem support partner"}
-                </p>
+                <div className="flex h-12 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral-900 p-2">
+                  {partner.logo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={partner.logo} alt={partner.name} className="max-h-full w-auto max-w-full object-contain" />
+                  ) : (
+                    <span className="text-sm font-semibold text-neutral-200">{partner.name.slice(0, 2)}</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="flex items-center gap-2 text-base font-semibold text-foreground transition-colors group-hover:text-primary">
+                    {partner.name}
+                    <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+                  </h3>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    {partner.description || "Ecosystem support partner"}
+                  </p>
+                </div>
               </a>
             ))}
           </div>
