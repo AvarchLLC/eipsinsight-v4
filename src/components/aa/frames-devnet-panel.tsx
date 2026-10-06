@@ -514,9 +514,10 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
           </ResponsiveContainer>
         </div>
         <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
-          Total: <span className="font-semibold text-foreground">{effectiveCostPerTx.toLocaleString()} gas</span> per frame
-          transaction, about <span className="font-semibold text-foreground">{vsTransfer.toFixed(1)}×</span> a plain ETH
-          transfer (21,000). Full account abstraction for roughly the cost of a normal send.
+          That is the account-abstraction envelope (base fee + per-frame overhead + signature check):{' '}
+          <span className="font-semibold text-foreground">{effectiveCostPerTx.toLocaleString()} gas</span>, about{' '}
+          <span className="font-semibold text-foreground">{vsTransfer.toFixed(1)}×</span> a plain ETH transfer (21,000), on
+          top of whatever the frames actually execute. The AA overhead itself is small.
         </p>
       </ChartCard>
 

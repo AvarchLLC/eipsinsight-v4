@@ -33,7 +33,7 @@ const roleColor: Record<string, string> = {
 export function PqDependencyGraph() {
   const [selected, setSelected] = useState<number | null>(null);
 
-  const { nodes, edges, width, height, nodeById } = useMemo(() => {
+  const { nodes, edges, altEdges, width, height, nodeById } = useMemo(() => {
     // Canonical directed edges in the "enables / unlocks" direction, deduped.
     const edgeSet = new Set<string>();
     const edges: GEdge[] = [];
@@ -47,6 +47,19 @@ export function PqDependencyGraph() {
     for (const e of PQ_EIPS) {
       for (const d of e.dependsOn ?? []) addEdge(d, e.number); // d enables e
       for (const en of e.enables ?? []) addEdge(e.number, en);
+    }
+
+    // Undirected "alternative to" (competing designs), deduped.
+    const altSet = new Set<string>();
+    const altEdges: Array<{ a: number; b: number }> = [];
+    for (const e of PQ_EIPS) {
+      for (const alt of e.alternativeTo ?? []) {
+        const k = [e.number, alt].sort((x, y) => x - y).join('~');
+        if (!altSet.has(k)) {
+          altSet.add(k);
+          altEdges.push({ a: e.number, b: alt });
+        }
+      }
     }
 
     // Collect all node numbers (registry + referenced externals).
@@ -97,7 +110,7 @@ export function PqDependencyGraph() {
     const width = PAD_X * 2 + (cols - 1) * COL_GAP + NODE_W;
     const height = PAD_Y * 2 + (maxRows - 1) * ROW_GAP + NODE_H;
     const nodeById = new Map(nodes.map((n) => [n.number, n]));
-    return { nodes, edges, width, height, nodeById };
+    return { nodes, edges, altEdges, width, height, nodeById };
   }, []);
 
   const neighbors = useMemo(() => {
@@ -156,6 +169,30 @@ export function PqDependencyGraph() {
               );
             })}
 
+            {/* Alternative-to (competing designs): dashed, no arrow, curved to avoid nodes */}
+            {altEdges.map((e, i) => {
+              const a = nodeById.get(e.a);
+              const b = nodeById.get(e.b);
+              if (!a || !b) return null;
+              const x1 = a.x + NODE_W / 2;
+              const y1 = a.y + NODE_H / 2;
+              const x2 = b.x + NODE_W / 2;
+              const y2 = b.y + NODE_H / 2;
+              const cx = Math.min(x1, x2) - 34;
+              const active = selected == null || e.a === selected || e.b === selected;
+              return (
+                <path
+                  key={`alt-${i}`}
+                  d={`M ${x1} ${y1} Q ${cx} ${(y1 + y2) / 2} ${x2} ${y2}`}
+                  fill="none"
+                  stroke={active ? 'var(--muted-foreground)' : 'var(--border)'}
+                  strokeWidth={1.5}
+                  strokeDasharray="5 4"
+                  opacity={active ? 0.6 : 0.3}
+                />
+              );
+            })}
+
             {/* Nodes */}
             {nodes.map((n) => {
               const dim = selected != null && !neighbors.has(n.number);
@@ -201,6 +238,10 @@ export function PqDependencyGraph() {
             <svg width="20" height="8"><line x1="0" y1="4" x2="16" y2="4" stroke="var(--primary)" strokeWidth="2" markerEnd="url(#pq-arrow)" /></svg>
             enables / unlocks →
           </span>
+          <span className="inline-flex items-center gap-1.5">
+            <svg width="20" height="8"><line x1="0" y1="4" x2="18" y2="4" stroke="var(--muted-foreground)" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+            alternative to
+          </span>
           <span className="inline-flex items-center gap-1"><span className="inline-block h-2.5 w-2.5 rounded-sm border border-dashed border-muted-foreground" /> external dep</span>
         </div>
         <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">Click a node to trace its dependencies; click the background to reset.</p>
@@ -225,6 +266,23 @@ export function PqDependencyGraph() {
               <RelList label="Requires" nums={selEip.dependsOn ?? []} onPick={setSelected} />
               <RelList label="Enables" nums={selEip.enables ?? []} onPick={setSelected} />
               <RelList label="Required by" nums={PQ_EIPS.filter((e) => (e.dependsOn ?? []).includes(selEip.number)).map((e) => e.number)} onPick={setSelected} />
+              <RelList label="Alternative to" nums={selEip.alternativeTo ?? []} onPick={setSelected} />
+              {selEip.replaces && (
+                <div className="mt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Replaces</p>
+                  <p className="mt-1 text-xs text-foreground">{selEip.replaces}</p>
+                </div>
+              )}
+              {selEip.researchDep && selEip.researchDep.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Research deps</p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {selEip.researchDep.map((r) => (
+                      <span key={r} className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">{r}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           ) : (
             <div className="text-sm text-muted-foreground">

@@ -50,21 +50,31 @@ export default function PqEipRegistryPage() {
   const [layer, setLayer] = useState<PqLayer | 'all'>('all');
   const [role, setRole] = useState<PqRole | 'all'>('all');
   const [status, setStatus] = useState<EipStatus | 'all'>('all');
-  // Live EIP status from the indexed repo, overlaid on the curated snapshots.
-  const [live, setLive] = useState<Record<number, { status: string | null }>>({});
+  // Live EIP status / upgrade bucket from the indexed repo, overlaid on curation.
+  type Live = { status: string | null; upgrade: string | null; upgradeBucket: string | null; updatedAt: string | null };
+  const [live, setLive] = useState<Record<number, Live>>({});
 
   useEffect(() => {
     let cancelled = false;
     client.pq
       .getLiveStatuses()
       .then((m) => {
-        if (!cancelled) setLive(m as Record<number, { status: string | null }>);
+        if (!cancelled) setLive(m as Record<number, Live>);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
+
+  const agoLabel = (iso: string | null): string => {
+    if (!iso) return '';
+    const days = Math.floor((Date.now() - new Date(iso).getTime()) / 86_400_000);
+    if (days < 1) return 'today';
+    if (days < 30) return `${days}d ago`;
+    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
+  };
 
   const rows = useMemo(
     () =>
@@ -142,10 +152,14 @@ export default function PqEipRegistryPage() {
                   </td>
                   <td className="px-4 py-3 align-top text-xs">
                     {(() => {
-                      const liveStatus = live[e.number]?.status;
+                      const lv = live[e.number];
+                      const liveStatus = lv?.status;
                       const effective = liveStatus || e.status;
                       return (
-                        <span className={cn('inline-flex items-center gap-1 font-medium', statusClass[effective] ?? 'text-muted-foreground')}>
+                        <span
+                          className={cn('inline-flex items-center gap-1 font-medium', statusClass[effective] ?? 'text-muted-foreground')}
+                          title={lv?.updatedAt ? `Last changed ${agoLabel(lv.updatedAt)}` : undefined}
+                        >
                           {effective}
                           {liveStatus && (
                             <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="live from the EIP repository" />
@@ -155,7 +169,18 @@ export default function PqEipRegistryPage() {
                     })()}
                   </td>
                   <td className="px-4 py-3 align-top text-xs text-muted-foreground">
-                    {e.upgrade ? `${e.upgrade}${e.upgradeStatus && e.upgradeStatus !== '—' ? ` · ${e.upgradeStatus}` : ''}` : e.upgradeStatus ?? '—'}
+                    {(() => {
+                      const lv = live[e.number];
+                      if (lv?.upgrade && lv.upgradeBucket) {
+                        return (
+                          <span className="inline-flex items-center gap-1">
+                            {lv.upgrade} · {lv.upgradeBucket}
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" title="live from upgrade composition" />
+                          </span>
+                        );
+                      }
+                      return e.upgrade ? `${e.upgrade}${e.upgradeStatus && e.upgradeStatus !== '—' ? ` · ${e.upgradeStatus}` : ''}` : e.upgradeStatus ?? '—';
+                    })()}
                   </td>
                 </tr>
               ))}

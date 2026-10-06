@@ -43,6 +43,12 @@ export interface PqEip {
   dependsOn?: number[];
   /** PQ capabilities this proposal unlocks (enables). */
   enables?: number[];
+  /** Competing designs for the same capability (alternative-to). */
+  alternativeTo?: number[];
+  /** Legacy mechanism this migrates away from (replaces). */
+  replaces?: string;
+  /** Research artifacts this depends on (leanVM, leanSig, Lean-SPHINCS…). */
+  researchDep?: string[];
   status: EipStatus;
   /** Network upgrade it is associated with, if any. */
   upgrade?: string;
@@ -76,6 +82,7 @@ export const PQ_EIPS: PqEip[] = [
     capability: 'Aggregation',
     milestone: 'M*',
     dependsOn: [8141],
+    researchDep: ['LeanVM', 'Lean-SPHINCS'],
     status: 'Draft',
     upgradeStatus: 'Proposed',
     note: 'In-mempool aggregation of hash-based signatures; the scalability piece for PQ. Implementation underway on the PQTS testnet (v0.3) via LeanVM + Lean-SPHINCS; contributors wanted.',
@@ -87,6 +94,7 @@ export const PQ_EIPS: PqEip[] = [
     role: 'Direct PQ',
     capability: 'Attestations',
     milestone: 'L*',
+    researchDep: ['leanVM', 'leanSig'],
     status: 'Draft',
     upgradeStatus: 'Proposed',
     note: 'PQ-secure attestation signatures; tracks the leanVM / leanSig research line.',
@@ -98,6 +106,7 @@ export const PQ_EIPS: PqEip[] = [
     role: 'Direct PQ',
     capability: 'Key management',
     milestone: 'I*/L*',
+    replaces: 'BLS validator keys',
     status: 'Draft',
     upgradeStatus: '—',
     note: 'Hash-based (XMSS) validator key scheme to replace BLS at the key-management layer.',
@@ -110,6 +119,7 @@ export const PQ_EIPS: PqEip[] = [
     capability: 'Randomness',
     milestone: 'I*/L*',
     dependsOn: [7916],
+    replaces: 'BLS-based RANDAO reveals',
     status: 'Draft',
     upgradeStatus: 'Proposed',
     note: 'Removes the BLS dependency in RANDAO so beacon randomness stays PQ-secure.',
@@ -125,6 +135,54 @@ export const PQ_EIPS: PqEip[] = [
     upgrade: 'Hegota',
     upgradeStatus: 'CFI',
     note: 'Deposit-guard-only scope: stops new 0x00 (BLS) validators, the first step of legacy-key sunset.',
+  },
+  {
+    number: 8051,
+    title: 'Precompile for ML-DSA signature verification',
+    layer: 'Execution',
+    role: 'Direct PQ',
+    capability: 'Signatures',
+    milestone: 'J*',
+    alternativeTo: [8355],
+    status: 'Draft',
+    upgradeStatus: 'Proposed',
+    note: 'Lattice-based (ML-DSA / Dilithium) signature verification as an EVM precompile.',
+  },
+  {
+    number: 8355,
+    title: 'Precompiles for ML-DSA Verification',
+    layer: 'Execution',
+    role: 'Direct PQ',
+    capability: 'Signatures',
+    milestone: 'J*',
+    alternativeTo: [8051],
+    status: 'Draft',
+    upgradeStatus: 'Proposed',
+    note: 'A second ML-DSA verification precompile design; competes with / complements EIP-8051.',
+  },
+  {
+    number: 7619,
+    title: 'Precompile Falcon512 generic verifier',
+    layer: 'Execution',
+    role: 'Direct PQ',
+    capability: 'Signatures',
+    milestone: 'J*',
+    alternativeTo: [8052],
+    status: 'Draft',
+    upgradeStatus: 'Proposed',
+    note: 'Falcon-512 (lattice / NTRU) signature verification precompile.',
+  },
+  {
+    number: 8052,
+    title: 'Precompile for Falcon support',
+    layer: 'Execution',
+    role: 'Direct PQ',
+    capability: 'Signatures',
+    milestone: 'J*',
+    alternativeTo: [7619],
+    status: 'Draft',
+    upgradeStatus: 'Proposed',
+    note: 'A second Falcon verification precompile design; competes with / complements EIP-7619.',
   },
 ];
 
@@ -143,7 +201,7 @@ export const PQ_ROADMAP: PqRoadmapRow[] = [
   { milestone: 'I*', capability: 'PQ key registry', research: 'Available', eip: '?', gap: 'EIP needed?' },
   { milestone: 'I*/L*', capability: 'PQ validator keys (XMSS)', research: 'Available', eip: 8310 },
   { milestone: 'I*/L*', capability: 'PQ RANDAO', research: 'Available', eip: 8321 },
-  { milestone: 'J*', capability: 'PQ signature precompiles', research: 'Available', eip: '?', gap: 'EIP boundary?' },
+  { milestone: 'J*', capability: 'PQ signature precompiles', research: 'Available', eip: 8051, gap: 'Consolidate 4 designs' },
   { milestone: 'L*', capability: 'PQ attestations', research: 'Available', eip: 8292 },
   { milestone: 'L*', capability: 'leanVM', research: 'Available', eip: 'Spec', gap: 'EIP boundary?' },
   { milestone: 'M*', capability: 'PQ signature aggregation', research: 'Available', eip: 8288 },
@@ -175,8 +233,8 @@ export const PQ_GAPS: PqGap[] = [
     title: 'PQ signature precompiles',
     milestone: 'J*',
     research: 'Available',
-    eip: 'Not identified',
-    action: 'Define the EIP boundary between account-layer signatures (8141) and a precompile.',
+    eip: 'EIP-7619 / 8051 / 8052 / 8355',
+    action: 'Four competing precompile designs exist (Falcon: 7619, 8052; ML-DSA: 8051, 8355). Decide which to advance and the boundary versus account-layer signatures (8141).',
   },
   {
     title: 'EIP-8288 in-mempool signature aggregation',

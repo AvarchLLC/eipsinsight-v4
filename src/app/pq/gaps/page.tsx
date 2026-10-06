@@ -1,5 +1,6 @@
 import { ArrowRight, ShieldAlert, UserX } from 'lucide-react';
 import { PQ_GAPS } from '@/data/pq-registry';
+import { PqAlertsFeed } from '@/components/pq/alerts-feed';
 
 export const revalidate = 300;
 
@@ -16,6 +17,8 @@ export default function PqGapsPage() {
           or a defined next step. This is the EIP Coordinator&apos;s action queue, not another green/yellow/red dashboard.
         </p>
       </section>
+
+      <PqAlertsFeed />
 
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {PQ_GAPS.map((g) => (
