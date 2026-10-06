@@ -5,6 +5,7 @@ import { AppSidebar } from '@/components/app-sidebar';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
+import { GithubSourceLink } from '@/components/github-source-link';
 import { AIDisclaimerBox } from '@/components/ai-disclaimer-box';
 
 /**
@@ -25,6 +26,7 @@ export function MainAppShell({ children }: { children: React.ReactNode }) {
             {children}
           </main>
           <GlobalPageFeedback />
+          <GithubSourceLink />
           <AIDisclaimerBox />
           <Footer />
         </div>

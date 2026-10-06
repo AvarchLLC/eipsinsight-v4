@@ -26,11 +26,6 @@ const badgeColors: Record<string, string> = {
   small: 'border-border bg-muted/40 text-muted-foreground',
 };
 
-const partnerLogos: Record<string, string> = {
-  EtherWorld: '/brand/partners/ew.png',
-  'ECH (Ethereum Cat Herders)': '/brand/partners/ech.png',
-};
-
 const teamAvatarMap: Record<string, string> = {
   'Pooja Ranjan': '/team/pooja_ranjan.jpg',
   'Yash Kamal Chaturvedi': '/team/yash.jpg',
@@ -198,22 +193,17 @@ export default function AboutPage() {
             <div className="mt-4 space-y-3">
               {partners.map((partner) => (
                 <a key={partner.name} href={partner.website} target="_blank" rel="noreferrer" className="group flex items-center gap-4 rounded-lg border border-border bg-muted/20 p-4 transition-all hover:border-primary/40 hover:bg-card/80">
-                  {partnerLogos[partner.name] ? (
-                    <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg border border-border bg-card">
-                      <Image src={partnerLogos[partner.name]} alt={partner.name} width={72} height={32} className="h-7 w-auto object-contain" />
-                    </div>
-                  ) : (
-                    <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-sm font-semibold text-foreground">
-                      {partner.name.slice(0, 2)}
-                    </div>
-                  )}
+                  <div className="flex h-11 w-14 shrink-0 items-center justify-center rounded-lg border border-border bg-neutral-900 p-1.5">
+                    {partner.logo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={partner.logo} alt={partner.name} className="max-h-full w-auto max-w-full object-contain" />
+                    ) : (
+                      <span className="text-sm font-semibold text-neutral-200">{partner.name.slice(0, 2)}</span>
+                    )}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <h3 className="text-sm font-semibold text-foreground transition-colors group-hover:text-primary">{partner.name}</h3>
-                    <p className="mt-0.5 text-xs text-muted-foreground">
-                      {partner.name === 'EtherWorld'
-                        ? 'Media and ecosystem amplification for standards coverage.'
-                        : 'Coordination and operational support around standards.'}
-                    </p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">{partner.description}</p>
                   </div>
                   <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
                 </a>

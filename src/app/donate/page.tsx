@@ -51,10 +51,6 @@ export default function DonatePage() {
     []
   );
 
-  const partnerLogos: Record<string, string> = {
-    EtherWorld: '/brand/partners/ew.png',
-    'ECH (Ethereum Cat Herders)': '/brand/partners/ech.png',
-  };
 
   const handleCopyAddress = async () => {
     try {
@@ -235,19 +231,21 @@ export default function DonatePage() {
                 rel="noreferrer"
                 className="group flex flex-col items-center justify-center rounded-xl border border-border/70 bg-background/50 p-4 transition-all hover:border-primary/40 hover:bg-muted/40"
               >
-                {partnerLogos[partner.name] ? (
-                  <Image
-                    src={partnerLogos[partner.name]}
-                    alt={partner.name}
-                    width={130}
-                    height={48}
-                    className="h-10 w-auto object-contain transition-transform group-hover:scale-105"
-                  />
+                {partner.logo ? (
+                  <div className="flex h-12 items-center justify-center rounded-lg bg-neutral-900 px-3 py-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={partner.logo}
+                      alt={partner.name}
+                      className="h-8 w-auto max-w-[120px] object-contain transition-transform group-hover:scale-105"
+                    />
+                  </div>
                 ) : (
                   <span className="text-xs font-semibold text-foreground group-hover:text-primary transition-colors text-center">
                     {partner.name}
                   </span>
                 )}
+                <span className="mt-2 text-[11px] text-muted-foreground">{partner.description}</span>
               </a>
             ))}
           </div>

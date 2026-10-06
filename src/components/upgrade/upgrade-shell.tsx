@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
 import { useSession } from '@/hooks/useSession';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
+import { GithubSourceLink } from '@/components/github-source-link';
 import { getInProgressUpgrades, getLiveUpgrades } from '@/data/upgrade-registry';
 import { UpgradeStatusBadge } from '@/components/upgrade/stage-badge';
 import { ThemedLogoGif } from '@/components/themed-logo-gif';
@@ -405,6 +406,7 @@ export function UpgradeShell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <GlobalPageFeedback />
+      <GithubSourceLink />
 
       <footer className="relative border-t border-border/60 bg-muted/10">
         {/* Subtle top accent gradient */}
