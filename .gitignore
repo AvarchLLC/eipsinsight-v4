@@ -50,4 +50,6 @@ next-env.d.ts
 CLAUDE.mdprisma/seed-blogs.ts
 .claude/
 
-scripts 
+scripts/*
+# Build-time script (invoked by prebuild/predev) must be versioned:
+!scripts/gen-route-sources.mjs
