@@ -27,6 +27,7 @@ import { subscriptionsProcedures } from './procedures/subscriptions'
 import { watchlistProcedures } from './procedures/watchlist'
 import { mevProcedures } from './procedures/mev'
 import { aaProcedures } from './procedures/aa'
+import { pqProcedures } from './procedures/pq'
 import { networkProcedures } from './procedures/network'
 
 export const router = {
@@ -59,5 +60,6 @@ export const router = {
   watchlist: watchlistProcedures,
   mev: mevProcedures,
   aa: aaProcedures,
+  pq: pqProcedures,
   network: networkProcedures,
 }
