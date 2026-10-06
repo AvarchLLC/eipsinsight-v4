@@ -231,3 +231,145 @@ export function pqSummary() {
 
 export const PQ_LAYERS: PqLayer[] = ['Execution', 'Consensus', 'Data', 'Application'];
 export const PQ_ROLES: PqRole[] = ['Direct PQ', 'Enabler', 'Prerequisite', 'Related'];
+
+// ── Implementation & devnet matrix ───────────────────────────────────────────
+// Per-client implementation state for each PQ EIP. EL EIPs are tracked against
+// execution clients, CL EIPs against consensus clients. Missing cells default to
+// 'not-started'. Seeded from the Native-AA / frames-devnet work; the PQ consensus
+// EIPs are early-stage, so most cells are intentionally empty until verified.
+
+export const PQ_EL_CLIENTS = ['Geth', 'Nethermind', 'Besu', 'Erigon', 'Reth', 'ethrex'] as const;
+export const PQ_CL_CLIENTS = ['Lighthouse', 'Prysm', 'Teku', 'Nimbus', 'Grandine', 'Lodestar'] as const;
+
+export type ImplState = 'not-started' | 'planned' | 'pr-open' | 'implemented' | 'interoperable' | 'tested';
+
+export interface PqImpl {
+  state: ImplState;
+  url?: string;
+}
+
+/** PQ_IMPLEMENTATIONS[eipNumber][client | 'Devnet'] = { state, url? }. */
+export const PQ_IMPLEMENTATIONS: Record<number, Record<string, PqImpl>> = {
+  8141: {
+    Geth: { state: 'tested' },
+    Nethermind: { state: 'tested' },
+    ethrex: { state: 'tested' },
+    Besu: { state: 'planned' },
+    Devnet: { state: 'tested' },
+  },
+  // 8288 / 8292 / 8310 / 8321 / 8365: consensus-layer, early-stage — cells default
+  // to 'not-started' until client work is verified.
+};
+
+export const IMPL_STATE_ORDER: ImplState[] = ['not-started', 'planned', 'pr-open', 'implemented', 'interoperable', 'tested'];
+
+export const IMPL_STATE_LABEL: Record<ImplState, string> = {
+  'not-started': 'Not started',
+  planned: 'Planned',
+  'pr-open': 'PR open',
+  implemented: 'Implemented',
+  interoperable: 'Interoperable',
+  tested: 'Tested',
+};
+
+export function implFor(eip: number, client: string): PqImpl {
+  return PQ_IMPLEMENTATIONS[eip]?.[client] ?? { state: 'not-started' };
+}
+
+// ── Migration tracker: protocol vs ecosystem PQ readiness ────────────────────
+// Ethereum can ship PQ support at the protocol while the ecosystem stays on
+// vulnerable keys. This tracks readiness per category rather than declaring any
+// organization "quantum safe". Conservative by design: most ecosystem categories
+// have not begun migration, which is the honest, useful picture today.
+
+export type ReadinessLevel = 'none' | 'research' | 'spec' | 'in-progress' | 'ready';
+
+export const READINESS_ORDER: ReadinessLevel[] = ['none', 'research', 'spec', 'in-progress', 'ready'];
+export const READINESS_LABEL: Record<ReadinessLevel, string> = {
+  none: 'Not started',
+  research: 'Research',
+  spec: 'Specification',
+  'in-progress': 'In progress',
+  ready: 'Ready',
+};
+
+export interface MigrationCategory {
+  name: string;
+  group: 'Protocol' | 'Ecosystem';
+  current: string; // current cryptography / auth
+  pqCandidate: string; // PQ replacement approach
+  eips: number[]; // relevant EIPs in this registry
+  readiness: ReadinessLevel;
+  note?: string;
+}
+
+export const PQ_MIGRATION: MigrationCategory[] = [
+  // Protocol — what the protocol itself controls.
+  {
+    name: 'Validator keys',
+    group: 'Protocol',
+    current: 'BLS12-381',
+    pqCandidate: 'Hash-based (XMSS)',
+    eips: [8310, 8365],
+    readiness: 'spec',
+    note: 'Keystore design drafted (8310); the deposit-guard that stops new BLS validators (8365) is CFI for Hegota.',
+  },
+  {
+    name: 'Attestation aggregation',
+    group: 'Protocol',
+    current: 'BLS aggregation',
+    pqCandidate: 'STARK / hash-based aggregation',
+    eips: [8292, 8288],
+    readiness: 'research',
+    note: 'Aggregating hash-based signatures at validator scale is the open scalability problem.',
+  },
+  {
+    name: 'Beacon randomness (RANDAO)',
+    group: 'Protocol',
+    current: 'BLS-based reveals',
+    pqCandidate: 'Hash-chain RANDAO',
+    eips: [8321],
+    readiness: 'research',
+    note: 'Removes the BLS dependency so beacon randomness stays PQ-secure.',
+  },
+  // Ecosystem — needs action beyond the core protocol.
+  {
+    name: 'EOAs',
+    group: 'Ecosystem',
+    current: 'secp256k1',
+    pqCandidate: 'Account-layer PQ signatures',
+    eips: [8141],
+    readiness: 'spec',
+    note: 'Native AA (Frames) gives accounts flexible signature schemes — the on-ramp for PQ signatures.',
+  },
+  {
+    name: 'Smart accounts',
+    group: 'Ecosystem',
+    current: 'secp256k1 · ERC-4337',
+    pqCandidate: 'PQ verifier via native AA',
+    eips: [8141],
+    readiness: 'spec',
+  },
+  {
+    name: 'Wallets',
+    group: 'Ecosystem',
+    current: 'secp256k1',
+    pqCandidate: 'PQ signing via account-layer schemes',
+    eips: [8141],
+    readiness: 'research',
+    note: 'Depends on account-layer PQ support plus wallet UX for key migration.',
+  },
+  {
+    name: 'Staking & custody',
+    group: 'Ecosystem',
+    current: 'BLS (validators) · secp256k1',
+    pqCandidate: 'Validator key migration',
+    eips: [8310, 8365],
+    readiness: 'none',
+  },
+  { name: 'Multisigs', group: 'Ecosystem', current: 'secp256k1', pqCandidate: 'PQ via account-layer schemes', eips: [8141], readiness: 'none' },
+  { name: 'L2s / rollups', group: 'Ecosystem', current: 'secp256k1 · various', pqCandidate: 'TBD', eips: [], readiness: 'none' },
+  { name: 'Bridges', group: 'Ecosystem', current: 'Various signatures', pqCandidate: 'TBD', eips: [], readiness: 'none' },
+  { name: 'Exchanges', group: 'Ecosystem', current: 'secp256k1', pqCandidate: 'TBD', eips: [], readiness: 'none' },
+  { name: 'Infrastructure (RPC, indexers)', group: 'Ecosystem', current: 'secp256k1', pqCandidate: 'TBD', eips: [], readiness: 'none' },
+];

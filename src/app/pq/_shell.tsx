@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, List, Map, Network, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { GitBranch, LayoutDashboard, List, Map, Network, Server, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const TABS: { href: string; label: string; icon: typeof List; exact?: boolean }[] = [
@@ -11,6 +11,8 @@ const TABS: { href: string; label: string; icon: typeof List; exact?: boolean }[
   { href: '/pq/eips', label: 'EIP Registry', icon: List },
   { href: '/pq/roadmap', label: 'Roadmap Coverage', icon: Map },
   { href: '/pq/dependencies', label: 'Dependencies', icon: Network },
+  { href: '/pq/implementation', label: 'Implementation', icon: Server },
+  { href: '/pq/migration', label: 'Migration', icon: GitBranch },
   { href: '/pq/gaps', label: 'Gaps & Blockers', icon: ShieldAlert },
 ];
 

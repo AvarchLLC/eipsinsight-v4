@@ -223,6 +223,8 @@ const sidebarSections: SidebarSection[] = [
           { title: "EIP Registry", href: "/pq/eips" },
           { title: "Roadmap Coverage", href: "/pq/roadmap" },
           { title: "Dependencies", href: "/pq/dependencies" },
+          { title: "Implementation", href: "/pq/implementation" },
+          { title: "Migration", href: "/pq/migration" },
           { title: "Gaps & Blockers", href: "/pq/gaps" },
         ],
       },
