@@ -1,5 +1,5 @@
 /**
- * Post-Quantum (PQ) readiness registry — the canonical EIPsInsight dataset that
+ * Post-Quantum (PQ) readiness registry, the canonical EIPsInsight dataset that
  * links Ethereum's PQ roadmap (pq.ethereum.org) to the EIPs, dependencies, and
  * open coordination gaps that must land for each roadmap capability to ship.
  *
@@ -257,7 +257,7 @@ export const PQ_IMPLEMENTATIONS: Record<number, Record<string, PqImpl>> = {
     Besu: { state: 'planned' },
     Devnet: { state: 'tested' },
   },
-  // 8288 / 8292 / 8310 / 8321 / 8365: consensus-layer, early-stage — cells default
+  // 8288 / 8292 / 8310 / 8321 / 8365: consensus-layer, early-stage, cells default
   // to 'not-started' until client work is verified.
 };
 
@@ -304,7 +304,7 @@ export interface MigrationCategory {
 }
 
 export const PQ_MIGRATION: MigrationCategory[] = [
-  // Protocol — what the protocol itself controls.
+  // Protocol, what the protocol itself controls.
   {
     name: 'Validator keys',
     group: 'Protocol',
@@ -332,7 +332,7 @@ export const PQ_MIGRATION: MigrationCategory[] = [
     readiness: 'research',
     note: 'Removes the BLS dependency so beacon randomness stays PQ-secure.',
   },
-  // Ecosystem — needs action beyond the core protocol.
+  // Ecosystem, needs action beyond the core protocol.
   {
     name: 'EOAs',
     group: 'Ecosystem',
@@ -340,7 +340,7 @@ export const PQ_MIGRATION: MigrationCategory[] = [
     pqCandidate: 'Account-layer PQ signatures',
     eips: [8141],
     readiness: 'spec',
-    note: 'Native AA (Frames) gives accounts flexible signature schemes — the on-ramp for PQ signatures.',
+    note: 'Native AA (Frames) gives accounts flexible signature schemes, the on-ramp for PQ signatures.',
   },
   {
     name: 'Smart accounts',

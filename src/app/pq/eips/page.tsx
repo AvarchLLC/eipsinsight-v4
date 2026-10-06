@@ -80,7 +80,7 @@ export default function PqEipRegistryPage() {
       <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
         <h2 className="text-sm font-bold tracking-tight text-foreground">PQ EIP Registry</h2>
         <p className="mt-1 text-xs text-muted-foreground">
-          The canonical dataset of PQ-related EIPs — their layer, PQ role, capability, roadmap milestone, dependencies, and status.
+          The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, dependencies, and status.
         </p>
         <div className="mt-3 space-y-2">
           <FilterRow label="Layer">

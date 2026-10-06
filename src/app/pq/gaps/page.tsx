@@ -12,7 +12,7 @@ export default function PqGapsPage() {
           <h2 className="text-sm font-bold tracking-tight text-foreground">Gaps &amp; Blockers</h2>
         </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          The coordination problems made explicit — PQ roadmap capabilities that still lack an identified EIP, an owner,
+          The coordination problems made explicit, PQ roadmap capabilities that still lack an identified EIP, an owner,
           or a defined next step. This is the EIP Coordinator&apos;s action queue, not another green/yellow/red dashboard.
         </p>
       </section>
@@ -57,7 +57,7 @@ export default function PqGapsPage() {
 
       <div className="rounded-xl border border-border bg-muted/30 p-3 text-[12px] leading-relaxed text-muted-foreground">
         Turning EIPsInsight from a reporting site into a coordination tool: each gap names the missing piece and the next
-        decision, so the state is maintainable and public. Curated metadata — corrections welcome at dev@avarch.org.
+        decision, so the state is maintainable and public. Curated metadata, corrections welcome at dev@avarch.org.
       </div>
     </div>
   );

@@ -84,8 +84,8 @@ export default function PqMigrationPage() {
         <h2 className="text-sm font-bold tracking-tight text-foreground">PQ migration tracker</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Ethereum can deploy PQ support at the protocol while the ecosystem stays on vulnerable keys. This tracks
-          readiness by <span className="font-medium text-foreground">category</span> — protocol-controlled versus
-          ecosystem-dependent — rather than declaring any organization &quot;quantum safe&quot;. It grows as the roadmap
+          readiness by <span className="font-medium text-foreground">category</span>, protocol-controlled versus
+          ecosystem-dependent, rather than declaring any organization &quot;quantum safe&quot;. It grows as the roadmap
           matures.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -100,18 +100,18 @@ export default function PqMigrationPage() {
       <Group
         title="Protocol readiness"
         icon={Boxes}
-        blurb="Cryptography the core protocol controls — validators, aggregation, randomness."
+        blurb="Cryptography the core protocol controls, validators, aggregation, randomness."
         rows={protocol}
       />
       <Group
         title="Ecosystem readiness"
         icon={Users}
-        blurb="Where migration needs action beyond the core protocol — accounts, wallets, and the wider stack."
+        blurb="Where migration needs action beyond the core protocol, accounts, wallets, and the wider stack."
         rows={ecosystem}
       />
 
       <div className="rounded-xl border border-border bg-muted/30 p-3 text-[12px] leading-relaxed text-muted-foreground">
-        The protocol can be PQ-ready before the ecosystem is — this layer makes that gap explicit so it can be tracked
+        The protocol can be PQ-ready before the ecosystem is, this layer makes that gap explicit so it can be tracked
         over the multi-year migration. Curated metadata; corrections welcome at dev@avarch.org.
       </div>
     </div>

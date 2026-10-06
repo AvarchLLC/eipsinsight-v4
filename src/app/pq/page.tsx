@@ -30,7 +30,7 @@ export default function PqOverviewPage() {
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               Ethereum&apos;s PQ roadmap says <span className="font-medium text-foreground">where</span> the protocol
               needs to go for quantum resistance. This hub tracks <span className="font-medium text-foreground">how</span>{' '}
-              the EIPs and specifications required to get there are progressing — their roadmap milestone, dependencies,
+              the EIPs and specifications required to get there are progressing, their roadmap milestone, dependencies,
               upgrade status, and the open coordination gaps between research and shipped protocol changes.
             </p>
             <div className="mt-4 flex flex-wrap gap-2">
@@ -90,7 +90,7 @@ export default function PqOverviewPage() {
         <h3 className="text-sm font-bold tracking-tight text-foreground">PQ readiness pipeline</h3>
         <p className="mt-1 text-xs text-muted-foreground">
           The path every PQ capability travels from research to ecosystem-wide migration. Most PQ work today sits in the
-          first stages — research and specification — with the earliest proposals reaching ACD and implementation.
+          first stages, research and specification, with the earliest proposals reaching ACD and implementation.
         </p>
         <div className="mt-4 flex flex-wrap items-center gap-1.5">
           {PQ_PIPELINE.map((stage, i) => {

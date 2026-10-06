@@ -12,7 +12,7 @@ export default function PqRoadmapPage() {
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           For every capability on Ethereum&apos;s PQ roadmap: does the protocol specification needed to implement it
           exist yet? The <span className="font-medium text-amber-600 dark:text-amber-400">gap</span> cells are where the
-          research milestone has no identified EIP — the coordination work.
+          research milestone has no identified EIP, the coordination work.
         </p>
       </section>
 

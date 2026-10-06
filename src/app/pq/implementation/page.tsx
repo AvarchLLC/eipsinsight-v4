@@ -99,7 +99,7 @@ export default function PqImplementationPage() {
         <h2 className="text-sm font-bold tracking-tight text-foreground">Implementation &amp; Devnet matrix</h2>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           EIP status alone doesn&apos;t tell you whether PQ work is becoming deployable. This tracks each proposal from
-          spec to running code across the relevant clients — the measurable bridge between the EIP and upgrade readiness.
+          spec to running code across the relevant clients, the measurable bridge between the EIP and upgrade readiness.
           Most PQ consensus work is early-stage, so the frontier is deliberately visible.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
