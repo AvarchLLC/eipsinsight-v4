@@ -40,6 +40,163 @@ let cache: { at: number; data: Record<number, PqLiveStatus> } | null = null
 let alertCache: { at: number; data: PqAlert[] } | null = null
 const TTL_MS = 300_000
 
+/** A recent ERC-4337 UserOperation on the Daisugi testnet. */
+export interface PqTestnetOp {
+  userOpHash: string
+  txHash: string
+  sender: string
+  paymaster: string | null
+  success: boolean
+  actualGasCost: string
+  timestamp: number
+}
+
+/** A recent native EIP-8141 frame transaction on the Daisugi testnet. */
+export interface PqTestnetFrameTx {
+  hash: string
+  from: string
+  frameCount: number
+  allSucceeded: boolean
+  timestamp: number
+}
+
+export interface PqTestnet {
+  /** Whether the live fetch succeeded; false falls back to curated copy. */
+  online: boolean
+  chainId: number
+  /** 'operational' | 'degraded' | 'offline' | 'unknown' from the explorer. */
+  status: string
+  blockNumber: number | null
+  entryPoint: string | null
+  explorerBase: string
+  rpc: string
+  smartAccounts: number
+  nativeWallets: number
+  /** Total indexed ERC-4337 UserOperations. */
+  operationCount: number
+  /** Share of indexed UserOperations that succeeded (0–1). */
+  operationSuccessRate: number | null
+  /** Total indexed native frame transactions (EIP-8141, type 0x06). */
+  frameTxCount: number
+  frameTxSuccessRate: number | null
+  recentOps: PqTestnetOp[]
+  recentFrames: PqTestnetFrameTx[]
+  checkedAt: string
+}
+
+const DAISUGI_EXPLORER = 'https://explorer.daisugi.fyi'
+const DAISUGI_RPC = 'https://daisugi.fyi/rpc'
+let testnetCache: { at: number; data: PqTestnet } | null = null
+// Shorter TTL than the DB overlays: this is live network telemetry.
+const TESTNET_TTL_MS = 120_000
+
+async function fetchJson(url: string, timeoutMs = 10_000): Promise<unknown> {
+  const ctrl = new AbortController()
+  const t = setTimeout(() => ctrl.abort(), timeoutMs)
+  try {
+    const r = await fetch(url, { signal: ctrl.signal, headers: { accept: 'application/json' } })
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return await r.json()
+  } finally {
+    clearTimeout(t)
+  }
+}
+
+function rate(items: Array<{ success?: boolean; allSucceeded?: boolean }>, key: 'success' | 'allSucceeded'): number | null {
+  if (!items.length) return null
+  const ok = items.filter((x) => x[key]).length
+  return ok / items.length
+}
+
+const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
+
+async function fetchDaisugi(): Promise<PqTestnet> {
+  const offline: PqTestnet = {
+    online: false,
+    chainId: 1337,
+    status: 'unknown',
+    blockNumber: null,
+    entryPoint: null,
+    explorerBase: DAISUGI_EXPLORER,
+    rpc: DAISUGI_RPC,
+    smartAccounts: 0,
+    nativeWallets: 0,
+    operationCount: 0,
+    operationSuccessRate: null,
+    frameTxCount: 0,
+    frameTxSuccessRate: null,
+    recentOps: [],
+    recentFrames: [],
+    checkedAt: new Date().toISOString(),
+  }
+  try {
+    const [ovRaw, netRaw] = await Promise.all([
+      fetchJson(`${DAISUGI_EXPLORER}/api/explorer/overview`),
+      fetchJson(`${DAISUGI_EXPLORER}/api/network`).catch(() => null),
+    ])
+    const ov = ovRaw as {
+      chainId?: number
+      entryPoint?: string
+      indexedTo?: number
+      smartAccountCount?: number
+      nativeWalletCount?: number
+      operationCount?: number
+      operations?: Array<{
+        userOpHash?: string; transactionHash?: string; sender?: string; paymaster?: string
+        success?: boolean; actualGasCost?: string; timestamp?: number
+      }>
+      nativeFrames?: {
+        count?: number
+        transactions?: Array<{ hash?: string; from?: string; frameCount?: number; frameStatuses?: string[]; status?: string; timestamp?: number }>
+      }
+    }
+    const net = netRaw as { status?: string; blockNumber?: number } | null
+
+    const ops: PqTestnetOp[] = (ov.operations ?? []).map((o) => ({
+      userOpHash: o.userOpHash ?? '',
+      txHash: o.transactionHash ?? '',
+      sender: o.sender ?? '',
+      paymaster: o.paymaster && o.paymaster !== ZERO_ADDR ? o.paymaster : null,
+      success: !!o.success,
+      actualGasCost: o.actualGasCost ?? '0',
+      timestamp: Number(o.timestamp ?? 0),
+    }))
+    const frameTxs = ov.nativeFrames?.transactions ?? []
+    const frames: PqTestnetFrameTx[] = frameTxs.map((f) => ({
+      hash: f.hash ?? '',
+      from: f.from ?? '',
+      frameCount: Number(f.frameCount ?? 0),
+      allSucceeded: f.status === 'Success' && (f.frameStatuses ?? []).every((s) => s === 'Success'),
+      timestamp: Number(f.timestamp ?? 0),
+    }))
+
+    return {
+      online: true,
+      chainId: Number(ov.chainId ?? 1337),
+      status: net?.status ?? 'operational',
+      blockNumber: Number(net?.blockNumber ?? ov.indexedTo ?? 0) || null,
+      entryPoint: ov.entryPoint ?? null,
+      explorerBase: DAISUGI_EXPLORER,
+      rpc: DAISUGI_RPC,
+      smartAccounts: Number(ov.smartAccountCount ?? 0),
+      nativeWallets: Number(ov.nativeWalletCount ?? 0),
+      operationCount: Number(ov.operationCount ?? ops.length),
+      // Success rate is over the recent window the explorer returns, not all-time.
+      operationSuccessRate: rate(ops, 'success'),
+      frameTxCount: Number(ov.nativeFrames?.count ?? frames.length),
+      frameTxSuccessRate: rate(frames, 'allSucceeded'),
+      recentOps: ops.slice(0, 8),
+      recentFrames: frames
+        .slice()
+        .sort((a, b) => b.timestamp - a.timestamp)
+        .slice(0, 8),
+      checkedAt: new Date().toISOString(),
+    }
+  } catch {
+    return offline
+  }
+}
+
 export const pqProcedures = {
   getLiveStatuses: optionalAuthProcedure.handler(async (): Promise<Record<number, PqLiveStatus>> => {
     if (cache && Date.now() - cache.at < TTL_MS) return cache.data
@@ -94,6 +251,23 @@ export const pqProcedures = {
     } catch {
       return {}
     }
+  }),
+
+  /**
+   * Live snapshot of the Daisugi PQTS testnet, proxied from its public
+   * explorer API (explorer.daisugi.fyi). Daisugi is where end-to-end PQ
+   * signatures are actually exercised: ERC-4337 UserOperations signed with a
+   * SPHINCS+ variant, plus native EIP-8141 frame transactions (type 0x06).
+   *
+   * The explorer is the authoritative index; we cache its aggregates for a few
+   * minutes and surface counts, success rates and recent activity so the PQ
+   * hub shows real testnet usage with deep links back to the explorer.
+   */
+  getTestnet: optionalAuthProcedure.handler(async (): Promise<PqTestnet> => {
+    if (testnetCache && Date.now() - testnetCache.at < TESTNET_TTL_MS) return testnetCache.data
+    const data = await fetchDaisugi()
+    testnetCache = { at: Date.now(), data }
+    return data
   }),
 
   /**
