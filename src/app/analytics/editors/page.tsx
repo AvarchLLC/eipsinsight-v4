@@ -44,6 +44,8 @@ interface EditorLeaderboardRow {
 interface CategoryCoverage {
   category: string;
   actors: string[];
+  /** Real per-editor action counts for this category (from the DB, not an even split). */
+  actorCounts?: Array<{ actor: string; count: number }>;
 }
 
 interface RepoDistribution {
@@ -620,43 +622,28 @@ export default function EditorsAnalyticsPage() {
 
   // ─── ECharts Interactive Breakdown Configurations ──────────────────
 
-  // Heuristic-based breakdown mapping: actual editor actions parsed into category buckets
+  // Real per-category action counts straight from the DB (editor actions joined
+  // to each proposal's category/type). No heuristic even-split.
   const categoryActionsData = useMemo(() => {
-    const data: Array<{ category: string; actor: string; count: number; repo: string }> = [];
-    
+    const data: Array<{ category: string; actor: string; count: number }> = [];
+
     const normalizeCategory = (cat: string) => {
       const c = cat.trim().toUpperCase();
       if (c === "ERC") return "ERC";
       if (c === "RIP") return "RIP";
-      // Capitalize first letter
       return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
     };
 
-    repoDistribution.forEach((row) => {
-      const repoName = row.repo;
-      const actor = row.actor;
-      const count = row.count;
-      
-      if (repoName === "ethereum/ERCs") {
-        data.push({ category: "ERC", actor, count, repo: "ethereum/ERCs" });
-      } else if (repoName === "ethereum/RIPs") {
-        data.push({ category: "RIP", actor, count, repo: "ethereum/RIPs" });
-      } else {
-        // For ethereum/EIPs, distribute actions over the categories covered by this actor
-        const actorCats = categoriesByActor[actor] || [];
-        if (actorCats.length > 0) {
-          const countPerCat = Math.round(count / actorCats.length);
-          actorCats.forEach((cat) => {
-            data.push({ category: normalizeCategory(cat), actor, count: countPerCat, repo: "ethereum/EIPs" });
-          });
-        } else {
-          data.push({ category: "Core", actor, count, repo: "ethereum/EIPs" });
+    categoryCoverage.forEach((entry) => {
+      (entry.actorCounts ?? []).forEach(({ actor, count }) => {
+        if (count > 0) {
+          data.push({ category: normalizeCategory(entry.category), actor, count });
         }
-      }
+      });
     });
-    
+
     return data;
-  }, [repoDistribution, categoriesByActor]);
+  }, [categoryCoverage]);
 
   // 1. Actions by Editor and Repository Stacked Horizontal Bar
   const breakdownRepoOption = useMemo(() => {
@@ -772,10 +759,9 @@ export default function EditorsAnalyticsPage() {
           const catName = params[0].name;
           const items = params
             .filter((p) => Number(p.value) > 0)
+            .sort((a, b) => Number(b.value) - Number(a.value))
             .map((p) => {
-              const match = categoryActionsData.find((d) => d.category === catName && d.actor === p.seriesName);
-              const repoStr = match ? match.repo.split("/")[1] : "EIPs";
-              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${p.value.toLocaleString()} actions on <span style="opacity:0.8;">${repoStr}</span></div>`;
+              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toLocaleString()} actions</div>`;
             })
             .join("");
           return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">Category: ${catName}</div>${items}</div>`;

@@ -1104,7 +1104,10 @@ const getEditorsByCategoryCached = unstable_cache(
         JOIN pull_request_eips pre ON pre.pr_number = pr.pr_number AND pre.repository_id = pr.repository_id
       ),
       review_with_category AS (
-        SELECT em.canonical AS actor, COALESCE(LOWER(TRIM(es.category)), 'unknown') AS category
+        -- Standards Track proposals carry a category (core/networking/interface/erc);
+        -- Meta & Informational have no category, so fall back to their type.
+        SELECT em.canonical AS actor,
+          COALESCE(NULLIF(LOWER(TRIM(es.category)), ''), LOWER(TRIM(es.type)), 'unknown') AS category
         FROM pr_events pe
         JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
         JOIN pr_eip prpe ON prpe.pr_number = pe.pr_number AND prpe.repository_id = pe.repository_id
@@ -1133,10 +1136,15 @@ const getEditorsByCategoryCached = unstable_cache(
     );
 
     const byCategory: Record<string, string[]> = {};
+    // Real per-(category, actor) action counts, so the chart shows actual
+    // category activity instead of an even client-side split.
+    const countsByCategory: Record<string, Array<{ actor: string; count: number }>> = {};
     for (const r of results) {
       const cat = r.category === 'unknown' ? 'informational' : r.category;
       if (!byCategory[cat]) byCategory[cat] = [];
       byCategory[cat].push(r.actor);
+      if (!countsByCategory[cat]) countsByCategory[cat] = [];
+      countsByCategory[cat].push({ actor: r.actor, count: Number(r.review_count) });
     }
 
     // If activity data is empty (pull_request_eips not populated yet),
@@ -1150,7 +1158,11 @@ const getEditorsByCategoryCached = unstable_cache(
         : OFFICIAL_EDITORS_BY_CATEGORY;
 
     const order = ['governance', 'core', 'erc', 'networking', 'interface', 'meta', 'informational'];
-    return order.map((category) => ({ category, actors: source[category] ?? [] }));
+    return order.map((category) => ({
+      category,
+      actors: source[category] ?? [],
+      actorCounts: countsByCategory[category] ?? [],
+    }));
   },
   ['analytics-getEditorsByCategory'],
   { tags: ['analytics-editors-by-category'], revalidate: 600 }
