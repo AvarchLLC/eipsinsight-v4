@@ -1092,6 +1092,10 @@ const getEditorsByCategoryCached = unstable_cache(
       category: string;
       actor: string;
       review_count: bigint;
+      reviews: bigint;
+      comments: bigint;
+      commits: bigint;
+      others: bigint;
     }>>(
       `
       WITH editor_map AS (
@@ -1107,7 +1111,13 @@ const getEditorsByCategoryCached = unstable_cache(
         -- Standards Track proposals carry a category (core/networking/interface/erc);
         -- Meta & Informational have no category, so fall back to their type.
         SELECT em.canonical AS actor,
-          COALESCE(NULLIF(LOWER(TRIM(es.category)), ''), LOWER(TRIM(es.type)), 'unknown') AS category
+          COALESCE(NULLIF(LOWER(TRIM(es.category)), ''), LOWER(TRIM(es.type)), 'unknown') AS category,
+          CASE
+            WHEN pe.event_type IN ('reviewed', 'approved', 'changes_requested') THEN 'review'
+            WHEN pe.event_type IN ('commented', 'issue_comment', 'review_comment') THEN 'comment'
+            WHEN pe.event_type = 'committed' THEN 'commit'
+            ELSE 'other'
+          END AS action_type
         FROM pr_events pe
         JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
         JOIN pr_eip prpe ON prpe.pr_number = pe.pr_number AND prpe.repository_id = pe.repository_id
@@ -1121,12 +1131,18 @@ const getEditorsByCategoryCached = unstable_cache(
           AND ($3::text IS NULL OR pe.created_at <= $3::timestamp)
       ),
       ranked AS (
-        SELECT category, actor, COUNT(*)::bigint AS review_count,
+        SELECT category, actor,
+          COUNT(*)::bigint AS review_count,
+          COUNT(*) FILTER (WHERE action_type = 'review')::bigint AS reviews,
+          COUNT(*) FILTER (WHERE action_type = 'comment')::bigint AS comments,
+          COUNT(*) FILTER (WHERE action_type = 'commit')::bigint AS commits,
+          COUNT(*) FILTER (WHERE action_type = 'other')::bigint AS others,
           ROW_NUMBER() OVER (PARTITION BY category ORDER BY COUNT(*) DESC) AS rn
         FROM review_with_category
         GROUP BY category, actor
       )
-      SELECT category, actor, review_count FROM ranked WHERE rn <= 20 ORDER BY category, rn
+      SELECT category, actor, review_count, reviews, comments, commits, others
+      FROM ranked WHERE rn <= 20 ORDER BY category, rn
     `,
       repo,
       from,
@@ -1138,13 +1154,22 @@ const getEditorsByCategoryCached = unstable_cache(
     const byCategory: Record<string, string[]> = {};
     // Real per-(category, actor) action counts, so the chart shows actual
     // category activity instead of an even client-side split.
-    const countsByCategory: Record<string, Array<{ actor: string; count: number }>> = {};
+    const countsByCategory: Record<string, Array<{
+      actor: string; count: number; reviews: number; comments: number; commits: number; other: number;
+    }>> = {};
     for (const r of results) {
       const cat = r.category === 'unknown' ? 'informational' : r.category;
       if (!byCategory[cat]) byCategory[cat] = [];
       byCategory[cat].push(r.actor);
       if (!countsByCategory[cat]) countsByCategory[cat] = [];
-      countsByCategory[cat].push({ actor: r.actor, count: Number(r.review_count) });
+      countsByCategory[cat].push({
+        actor: r.actor,
+        count: Number(r.review_count),
+        reviews: Number(r.reviews),
+        comments: Number(r.comments),
+        commits: Number(r.commits),
+        other: Number(r.others),
+      });
     }
 
     // If activity data is empty (pull_request_eips not populated yet),

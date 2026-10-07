@@ -45,7 +45,7 @@ interface CategoryCoverage {
   category: string;
   actors: string[];
   /** Real per-editor action counts for this category (from the DB, not an even split). */
-  actorCounts?: Array<{ actor: string; count: number }>;
+  actorCounts?: Array<{ actor: string; count: number; reviews: number; comments: number; commits: number; other: number }>;
 }
 
 interface RepoDistribution {
@@ -221,6 +221,8 @@ export default function EditorsAnalyticsPage() {
 
   // Breakdown tabs
   const [breakdownTab, setBreakdownTab] = useState<"repo" | "event" | "category">("repo");
+  // Which action type drives the Category Actions chart.
+  const [categoryActionType, setCategoryActionType] = useState<"all" | "review" | "comment" | "commit">("all");
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange, customFromMonth, customToMonth);
@@ -634,16 +636,23 @@ export default function EditorsAnalyticsPage() {
       return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
     };
 
+    const pick = (c: { count: number; reviews: number; comments: number; commits: number }) =>
+      categoryActionType === "review" ? c.reviews
+        : categoryActionType === "comment" ? c.comments
+          : categoryActionType === "commit" ? c.commits
+            : c.count;
+
     categoryCoverage.forEach((entry) => {
-      (entry.actorCounts ?? []).forEach(({ actor, count }) => {
+      (entry.actorCounts ?? []).forEach((c) => {
+        const count = pick(c);
         if (count > 0) {
-          data.push({ category: normalizeCategory(entry.category), actor, count });
+          data.push({ category: normalizeCategory(entry.category), actor: c.actor, count });
         }
       });
     });
 
     return data;
-  }, [categoryCoverage]);
+  }, [categoryCoverage, categoryActionType]);
 
   // 1. Actions by Editor and Repository Stacked Horizontal Bar
   const breakdownRepoOption = useMemo(() => {
@@ -748,6 +757,9 @@ export default function EditorsAnalyticsPage() {
   const breakdownCategoryOption = useMemo(() => {
     const categories = ["Core", "ERC", "Networking", "Interface", "Meta", "Informational", "RIP"];
     const actors = Array.from(new Set(categoryActionsData.map((d) => d.actor)));
+    const typeLabel = categoryActionType === "all" ? "all actions"
+      : categoryActionType === "review" ? "reviews"
+        : categoryActionType === "comment" ? "comments" : "commits";
     
     return {
       backgroundColor: "transparent",
@@ -761,10 +773,10 @@ export default function EditorsAnalyticsPage() {
             .filter((p) => Number(p.value) > 0)
             .sort((a, b) => Number(b.value) - Number(a.value))
             .map((p) => {
-              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toLocaleString()} actions</div>`;
+              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toLocaleString()} ${typeLabel}</div>`;
             })
             .join("");
-          return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">Category: ${catName}</div>${items}</div>`;
+          return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">Category: ${catName} <span style="opacity:0.7;font-weight:400;">(${typeLabel})</span></div>${items}</div>`;
         }
       },
       legend: {
@@ -801,7 +813,7 @@ export default function EditorsAnalyticsPage() {
         };
       }),
     };
-  }, [categoryActionsData]);
+  }, [categoryActionsData, categoryActionType]);
 
   // ECharts Trend Option with Nice Thick DataZoom
   const trendOption = useMemo(() => ({
@@ -1682,6 +1694,39 @@ export default function EditorsAnalyticsPage() {
         </div>
 
         <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg hover:border-primary/20 transition-all duration-300">
+          {breakdownTab === "category" && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">Action type:</span>
+              {([
+                ["all", "All actions"],
+                ["review", "Reviews"],
+                ["comment", "Comments"],
+                ["commit", "Commits"],
+              ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setCategoryActionType(val)}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                    categoryActionType === val
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                Editor actions per proposal category ·{" "}
+                {categoryActionType === "all"
+                  ? "all indexed actions (reviews + comments + commits + labels/merges)"
+                  : categoryActionType === "review"
+                    ? "reviews only (approve / request-changes / review comment)"
+                    : categoryActionType === "comment"
+                      ? "comments only"
+                      : "commits only"}
+              </span>
+            </div>
+          )}
           <div className="h-[430px] w-full rounded-lg border border-border/70 bg-background/35 p-2">
             {breakdownTab === "repo" && (
               <ReactECharts option={breakdownRepoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
