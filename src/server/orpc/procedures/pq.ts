@@ -84,9 +84,19 @@ export interface PqTestnet {
   checkedAt: string
 }
 
+/** One daily growth point for the Daisugi testnet (ascending by date). */
+export interface PqTestnetPoint {
+  /** YYYY-MM-DD */
+  date: string
+  smartAccounts: number
+  operations: number
+  frameTxs: number
+}
+
 const DAISUGI_EXPLORER = 'https://explorer.daisugi.fyi'
 const DAISUGI_RPC = 'https://daisugi.fyi/rpc'
 let testnetCache: { at: number; data: PqTestnet } | null = null
+let historyCache: { at: number; data: PqTestnetPoint[] } | null = null
 // Shorter TTL than the DB overlays: this is live network telemetry.
 const TESTNET_TTL_MS = 120_000
 
@@ -268,6 +278,42 @@ export const pqProcedures = {
     const data = await fetchDaisugi()
     testnetCache = { at: Date.now(), data }
     return data
+  }),
+
+  /**
+   * Daily growth history of the Daisugi testnet, recorded by the scheduler's
+   * pqts_testnet_snapshots job (one row/day). Returns an ascending time series
+   * of cumulative totals so the hub can chart adoption. Empty until the
+   * scheduler has captured snapshots (table may not exist yet) — the UI then
+   * hides the chart and shows a "collecting" note.
+   */
+  getTestnetHistory: optionalAuthProcedure.handler(async (): Promise<PqTestnetPoint[]> => {
+    if (historyCache && Date.now() - historyCache.at < TESTNET_TTL_MS) return historyCache.data
+    try {
+      const rows = await prisma.$queryRawUnsafe<
+        Array<{ snapshot_date: Date; smart_accounts: number; operation_count: number; frame_tx_count: number }>
+      >(
+        `SELECT snapshot_date, smart_accounts, operation_count, frame_tx_count
+         FROM pqts_testnet_snapshots
+         WHERE network = 'daisugi'
+         ORDER BY snapshot_date ASC
+         LIMIT 365`,
+      )
+      const data: PqTestnetPoint[] = rows.map((r) => ({
+        date:
+          r.snapshot_date instanceof Date
+            ? r.snapshot_date.toISOString().slice(0, 10)
+            : String(r.snapshot_date).slice(0, 10),
+        smartAccounts: Number(r.smart_accounts) || 0,
+        operations: Number(r.operation_count) || 0,
+        frameTxs: Number(r.frame_tx_count) || 0,
+      }))
+      historyCache = { at: Date.now(), data }
+      return data
+    } catch {
+      // Table not migrated yet, or transient DB error: no history to show.
+      return []
+    }
   }),
 
   /**

@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, Boxes, CheckCircle2, ExternalLink, Layers, Radio, Wallet } from 'lucide-react';
+import { Activity, Boxes, CheckCircle2, ExternalLink, Layers, Radio, TrendingUp, Wallet } from 'lucide-react';
+import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
 
@@ -39,6 +40,7 @@ type Testnet = {
   recentFrames: FrameTx[];
   checkedAt: string;
 };
+type HistPoint = { date: string; smartAccounts: number; operations: number; frameTxs: number };
 
 function shortHash(h: string, head = 8, tail = 6) {
   if (!h || h.length <= head + tail + 2) return h;
@@ -72,6 +74,7 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Boxes; label: st
 
 export function DaisugiPanel() {
   const [data, setData] = useState<Testnet | null>(null);
+  const [history, setHistory] = useState<HistPoint[]>([]);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -83,6 +86,14 @@ export function DaisugiPanel() {
       })
       .catch(() => {
         if (!cancelled) setFailed(true);
+      });
+    client.pq
+      .getTestnetHistory()
+      .then((h) => {
+        if (!cancelled) setHistory(h as HistPoint[]);
+      })
+      .catch(() => {
+        /* no history yet — chart stays hidden */
       });
     return () => {
       cancelled = true;
@@ -197,9 +208,61 @@ export function DaisugiPanel() {
         </div>
       </div>
 
+      {history.length >= 2 && (
+        <div className="mt-4 rounded-lg border border-border bg-background/40 p-3">
+          <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            <TrendingUp className="h-3.5 w-3.5" /> Adoption over time
+          </div>
+          <div className="h-44 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={history} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="pqAccounts" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="pqOps" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="pqFrames" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={24}
+                  tickFormatter={(d: string) => d.slice(5)}
+                />
+                <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} tickLine={false} axisLine={false} width={34} />
+                <Tooltip
+                  contentStyle={{
+                    background: 'var(--card)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 8,
+                    fontSize: 11,
+                  }}
+                  labelStyle={{ color: 'var(--foreground)' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 10 }} iconType="plainline" />
+                <Area type="monotone" dataKey="smartAccounts" name="Smart accounts" stroke="#10b981" fill="url(#pqAccounts)" strokeWidth={2} isAnimationActive={false} />
+                <Area type="monotone" dataKey="operations" name="UserOps" stroke="#3b82f6" fill="url(#pqOps)" strokeWidth={2} isAnimationActive={false} />
+                <Area type="monotone" dataKey="frameTxs" name="Frame txs" stroke="#8b5cf6" fill="url(#pqFrames)" strokeWidth={2} isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
       <p className="mt-3 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">
         Live from the Daisugi explorer{data.entryPoint ? ` · EntryPoint ${shortHash(data.entryPoint, 8, 6)}` : ''} · RPC{' '}
         <code className="font-mono">{data.rpc}</code>. Success rates are over the most recent indexed window.
+        {history.length < 2 && ' Daily growth history is being collected.'}
       </p>
     </section>
   );
