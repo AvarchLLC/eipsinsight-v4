@@ -5088,6 +5088,154 @@ export const analyticsProcedures = {
       }));
     }),
 
+  // GitHub-style, server-paginated explorer over editor actions. Filters by
+  // date range + repo (from the page) plus editor, action type, proposal
+  // category, PR state and a free-text search (PR number or title). Returns
+  // the page of action rows, the total action count, and the distinct-PR
+  // count — so you can reproduce a GitHub query and see both numbers.
+  getEditorActionsExplorer: optionalAuthProcedure
+    .input(z.object({
+      from: z.string().optional(),
+      to: z.string().optional(),
+      repo: z.enum(['eips', 'ercs', 'rips']).optional(),
+      actor: z.string().optional(),
+      actionType: z.enum(['review', 'comment', 'commit', 'other']).optional(),
+      category: z.enum(['core', 'erc', 'networking', 'interface', 'meta', 'informational']).optional(),
+      state: z.enum(['open', 'closed', 'merged']).optional(),
+      search: z.string().max(120).optional(),
+      sort: z.enum(['newest', 'oldest']).optional().default('newest'),
+      page: z.number().int().min(1).optional().default(1),
+      pageSize: z.number().int().min(5).max(100).optional().default(25),
+    }))
+    .handler(async ({ input }) => {
+      const pageSize = input.pageSize ?? 25;
+      const page = input.page ?? 1;
+      const offset = (page - 1) * pageSize;
+      const dir = input.sort === 'oldest' ? 'ASC' : 'DESC';
+      const search = input.search?.trim() || null;
+
+      // Shared CTE: editor events reduced by the cheap filters first, then
+      // category is resolved only on that smaller set.
+      const cte = `
+        WITH editor_map AS (
+          SELECT canonical, actor_lc FROM UNNEST($9::text[], $10::text[]) AS x(canonical, actor_lc)
+        ),
+        raw AS (
+          SELECT
+            em.canonical AS actor,
+            pe.event_type,
+            pe.pr_number,
+            pe.repository_id,
+            CASE
+              WHEN pe.event_type IN ('reviewed','approved','changes_requested') THEN 'review'
+              WHEN pe.event_type IN ('commented','issue_comment','review_comment') THEN 'comment'
+              WHEN pe.event_type = 'committed' THEN 'commit'
+              ELSE 'other'
+            END AS action_type,
+            CASE
+              WHEN pe.created_at > COALESCE(pr.closed_at, pr.merged_at, NOW()) + INTERVAL '30 days'
+                THEN COALESCE(pr.closed_at, pr.merged_at, pr.created_at, pe.created_at)
+              ELSE pe.created_at
+            END AS occurred_at,
+            pr.title,
+            pr.state AS pr_state,
+            pr.merged_at,
+            r.name AS repo_name,
+            LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_short
+          FROM pr_events pe
+          JOIN editor_map em ON LOWER(pe.actor) = em.actor_lc
+          LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
+          LEFT JOIN repositories r ON r.id = pe.repository_id
+          WHERE pe.pr_number > 0 AND pe.event_type NOT IN ('subscribed','mentioned','referenced')
+        ),
+        base AS (
+          SELECT * FROM raw
+          WHERE ($1::text IS NULL OR occurred_at >= $1::timestamp)
+            AND ($2::text IS NULL OR occurred_at < (($2::date + INTERVAL '1 day')::timestamp))
+            AND ($3::text IS NULL OR repo_short = LOWER($3))
+            AND ($4::text IS NULL OR actor = $4)
+            AND ($5::text IS NULL OR action_type = $5)
+            AND ($7::text IS NULL OR
+                 ($7 = 'open'   AND pr_state ILIKE 'open') OR
+                 ($7 = 'merged' AND merged_at IS NOT NULL) OR
+                 ($7 = 'closed' AND pr_state ILIKE 'closed' AND merged_at IS NULL))
+            AND ($8::text IS NULL OR
+                 ((($8 ~ '^[0-9]+$') AND pr_number = NULLIF($8,'')::int) OR title ILIKE '%'||$8||'%'))
+        ),
+        withcat AS (
+          SELECT b.*,
+            (SELECT COALESCE(NULLIF(LOWER(TRIM(es.category)), ''), LOWER(TRIM(es.type)))
+               FROM pull_request_eips pre
+               JOIN eips e ON e.eip_number = pre.eip_number
+               JOIN eip_snapshots es ON es.eip_id = e.id
+              WHERE pre.pr_number = b.pr_number AND pre.repository_id = b.repository_id
+              LIMIT 1) AS category
+          FROM base b
+        ),
+        filtered AS (
+          SELECT * FROM withcat WHERE ($6::text IS NULL OR category = LOWER($6))
+        )`;
+
+      const baseParams = [
+        input.from ?? null,
+        input.to ?? null,
+        input.repo ?? null,
+        input.actor ?? null,
+        input.actionType ?? null,
+        input.category ?? null,
+        input.state ?? null,
+        search,
+        Array.from(CANONICAL_EIP_EDITORS),
+        CANONICAL_EIP_EDITOR_LOWER,
+      ];
+
+      const [rows, counts] = await Promise.all([
+        prisma.$queryRawUnsafe<Array<{
+          actor: string; action_type: string; event_type: string; pr_number: number;
+          repo_short: string | null; repo_name: string | null; title: string | null;
+          pr_state: string | null; merged_at: Date | null; category: string | null; acted_at: string;
+        }>>(
+          `${cte}
+           SELECT actor, action_type, event_type, pr_number, repo_short, repo_name, title,
+             pr_state, merged_at, category,
+             TO_CHAR(occurred_at, 'YYYY-MM-DD HH24:MI:SS') AS acted_at
+           FROM filtered
+           ORDER BY occurred_at ${dir}, pr_number ${dir}
+           LIMIT $11 OFFSET $12`,
+          ...baseParams, pageSize, offset,
+        ),
+        prisma.$queryRawUnsafe<Array<{ total_actions: bigint; distinct_prs: bigint }>>(
+          `${cte}
+           SELECT COUNT(*)::bigint AS total_actions,
+             COUNT(DISTINCT CONCAT(repository_id::text, ':', pr_number::text))::bigint AS distinct_prs
+           FROM filtered`,
+          ...baseParams,
+        ),
+      ]);
+
+      const totalActions = Number(counts[0]?.total_actions ?? 0);
+      const distinctPrs = Number(counts[0]?.distinct_prs ?? 0);
+      return {
+        rows: rows.map((r) => ({
+          actor: r.actor,
+          actionType: r.action_type,
+          eventType: r.event_type,
+          prNumber: r.pr_number,
+          repoShort: r.repo_short ?? 'unknown',
+          title: r.title ?? '',
+          state: r.merged_at ? 'merged' : (r.pr_state?.toLowerCase() ?? 'unknown'),
+          category: r.category ?? null,
+          actedAt: r.acted_at,
+          url: r.repo_name ? `https://github.com/${r.repo_name}/pull/${r.pr_number}` : null,
+        })),
+        totalActions,
+        distinctPrs,
+        page,
+        pageSize,
+        totalPages: Math.max(1, Math.ceil(totalActions / pageSize)),
+      };
+    }),
+
   getReviewerDailyActivityStacked: optionalAuthProcedure
     .input(z.object({
       from: z.string().optional(),

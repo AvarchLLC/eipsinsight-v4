@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Activity, Boxes, CheckCircle2, ExternalLink, Layers, Radio, TrendingUp, Wallet } from 'lucide-react';
+import { Activity, Boxes, ExternalLink, Fuel, Layers, Radio, TrendingUp, Wallet } from 'lucide-react';
 import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
@@ -36,11 +36,16 @@ type Testnet = {
   operationSuccessRate: number | null;
   frameTxCount: number;
   frameTxSuccessRate: number | null;
+  gasUsedMedian: number | null;
+  gasBaselineMultiple: number | null;
+  distinctSenders: number;
+  distinctFrameSenders: number;
+  framesPerTx: Record<string, number>;
   recentOps: Op[];
   recentFrames: FrameTx[];
   checkedAt: string;
 };
-type HistPoint = { date: string; smartAccounts: number; operations: number; frameTxs: number };
+type HistPoint = { date: string; smartAccounts: number; operations: number; frameTxs: number; gasUsedMedian: number | null };
 
 function shortHash(h: string, head = 8, tail = 6) {
   if (!h || h.length <= head + tail + 2) return h;
@@ -58,6 +63,13 @@ function timeAgo(tsSec: number) {
 
 function pct(r: number | null) {
   return r == null ? '—' : `${Math.round(r * 100)}%`;
+}
+
+function gasShort(g: number | null) {
+  if (!g) return '—';
+  if (g >= 1_000_000) return `${(g / 1_000_000).toFixed(2)}M`;
+  if (g >= 1_000) return `${Math.round(g / 1_000)}k`;
+  return String(g);
 }
 
 function Stat({ icon: Icon, label, value, sub }: { icon: typeof Boxes; label: string; value: string; sub?: string }) {
@@ -149,10 +161,38 @@ export function DaisugiPanel() {
 
       <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
         <Stat icon={Wallet} label="Smart accounts" value={data.smartAccounts.toLocaleString()} sub={`${data.nativeWallets} native factory`} />
-        <Stat icon={Boxes} label="UserOps" value={data.operationCount.toLocaleString()} sub={`${pct(data.operationSuccessRate)} recent success`} />
-        <Stat icon={Layers} label="Frame txs" value={data.frameTxCount.toLocaleString()} sub={`${pct(data.frameTxSuccessRate)} all-frames OK`} />
-        <Stat icon={CheckCircle2} label="EIP-8141" value="type 0x06" sub="native frame tx" />
+        <Stat
+          icon={Boxes}
+          label="UserOps"
+          value={data.operationCount.toLocaleString()}
+          sub={`${pct(data.operationSuccessRate)} OK${data.distinctSenders ? ` · ${data.distinctSenders} senders` : ''}`}
+        />
+        <Stat
+          icon={Layers}
+          label="Frame txs"
+          value={data.frameTxCount.toLocaleString()}
+          sub={`${pct(data.frameTxSuccessRate)} OK${data.distinctFrameSenders ? ` · ${data.distinctFrameSenders} senders` : ''}`}
+        />
+        <Stat
+          icon={Fuel}
+          label="PQ op gas"
+          value={gasShort(data.gasUsedMedian)}
+          sub={data.gasBaselineMultiple ? `≈${data.gasBaselineMultiple}× an ETH send` : 'median gas/op'}
+        />
       </div>
+
+      {Object.keys(data.framesPerTx).length > 0 && (
+        <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px] text-muted-foreground">
+          <span className="font-semibold uppercase tracking-wide">Frames / tx (EIP-8141 batching):</span>
+          {Object.entries(data.framesPerTx)
+            .sort((a, b) => Number(a[0]) - Number(b[0]))
+            .map(([frames, n]) => (
+              <span key={frames} className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-0.5 font-mono text-violet-700 dark:text-violet-300">
+                {frames}× {n}
+              </span>
+            ))}
+        </div>
+      )}
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <div>
@@ -208,14 +248,16 @@ export function DaisugiPanel() {
         </div>
       </div>
 
-      {history.length >= 2 && (
+      {history.length >= 2 && (() => {
+        const hasGas = history.some((h) => h.gasUsedMedian != null);
+        return (
         <div className="mt-4 rounded-lg border border-border bg-background/40 p-3">
           <div className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            <TrendingUp className="h-3.5 w-3.5" /> Adoption over time
+            <TrendingUp className="h-3.5 w-3.5" /> Adoption{hasGas ? ' & PQ cost' : ''} over time
           </div>
           <div className="h-44 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={history} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+              <AreaChart data={history} margin={{ top: 8, right: hasGas ? 4 : 8, left: -12, bottom: 0 }}>
                 <defs>
                   <linearGradient id="pqAccounts" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="0%" stopColor="#10b981" stopOpacity={0.35} />
@@ -239,7 +281,18 @@ export function DaisugiPanel() {
                   minTickGap={24}
                   tickFormatter={(d: string) => d.slice(5)}
                 />
-                <YAxis tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} tickLine={false} axisLine={false} width={34} />
+                <YAxis yAxisId="count" tick={{ fill: 'var(--muted-foreground)', fontSize: 10 }} tickLine={false} axisLine={false} width={34} />
+                {hasGas && (
+                  <YAxis
+                    yAxisId="gas"
+                    orientation="right"
+                    tick={{ fill: '#f59e0b', fontSize: 10 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={40}
+                    tickFormatter={(g: number) => (g >= 1000 ? `${Math.round(g / 1000)}k` : String(g))}
+                  />
+                )}
                 <Tooltip
                   contentStyle={{
                     background: 'var(--card)',
@@ -248,16 +301,24 @@ export function DaisugiPanel() {
                     fontSize: 11,
                   }}
                   labelStyle={{ color: 'var(--foreground)' }}
+                  formatter={(v: number, n: string) => (n === 'Median gas/op' ? [Number(v).toLocaleString(), n] : [v, n])}
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} iconType="plainline" />
-                <Area type="monotone" dataKey="smartAccounts" name="Smart accounts" stroke="#10b981" fill="url(#pqAccounts)" strokeWidth={2} isAnimationActive={false} />
-                <Area type="monotone" dataKey="operations" name="UserOps" stroke="#3b82f6" fill="url(#pqOps)" strokeWidth={2} isAnimationActive={false} />
-                <Area type="monotone" dataKey="frameTxs" name="Frame txs" stroke="#8b5cf6" fill="url(#pqFrames)" strokeWidth={2} isAnimationActive={false} />
+                <Area yAxisId="count" type="monotone" dataKey="smartAccounts" name="Smart accounts" stroke="#10b981" fill="url(#pqAccounts)" strokeWidth={2} isAnimationActive={false} />
+                <Area yAxisId="count" type="monotone" dataKey="operations" name="UserOps" stroke="#3b82f6" fill="url(#pqOps)" strokeWidth={2} isAnimationActive={false} />
+                <Area yAxisId="count" type="monotone" dataKey="frameTxs" name="Frame txs" stroke="#8b5cf6" fill="url(#pqFrames)" strokeWidth={2} isAnimationActive={false} />
+                {hasGas && (
+                  <Area yAxisId="gas" type="monotone" dataKey="gasUsedMedian" name="Median gas/op" stroke="#f59e0b" fill="none" strokeWidth={2} strokeDasharray="4 2" connectNulls isAnimationActive={false} />
+                )}
               </AreaChart>
             </ResponsiveContainer>
           </div>
+          {hasGas && (
+            <p className="mt-1 text-[9px] text-muted-foreground">Dashed amber = median gas per PQ UserOp (right axis) — the viability signal; lower is better.</p>
+          )}
         </div>
-      )}
+        );
+      })()}
 
       <p className="mt-3 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">
         Live from the Daisugi explorer{data.entryPoint ? ` · EntryPoint ${shortHash(data.entryPoint, 8, 6)}` : ''} · RPC{' '}

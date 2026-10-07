@@ -79,10 +79,23 @@ export interface PqTestnet {
   /** Total indexed native frame transactions (EIP-8141, type 0x06). */
   frameTxCount: number
   frameTxSuccessRate: number | null
+  /** Median gas used by a PQ (SPHINCS+) UserOp over the recent window. */
+  gasUsedMedian: number | null
+  /** gasUsedMedian ÷ 21,000 (a plain ECDSA transfer), for "N× a normal send". */
+  gasBaselineMultiple: number | null
+  /** Distinct ERC-4337 senders seen in the recent UserOp window. */
+  distinctSenders: number
+  /** Distinct native-frame senders seen in the recent frame-tx window. */
+  distinctFrameSenders: number
+  /** Frame-count → number of frame txs with that many frames (EIP-8141 batching). */
+  framesPerTx: Record<string, number>
   recentOps: PqTestnetOp[]
   recentFrames: PqTestnetFrameTx[]
   checkedAt: string
 }
+
+/** A plain ECDSA value transfer, the yardstick for PQ signature cost. */
+const ECDSA_BASELINE_GAS = 21_000
 
 /** One daily growth point for the Daisugi testnet (ascending by date). */
 export interface PqTestnetPoint {
@@ -91,6 +104,8 @@ export interface PqTestnetPoint {
   smartAccounts: number
   operations: number
   frameTxs: number
+  /** Recent-window median gas used by a PQ UserOp that day (null if not recorded). */
+  gasUsedMedian: number | null
 }
 
 const DAISUGI_EXPLORER = 'https://explorer.daisugi.fyi'
@@ -118,6 +133,13 @@ function rate(items: Array<{ success?: boolean; allSucceeded?: boolean }>, key: 
   return ok / items.length
 }
 
+function median(nums: number[]): number | null {
+  const xs = nums.filter((n) => Number.isFinite(n) && n > 0).sort((a, b) => a - b)
+  if (!xs.length) return null
+  const mid = Math.floor(xs.length / 2)
+  return xs.length % 2 ? xs[mid]! : Math.round((xs[mid - 1]! + xs[mid]!) / 2)
+}
+
 const ZERO_ADDR = '0x0000000000000000000000000000000000000000'
 
 async function fetchDaisugi(): Promise<PqTestnet> {
@@ -135,6 +157,11 @@ async function fetchDaisugi(): Promise<PqTestnet> {
     operationSuccessRate: null,
     frameTxCount: 0,
     frameTxSuccessRate: null,
+    gasUsedMedian: null,
+    gasBaselineMultiple: null,
+    distinctSenders: 0,
+    distinctFrameSenders: 0,
+    framesPerTx: {},
     recentOps: [],
     recentFrames: [],
     checkedAt: new Date().toISOString(),
@@ -153,7 +180,7 @@ async function fetchDaisugi(): Promise<PqTestnet> {
       operationCount?: number
       operations?: Array<{
         userOpHash?: string; transactionHash?: string; sender?: string; paymaster?: string
-        success?: boolean; actualGasCost?: string; timestamp?: number
+        success?: boolean; actualGasCost?: string; actualGasUsed?: string; timestamp?: number
       }>
       nativeFrames?: {
         count?: number
@@ -180,6 +207,13 @@ async function fetchDaisugi(): Promise<PqTestnet> {
       timestamp: Number(f.timestamp ?? 0),
     }))
 
+    // PQ-signature cost + reach signals, over the recent window the explorer returns.
+    const gasUsedMedian = median((ov.operations ?? []).map((o) => Number(o.actualGasUsed ?? 0)))
+    const framesPerTx: Record<string, number> = {}
+    for (const f of frames) {
+      if (f.frameCount > 0) framesPerTx[String(f.frameCount)] = (framesPerTx[String(f.frameCount)] ?? 0) + 1
+    }
+
     return {
       online: true,
       chainId: Number(ov.chainId ?? 1337),
@@ -195,6 +229,11 @@ async function fetchDaisugi(): Promise<PqTestnet> {
       operationSuccessRate: rate(ops, 'success'),
       frameTxCount: Number(ov.nativeFrames?.count ?? frames.length),
       frameTxSuccessRate: rate(frames, 'allSucceeded'),
+      gasUsedMedian,
+      gasBaselineMultiple: gasUsedMedian ? Math.round((gasUsedMedian / ECDSA_BASELINE_GAS) * 10) / 10 : null,
+      distinctSenders: new Set(ops.map((o) => o.sender.toLowerCase()).filter(Boolean)).size,
+      distinctFrameSenders: new Set(frames.map((f) => f.from.toLowerCase()).filter(Boolean)).size,
+      framesPerTx,
       recentOps: ops.slice(0, 8),
       recentFrames: frames
         .slice()
@@ -289,16 +328,24 @@ export const pqProcedures = {
    */
   getTestnetHistory: optionalAuthProcedure.handler(async (): Promise<PqTestnetPoint[]> => {
     if (historyCache && Date.now() - historyCache.at < TESTNET_TTL_MS) return historyCache.data
-    try {
-      const rows = await prisma.$queryRawUnsafe<
-        Array<{ snapshot_date: Date; smart_accounts: number; operation_count: number; frame_tx_count: number }>
-      >(
-        `SELECT snapshot_date, smart_accounts, operation_count, frame_tx_count
+    type Row = { snapshot_date: Date; smart_accounts: number; operation_count: number; frame_tx_count: number; median_gas_used?: number | string | null }
+    const runQuery = (withGas: boolean) =>
+      prisma.$queryRawUnsafe<Array<Row>>(
+        `SELECT snapshot_date, smart_accounts, operation_count, frame_tx_count${withGas ? ', median_gas_used' : ''}
          FROM pqts_testnet_snapshots
          WHERE network = 'daisugi'
          ORDER BY snapshot_date ASC
          LIMIT 365`,
       )
+    try {
+      // median_gas_used is added by a later scheduler migration; fall back to the
+      // base columns if the app deploys before that migration has run.
+      let rows: Row[]
+      try {
+        rows = await runQuery(true)
+      } catch {
+        rows = await runQuery(false)
+      }
       const data: PqTestnetPoint[] = rows.map((r) => ({
         date:
           r.snapshot_date instanceof Date
@@ -307,6 +354,7 @@ export const pqProcedures = {
         smartAccounts: Number(r.smart_accounts) || 0,
         operations: Number(r.operation_count) || 0,
         frameTxs: Number(r.frame_tx_count) || 0,
+        gasUsedMedian: r.median_gas_used != null ? Number(r.median_gas_used) || null : null,
       }))
       historyCache = { at: Date.now(), data }
       return data

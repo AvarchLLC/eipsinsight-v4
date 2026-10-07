@@ -3,13 +3,14 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { CalendarClock, GitPullRequest, LayoutDashboard, Video } from "lucide-react";
+import { CalendarClock, GitPullRequest, LayoutDashboard, Users, Video } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const TABS: { href: string; label: string; icon: typeof CalendarClock; exact?: boolean }[] = [
   { href: "/officehours", label: "Overview", icon: CalendarClock, exact: true },
   { href: "/officehours/board", label: "Board", icon: LayoutDashboard },
   { href: "/officehours/prs", label: "PR Analytics", icon: GitPullRequest },
+  { href: "/officehours/editors", label: "Editors", icon: Users },
   { href: "/officehours/calls", label: "Calls", icon: Video },
 ];
 
