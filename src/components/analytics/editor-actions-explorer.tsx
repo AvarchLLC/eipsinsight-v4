@@ -91,7 +91,7 @@ export function EditorActionsExplorer({
         search: search || undefined,
         sort,
         page,
-        pageSize: 25,
+        pageSize: 10,
       })
       .then((d) => {
         if (!cancelled) setData(d as Resp);
