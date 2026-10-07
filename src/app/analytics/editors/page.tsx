@@ -44,6 +44,8 @@ interface EditorLeaderboardRow {
 interface CategoryCoverage {
   category: string;
   actors: string[];
+  /** Real per-editor action counts for this category (from the DB, not an even split). */
+  actorCounts?: Array<{ actor: string; count: number; reviews: number; comments: number; commits: number; other: number }>;
 }
 
 interface RepoDistribution {
@@ -219,6 +221,8 @@ export default function EditorsAnalyticsPage() {
 
   // Breakdown tabs
   const [breakdownTab, setBreakdownTab] = useState<"repo" | "event" | "category">("repo");
+  // Which action type drives the Category Actions chart.
+  const [categoryActionType, setCategoryActionType] = useState<"all" | "review" | "comment" | "commit">("all");
 
   const repoParam = repoFilter === "all" ? undefined : repoFilter;
   const { from, to } = getTimeWindow(timeRange, customFromMonth, customToMonth);
@@ -458,19 +462,6 @@ export default function EditorsAnalyticsPage() {
     [sortedLeaderboard]
   );
 
-  const repoCards = useMemo(() => {
-    const totals: Record<string, number> = {};
-    repoDistribution.forEach(r => {
-      const repoName = r.repo.split('/')[1] || r.repo;
-      totals[repoName] = (totals[repoName] || 0) + r.count;
-    });
-    const total = Object.values(totals).reduce((s, v) => s + v, 0);
-    return [
-      { name: "EIPs", count: totals["EIPs"] || 0, pct: total > 0 ? ((totals["EIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/EIPs"] },
-      { name: "ERCs", count: totals["ERCs"] || 0, pct: total > 0 ? ((totals["ERCs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/ERCs"] },
-      { name: "RIPs", count: totals["RIPs"] || 0, pct: total > 0 ? ((totals["RIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/RIPs"] },
-    ];
-  }, [repoDistribution]);
 
   // Sleek Category coverage metrics
   const categoryData = useMemo(() => {
@@ -620,43 +611,35 @@ export default function EditorsAnalyticsPage() {
 
   // ─── ECharts Interactive Breakdown Configurations ──────────────────
 
-  // Heuristic-based breakdown mapping: actual editor actions parsed into category buckets
+  // Real per-category action counts straight from the DB (editor actions joined
+  // to each proposal's category/type). No heuristic even-split.
   const categoryActionsData = useMemo(() => {
-    const data: Array<{ category: string; actor: string; count: number; repo: string }> = [];
-    
+    const data: Array<{ category: string; actor: string; count: number }> = [];
+
     const normalizeCategory = (cat: string) => {
       const c = cat.trim().toUpperCase();
       if (c === "ERC") return "ERC";
       if (c === "RIP") return "RIP";
-      // Capitalize first letter
       return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
     };
 
-    repoDistribution.forEach((row) => {
-      const repoName = row.repo;
-      const actor = row.actor;
-      const count = row.count;
-      
-      if (repoName === "ethereum/ERCs") {
-        data.push({ category: "ERC", actor, count, repo: "ethereum/ERCs" });
-      } else if (repoName === "ethereum/RIPs") {
-        data.push({ category: "RIP", actor, count, repo: "ethereum/RIPs" });
-      } else {
-        // For ethereum/EIPs, distribute actions over the categories covered by this actor
-        const actorCats = categoriesByActor[actor] || [];
-        if (actorCats.length > 0) {
-          const countPerCat = Math.round(count / actorCats.length);
-          actorCats.forEach((cat) => {
-            data.push({ category: normalizeCategory(cat), actor, count: countPerCat, repo: "ethereum/EIPs" });
-          });
-        } else {
-          data.push({ category: "Core", actor, count, repo: "ethereum/EIPs" });
+    const pick = (c: { count: number; reviews: number; comments: number; commits: number }) =>
+      categoryActionType === "review" ? c.reviews
+        : categoryActionType === "comment" ? c.comments
+          : categoryActionType === "commit" ? c.commits
+            : c.count;
+
+    categoryCoverage.forEach((entry) => {
+      (entry.actorCounts ?? []).forEach((c) => {
+        const count = pick(c);
+        if (count > 0) {
+          data.push({ category: normalizeCategory(entry.category), actor: c.actor, count });
         }
-      }
+      });
     });
-    
+
     return data;
-  }, [repoDistribution, categoriesByActor]);
+  }, [categoryCoverage, categoryActionType]);
 
   // 1. Actions by Editor and Repository Stacked Horizontal Bar
   const breakdownRepoOption = useMemo(() => {
@@ -761,6 +744,9 @@ export default function EditorsAnalyticsPage() {
   const breakdownCategoryOption = useMemo(() => {
     const categories = ["Core", "ERC", "Networking", "Interface", "Meta", "Informational", "RIP"];
     const actors = Array.from(new Set(categoryActionsData.map((d) => d.actor)));
+    const typeLabel = categoryActionType === "all" ? "all actions"
+      : categoryActionType === "review" ? "reviews"
+        : categoryActionType === "comment" ? "comments" : "commits";
     
     return {
       backgroundColor: "transparent",
@@ -772,13 +758,12 @@ export default function EditorsAnalyticsPage() {
           const catName = params[0].name;
           const items = params
             .filter((p) => Number(p.value) > 0)
+            .sort((a, b) => Number(b.value) - Number(a.value))
             .map((p) => {
-              const match = categoryActionsData.find((d) => d.category === catName && d.actor === p.seriesName);
-              const repoStr = match ? match.repo.split("/")[1] : "EIPs";
-              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${p.value.toLocaleString()} actions on <span style="opacity:0.8;">${repoStr}</span></div>`;
+              return `<div style="color: ${p.color}; padding: 2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toLocaleString()} ${typeLabel}</div>`;
             })
             .join("");
-          return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">Category: ${catName}</div>${items}</div>`;
+          return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">Category: ${catName} <span style="opacity:0.7;font-weight:400;">(${typeLabel})</span></div>${items}</div>`;
         }
       },
       legend: {
@@ -815,7 +800,84 @@ export default function EditorsAnalyticsPage() {
         };
       }),
     };
-  }, [categoryActionsData]);
+  }, [categoryActionsData, categoryActionType]);
+
+  // Category Coverage share: 100%-stacked bar of each editor's share of
+  // activity within every category (who covers what, as proportions).
+  const coverageShareOption = useMemo(() => {
+    const cats = categoryData.map((c) => c.category); // capitalized, count>0
+    const byCat = new Map<string, Map<string, number>>(); // category(lc) -> actor -> count
+    const totals = new Map<string, number>();
+    const actorSet = new Set<string>();
+    categoryCoverage.forEach((entry) => {
+      const m = new Map<string, number>();
+      let total = 0;
+      (entry.actorCounts ?? []).forEach((c) => {
+        if (c.count > 0) {
+          m.set(c.actor, c.count);
+          actorSet.add(c.actor);
+          total += c.count;
+        }
+      });
+      byCat.set(entry.category.toLowerCase(), m);
+      totals.set(entry.category.toLowerCase(), total);
+    });
+    const actors = Array.from(actorSet);
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params: any[]) => {
+          if (!params || params.length === 0) return "";
+          const cat = params[0].name;
+          const total = totals.get(cat.toLowerCase()) || 0;
+          const rows = params
+            .filter((p) => Number(p.value) > 0)
+            .sort((a, b) => Number(b.value) - Number(a.value))
+            .map((p) => {
+              const raw = Math.round((Number(p.value) / 100) * total);
+              return `<div style="color:${p.color};padding:2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toFixed(1)}% <span style="opacity:0.7;">(${raw.toLocaleString()})</span></div>`;
+            })
+            .join("");
+          return `<div style="padding:6px;"><div style="font-weight:600;margin-bottom:4px;">${cat} · ${total.toLocaleString()} actions</div>${rows}</div>`;
+        },
+      },
+      legend: {
+        textStyle: { color: "var(--muted-foreground)", fontSize: 10, fontWeight: 500 },
+        type: "scroll",
+        bottom: 0,
+      },
+      grid: { top: 20, left: 100, right: 30, bottom: 45 },
+      xAxis: {
+        type: "value",
+        max: 100,
+        axisLabel: { color: "var(--muted-foreground)", fontSize: 10, formatter: "{value}%" },
+        splitLine: { lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
+      },
+      yAxis: {
+        type: "category",
+        data: cats,
+        axisLabel: { color: "var(--foreground)", fontSize: 10, fontWeight: 505 },
+        axisTick: { show: false },
+        axisLine: { show: false },
+      },
+      series: actors.map((actor, idx) => ({
+        name: actor,
+        type: "bar",
+        stack: "coverageShare",
+        emphasis: { focus: "series" },
+        data: cats.map((cat) => {
+          const m = byCat.get(cat.toLowerCase());
+          const total = totals.get(cat.toLowerCase()) || 0;
+          const v = m?.get(actor) || 0;
+          return total > 0 ? Math.round((v / total) * 1000) / 10 : 0;
+        }),
+        itemStyle: { color: `hsl(${(idx * 360) / Math.max(actors.length, 1)}, 70%, 55%)` },
+      })),
+    };
+  }, [categoryCoverage, categoryData]);
 
   // ECharts Trend Option with Nice Thick DataZoom
   const trendOption = useMemo(() => ({
@@ -1159,50 +1221,6 @@ export default function EditorsAnalyticsPage() {
     };
   }, [reviewedTrendOption, trendOption, otherTrendOption]);
 
-  const repoOption = useMemo(() => ({
-    backgroundColor: "transparent",
-    tooltip: {
-      trigger: "item",
-      formatter: (params: any) => {
-        if (!params) return "";
-        const pct = ((params.value / repoCards.reduce((s, r) => s + r.count, 0)) * 100).toFixed(1);
-        return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">${params.name}</div><div style="font-size: 11px; color: var(--muted-foreground);">Count: <strong style="color: var(--foreground);">${params.value.toLocaleString()}</strong></div><div style="font-size: 11px; color: var(--muted-foreground);">Share: <strong style="color: var(--foreground);">${pct}%</strong></div></div>`;
-      },
-    },
-    legend: {
-      orient: "vertical",
-      right: 8,
-      top: "middle",
-      textStyle: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
-      itemGap: 8,
-    },
-    series: [
-      {
-        type: "pie",
-        radius: ["52%", "72%"],
-        center: ["34%", "50%"],
-        label: { show: false },
-        data: repoCards.map((r) => ({
-          name: r.name,
-          value: r.count,
-          itemStyle: { color: r.color },
-        })),
-        itemStyle: { borderColor: "rgba(2,6,23,0.4)", borderWidth: 2 },
-      },
-    ],
-    title: [
-      {
-        text: repoCards.reduce((s, r) => s + r.count, 0).toLocaleString(),
-        subtext: "Total",
-        left: "34%",
-        top: "45%",
-        textAlign: "center",
-        textStyle: { color: "var(--foreground)", fontSize: 28, fontFamily: "monospace", fontWeight: 700 },
-        subtextStyle: { color: "var(--muted-foreground)", fontSize: 11 },
-      },
-    ],
-  }), [repoCards]);
-
   const dailyActivityOption = useMemo(() => {
     const dates = Array.from(new Set(dailyActivityStacked.map((item) => item.date))).sort();
     const actorTotals: Record<string, number> = {};
@@ -1410,12 +1428,6 @@ export default function EditorsAnalyticsPage() {
     downloadCsv(`editors-daily-activity-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   }, [dailyActivityStacked]);
 
-  const downloadRepoDistributionReport = useCallback(() => {
-    const headers = ["Editor", "Repository", "Count", "Percent"];
-    const rows = repoDistribution.map((row) => [row.actor, row.repo, row.count, row.pct]);
-    downloadCsv(`editors-repo-distribution-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
-  }, [repoDistribution]);
-
   // Export functionality
   useAnalyticsExport(() => {
     const combined: Record<string, unknown>[] = [];
@@ -1494,7 +1506,7 @@ export default function EditorsAnalyticsPage() {
               <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Editor Leaderboard - {leaderboardLabel}</h2>
               <CopyLinkButton sectionId="editor-leaderboard" className="h-7 w-7 rounded-md border border-border bg-muted/65 hover:border-primary/45 hover:bg-primary/10" />
             </div>
-            <p className="text-xs text-muted-foreground">Main ranking of canonical editors sorted by their PR reviews, comments, and total indexed actions.</p>
+            <p className="text-xs text-muted-foreground">Main ranking of canonical editors sorted by their PR reviews, comments, and total indexed actions. The date range filters by when the activity happened (not when the PR was opened), so counts may differ from a GitHub <code>created:</code> search.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1552,7 +1564,7 @@ export default function EditorsAnalyticsPage() {
               <div className="flex gap-1.5 items-start">
                 <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-foreground">Reviews:</strong> Count of pull requests reviewed by the editor (approvals, requested changes, or comments).
+                  <strong className="text-foreground">Reviews:</strong> Distinct pull requests the editor submitted a review on (approve, request changes, or review comment) — matching GitHub&rsquo;s <code>reviewed-by:</code>. A PR reviewed several times counts once.
                 </div>
               </div>
               <div className="flex gap-1.5 items-start">
@@ -1696,6 +1708,39 @@ export default function EditorsAnalyticsPage() {
         </div>
 
         <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg hover:border-primary/20 transition-all duration-300">
+          {breakdownTab === "category" && (
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-medium text-muted-foreground">Action type:</span>
+              {([
+                ["all", "All actions"],
+                ["review", "Reviews"],
+                ["comment", "Comments"],
+                ["commit", "Commits"],
+              ] as const).map(([val, label]) => (
+                <button
+                  key={val}
+                  onClick={() => setCategoryActionType(val)}
+                  className={`rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors cursor-pointer ${
+                    categoryActionType === val
+                      ? "border-primary/50 bg-primary/15 text-primary"
+                      : "border-border bg-muted/40 text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+              <span className="ml-auto text-[10px] text-muted-foreground">
+                Editor actions per proposal category ·{" "}
+                {categoryActionType === "all"
+                  ? "all indexed actions (reviews + comments + commits + labels/merges)"
+                  : categoryActionType === "review"
+                    ? "reviews only (approve / request-changes / review comment)"
+                    : categoryActionType === "comment"
+                      ? "comments only"
+                      : "commits only"}
+              </span>
+            </div>
+          )}
           <div className="h-[430px] w-full rounded-lg border border-border/70 bg-background/35 p-2">
             {breakdownTab === "repo" && (
               <ReactECharts option={breakdownRepoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
@@ -1822,6 +1867,16 @@ export default function EditorsAnalyticsPage() {
               );
             })}
           </div>
+
+          <div className="mt-5 border-t border-border/40 pt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Coverage share by editor</span>
+              <span className="text-[10px] text-muted-foreground">Each editor&rsquo;s share of total activity within the category</span>
+            </div>
+            <div className="h-[320px] w-full rounded-lg border border-border/70 bg-background/35 p-2">
+              <ReactECharts option={coverageShareOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -1833,49 +1888,28 @@ export default function EditorsAnalyticsPage() {
             <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Operational Breakdowns</h2>
             <CopyLinkButton sectionId="editor-operations" className="h-7 w-7 rounded-md border border-border bg-muted/65 hover:border-primary/40 hover:bg-primary/10" />
           </div>
-          <p className="text-xs text-muted-foreground">Breakdowns of editor activities split by calendar day and distinct repositories.</p>
+          <p className="text-xs text-muted-foreground">Total editor actions per calendar day, stacked by editor.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Daily activity */}
-          <div className="lg:col-span-2 space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-muted-foreground">Daily Editorial Activity</span>
-              <button onClick={downloadDailyActivityReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
-            </div>
-            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
-              <div className="relative h-64 w-full">
-                <ReactECharts option={dailyActivityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
-                </div>
-              </div>
-              <AnalyticsAnnotation>
-                Stacked bars show total actions per day, split by editor.
-              </AnalyticsAnnotation>
-            </div>
+        {/* Daily activity (full width) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-muted-foreground">Daily Editorial Activity</span>
+            <button onClick={downloadDailyActivityReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
           </div>
-
-          {/* Repo distribution */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-muted-foreground">Repo Distribution</span>
-              <button onClick={downloadRepoDistributionReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
-            </div>
-            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
-              <div className="relative h-64 w-full">
-                <ReactECharts option={repoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
-                </div>
+          <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
+            <div className="relative h-96 w-full">
+              <ReactECharts option={dailyActivityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
               </div>
             </div>
+            <AnalyticsAnnotation>
+              Stacked bars show total actions per day, split by editor.
+            </AnalyticsAnnotation>
           </div>
         </div>
       </section>

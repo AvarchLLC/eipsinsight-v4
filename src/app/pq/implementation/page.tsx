@@ -11,6 +11,7 @@ import {
   PQ_SCHEMES,
   type ImplState,
 } from '@/data/pq-registry';
+import { DaisugiPanel } from '@/components/pq/daisugi-panel';
 
 export const revalidate = 300;
 
@@ -160,6 +161,9 @@ export default function PqImplementationPage() {
           ))}
         </div>
       </section>
+
+      {/* Live Daisugi testnet telemetry, proxied from explorer.daisugi.fyi */}
+      <DaisugiPanel />
 
       {/* PQ signature schemes in play */}
       <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
