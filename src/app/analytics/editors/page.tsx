@@ -7,6 +7,7 @@ import { client } from "@/lib/orpc";
 import { BrandLoader } from "@/components/brand-loader";
 import { CHART_SERIES } from "@/lib/chart-colors";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
+import { EditorActionsExplorer } from "@/components/analytics/editor-actions-explorer";
 import { 
   Loader2, 
   UserCheck, 
@@ -1754,6 +1755,14 @@ export default function EditorsAnalyticsPage() {
           </div>
         </div>
       </section>
+
+      {/* Section 3b: GitHub-style filterable PR & action explorer */}
+      <EditorActionsExplorer
+        repo={repoParam as "eips" | "ercs" | "rips" | undefined}
+        from={leaderboardWindow.from}
+        to={leaderboardWindow.to}
+        actors={OFFICIAL_EDITOR_HANDLES}
+      />
 
       {/* Section 4: Editorial Trends */}
       <section id="editor-trends" className="space-y-3">
