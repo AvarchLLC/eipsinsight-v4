@@ -815,6 +815,83 @@ export default function EditorsAnalyticsPage() {
     };
   }, [categoryActionsData, categoryActionType]);
 
+  // Category Coverage share: 100%-stacked bar of each editor's share of
+  // activity within every category (who covers what, as proportions).
+  const coverageShareOption = useMemo(() => {
+    const cats = categoryData.map((c) => c.category); // capitalized, count>0
+    const byCat = new Map<string, Map<string, number>>(); // category(lc) -> actor -> count
+    const totals = new Map<string, number>();
+    const actorSet = new Set<string>();
+    categoryCoverage.forEach((entry) => {
+      const m = new Map<string, number>();
+      let total = 0;
+      (entry.actorCounts ?? []).forEach((c) => {
+        if (c.count > 0) {
+          m.set(c.actor, c.count);
+          actorSet.add(c.actor);
+          total += c.count;
+        }
+      });
+      byCat.set(entry.category.toLowerCase(), m);
+      totals.set(entry.category.toLowerCase(), total);
+    });
+    const actors = Array.from(actorSet);
+
+    return {
+      backgroundColor: "transparent",
+      tooltip: {
+        trigger: "axis",
+        axisPointer: { type: "shadow" },
+        formatter: (params: any[]) => {
+          if (!params || params.length === 0) return "";
+          const cat = params[0].name;
+          const total = totals.get(cat.toLowerCase()) || 0;
+          const rows = params
+            .filter((p) => Number(p.value) > 0)
+            .sort((a, b) => Number(b.value) - Number(a.value))
+            .map((p) => {
+              const raw = Math.round((Number(p.value) / 100) * total);
+              return `<div style="color:${p.color};padding:2px 0;"><strong>${p.seriesName}</strong>: ${Number(p.value).toFixed(1)}% <span style="opacity:0.7;">(${raw.toLocaleString()})</span></div>`;
+            })
+            .join("");
+          return `<div style="padding:6px;"><div style="font-weight:600;margin-bottom:4px;">${cat} · ${total.toLocaleString()} actions</div>${rows}</div>`;
+        },
+      },
+      legend: {
+        textStyle: { color: "var(--muted-foreground)", fontSize: 10, fontWeight: 500 },
+        type: "scroll",
+        bottom: 0,
+      },
+      grid: { top: 20, left: 100, right: 30, bottom: 45 },
+      xAxis: {
+        type: "value",
+        max: 100,
+        axisLabel: { color: "var(--muted-foreground)", fontSize: 10, formatter: "{value}%" },
+        splitLine: { lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
+      },
+      yAxis: {
+        type: "category",
+        data: cats,
+        axisLabel: { color: "var(--foreground)", fontSize: 10, fontWeight: 505 },
+        axisTick: { show: false },
+        axisLine: { show: false },
+      },
+      series: actors.map((actor, idx) => ({
+        name: actor,
+        type: "bar",
+        stack: "coverageShare",
+        emphasis: { focus: "series" },
+        data: cats.map((cat) => {
+          const m = byCat.get(cat.toLowerCase());
+          const total = totals.get(cat.toLowerCase()) || 0;
+          const v = m?.get(actor) || 0;
+          return total > 0 ? Math.round((v / total) * 1000) / 10 : 0;
+        }),
+        itemStyle: { color: `hsl(${(idx * 360) / Math.max(actors.length, 1)}, 70%, 55%)` },
+      })),
+    };
+  }, [categoryCoverage, categoryData]);
+
   // ECharts Trend Option with Nice Thick DataZoom
   const trendOption = useMemo(() => ({
     backgroundColor: "transparent",
@@ -1852,6 +1929,16 @@ export default function EditorsAnalyticsPage() {
                 </div>
               );
             })}
+          </div>
+
+          <div className="mt-5 border-t border-border/40 pt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold text-muted-foreground">Coverage share by editor</span>
+              <span className="text-[10px] text-muted-foreground">Each editor&rsquo;s share of total activity within the category</span>
+            </div>
+            <div className="h-[320px] w-full rounded-lg border border-border/70 bg-background/35 p-2">
+              <ReactECharts option={coverageShareOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+            </div>
           </div>
         </div>
       </section>
