@@ -462,19 +462,6 @@ export default function EditorsAnalyticsPage() {
     [sortedLeaderboard]
   );
 
-  const repoCards = useMemo(() => {
-    const totals: Record<string, number> = {};
-    repoDistribution.forEach(r => {
-      const repoName = r.repo.split('/')[1] || r.repo;
-      totals[repoName] = (totals[repoName] || 0) + r.count;
-    });
-    const total = Object.values(totals).reduce((s, v) => s + v, 0);
-    return [
-      { name: "EIPs", count: totals["EIPs"] || 0, pct: total > 0 ? ((totals["EIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/EIPs"] },
-      { name: "ERCs", count: totals["ERCs"] || 0, pct: total > 0 ? ((totals["ERCs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/ERCs"] },
-      { name: "RIPs", count: totals["RIPs"] || 0, pct: total > 0 ? ((totals["RIPs"] || 0) / total) * 100 : 0, color: repoColors["ethereum/RIPs"] },
-    ];
-  }, [repoDistribution]);
 
   // Sleek Category coverage metrics
   const categoryData = useMemo(() => {
@@ -1234,50 +1221,6 @@ export default function EditorsAnalyticsPage() {
     };
   }, [reviewedTrendOption, trendOption, otherTrendOption]);
 
-  const repoOption = useMemo(() => ({
-    backgroundColor: "transparent",
-    tooltip: {
-      trigger: "item",
-      formatter: (params: any) => {
-        if (!params) return "";
-        const pct = ((params.value / repoCards.reduce((s, r) => s + r.count, 0)) * 100).toFixed(1);
-        return `<div style="padding: 6px;"><div style="font-weight: 600; margin-bottom: 4px;">${params.name}</div><div style="font-size: 11px; color: var(--muted-foreground);">Count: <strong style="color: var(--foreground);">${params.value.toLocaleString()}</strong></div><div style="font-size: 11px; color: var(--muted-foreground);">Share: <strong style="color: var(--foreground);">${pct}%</strong></div></div>`;
-      },
-    },
-    legend: {
-      orient: "vertical",
-      right: 8,
-      top: "middle",
-      textStyle: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
-      itemGap: 8,
-    },
-    series: [
-      {
-        type: "pie",
-        radius: ["52%", "72%"],
-        center: ["34%", "50%"],
-        label: { show: false },
-        data: repoCards.map((r) => ({
-          name: r.name,
-          value: r.count,
-          itemStyle: { color: r.color },
-        })),
-        itemStyle: { borderColor: "rgba(2,6,23,0.4)", borderWidth: 2 },
-      },
-    ],
-    title: [
-      {
-        text: repoCards.reduce((s, r) => s + r.count, 0).toLocaleString(),
-        subtext: "Total",
-        left: "34%",
-        top: "45%",
-        textAlign: "center",
-        textStyle: { color: "var(--foreground)", fontSize: 28, fontFamily: "monospace", fontWeight: 700 },
-        subtextStyle: { color: "var(--muted-foreground)", fontSize: 11 },
-      },
-    ],
-  }), [repoCards]);
-
   const dailyActivityOption = useMemo(() => {
     const dates = Array.from(new Set(dailyActivityStacked.map((item) => item.date))).sort();
     const actorTotals: Record<string, number> = {};
@@ -1484,12 +1427,6 @@ export default function EditorsAnalyticsPage() {
     ]);
     downloadCsv(`editors-daily-activity-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
   }, [dailyActivityStacked]);
-
-  const downloadRepoDistributionReport = useCallback(() => {
-    const headers = ["Editor", "Repository", "Count", "Percent"];
-    const rows = repoDistribution.map((row) => [row.actor, row.repo, row.count, row.pct]);
-    downloadCsv(`editors-repo-distribution-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
-  }, [repoDistribution]);
 
   // Export functionality
   useAnalyticsExport(() => {
@@ -1951,49 +1888,28 @@ export default function EditorsAnalyticsPage() {
             <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Operational Breakdowns</h2>
             <CopyLinkButton sectionId="editor-operations" className="h-7 w-7 rounded-md border border-border bg-muted/65 hover:border-primary/40 hover:bg-primary/10" />
           </div>
-          <p className="text-xs text-muted-foreground">Breakdowns of editor activities split by calendar day and distinct repositories.</p>
+          <p className="text-xs text-muted-foreground">Total editor actions per calendar day, stacked by editor.</p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* Daily activity */}
-          <div className="lg:col-span-2 space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-muted-foreground">Daily Editorial Activity</span>
-              <button onClick={downloadDailyActivityReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
-            </div>
-            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
-              <div className="relative h-64 w-full">
-                <ReactECharts option={dailyActivityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
-                </div>
-              </div>
-              <AnalyticsAnnotation>
-                Stacked bars show total actions per day, split by editor.
-              </AnalyticsAnnotation>
-            </div>
+        {/* Daily activity (full width) */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-muted-foreground">Daily Editorial Activity</span>
+            <button onClick={downloadDailyActivityReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
+              <Download className="h-3.5 w-3.5" />
+              Export
+            </button>
           </div>
-
-          {/* Repo distribution */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-semibold text-muted-foreground">Repo Distribution</span>
-              <button onClick={downloadRepoDistributionReport} className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/15">
-                <Download className="h-3.5 w-3.5" />
-                Export
-              </button>
-            </div>
-            <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
-              <div className="relative h-64 w-full">
-                <ReactECharts option={repoOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                  <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
-                </div>
+          <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-6 backdrop-blur-md shadow-lg">
+            <div className="relative h-96 w-full">
+              <ReactECharts option={dailyActivityOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                <span className="text-2xl font-semibold text-foreground/5">EIPsInsight.com</span>
               </div>
             </div>
+            <AnalyticsAnnotation>
+              Stacked bars show total actions per day, split by editor.
+            </AnalyticsAnnotation>
           </div>
         </div>
       </section>
