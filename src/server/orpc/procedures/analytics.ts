@@ -959,8 +959,12 @@ const getEditorsLeaderboardCached = unstable_cache(
           actor,
           COUNT(*)::bigint AS total_actions,
           COUNT(DISTINCT CONCAT(repository_id::text, ':', pr_number::text))::bigint AS prs_touched,
-          COUNT(*) FILTER (WHERE event_type IN ('reviewed', 'approved', 'changes_requested'))::bigint AS reviews,
-          COUNT(*) FILTER (WHERE event_type IN ('commented', 'issue_comment', 'review_comment'))::bigint AS comments,
+          -- Distinct PRs reviewed / commented on, matching GitHub's reviewed-by
+          -- semantics (a PR reviewed several times counts once), not raw event counts.
+          COUNT(DISTINCT CASE WHEN event_type IN ('reviewed', 'approved', 'changes_requested')
+            THEN CONCAT(repository_id::text, ':', pr_number::text) END)::bigint AS reviews,
+          COUNT(DISTINCT CASE WHEN event_type IN ('commented', 'issue_comment', 'review_comment')
+            THEN CONCAT(repository_id::text, ':', pr_number::text) END)::bigint AS comments,
           MAX(occurred_at) AS latest_occurred_at
         FROM editor_activity GROUP BY actor
       ),

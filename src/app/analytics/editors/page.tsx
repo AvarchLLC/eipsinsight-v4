@@ -1494,7 +1494,7 @@ export default function EditorsAnalyticsPage() {
               <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">Editor Leaderboard - {leaderboardLabel}</h2>
               <CopyLinkButton sectionId="editor-leaderboard" className="h-7 w-7 rounded-md border border-border bg-muted/65 hover:border-primary/45 hover:bg-primary/10" />
             </div>
-            <p className="text-xs text-muted-foreground">Main ranking of canonical editors sorted by their PR reviews, comments, and total indexed actions.</p>
+            <p className="text-xs text-muted-foreground">Main ranking of canonical editors sorted by their PR reviews, comments, and total indexed actions. The date range filters by when the activity happened (not when the PR was opened), so counts may differ from a GitHub <code>created:</code> search.</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1552,7 +1552,7 @@ export default function EditorsAnalyticsPage() {
               <div className="flex gap-1.5 items-start">
                 <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                 <div>
-                  <strong className="text-foreground">Reviews:</strong> Count of pull requests reviewed by the editor (approvals, requested changes, or comments).
+                  <strong className="text-foreground">Reviews:</strong> Distinct pull requests the editor submitted a review on (approve, request changes, or review comment) — matching GitHub&rsquo;s <code>reviewed-by:</code>. A PR reviewed several times counts once.
                 </div>
               </div>
               <div className="flex gap-1.5 items-start">
