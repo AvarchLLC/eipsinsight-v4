@@ -2,16 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
+import { CopyLinkButton } from '@/components/header';
 import {
   PQ_EIPS,
   PQ_LAYERS,
   PQ_ROLES,
+  PQ_PIPELINE,
+  pqStage,
   type EipStatus,
   type PqLayer,
   type PqRole,
+  type PqStage,
 } from '@/data/pq-registry';
 
 const STATUSES: EipStatus[] = ['Draft', 'Review', 'Last Call', 'Final', 'Stagnant', 'Withdrawn'];
@@ -32,6 +36,14 @@ const statusClass: Record<string, string> = {
   Withdrawn: 'text-red-600 dark:text-red-400',
 };
 
+// Pipeline-stage pill colouring: later stages are "greener".
+function stageClass(stage: PqStage): string {
+  const i = PQ_PIPELINE.indexOf(stage);
+  if (i >= 7) return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
+  if (i >= 4) return 'border-primary/40 bg-primary/10 text-primary';
+  return 'border-border bg-muted/50 text-muted-foreground';
+}
+
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -50,9 +62,28 @@ export default function PqEipRegistryPage() {
   const [layer, setLayer] = useState<PqLayer | 'all'>('all');
   const [role, setRole] = useState<PqRole | 'all'>('all');
   const [status, setStatus] = useState<EipStatus | 'all'>('all');
+  const [stage, setStage] = useState<PqStage | 'all'>('all');
+  const [filtersOpen, setFiltersOpen] = useState(true);
   // Live EIP status / upgrade bucket from the indexed repo, overlaid on curation.
   type Live = { status: string | null; upgrade: string | null; upgradeBucket: string | null; updatedAt: string | null };
   const [live, setLive] = useState<Record<number, Live>>({});
+
+  // Deep-link support: /pq/eips?role=Direct+PQ&layer=…&status=…&stage=… (from the overview boxes).
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const r = p.get('role');
+      if (r && (PQ_ROLES as string[]).includes(r)) setRole(r as PqRole);
+      const l = p.get('layer');
+      if (l && (PQ_LAYERS as string[]).includes(l)) setLayer(l as PqLayer);
+      const st = p.get('status');
+      if (st && (STATUSES as string[]).includes(st)) setStatus(st as EipStatus);
+      const sg = p.get('stage');
+      if (sg && (PQ_PIPELINE as readonly string[]).includes(sg)) setStage(sg as PqStage);
+    } catch {
+      /* no-op */
+    }
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,54 +107,94 @@ export default function PqEipRegistryPage() {
     return `${Math.floor(days / 365)}y ago`;
   };
 
+  const stageOf = (e: (typeof PQ_EIPS)[number]): PqStage =>
+    pqStage(e, live[e.number]?.status, live[e.number]?.upgradeBucket);
+
+  // Stages present in the curated data, in pipeline order (stable chip set).
+  const presentStages = useMemo(() => {
+    const set = new Set(PQ_EIPS.map((e) => pqStage(e)));
+    return PQ_PIPELINE.filter((s) => set.has(s));
+  }, []);
+
   const rows = useMemo(
     () =>
-      PQ_EIPS.filter((e) => (layer === 'all' || e.layer === layer) && (role === 'all' || e.role === role) && (status === 'all' || e.status === status)).sort(
-        (a, b) => a.number - b.number,
-      ),
-    [layer, role, status],
+      PQ_EIPS.filter(
+        (e) =>
+          (layer === 'all' || e.layer === layer) &&
+          (role === 'all' || e.role === role) &&
+          (status === 'all' || e.status === status) &&
+          (stage === 'all' || stageOf(e) === stage),
+      ).sort((a, b) => a.number - b.number),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [layer, role, status, stage, live],
   );
 
   return (
     <div className="space-y-4">
       {/* Filters */}
-      <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
-        <h2 className="text-sm font-bold tracking-tight text-foreground">PQ EIP Registry</h2>
-        <p className="mt-1 text-xs text-muted-foreground">
-          The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, dependencies, and status.
-        </p>
-        <div className="mt-3 space-y-2">
-          <FilterRow label="Layer">
-            <Chip active={layer === 'all'} onClick={() => setLayer('all')}>All</Chip>
-            {PQ_LAYERS.map((l) => (
-              <Chip key={l} active={layer === l} onClick={() => setLayer(l)}>{l}</Chip>
-            ))}
-          </FilterRow>
-          <FilterRow label="Role">
-            <Chip active={role === 'all'} onClick={() => setRole('all')}>All</Chip>
-            {PQ_ROLES.map((r) => (
-              <Chip key={r} active={role === r} onClick={() => setRole(r)}>{r}</Chip>
-            ))}
-          </FilterRow>
-          <FilterRow label="Status">
-            <Chip active={status === 'all'} onClick={() => setStatus('all')}>All</Chip>
-            {STATUSES.map((st) => (
-              <Chip key={st} active={status === st} onClick={() => setStatus(st)}>{st}</Chip>
-            ))}
-          </FilterRow>
+      <section id="pq-registry" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold tracking-tight text-foreground">PQ EIP Registry</h2>
+              <CopyLinkButton sectionId="pq-registry" className="h-6 w-6" />
+            </div>
+            <p className="mt-1 text-xs text-muted-foreground">
+              The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, pipeline stage, dependencies, and status.
+            </p>
+          </div>
+          <button
+            onClick={() => setFiltersOpen((v) => !v)}
+            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            aria-expanded={filtersOpen}
+            title={filtersOpen ? 'Collapse filters' : 'Expand filters'}
+          >
+            {filtersOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+            {filtersOpen ? 'Collapse' : 'Filters'}
+          </button>
         </div>
+
+        {filtersOpen && (
+          <div className="mt-3 space-y-2">
+            <FilterRow label="Layer">
+              <Chip active={layer === 'all'} onClick={() => setLayer('all')}>All</Chip>
+              {PQ_LAYERS.map((l) => (
+                <Chip key={l} active={layer === l} onClick={() => setLayer(l)}>{l}</Chip>
+              ))}
+            </FilterRow>
+            <FilterRow label="Role">
+              <Chip active={role === 'all'} onClick={() => setRole('all')}>All</Chip>
+              {PQ_ROLES.map((r) => (
+                <Chip key={r} active={role === r} onClick={() => setRole(r)}>{r}</Chip>
+              ))}
+            </FilterRow>
+            <FilterRow label="Stage">
+              <Chip active={stage === 'all'} onClick={() => setStage('all')}>All</Chip>
+              {presentStages.map((sg) => (
+                <Chip key={sg} active={stage === sg} onClick={() => setStage(sg)}>{sg}</Chip>
+              ))}
+            </FilterRow>
+            <FilterRow label="Status">
+              <Chip active={status === 'all'} onClick={() => setStatus('all')}>All</Chip>
+              {STATUSES.map((st) => (
+                <Chip key={st} active={status === st} onClick={() => setStatus(st)}>{st}</Chip>
+              ))}
+            </FilterRow>
+          </div>
+        )}
       </section>
 
       {/* Table */}
       <section className="overflow-hidden rounded-xl border border-border bg-card/60">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[820px] text-sm">
-            <thead>
+        <div className="max-h-[70vh] overflow-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead className="sticky top-0 z-10 bg-card">
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                 <th className="px-4 py-2.5 font-semibold">EIP</th>
                 <th className="px-4 py-2.5 font-semibold">Title</th>
                 <th className="px-4 py-2.5 font-semibold">Capability</th>
                 <th className="px-4 py-2.5 font-semibold">PQ role</th>
+                <th className="px-4 py-2.5 font-semibold">Stage</th>
                 <th className="px-4 py-2.5 font-semibold">Milestone</th>
                 <th className="px-4 py-2.5 font-semibold">Depends on</th>
                 <th className="px-4 py-2.5 font-semibold">EIP status</th>
@@ -145,6 +216,9 @@ export default function PqEipRegistryPage() {
                   <td className="px-4 py-3 align-top text-xs text-muted-foreground">{e.capability}</td>
                   <td className="px-4 py-3 align-top">
                     <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', roleClass[e.role])}>{e.role}</span>
+                  </td>
+                  <td className="px-4 py-3 align-top">
+                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', stageClass(stageOf(e)))}>{stageOf(e)}</span>
                   </td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-foreground">{e.milestone}</td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
@@ -186,7 +260,7 @@ export default function PqEipRegistryPage() {
               ))}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-sm text-muted-foreground">
+                  <td colSpan={9} className="px-4 py-8 text-center text-sm text-muted-foreground">
                     No PQ EIPs match the current filters.
                   </td>
                 </tr>

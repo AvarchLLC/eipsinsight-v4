@@ -12,6 +12,7 @@ import {
   type ImplState,
 } from '@/data/pq-registry';
 import { DaisugiPanel } from '@/components/pq/daisugi-panel';
+import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
@@ -98,8 +99,11 @@ export default function PqImplementationPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <h2 className="text-sm font-bold tracking-tight text-foreground">Implementation &amp; Devnet matrix</h2>
+      <section id="pq-implementation" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">Implementation &amp; Devnet matrix</h2>
+          <CopyLinkButton sectionId="pq-implementation" className="h-6 w-6" />
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           EIP status alone doesn&apos;t tell you whether PQ work is becoming deployable. This tracks each proposal from
           spec to running code across the relevant clients, the measurable bridge between the EIP and upgrade readiness.

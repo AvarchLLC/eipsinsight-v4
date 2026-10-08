@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowDownRight, ArrowUpRight, Link2Off } from 'lucide-react';
 import { PQ_EIPS } from '@/data/pq-registry';
 import { PqDependencyGraph } from '@/components/pq/dependency-graph';
+import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
@@ -39,8 +40,11 @@ export default function PqDependenciesPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <h2 className="text-sm font-bold tracking-tight text-foreground">PQ dependency map</h2>
+      <section id="pq-dependencies" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">PQ dependency map</h2>
+          <CopyLinkButton sectionId="pq-dependencies" className="h-6 w-6" />
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           How PQ proposals depend on and enable each other. <span className="font-medium text-foreground">Requires</span>{' '}
           is a hard specification dependency; <span className="font-medium text-foreground">enables</span> unlocks a

@@ -1,16 +1,18 @@
 import { ArrowRight, ShieldAlert, UserX } from 'lucide-react';
 import { PQ_GAPS } from '@/data/pq-registry';
 import { PqAlertsFeed } from '@/components/pq/alerts-feed';
+import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
 export default function PqGapsPage() {
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card/60 p-5 sm:p-6">
+      <section id="pq-gaps" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
         <div className="flex items-center gap-2">
           <ShieldAlert className="h-5 w-5 text-amber-500" />
           <h2 className="text-sm font-bold tracking-tight text-foreground">Gaps &amp; Blockers</h2>
+          <CopyLinkButton sectionId="pq-gaps" className="h-6 w-6" />
         </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           The coordination problems made explicit, PQ roadmap capabilities that still lack an identified EIP, an owner,

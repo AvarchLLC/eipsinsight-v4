@@ -1,14 +1,18 @@
 import Link from 'next/link';
 import { ArrowUpRight, CheckCircle2, CircleHelp } from 'lucide-react';
 import { PQ_ROADMAP } from '@/data/pq-registry';
+import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
 export default function PqRoadmapPage() {
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <h2 className="text-sm font-bold tracking-tight text-foreground">Roadmap × EIP coverage</h2>
+      <section id="pq-roadmap" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">Roadmap × EIP coverage</h2>
+          <CopyLinkButton sectionId="pq-roadmap" className="h-6 w-6" />
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           For every capability on Ethereum&apos;s PQ roadmap: does the protocol specification needed to implement it
           exist yet? The <span className="font-medium text-amber-600 dark:text-amber-400">gap</span> cells are where the
