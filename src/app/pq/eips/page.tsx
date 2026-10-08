@@ -10,15 +10,26 @@ import {
   PQ_EIPS,
   PQ_LAYERS,
   PQ_ROLES,
-  PQ_PIPELINE,
-  pqStage,
   type EipStatus,
   type PqLayer,
   type PqRole,
-  type PqStage,
 } from '@/data/pq-registry';
 
 const STATUSES: EipStatus[] = ['Draft', 'Review', 'Last Call', 'Final', 'Stagnant', 'Withdrawn'];
+
+// Upgrade "stage": where a proposal sits in fork inclusion. Curated values
+// 'Proposed'/'Scheduled' are normalised to the PFI/SFI vocabulary the live
+// upgrade-composition data uses; EIPs not in any fork are "None".
+const UPGRADE_STAGES = ['PFI', 'CFI', 'SFI', 'Deployed', 'DFI', 'None'] as const;
+type UpgradeStage = (typeof UPGRADE_STAGES)[number];
+
+function normalizeStage(raw: string | null | undefined): UpgradeStage {
+  const v = (raw ?? '').trim();
+  if (!v || v === '—') return 'None';
+  if (v === 'Proposed') return 'PFI';
+  if (v === 'Scheduled') return 'SFI';
+  return (UPGRADE_STAGES as readonly string[]).includes(v) ? (v as UpgradeStage) : 'None';
+}
 
 const roleClass: Record<PqRole, string> = {
   'Direct PQ': 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',
@@ -36,13 +47,15 @@ const statusClass: Record<string, string> = {
   Withdrawn: 'text-red-600 dark:text-red-400',
 };
 
-// Pipeline-stage pill colouring: later stages are "greener".
-function stageClass(stage: PqStage): string {
-  const i = PQ_PIPELINE.indexOf(stage);
-  if (i >= 7) return 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300';
-  if (i >= 4) return 'border-primary/40 bg-primary/10 text-primary';
-  return 'border-border bg-muted/50 text-muted-foreground';
-}
+// Upgrade-stage pill colouring (PFI → Deployed is "further along"; DFI declined).
+const stageClass: Record<UpgradeStage, string> = {
+  PFI: 'border-sky-500/30 bg-sky-500/10 text-sky-700 dark:text-sky-300',
+  CFI: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  SFI: 'border-primary/40 bg-primary/10 text-primary',
+  Deployed: 'border-emerald-500/40 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  DFI: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+  None: 'border-border bg-muted/50 text-muted-foreground',
+};
 
 function Chip({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -62,7 +75,7 @@ export default function PqEipRegistryPage() {
   const [layer, setLayer] = useState<PqLayer | 'all'>('all');
   const [role, setRole] = useState<PqRole | 'all'>('all');
   const [status, setStatus] = useState<EipStatus | 'all'>('all');
-  const [stage, setStage] = useState<PqStage | 'all'>('all');
+  const [stage, setStage] = useState<UpgradeStage | 'all'>('all');
   const [filtersOpen, setFiltersOpen] = useState(true);
   // Live EIP status / upgrade bucket from the indexed repo, overlaid on curation.
   type Live = { status: string | null; upgrade: string | null; upgradeBucket: string | null; updatedAt: string | null };
@@ -79,7 +92,7 @@ export default function PqEipRegistryPage() {
       const st = p.get('status');
       if (st && (STATUSES as string[]).includes(st)) setStatus(st as EipStatus);
       const sg = p.get('stage');
-      if (sg && (PQ_PIPELINE as readonly string[]).includes(sg)) setStage(sg as PqStage);
+      if (sg && (UPGRADE_STAGES as readonly string[]).includes(sg)) setStage(sg as UpgradeStage);
     } catch {
       /* no-op */
     }
@@ -107,14 +120,15 @@ export default function PqEipRegistryPage() {
     return `${Math.floor(days / 365)}y ago`;
   };
 
-  const stageOf = (e: (typeof PQ_EIPS)[number]): PqStage =>
-    pqStage(e, live[e.number]?.status, live[e.number]?.upgradeBucket);
+  const stageOf = (e: (typeof PQ_EIPS)[number]): UpgradeStage =>
+    normalizeStage(live[e.number]?.upgradeBucket ?? e.upgradeStatus ?? null);
 
-  // Stages present in the curated data, in pipeline order (stable chip set).
+  // Upgrade stages actually present (live-aware), in canonical order.
   const presentStages = useMemo(() => {
-    const set = new Set(PQ_EIPS.map((e) => pqStage(e)));
-    return PQ_PIPELINE.filter((s) => set.has(s));
-  }, []);
+    const set = new Set(PQ_EIPS.map((e) => stageOf(e)));
+    return UPGRADE_STAGES.filter((s) => set.has(s));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [live]);
 
   const rows = useMemo(
     () =>
@@ -140,7 +154,7 @@ export default function PqEipRegistryPage() {
               <CopyLinkButton sectionId="pq-registry" className="h-6 w-6" />
             </div>
             <p className="mt-1 text-xs text-muted-foreground">
-              The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, pipeline stage, dependencies, and status.
+              The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, upgrade stage (PFI/CFI/SFI/Deployed/DFI), dependencies, and status.
             </p>
           </div>
           <button
@@ -218,7 +232,7 @@ export default function PqEipRegistryPage() {
                     <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', roleClass[e.role])}>{e.role}</span>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', stageClass(stageOf(e)))}>{stageOf(e)}</span>
+                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', stageClass[stageOf(e)])}>{stageOf(e)}</span>
                   </td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-foreground">{e.milestone}</td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-muted-foreground">

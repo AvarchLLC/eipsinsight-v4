@@ -298,29 +298,6 @@ export function pqSummary() {
 export const PQ_LAYERS: PqLayer[] = ['Execution', 'Consensus', 'Data', 'Application'];
 export const PQ_ROLES: PqRole[] = ['Direct PQ', 'Enabler', 'Prerequisite', 'Related'];
 
-/** A stage in the PQ readiness pipeline (research → ecosystem migration). */
-export type PqStage = (typeof PQ_PIPELINE)[number];
-
-// EIPs exercised end-to-end on the live PQTS testnet (Daisugi) today.
-const DAISUGI_TESTNET_EIPS = new Set<number>([8141]);
-
-/**
- * Derive where an EIP sits in the readiness pipeline from its lifecycle status
- * and (when known) its live upgrade bucket. Deliberately coarse — a curated
- * signal, not a precise claim — so the registry can be filtered by stage.
- */
-export function pqStage(e: PqEip, liveStatus?: string | null, upgradeBucket?: string | null): PqStage {
-  const status = liveStatus || e.status;
-  const bucket = (upgradeBucket || '').toLowerCase();
-  if (status === 'Final' || bucket === 'deployed') return 'Mainnet';
-  if (bucket === 'sfi') return 'SFI';
-  // On the live PQTS testnet regardless of fork scheduling.
-  if (DAISUGI_TESTNET_EIPS.has(e.number)) return 'Testnet';
-  if (bucket === 'cfi' || bucket === 'pfi') return 'ACD';
-  if (status === 'Draft' || status === 'Review' || status === 'Last Call') return 'EIP';
-  return 'Specification';
-}
-
 // ── Implementation & devnet matrix ───────────────────────────────────────────
 // Per-client implementation state for each PQ EIP. EL EIPs are tracked against
 // execution clients, CL EIPs against consensus clients. Missing cells default to
