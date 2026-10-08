@@ -31,6 +31,34 @@ export interface UpgradeNameOriginDetails {
   eip?: number;
 }
 
+export interface UpgradeOutcomeLink {
+  label: string;
+  href: string;
+}
+
+/** Measured early effect of a shipped headliner EIP, tied back to its intent. */
+export interface UpgradeEipOutcome {
+  eip: number;
+  name: string;
+  layer: 'EL' | 'CL';
+  /** What the EIP is meant to achieve. */
+  intended: string;
+  /** Curated early measured result (externally sourced — not our own telemetry). */
+  earlyResult: string;
+  links?: UpgradeOutcomeLink[];
+}
+
+/** "What shipped & early results" — curated, EIP-framed, links out to live telemetry. */
+export interface UpgradeEarlyResults {
+  network: string;
+  /** Human-readable activation moment. */
+  activatedAt: string;
+  summary: string;
+  outcomes: UpgradeEipOutcome[];
+  caveat: string;
+  sources: UpgradeOutcomeLink[];
+}
+
 export interface UpgradeRegistryEntry {
   slug: string;
   name: string;
@@ -59,6 +87,8 @@ export interface UpgradeRegistryEntry {
    * Keep current as ACD decisions land; falls back to the tagline.
    */
   statusNote?: string;
+  /** Curated "what shipped & early results" once the fork is live on a testnet/mainnet. */
+  earlyResults?: UpgradeEarlyResults;
 }
 
 export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
@@ -68,7 +98,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     status: 'Upcoming',
     tagline: 'The next major upgrade after Fusaka, featuring Enshrined Proposer-Builder Separation (ePBS) and Block-Level Access Lists (BALs).',
     statusNote:
-      'Devnet testing active; Sepolia & Hoodi testnet deployments projected for September 2026, with mainnet target shifted to Q4 2026.',
+      'Live on Sepolia since 6 Oct 2026 (ePBS + BALs); early scaling results are in. Mainnet activation still ahead.',
     description:
       'Ethereum developers are preparing for the next major network upgrade, Glamsterdam. It introduces key changes to both the Execution and Consensus layers on mainnet. Candidate EIPs are being fine-tuned, implemented, and tested on devnets as the scope firms up.',
     executionName: 'Amsterdam',
@@ -101,6 +131,47 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
         note: 'Execution-layer headliner: enables parallel transaction execution and faster validation.',
       },
     ],
+    earlyResults: {
+      network: 'Sepolia',
+      activatedAt: '6 Oct 2026, 13:53 UTC (slot 11,296,768)',
+      summary:
+        'Glamsterdam activated on Sepolia. In the first hours of post-fork data, execution got cheaper per unit of gas on every client while the block gas limit ramped from 60M toward 200M — scaling from both sides, exactly as the headliners intended.',
+      outcomes: [
+        {
+          eip: 7732,
+          name: 'ePBS',
+          layer: 'CL',
+          intended:
+            'Enshrine proposer–builder separation: split the beacon block from the execution payload so nodes get more time to execute a block.',
+          earlyResult:
+            'Live on Sepolia — the block/payload split is working, with payload reveal and payload-timeliness-committee (PTC) timing observable per slot.',
+          links: [
+            { label: 'EIP-7732', href: '/eip/7732' },
+            { label: 'Live slot view (ethPandaOps Lab)', href: 'https://lab.ethpandaops.io/ethereum/live?network=sepolia' },
+          ],
+        },
+        {
+          eip: 7928,
+          name: 'BALs',
+          layer: 'EL',
+          intended:
+            'Ship a block-level access list + state diff so clients can prefetch state and execute transactions in parallel — paired with opcode repricings.',
+          earlyResult:
+            'Median newPayload cost per gas dropped ~3–5× across clients (e.g. Geth 3.12 → 0.71, Reth 1.00 → 0.21 ms/Mgas). A 40M-gas block that took Geth ~115 ms before takes ~30 ms now — the step-down holds even as blocks grew ~3×.',
+          links: [
+            { label: 'EIP-7928', href: '/eip/7928' },
+            { label: 'Execution overview (ethPandaOps Lab)', href: 'https://lab.ethpandaops.io/ethereum/execution/overview?network=sepolia' },
+          ],
+        },
+      ],
+      caveat:
+        'Early external numbers — ~17 hours of post-fork Sepolia data, one node per client, load still ramping. Mainnet activation is still ahead.',
+      sources: [
+        { label: 'terencechain — very early Glamsterdam scaling results', href: 'https://terencechain.com/writing/very-early-glamsterdam-scaling-results/' },
+        { label: 'ethPandaOps Lab — Sepolia', href: 'https://lab.ethpandaops.io/ethereum/execution/overview?network=sepolia' },
+        { label: 'Data: xatu (ethPandaOps)', href: 'https://ethpandaops.io/data/xatu/' },
+      ],
+    },
   },
   hegota: {
     slug: 'hegota',

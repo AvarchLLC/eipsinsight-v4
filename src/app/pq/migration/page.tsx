@@ -7,6 +7,7 @@ import {
   type MigrationCategory,
   type ReadinessLevel,
 } from '@/data/pq-registry';
+import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
@@ -80,8 +81,11 @@ export default function PqMigrationPage() {
 
   return (
     <div className="space-y-4">
-      <section className="rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <h2 className="text-sm font-bold tracking-tight text-foreground">PQ migration tracker</h2>
+      <section id="pq-migration" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold tracking-tight text-foreground">PQ migration tracker</h2>
+          <CopyLinkButton sectionId="pq-migration" className="h-6 w-6" />
+        </div>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
           Ethereum can deploy PQ support at the protocol while the ecosystem stays on vulnerable keys. This tracks
           readiness by <span className="font-medium text-foreground">category</span>, protocol-controlled versus

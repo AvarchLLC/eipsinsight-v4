@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, ArrowRight, ChevronDown, FileText, FlaskConical, GitCommit, Layers, Radio, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, ChevronDown, ExternalLink, FileText, FlaskConical, GitCommit, Layers, LineChart, Radio, Search, Star, Target, X } from 'lucide-react';
 
 function renderNameWithHighlight(fullStr: string, highlight: string) {
   const index = fullStr.toLowerCase().indexOf(highlight.toLowerCase());
@@ -244,6 +244,7 @@ export function UpgradeDetailBody({
     (bucket) => (coreByStage.get(bucket)?.length ?? 0) > 0
   );
   const headliners = entry?.headliners ?? [];
+  const earlyResults = entry?.earlyResults;
   const showTimelineChart = timelineData.length > 1;
   const showActivity = events.length > 0;
 
@@ -251,6 +252,7 @@ export function UpgradeDetailBody({
     const items: TocItem[] = [{ id: 'about', label: `About ${name}` }];
     if (devnets.length > 0) items.push({ id: 'devnets', label: 'Devnets & Testnets', count: devnets.length });
     if (headliners.length > 0) items.push({ id: 'headliners', label: 'Headliners' });
+    if (entry?.earlyResults) items.push({ id: 'early-results', label: 'Early results' });
     for (const bucket of visibleStages) {
       items.push({
         id: `stage-${bucket}`,
@@ -617,6 +619,89 @@ export function UpgradeDetailBody({
                         </p>
                       )}
                     </Link>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* What shipped & early results — curated, EIP-framed, links out to live telemetry */}
+          {earlyResults && (
+            <section id="early-results" className="scroll-mt-28">
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/[0.04] p-4 sm:p-5">
+                <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <LineChart className="h-4 w-4 text-emerald-500" />
+                    <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                      What shipped &amp; early results
+                    </h2>
+                    <CopyLinkButton sectionId="early-results" className="h-6 w-6 rounded-md border border-border/40 bg-card/60 hover:border-primary/40 hover:bg-primary/10" />
+                  </div>
+                  <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                    Live on {earlyResults.network} · {earlyResults.activatedAt}
+                  </span>
+                </div>
+                <p className="text-sm leading-relaxed text-muted-foreground">{earlyResults.summary}</p>
+
+                <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                  {earlyResults.outcomes.map((o) => (
+                    <div key={o.eip} className="rounded-lg border border-border bg-card/60 p-3.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full border border-border bg-muted/50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          {o.layer}
+                        </span>
+                        <Link href={`/eip/${o.eip}`} className="font-mono text-xs font-semibold text-primary hover:underline">
+                          EIP-{o.eip}
+                        </Link>
+                        <span className="text-sm font-semibold text-foreground">{o.name}</span>
+                      </div>
+                      <div className="mt-2 flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+                        <Target className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                        <span><span className="font-semibold text-foreground/80">Intended:</span> {o.intended}</span>
+                      </div>
+                      <div className="mt-1.5 flex items-start gap-1.5 text-xs leading-relaxed text-foreground">
+                        <LineChart className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                        <span><span className="font-semibold">Early result:</span> {o.earlyResult}</span>
+                      </div>
+                      {o.links && o.links.length > 0 && (
+                        <div className="mt-2.5 flex flex-wrap gap-1.5">
+                          {o.links.map((l) => {
+                            const external = l.href.startsWith('http');
+                            return external ? (
+                              <a
+                                key={l.href}
+                                href={l.href}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                              >
+                                {l.label} <ExternalLink className="h-3 w-3" />
+                              </a>
+                            ) : (
+                              <Link
+                                key={l.href}
+                                href={l.href}
+                                className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary transition-colors hover:bg-primary/15"
+                              >
+                                {l.label}
+                              </Link>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+                  <span className="font-semibold">Caveat:</span> {earlyResults.caveat}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 border-t border-border/60 pt-2 text-[10px] text-muted-foreground">
+                  <span className="font-semibold uppercase tracking-wide">Sources</span>
+                  {earlyResults.sources.map((s) => (
+                    <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 hover:text-foreground hover:underline">
+                      {s.label} <ExternalLink className="h-2.5 w-2.5" />
+                    </a>
                   ))}
                 </div>
               </div>

@@ -6,8 +6,8 @@ import { usePathname } from 'next/navigation';
 import { GitBranch, LayoutDashboard, List, Map, Network, Server, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const TABS: { href: string; label: string; icon: typeof List; exact?: boolean }[] = [
-  { href: '/pq', label: 'Overview', icon: LayoutDashboard, exact: true },
+const TABS: { href: string; label: string; icon: typeof List; aliases?: string[] }[] = [
+  { href: '/pq/overview', label: 'Overview', icon: LayoutDashboard, aliases: ['/pq'] },
   { href: '/pq/eips', label: 'EIP Registry', icon: List },
   { href: '/pq/roadmap', label: 'Roadmap Coverage', icon: Map },
   { href: '/pq/dependencies', label: 'Dependencies', icon: Network },
@@ -29,16 +29,19 @@ export function PqShell({ children }: { children: React.ReactNode }) {
           <ShieldCheck className="h-4.5 w-4.5" />
         </div>
         <div className="min-w-0">
-          <h1 className="dec-title persona-title text-xl font-semibold tracking-tight sm:text-2xl">Post-Quantum Readiness</h1>
+          <h1 className="dec-title persona-title text-xl font-semibold tracking-tight sm:text-2xl">
+            How ready is Ethereum for post-quantum migration?
+          </h1>
           <p className="text-[11px] text-muted-foreground sm:text-xs">
-            How the EIPs and specifications behind Ethereum&apos;s PQ migration are progressing
+            Post-Quantum Readiness · how the EIPs and specifications behind Ethereum&apos;s PQ migration are progressing
           </p>
         </div>
       </header>
 
       <nav className="flex flex-wrap items-center gap-1 border-b border-border">
         {TABS.map((t) => {
-          const active = mounted && (t.exact ? pathname === t.href : pathname.startsWith(t.href));
+          const active =
+            mounted && (pathname === t.href || pathname.startsWith(`${t.href}/`) || (t.aliases ?? []).includes(pathname));
           return (
             <Link
               key={t.href}

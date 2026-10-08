@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { AlertTriangle, Bell, Clock, GitPullRequest, Info, Link2Off, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
+import { CopyLinkButton } from '@/components/header';
+import { PqAlertsSubscribe } from '@/components/pq/alerts-subscribe';
 
 type Alert = {
   level: 'high' | 'warn' | 'info';
@@ -63,12 +65,14 @@ export function PqAlertsFeed() {
   };
 
   return (
-    <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+    <section id="pq-alerts" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
           <Bell className="h-4 w-4 text-primary" /> Live alerts
+          <CopyLinkButton sectionId="pq-alerts" className="h-6 w-6" />
         </h3>
-        <div className="flex gap-1.5 text-[10px] font-semibold">
+        <div className="flex items-center gap-1.5 text-[10px] font-semibold">
+          <PqAlertsSubscribe />
           {counts.warn > 0 && <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-amber-700 dark:text-amber-300">{counts.warn} warnings</span>}
           {counts.info > 0 && <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-muted-foreground">{counts.info} info</span>}
         </div>

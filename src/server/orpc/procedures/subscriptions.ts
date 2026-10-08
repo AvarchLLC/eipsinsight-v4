@@ -17,8 +17,10 @@ import {
   type UpgradeFilter,
 } from "@/lib/subscriptions";
 import { protectedProcedure, ORPCError } from "./types";
+import { PQ_EIPS } from "@/data/pq-registry";
 
 const repoSchema = z.enum(PROPOSAL_REPOS);
+const PQ_EIP_NUMBERS = PQ_EIPS.map((e) => e.number);
 const filterSchema = z.enum(PROPOSAL_FILTERS);
 const repositoryFilterSchema = z.enum(REPOSITORY_FILTERS);
 const upgradeFilterSchema = z.enum(UPGRADE_FILTERS);
@@ -33,6 +35,13 @@ async function requireSessionUser(headers: Record<string, string>) {
   }
 
   return session.user;
+}
+
+/** Resolve the tracked PQ EIP set to {eipId, repositoryId} rows, skipping any
+ *  not yet indexed. Used by the batched PQ subscription procedures. */
+async function resolvePqProposals() {
+  const resolved = await Promise.all(PQ_EIP_NUMBERS.map((n) => resolveProposal("eip", n)));
+  return resolved.filter((p): p is NonNullable<typeof p> => p != null);
 }
 
 export const subscriptionsProcedures = {
@@ -273,6 +282,60 @@ export const subscriptionsProcedures = {
         success: true,
       };
     }),
+
+  // ─── PQ readiness: subscribe to the whole tracked PQ EIP set at once ───────
+  // Backed by the same proposal_subscription table + scheduler proposal-status
+  // notifier, so no new subscription type or scheduler change is needed — this
+  // just batches the set behind one RPC and reports aggregate state.
+  getPqSubscription: protectedProcedure.input(z.object({})).handler(async ({ context }) => {
+    const user = await requireSessionUser(context.headers);
+    const proposals = await resolvePqProposals();
+    if (proposals.length === 0) return { total: 0, subscribed: 0 };
+    const subscribed = await prisma.proposalSubscription.count({
+      where: {
+        user_id: user.id,
+        OR: proposals.map((p) => ({ eip_id: p.eipId, repository_id: p.repositoryId })),
+      },
+    });
+    return { total: proposals.length, subscribed };
+  }),
+
+  subscribeToPq: protectedProcedure
+    .input(z.object({ filter: filterSchema.default("status") }))
+    .handler(async ({ context, input }) => {
+      const user = await requireSessionUser(context.headers);
+      const proposals = await resolvePqProposals();
+      if (proposals.length === 0) return { total: 0, subscribed: 0 };
+      await prisma.proposalSubscription.createMany({
+        data: proposals.map((p) => ({
+          user_id: user.id,
+          eip_id: p.eipId,
+          repository_id: p.repositoryId,
+          filter: input.filter,
+        })),
+        skipDuplicates: true,
+      });
+      const subscribed = await prisma.proposalSubscription.count({
+        where: {
+          user_id: user.id,
+          OR: proposals.map((p) => ({ eip_id: p.eipId, repository_id: p.repositoryId })),
+        },
+      });
+      return { total: proposals.length, subscribed };
+    }),
+
+  unsubscribeFromPq: protectedProcedure.input(z.object({})).handler(async ({ context }) => {
+    const user = await requireSessionUser(context.headers);
+    const proposals = await resolvePqProposals();
+    if (proposals.length === 0) return { total: 0, subscribed: 0 };
+    await prisma.proposalSubscription.deleteMany({
+      where: {
+        user_id: user.id,
+        OR: proposals.map((p) => ({ eip_id: p.eipId, repository_id: p.repositoryId })),
+      },
+    });
+    return { total: proposals.length, subscribed: 0 };
+  }),
 
   getRepositorySubscription: protectedProcedure
     .input(
