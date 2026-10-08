@@ -304,6 +304,24 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
       ]
     : null;
 
+  // Deep-linkable chart anchors (each ChartCard renders <section id>), surfaced
+  // as a jump nav so a specific graph can be shared/linked directly.
+  const chartNav: Array<{ id: string; label: string }> = [
+    { id: 'frames-cumulative', label: 'Cumulative activity' },
+    ...(hasSenders ? [{ id: 'frames-unique-senders', label: 'Unique senders' }] : []),
+    { id: 'frames-success', label: 'Success rate' },
+    { id: 'frames-gas-by-purpose', label: 'Validation vs execution gas' },
+    { id: 'frames-cost-breakdown', label: 'Cost per tx' },
+    { id: 'frames-per-tx', label: 'Frames / tx' },
+    { id: 'frames-purpose', label: 'Frame purpose mix' },
+    { id: 'frames-sigs-per-tx', label: 'Signatures / tx' },
+    { id: 'frames-atomic-batch', label: 'Atomic batch' },
+    { id: 'frames-gas-efficiency', label: 'Gas efficiency' },
+    { id: 'frames-sig-cost', label: 'Signature cost' },
+    ...(hasSchemeSeries ? [{ id: 'frames-scheme-over-time', label: 'Scheme mix over time' }] : []),
+    { id: 'frames-vs-mainnet', label: 'vs mainnet AA' },
+  ];
+
   return (
     <div className="space-y-4">
       {/* Status banner */}
@@ -341,6 +359,20 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
           <span className="text-foreground">signatures</span>.
         </p>
       </section>
+
+      {/* Jump-to-chart nav — each target is a shareable deep link (…/devnet#id) */}
+      <nav className="flex flex-wrap items-center gap-1.5 rounded-xl border border-border bg-card/40 px-3 py-2">
+        <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Jump to</span>
+        {chartNav.map((c) => (
+          <a
+            key={c.id}
+            href={`#${c.id}`}
+            className="rounded-full border border-border bg-muted/40 px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+          >
+            {c.label}
+          </a>
+        ))}
+      </nav>
 
       {/* Stat tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
