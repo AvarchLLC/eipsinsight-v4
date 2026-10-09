@@ -165,17 +165,11 @@ export default function PqEipRegistryPage() {
     <div className="space-y-4">
       {/* Filters */}
       <section id="pq-registry" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <List className="h-5 w-5 text-primary" />
-              <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">PQ EIP Registry</h2>
-              <CopyLinkButton sectionId="pq-registry" className="h-6 w-6" />
-            </div>
-            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              The canonical dataset of PQ-related EIPs: layer, PQ role, capability, roadmap milestone, upgrade stage
-              (PFI/CFI/SFI/Deployed/DFI), dependencies, and status.
-            </p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <List className="h-5 w-5 shrink-0 text-primary" />
+            <h2 className="truncate text-base font-bold tracking-tight text-foreground sm:text-lg">PQ EIP Registry</h2>
+            <CopyLinkButton sectionId="pq-registry" className="h-6 w-6 shrink-0" />
           </div>
           <button
             onClick={() => setFiltersOpen((v) => !v)}
@@ -195,6 +189,11 @@ export default function PqEipRegistryPage() {
             {filtersOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
           </button>
         </div>
+
+        <p className="mt-1.5 w-full text-sm leading-relaxed text-muted-foreground">
+          The canonical dataset of PQ-related EIPs: layer, PQ role, capability, roadmap milestone, upgrade stage
+          (PFI/CFI/SFI/Deployed/DFI), dependencies, and status.
+        </p>
 
         {/* Always-visible summary: result count + active filter chips */}
         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
