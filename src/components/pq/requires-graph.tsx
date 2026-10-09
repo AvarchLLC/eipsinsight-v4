@@ -2,20 +2,20 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Radio } from 'lucide-react';
+import { ArrowUpRight, Minus, Plus, Radio, RotateCcw } from 'lucide-react';
 import { client } from '@/lib/orpc';
 
 type Node = { number: number; title: string; isPq: boolean };
 type Edge = { from: number; to: number };
 type GNode = Node & { x: number; y: number };
 
-const NODE_W = 168;
-const NODE_H = 48;
-const COL_GAP = 212;
-const ROW_GAP = 58;
-const PAD = 24;
+const NODE_W = 146;
+const NODE_H = 40;
+const COL_GAP = 176;
+const ROW_GAP = 46;
+const PAD = 16;
 
-function truncate(s: string, n = 26) {
+function truncate(s: string, n = 24) {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
 
