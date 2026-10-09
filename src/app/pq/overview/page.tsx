@@ -1,9 +1,28 @@
+import { Fragment } from 'react';
 import Link from 'next/link';
 import { ArrowUpRight, ShieldAlert, Video, Boxes, CircleDot, GitFork, Link2Off, KeyRound, Layers, Map } from 'lucide-react';
-import { PQ_PIPELINE, pqSummary } from '@/data/pq-registry';
+import { PQ_PIPELINE, PQ_PIPELINE_PHASES, pqSummary } from '@/data/pq-registry';
 import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
+
+type PipeState = 'reached' | 'frontier' | 'ahead';
+
+const bandClass: Record<PipeState, string> = {
+  reached: 'border-emerald-500/25 bg-emerald-500/[0.05]',
+  frontier: 'border-primary/40 bg-primary/[0.07]',
+  ahead: 'border-border bg-muted/20',
+};
+const dotClass: Record<PipeState, string> = {
+  reached: 'bg-emerald-500',
+  frontier: 'bg-primary',
+  ahead: 'bg-muted-foreground/40',
+};
+const pillClass: Record<PipeState, string> = {
+  reached: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
+  frontier: 'border-primary/50 bg-primary/15 text-primary',
+  ahead: 'border-border bg-card/60 text-muted-foreground',
+};
 
 const INDICATORS: {
   label: string;
@@ -108,37 +127,62 @@ export default function PqOverviewPage() {
           <CopyLinkButton sectionId="pq-pipeline" className="h-6 w-6" />
         </div>
         <p className="mt-1 text-xs text-muted-foreground">
-          The path every PQ capability travels from research to ecosystem-wide migration. Most PQ work today sits in the
-          first stages, research and specification, with the earliest proposals reaching ACD and implementation.
+          The path every PQ capability travels from research to ecosystem-wide migration, grouped by phase. Most work
+          today sits in research, specification and early standardization (PFI/CFI); the earliest proposals — like{' '}
+          <Link href="/eip/8141" className="font-medium text-primary hover:underline">EIP-8141</Link> — are already in
+          client implementation and on devnets.
         </p>
-        <div className="mt-4 flex flex-wrap items-center gap-1.5">
-          {PQ_PIPELINE.map((stage, i) => {
-            // Rough "how far the frontier has reached" shading for the readiness meter.
-            const reached = i <= 3; // Research → EIP → ACD reached; implementation+ is the frontier
-            const frontier = i === 4;
-            return (
-              <div key={stage} className="flex items-center gap-1.5">
-                <span
-                  className={
-                    'rounded-md border px-2.5 py-1 text-[11px] font-medium ' +
-                    (frontier
-                      ? 'border-primary/50 bg-primary/15 text-primary'
-                      : reached
-                        ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                        : 'border-border bg-muted/40 text-muted-foreground')
-                  }
-                >
-                  {stage}
-                </span>
-                {i < PQ_PIPELINE.length - 1 && <span className="text-muted-foreground/40">→</span>}
-              </div>
-            );
-          })}
-        </div>
+
+        {(() => {
+          // Curated readiness meter: how far the PQ frontier has reached.
+          const stageState = (i: number): PipeState => (i <= 4 ? 'reached' : i <= 6 ? 'frontier' : 'ahead');
+          const indexed = PQ_PIPELINE.map((s, i) => ({ ...s, i, state: stageState(i) }));
+          const groups = PQ_PIPELINE_PHASES.map((phase) => ({
+            phase,
+            stages: indexed.filter((s) => s.phase === phase),
+          })).filter((g) => g.stages.length > 0);
+
+          return (
+            <div className="mt-4 flex flex-col gap-2.5 lg:flex-row lg:items-stretch">
+              {groups.map((g, gi) => {
+                const state = g.stages[0]!.state;
+                return (
+                  <Fragment key={g.phase}>
+                    <div className={'flex-1 rounded-xl border p-3 ' + bandClass[state]}>
+                      <div className="mb-2 flex items-center gap-1.5">
+                        <span className={'h-1.5 w-1.5 rounded-full ' + dotClass[state]} />
+                        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{g.phase}</span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {g.stages.map((s) => (
+                          <span
+                            key={s.label}
+                            className={'inline-flex flex-col rounded-lg border px-2.5 py-1 ' + pillClass[s.state]}
+                            title={s.full}
+                          >
+                            <span className="text-[11px] font-semibold leading-tight">{s.label}</span>
+                            {s.full && <span className="text-[9px] font-normal leading-tight opacity-70">{s.full}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    {gi < groups.length - 1 && (
+                      <div className="flex items-center justify-center text-muted-foreground/40 lg:px-0.5">
+                        <span className="hidden lg:inline">→</span>
+                        <span className="lg:hidden">↓</span>
+                      </div>
+                    )}
+                  </Fragment>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         <div className="mt-3 flex flex-wrap gap-4 text-[11px] text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-emerald-500" /> reached</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-primary" /> current frontier</span>
-          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-sm bg-muted-foreground/30" /> ahead</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> reached</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> current frontier</span>
+          <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> ahead</span>
         </div>
       </section>
 

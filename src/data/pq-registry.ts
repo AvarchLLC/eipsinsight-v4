@@ -267,19 +267,44 @@ export const PQ_GAPS: PqGap[] = [
   },
 ];
 
-/** Pipeline stages for the readiness meter (research → ecosystem migration). */
-export const PQ_PIPELINE = [
+/** Grouped phase a pipeline stage belongs to. */
+export type PqPipelinePhase = 'Research' | 'Standardization' | 'Implementation' | 'Scheduling' | 'Deployment';
+
+export interface PqPipelineStage {
+  /** Short chip label. */
+  label: string;
+  /** Expansion for abbreviations (PFI/CFI/SFI) — shown as a subtitle/tooltip. */
+  full?: string;
+  phase: PqPipelinePhase;
+}
+
+/**
+ * The path every PQ capability travels from research to ecosystem-wide
+ * migration, grouped into phases. The fork-inclusion stages (PFI → CFI → SFI)
+ * mirror the ACD process the EIP registry filters on.
+ */
+export const PQ_PIPELINE: PqPipelineStage[] = [
+  { label: 'Research', phase: 'Research' },
+  { label: 'Specification', phase: 'Research' },
+  { label: 'EIP draft', phase: 'Standardization' },
+  { label: 'PFI', full: 'Proposed for Inclusion', phase: 'Standardization' },
+  { label: 'CFI', full: 'Considered for Inclusion', phase: 'Standardization' },
+  { label: 'Client implementation', phase: 'Implementation' },
+  { label: 'Devnet', phase: 'Implementation' },
+  { label: 'SFI', full: 'Scheduled for Inclusion', phase: 'Scheduling' },
+  { label: 'Testnet', phase: 'Scheduling' },
+  { label: 'Mainnet', full: 'Included / deployed', phase: 'Deployment' },
+  { label: 'Ecosystem migration', phase: 'Deployment' },
+];
+
+/** Phase order + accent for the readiness meter. */
+export const PQ_PIPELINE_PHASES: PqPipelinePhase[] = [
   'Research',
-  'Specification',
-  'EIP',
-  'ACD',
+  'Standardization',
   'Implementation',
-  'Devnet',
-  'SFI',
-  'Testnet',
-  'Mainnet',
-  'Ecosystem Migration',
-] as const;
+  'Scheduling',
+  'Deployment',
+];
 
 // ── Derived summary helpers for the Overview indicators ──────────────────────
 
