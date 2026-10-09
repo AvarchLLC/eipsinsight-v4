@@ -126,10 +126,10 @@ export function PqDependencyGraph() {
   const selEip = selected != null ? PQ_EIPS.find((e) => e.number === selected) : null;
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 lg:grid-cols-3">
       {/* Graph */}
-      <div className="lg:col-span-2">
-        <div className="overflow-x-auto rounded-xl border border-border bg-card/60 p-3">
+      <div className="p-3 lg:col-span-2">
+        <div className="overflow-x-auto">
           <svg
             viewBox={`0 0 ${width} ${height}`}
             width="100%"
@@ -222,7 +222,7 @@ export function PqDependencyGraph() {
                   <text x={14} y={19} fontSize={12} fontWeight={700} fill="var(--foreground)" fontFamily="monospace">
                     EIP-{n.number}
                   </text>
-                  <text x={14} y={34} fontSize={9.5} fill="var(--muted-foreground)">
+                  <text x={14} y={34} fontSize={10} fill="var(--muted-foreground)">
                     {n.eip ? `${n.eip.capability} · ${n.eip.milestone}` : 'not in registry'}
                   </text>
                 </g>
@@ -248,15 +248,15 @@ export function PqDependencyGraph() {
       </div>
 
       {/* Detail panel */}
-      <div className="lg:col-span-1">
-        <div className="sticky top-20 rounded-xl border border-border bg-card/60 p-4">
+      <div className="border-t border-border p-4 lg:col-span-1 lg:border-l lg:border-t-0">
+        <div className="sticky top-20">
           {selEip ? (
             <>
               <Link href={`/eip/${selEip.number}`} className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-primary hover:underline">
                 EIP-{selEip.number} <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
               <p className="mt-1 text-sm font-semibold text-foreground">{selEip.title}</p>
-              <div className="mt-2 flex flex-wrap gap-1.5 text-[10px]">
+              <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
                 <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-muted-foreground">{selEip.layer}</span>
                 <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-muted-foreground">{selEip.capability}</span>
                 <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 font-mono text-muted-foreground">{selEip.milestone}</span>
@@ -286,10 +286,10 @@ export function PqDependencyGraph() {
             </>
           ) : (
             <div className="text-sm text-muted-foreground">
-              <p className="font-medium text-foreground">PQ dependency map</p>
+              <p className="font-semibold text-foreground">Select a node</p>
               <p className="mt-1.5 text-xs leading-relaxed">
-                Each node is a PQ proposal, placed by its roadmap milestone. Arrows point toward the capability a proposal
-                unlocks. Select a node to see what it requires, enables, and is required by.
+                Click any EIP to see what it requires, enables, is required by, and competes with. Click the background
+                to reset.
               </p>
             </div>
           )}

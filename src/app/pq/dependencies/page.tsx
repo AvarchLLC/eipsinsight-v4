@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowDownRight, ArrowUpRight, Link2Off } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Link2Off, Network } from 'lucide-react';
 import { PQ_EIPS } from '@/data/pq-registry';
 import { PqDependencyGraph } from '@/components/pq/dependency-graph';
 import { CopyLinkButton } from '@/components/header';
@@ -40,21 +40,25 @@ export default function PqDependenciesPage() {
 
   return (
     <div className="space-y-4">
-      <section id="pq-dependencies" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold tracking-tight text-foreground">PQ dependency map</h2>
-          <CopyLinkButton sectionId="pq-dependencies" className="h-6 w-6" />
+      <section id="pq-dependencies" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Network className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">PQ dependency map</h2>
+            <CopyLinkButton sectionId="pq-dependencies" className="h-6 w-6" />
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            How PQ proposals depend on and enable each other. <span className="font-medium text-foreground">Requires</span>{' '}
+            is a hard specification dependency; <span className="font-medium text-foreground">enables</span> unlocks a
+            downstream capability. A dependency on an EIP not yet in the registry is flagged.
+          </p>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          How PQ proposals depend on and enable each other. <span className="font-medium text-foreground">Requires</span>{' '}
-          is a hard specification dependency; <span className="font-medium text-foreground">enables</span> unlocks a
-          downstream capability. A dependency on an EIP not yet in the registry is flagged.
-        </p>
+        <div className="border-t border-border">
+          <PqDependencyGraph />
+        </div>
       </section>
 
-      <PqDependencyGraph />
-
-      <h3 className="px-1 pt-2 text-sm font-bold tracking-tight text-foreground">All relationships</h3>
+      <h3 className="px-1 pt-2 text-base font-bold tracking-tight text-foreground sm:text-lg">All relationships</h3>
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {PQ_EIPS.map((e) => {
           const enables = e.enables ?? [];
@@ -66,7 +70,7 @@ export default function PqDependenciesPage() {
                 <Link href={`/eip/${e.number}`} className="inline-flex items-center gap-1.5 font-mono text-sm font-bold text-primary hover:underline">
                   EIP-{e.number} <ArrowUpRight className="h-3.5 w-3.5" />
                 </Link>
-                <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">
+                <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] text-muted-foreground">
                   {e.capability} · {e.milestone}
                 </span>
               </div>
@@ -83,7 +87,7 @@ export default function PqDependenciesPage() {
                   <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-muted-foreground">
                     <ArrowUpRight className="h-3 w-3" /> enables
                   </span>
-                  {enables.length ? enables.map((n) => <EipChip key={n} n={n} />) : <span className="text-muted-foreground">—</span>}
+                  {enables.length ? enables.map((n) => <EipChip key={n} n={n} />) : <span className="text-muted-foreground">nothing</span>}
                 </div>
                 {usedBy.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5">
