@@ -163,8 +163,9 @@ export default function PqEipRegistryPage() {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <section id="pq-registry" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+      {/* One seamless card: filters -> table -> footnote */}
+      <section id="pq-registry" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="p-4 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <List className="h-5 w-5 shrink-0 text-primary" />
@@ -245,11 +246,9 @@ export default function PqEipRegistryPage() {
             </FilterRow>
           </div>
         )}
-      </section>
+        </div>
 
-      {/* Table */}
-      <section className="overflow-hidden rounded-xl border border-border bg-card/60">
-        <div className="max-h-[70vh] overflow-auto">
+        <div className="max-h-[70vh] overflow-auto border-t border-border">
           <table className="w-full min-w-[900px] text-sm">
             <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
@@ -335,11 +334,11 @@ export default function PqEipRegistryPage() {
             </tbody>
           </table>
         </div>
-      </section>
 
-      <p className="text-xs leading-relaxed text-muted-foreground">
-        {rows.length} of {PQ_EIPS.length} PQ EIPs shown. A <span className="inline-flex h-1.5 w-1.5 translate-y-[-1px] rounded-full bg-emerald-500 align-middle" /> marks a status read live from the EIP repository; other fields are curated snapshots.
-      </p>
+        <div className="border-t border-border/60 bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
+          {rows.length} of {PQ_EIPS.length} PQ EIPs shown. A <span className="inline-flex h-1.5 w-1.5 translate-y-[-1px] rounded-full bg-emerald-500 align-middle" /> marks a status read live from the EIP repository; other fields are curated snapshots.
+        </div>
+      </section>
     </div>
   );
 }
