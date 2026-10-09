@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowUpRight, ChevronDown, ChevronUp, List, SlidersHorizontal, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { client } from '@/lib/orpc';
 import { CopyLinkButton } from '@/components/header';
@@ -25,7 +25,7 @@ type UpgradeStage = (typeof UPGRADE_STAGES)[number];
 
 function normalizeStage(raw: string | null | undefined): UpgradeStage {
   const v = (raw ?? '').trim();
-  if (!v || v === '—') return 'None';
+  if (!v || v === 'None') return 'None';
   if (v === 'Proposed') return 'PFI';
   if (v === 'Scheduled') return 'SFI';
   return (UPGRADE_STAGES as readonly string[]).includes(v) ? (v as UpgradeStage) : 'None';
@@ -76,7 +76,8 @@ export default function PqEipRegistryPage() {
   const [role, setRole] = useState<PqRole | 'all'>('all');
   const [status, setStatus] = useState<EipStatus | 'all'>('all');
   const [stage, setStage] = useState<UpgradeStage | 'all'>('all');
-  const [filtersOpen, setFiltersOpen] = useState(true);
+  // Collapsed by default; the active-filter summary below keeps it informative.
+  const [filtersOpen, setFiltersOpen] = useState(false);
   // Live EIP status / upgrade bucket from the indexed repo, overlaid on curation.
   type Live = { status: string | null; upgrade: string | null; upgradeBucket: string | null; updatedAt: string | null };
   const [live, setLive] = useState<Record<number, Live>>({});
@@ -143,33 +144,82 @@ export default function PqEipRegistryPage() {
     [layer, role, status, stage, live],
   );
 
+  type ActiveFilter = { label: string; value: string; clear: () => void };
+  const activeFilters: ActiveFilter[] = (
+    [
+      layer !== 'all' ? { label: 'Layer', value: layer as string, clear: () => setLayer('all') } : null,
+      role !== 'all' ? { label: 'Role', value: role as string, clear: () => setRole('all') } : null,
+      stage !== 'all' ? { label: 'Stage', value: stage as string, clear: () => setStage('all') } : null,
+      status !== 'all' ? { label: 'Status', value: status as string, clear: () => setStatus('all') } : null,
+    ] as Array<ActiveFilter | null>
+  ).filter((x): x is ActiveFilter => x != null);
+
+  const clearAll = () => {
+    setLayer('all');
+    setRole('all');
+    setStage('all');
+    setStatus('all');
+  };
+
   return (
     <div className="space-y-4">
       {/* Filters */}
       <section id="pq-registry" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-4 sm:p-5">
-        <div className="flex items-start justify-between gap-2">
+        <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold tracking-tight text-foreground">PQ EIP Registry</h2>
+              <List className="h-5 w-5 text-primary" />
+              <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">PQ EIP Registry</h2>
               <CopyLinkButton sectionId="pq-registry" className="h-6 w-6" />
             </div>
-            <p className="mt-1 text-xs text-muted-foreground">
-              The canonical dataset of PQ-related EIPs, their layer, PQ role, capability, roadmap milestone, upgrade stage (PFI/CFI/SFI/Deployed/DFI), dependencies, and status.
+            <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+              The canonical dataset of PQ-related EIPs: layer, PQ role, capability, roadmap milestone, upgrade stage
+              (PFI/CFI/SFI/Deployed/DFI), dependencies, and status.
             </p>
           </div>
           <button
             onClick={() => setFiltersOpen((v) => !v)}
-            className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-border bg-muted/60 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+            className={cn(
+              'inline-flex h-8 shrink-0 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold transition-colors',
+              filtersOpen || activeFilters.length > 0
+                ? 'border-primary/40 bg-primary/10 text-primary hover:bg-primary/15'
+                : 'border-border bg-muted/60 text-muted-foreground hover:border-primary/40 hover:text-foreground',
+            )}
             aria-expanded={filtersOpen}
-            title={filtersOpen ? 'Collapse filters' : 'Expand filters'}
           >
+            <SlidersHorizontal className="h-3.5 w-3.5" />
+            Filters
+            {activeFilters.length > 0 && (
+              <span className="rounded-full bg-primary/20 px-1.5 text-[10px] font-bold text-primary">{activeFilters.length}</span>
+            )}
             {filtersOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-            {filtersOpen ? 'Collapse' : 'Filters'}
           </button>
         </div>
 
+        {/* Always-visible summary: result count + active filter chips */}
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+          <span>
+            Showing <strong className="text-foreground tabular-nums">{rows.length}</strong> of {PQ_EIPS.length} EIPs
+          </span>
+          {activeFilters.map((f) => (
+            <button
+              key={f.label}
+              onClick={f.clear}
+              className="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary transition-colors hover:bg-primary/15"
+              title={`Clear ${f.label} filter`}
+            >
+              {f.label}: {f.value} <X className="h-3 w-3" />
+            </button>
+          ))}
+          {activeFilters.length > 0 && (
+            <button onClick={clearAll} className="text-[11px] font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline">
+              Clear all
+            </button>
+          )}
+        </div>
+
         {filtersOpen && (
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
             <FilterRow label="Layer">
               <Chip active={layer === 'all'} onClick={() => setLayer('all')}>All</Chip>
               {PQ_LAYERS.map((l) => (
@@ -202,9 +252,9 @@ export default function PqEipRegistryPage() {
       <section className="overflow-hidden rounded-xl border border-border bg-card/60">
         <div className="max-h-[70vh] overflow-auto">
           <table className="w-full min-w-[900px] text-sm">
-            <thead className="sticky top-0 z-10 bg-card">
+            <thead className="sticky top-0 z-10 bg-muted/60 backdrop-blur-sm">
               <tr className="border-b border-border text-left text-[11px] uppercase tracking-wider text-muted-foreground">
-                <th className="px-4 py-2.5 font-semibold">EIP</th>
+                <th className="px-4 py-3 font-semibold">EIP</th>
                 <th className="px-4 py-2.5 font-semibold">Title</th>
                 <th className="px-4 py-2.5 font-semibold">Capability</th>
                 <th className="px-4 py-2.5 font-semibold">PQ role</th>
@@ -229,14 +279,14 @@ export default function PqEipRegistryPage() {
                   </td>
                   <td className="px-4 py-3 align-top text-xs text-muted-foreground">{e.capability}</td>
                   <td className="px-4 py-3 align-top">
-                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', roleClass[e.role])}>{e.role}</span>
+                    <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-semibold', roleClass[e.role])}>{e.role}</span>
                   </td>
                   <td className="px-4 py-3 align-top">
-                    <span className={cn('rounded-full border px-2 py-0.5 text-[10px] font-semibold', stageClass[stageOf(e)])}>{stageOf(e)}</span>
+                    <span className={cn('rounded-full border px-2 py-0.5 text-[11px] font-semibold', stageClass[stageOf(e)])}>{stageOf(e)}</span>
                   </td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-foreground">{e.milestone}</td>
                   <td className="px-4 py-3 align-top font-mono text-xs text-muted-foreground">
-                    {e.dependsOn?.length ? e.dependsOn.map((d) => `EIP-${d}`).join(', ') : '—'}
+                    {e.dependsOn?.length ? e.dependsOn.map((d) => `EIP-${d}`).join(', ') : 'None'}
                   </td>
                   <td className="px-4 py-3 align-top text-xs">
                     {(() => {
@@ -267,7 +317,11 @@ export default function PqEipRegistryPage() {
                           </span>
                         );
                       }
-                      return e.upgrade ? `${e.upgrade}${e.upgradeStatus && e.upgradeStatus !== '—' ? ` · ${e.upgradeStatus}` : ''}` : e.upgradeStatus ?? '—';
+                      return e.upgrade
+                        ? `${e.upgrade}${e.upgradeStatus && e.upgradeStatus !== '—' ? ` · ${e.upgradeStatus}` : ''}`
+                        : e.upgradeStatus && e.upgradeStatus !== '—'
+                          ? e.upgradeStatus
+                          : 'None';
                     })()}
                   </td>
                 </tr>
@@ -284,7 +338,7 @@ export default function PqEipRegistryPage() {
         </div>
       </section>
 
-      <p className="text-[11px] text-muted-foreground">
+      <p className="text-xs leading-relaxed text-muted-foreground">
         {rows.length} of {PQ_EIPS.length} PQ EIPs shown. A <span className="inline-flex h-1.5 w-1.5 translate-y-[-1px] rounded-full bg-emerald-500 align-middle" /> marks a status read live from the EIP repository; other fields are curated snapshots.
       </p>
     </div>
@@ -294,7 +348,7 @@ export default function PqEipRegistryPage() {
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="mr-1 w-14 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="mr-1 w-14 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
       {children}
     </div>
   );
