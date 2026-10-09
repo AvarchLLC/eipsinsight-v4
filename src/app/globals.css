@@ -388,6 +388,18 @@ html, body, #__next {
     animation: persona-drift 6s var(--expo-out, cubic-bezier(0.19, 1, 0.22, 1)) infinite;
   }
 
+  /* PQ readiness pipeline — gentle connector nudge toward the frontier. */
+  @keyframes pq-arrow {
+    0%, 100% { transform: translateX(0); opacity: 0.4; }
+    50% { transform: translateX(3px); opacity: 0.9; }
+  }
+  .pq-arrow-anim {
+    animation: pq-arrow 1.8s ease-in-out infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pq-arrow-anim { animation: none; }
+  }
+
   .persona-title {
     background-image: linear-gradient(
       135deg,

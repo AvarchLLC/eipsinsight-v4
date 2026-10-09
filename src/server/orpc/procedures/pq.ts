@@ -40,6 +40,24 @@ let cache: { at: number; data: Record<number, PqLiveStatus> } | null = null
 let alertCache: { at: number; data: PqAlert[] } | null = null
 const TTL_MS = 300_000
 
+/** A node in the full requires-dependency graph (PQ or a required non-PQ EIP). */
+export interface PqRequiresNode {
+  number: number
+  title: string
+  /** True if the EIP is in the curated PQ registry. */
+  isPq: boolean
+}
+/** A requires edge in the enables direction: `from` enables / is required by `to`. */
+export interface PqRequiresEdge {
+  from: number
+  to: number
+}
+export interface PqRequiresGraph {
+  nodes: PqRequiresNode[]
+  edges: PqRequiresEdge[]
+}
+let requiresCache: { at: number; data: PqRequiresGraph } | null = null
+
 /** A recent ERC-4337 UserOperation on the Daisugi testnet. */
 export interface PqTestnetOp {
   userOpHash: string
@@ -361,6 +379,62 @@ export const pqProcedures = {
     } catch {
       // Table not migrated yet, or transient DB error: no history to show.
       return []
+    }
+  }),
+
+  /**
+   * Full dependency surface: each PQ EIP's real `requires:` from the indexed
+   * repository, which point at ANY EIP (mostly non-PQ foundational ones), not
+   * just the curated PQ↔PQ relationships. Returns nodes (PQ + required EIPs,
+   * with titles and a PQ flag) and edges in the enables direction
+   * (required → dependent), ready to lay out as a graph.
+   */
+  getRequiresGraph: optionalAuthProcedure.handler(async (): Promise<PqRequiresGraph> => {
+    if (requiresCache && Date.now() - requiresCache.at < TTL_MS) return requiresCache.data
+    const pqNumbers = PQ_EIPS.map((e) => e.number).filter((n) => Number.isInteger(n))
+    const empty: PqRequiresGraph = { nodes: [], edges: [] }
+    if (!pqNumbers.length) return empty
+    try {
+      const inList = pqNumbers.join(',')
+      const reqRows = await prisma.$queryRawUnsafe<Array<{ number: number | string; requires: string[] | null }>>(
+        `SELECT e.eip_number AS number, s.requires
+         FROM eips e JOIN eip_snapshots s ON s.eip_id = e.id
+         WHERE e.eip_number IN (${inList})`,
+      )
+
+      // Edges: for each PQ EIP, requiredEip -> pqEip (required one enables it).
+      const edges: PqRequiresEdge[] = []
+      const involved = new Set<number>(pqNumbers)
+      for (const r of reqRows) {
+        const dependent = Number(r.number)
+        for (const req of r.requires ?? []) {
+          const reqNum = Number(req)
+          if (!Number.isInteger(reqNum) || reqNum <= 0) continue
+          involved.add(reqNum)
+          edges.push({ from: reqNum, to: dependent })
+        }
+      }
+
+      // Titles for every node (PQ + required). Prefer the curated PQ title.
+      const pqTitle = new Map(PQ_EIPS.map((e) => [e.number, e.title]))
+      const titleRows = involved.size
+        ? await prisma.$queryRawUnsafe<Array<{ number: number | string; title: string | null }>>(
+            `SELECT eip_number AS number, title FROM eips WHERE eip_number IN (${[...involved].join(',')})`,
+          )
+        : []
+      const repoTitle = new Map(titleRows.map((t) => [Number(t.number), t.title ?? '']))
+
+      const nodes: PqRequiresNode[] = [...involved].sort((a, b) => a - b).map((n) => ({
+        number: n,
+        title: pqTitle.get(n) ?? repoTitle.get(n) ?? '',
+        isPq: pqNumbers.includes(n),
+      }))
+
+      const data = { nodes, edges }
+      requiresCache = { at: Date.now(), data }
+      return data
+    } catch {
+      return empty
     }
   }),
 
