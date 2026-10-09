@@ -319,7 +319,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
     { id: 'frames-gas-efficiency', label: 'Gas efficiency' },
     { id: 'frames-sig-cost', label: 'Signature cost' },
     ...(hasSchemeSeries ? [{ id: 'frames-scheme-over-time', label: 'Scheme mix over time' }] : []),
-    { id: 'frames-vs-mainnet', label: 'vs mainnet AA' },
+    ...(comparison ? [{ id: 'frames-vs-mainnet', label: 'vs mainnet AA' }] : []),
   ];
 
   return (
