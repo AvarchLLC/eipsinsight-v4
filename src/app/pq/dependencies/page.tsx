@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { ArrowDownRight, ArrowUpRight, Link2Off, Network } from 'lucide-react';
+import { ArrowDownRight, ArrowUpRight, Link2Off, Network, Waypoints } from 'lucide-react';
 import { PQ_EIPS } from '@/data/pq-registry';
 import { PqDependencyGraph } from '@/components/pq/dependency-graph';
+import { PqRequiresGraph } from '@/components/pq/requires-graph';
 import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
@@ -55,6 +56,24 @@ export default function PqDependenciesPage() {
         </div>
         <div className="border-t border-border">
           <PqDependencyGraph />
+        </div>
+      </section>
+
+      {/* Second graph: full requires surface (PQ EIPs -> any required EIP, incl. non-PQ) */}
+      <section id="pq-requires" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Waypoints className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">Full dependency surface</h2>
+            <CopyLinkButton sectionId="pq-requires" className="h-6 w-6" />
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Beyond the curated PQ links above, this is each PQ EIP&apos;s real <span className="font-medium text-foreground">requires:</span>{' '}
+            header from the live repository, the foundational EIPs (mostly non-PQ, shown dashed) each one builds on.
+          </p>
+        </div>
+        <div className="border-t border-border">
+          <PqRequiresGraph />
         </div>
       </section>
 
