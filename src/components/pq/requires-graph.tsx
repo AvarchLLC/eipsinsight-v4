@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, Minus, Plus, Radio, RotateCcw } from 'lucide-react';
+import { ArrowUpRight, Radio } from 'lucide-react';
 import { client } from '@/lib/orpc';
+import { ZoomControls } from '@/components/pq/graph-zoom';
 
 type Node = { number: number; title: string; isPq: boolean };
 type Edge = { from: number; to: number };
@@ -22,6 +23,9 @@ function truncate(s: string, n = 24) {
 export function PqRequiresGraph() {
   const [data, setData] = useState<{ nodes: Node[]; edges: Edge[] } | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(0.8);
+  const zoomIn = () => setZoom((z) => Math.min(2, Math.round((z + 0.2) * 10) / 10));
+  const zoomOut = () => setZoom((z) => Math.max(0.4, Math.round((z - 0.2) * 10) / 10));
 
   useEffect(() => {
     let cancelled = false;
@@ -105,12 +109,12 @@ export function PqRequiresGraph() {
   const { gnodes, edges, width, height, nodeById } = layout;
 
   return (
-    <div className="p-3">
-      <div className="overflow-x-auto">
+    <div className="relative p-3">
+      <ZoomControls zoom={zoom} onIn={zoomIn} onOut={zoomOut} onReset={() => setZoom(0.8)} />
+      <div className="max-h-[60vh] overflow-auto rounded-lg">
         <svg
           viewBox={`0 0 ${width} ${height}`}
-          width="100%"
-          style={{ minWidth: width, maxWidth: '100%' }}
+          style={{ width: width * zoom, height: height * zoom }}
           className="select-none"
           onClick={() => setSelected(null)}
         >
