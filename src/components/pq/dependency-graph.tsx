@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Link2Off } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PQ_EIPS, type PqEip } from '@/data/pq-registry';
+import { ZoomControls } from '@/components/pq/graph-zoom';
 
 // Roadmap milestone → column, so edges mostly flow left (early) → right (late).
 const MILESTONE_ORDER = ['Pre-L*', 'I*', 'I*/L*', 'J*', 'L*', 'M*', 'Long-term'];
@@ -32,6 +33,9 @@ const roleColor: Record<string, string> = {
 
 export function PqDependencyGraph() {
   const [selected, setSelected] = useState<number | null>(null);
+  const [zoom, setZoom] = useState(1);
+  const zoomIn = () => setZoom((z) => Math.min(2, Math.round((z + 0.2) * 10) / 10));
+  const zoomOut = () => setZoom((z) => Math.max(0.4, Math.round((z - 0.2) * 10) / 10));
 
   const { nodes, edges, altEdges, width, height, nodeById } = useMemo(() => {
     // Canonical directed edges in the "enables / unlocks" direction, deduped.
@@ -128,12 +132,12 @@ export function PqDependencyGraph() {
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3">
       {/* Graph */}
-      <div className="p-3 lg:col-span-2">
-        <div className="overflow-x-auto">
+      <div className="relative p-3 lg:col-span-2">
+        <ZoomControls zoom={zoom} onIn={zoomIn} onOut={zoomOut} onReset={() => setZoom(1)} />
+        <div className="max-h-[60vh] overflow-auto rounded-lg">
           <svg
             viewBox={`0 0 ${width} ${height}`}
-            width="100%"
-            style={{ minWidth: width, maxWidth: '100%' }}
+            style={{ width: width * zoom, height: height * zoom }}
             className="select-none"
             onClick={() => setSelected(null)}
           >
