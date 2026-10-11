@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   BookOpen,
   Home,
@@ -382,6 +382,7 @@ function AppSidebarContent() {
   const searchParams = useSearchParams();
   const { state, toggleSidebar: toggleSidebarUI } = useSidebar();
   const { isOpen, toggleSidebar } = useSidebarStore();
+  const router = useRouter();
 
   // Accordion behavior: only one parent open at a time
   const [openItem, setOpenItem] = React.useState<string | null>(null);
@@ -960,6 +961,25 @@ function AppSidebarContent() {
     const isChildActive = hasActiveChild([...staticItems, ...contextualSectionItems]);
     const isHighlighted = isActive || isChildActive;
 
+    // A hub with its own landing page (e.g. /aa, /pq): clicking the row should
+    // take you to that page and reveal its sub-tabs, not just toggle the tray.
+    const hubBase = item.href
+      ? new URL(item.href, "http://localhost").pathname
+      : null;
+    const onHubPath =
+      !!hubBase &&
+      hubBase !== "/" &&
+      (pathname === hubBase || pathname.startsWith(hubBase + "/"));
+    const handleRowClick = () => {
+      if (item.href && !onHubPath) {
+        // Navigating from another tab: go to the hub's overview and open it.
+        setOpenItem(item.title);
+        router.push(item.href);
+      } else {
+        toggleItem(item.title);
+      }
+    };
+
     if (hasSubItems) {
       return (
         <Collapsible
@@ -969,8 +989,8 @@ function AppSidebarContent() {
           className="group/collapsible"
         >
           <SidebarMenuItem>
-            <CollapsibleTrigger asChild>
-              <SidebarMenuButton
+            <SidebarMenuButton
+                onClick={handleRowClick}
                 tooltip={state === "collapsed" ? item.title : undefined}
                 className={cn(
                   "group relative overflow-hidden rounded-lg motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
@@ -1007,16 +1027,27 @@ function AppSidebarContent() {
                     >
                       {item.title}
                     </span>
-                    <ChevronRight
-                      className={cn(
-                        "h-3.5 w-3.5 text-muted-foreground transition-all duration-300",
-                        isItemOpen && "rotate-90 text-primary"
-                      )}
-                    />
+                    <span
+                      role="button"
+                      aria-label={isItemOpen ? `Collapse ${item.title}` : `Expand ${item.title}`}
+                      onClick={(e) => {
+                        // Chevron is a pure toggle: never navigate, just open/close.
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleItem(item.title);
+                      }}
+                      className="-mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-muted"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          "h-3.5 w-3.5 text-muted-foreground transition-all duration-300",
+                          isItemOpen && "rotate-90 text-primary"
+                        )}
+                      />
+                    </span>
                   </>
                 )}
               </SidebarMenuButton>
-            </CollapsibleTrigger>
             {state === "expanded" && (
               <CollapsibleContent
                 className={cn(
