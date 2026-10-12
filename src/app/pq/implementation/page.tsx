@@ -36,6 +36,17 @@ const shortLabel: Record<ImplState, string> = {
 
 function Cell({ eip, client }: { eip: number; client: string }) {
   const impl = implFor(eip, client);
+  // "not-started" is the common case — render it as a faint dot so the eye
+  // lands on real progress instead of a wall of identical chips.
+  if (impl.state === 'not-started') {
+    return (
+      <td className="px-2 py-2.5 text-center">
+        <span className="text-muted-foreground/30" title={IMPL_STATE_LABEL['not-started']}>
+          ·
+        </span>
+      </td>
+    );
+  }
   const chip = (
     <span className={`inline-block rounded-md border px-1.5 py-0.5 text-[10px] font-semibold ${stateClass[impl.state]}`}>
       {shortLabel[impl.state]}
@@ -54,28 +65,27 @@ function Cell({ eip, client }: { eip: number; client: string }) {
   );
 }
 
+/** A matrix rendered as a seamless sub-section (no own card border). */
 function Matrix({ title, clients, eips }: { title: string; clients: readonly string[]; eips: typeof PQ_EIPS }) {
   if (eips.length === 0) return null;
   const cols = [...clients, 'Devnet'];
   return (
-    <section className="overflow-hidden rounded-xl border border-border bg-card/60">
-      <div className="border-b border-border px-4 py-2.5">
-        <h3 className="text-sm font-bold tracking-tight text-foreground">{title}</h3>
-      </div>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[720px] text-sm">
+    <div className="border-t border-border pt-4">
+      <h3 className="px-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{title}</h3>
+      <div className="mt-2 overflow-x-auto px-3 pb-1">
+        <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground">
-              <th className="px-4 py-2.5 text-left font-semibold">EIP</th>
+            <tr className="border-b border-border/70 text-[11px] uppercase tracking-wider text-muted-foreground">
+              <th className="px-2 py-2 text-left font-semibold">EIP</th>
               {cols.map((c) => (
-                <th key={c} className="px-2 py-2.5 text-center font-semibold">{c}</th>
+                <th key={c} className="px-2 py-2 text-center font-semibold">{c}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-border/60">
+          <tbody className="divide-y divide-border/50">
             {eips.map((e) => (
               <tr key={e.number} className="transition-colors hover:bg-muted/40">
-                <td className="px-4 py-2.5 align-middle">
+                <td className="px-2 py-2.5 align-middle">
                   <Link href={`/eip/${e.number}`} className="inline-flex items-center gap-1 font-mono text-xs font-bold text-primary hover:underline">
                     {e.number} <ArrowUpRight className="h-3 w-3" />
                   </Link>
@@ -89,9 +99,17 @@ function Matrix({ title, clients, eips }: { title: string; clients: readonly str
           </tbody>
         </table>
       </div>
-    </section>
+    </div>
   );
 }
+
+const phaseBadge = (status: string) =>
+  'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' +
+  (status === 'live'
+    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+    : status === 'in-progress'
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
+      : 'border-border bg-muted/50 text-muted-foreground');
 
 export default function PqImplementationPage() {
   const elEips = PQ_EIPS.filter((e) => e.layer === 'Execution' || e.layer === 'Data');
@@ -99,53 +117,59 @@ export default function PqImplementationPage() {
 
   return (
     <div className="space-y-4">
-      <section id="pq-implementation" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5 sm:p-6">
-        <div className="flex items-center gap-2">
-          <h2 className="text-sm font-bold tracking-tight text-foreground">Implementation &amp; Devnet matrix</h2>
-          <CopyLinkButton sectionId="pq-implementation" className="h-6 w-6" />
+      {/* ── Core: the spec → running code matrix ───────────────────────── */}
+      <section id="pq-implementation" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="px-5 pt-5">
+          <div className="flex items-center gap-2">
+            <h2 className="text-base font-bold tracking-tight text-foreground">Implementation &amp; devnet matrix</h2>
+            <CopyLinkButton sectionId="pq-implementation" className="h-6 w-6" />
+          </div>
+          <p className="mt-1.5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            EIP status alone doesn&apos;t tell you whether PQ work is becoming deployable. This tracks each proposal from
+            spec to running code across the relevant clients, the measurable bridge between the EIP and upgrade readiness.
+            Most PQ consensus work is early-stage, so the frontier is deliberately visible.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {IMPL_STATE_ORDER.map((s) => (
+              <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${stateClass[s]}`}>
+                {IMPL_STATE_LABEL[s]}
+              </span>
+            ))}
+          </div>
         </div>
-        <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          EIP status alone doesn&apos;t tell you whether PQ work is becoming deployable. This tracks each proposal from
-          spec to running code across the relevant clients, the measurable bridge between the EIP and upgrade readiness.
-          Most PQ consensus work is early-stage, so the frontier is deliberately visible.
+
+        <div className="mt-4">
+          <Matrix title="Execution-layer PQ EIPs" clients={PQ_EL_CLIENTS} eips={elEips} />
+          <Matrix title="Consensus-layer PQ EIPs" clients={PQ_CL_CLIENTS} eips={clEips} />
+        </div>
+
+        <p className="border-t border-border px-5 py-3 text-[12px] leading-relaxed text-muted-foreground">
+          Curated from client PRs, the frames-devnet test suite, and ACD updates. Cells link to the implementation PR
+          where one exists, bridging EIP specification and Forkcast-style upgrade readiness without duplicating either.
+          Corrections welcome at dev@avarch.org.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          {IMPL_STATE_ORDER.map((s) => (
-            <span key={s} className={`inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-semibold ${stateClass[s]}`}>
-              {IMPL_STATE_LABEL[s]}
-            </span>
-          ))}
-        </div>
       </section>
 
-      {/* PQTS research testnet (from the PQTS breakout calls) */}
-      <section className="rounded-xl border border-blue-500/30 bg-blue-500/5 p-4 sm:p-5">
+      {/* ── Evidence: the live PQ testnet (PQTS phases + Daisugi telemetry) ─ */}
+      <section className="rounded-xl border border-border bg-card/60 p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
-            <FlaskConical className="h-4 w-4 text-blue-500" /> PQTS research testnet
-          </h3>
+          <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-foreground">
+            <FlaskConical className="h-4 w-4 text-primary" /> Live PQ testnet
+          </h2>
           <Link href={PQTS_TESTNET.callsHref} className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline">
             <Video className="h-3.5 w-3.5" /> PQTS breakout calls
           </Link>
         </div>
-        <p className="mt-1 text-[11px] text-muted-foreground">
+        <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
           End-to-end PQ signatures exercised on a live research testnet. Chaired by {PQTS_TESTNET.chair}; contributors: {PQTS_TESTNET.contributors.join(', ')}.
         </p>
+
         <div className="mt-3 grid gap-3 sm:grid-cols-3">
           {PQTS_TESTNET.phases.map((p) => (
-            <div key={p.version} className="rounded-lg border border-border bg-background/60 p-3.5">
+            <div key={p.version} className="rounded-lg border border-border bg-background/50 p-3.5">
               <div className="flex items-center justify-between">
                 <span className="font-mono text-xs font-bold text-foreground">{p.version}</span>
-                <span
-                  className={
-                    'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold ' +
-                    (p.status === 'live'
-                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                      : p.status === 'in-progress'
-                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
-                        : 'border-border bg-muted/50 text-muted-foreground')
-                  }
-                >
+                <span className={phaseBadge(p.status)}>
                   {p.status === 'live' && <Radio className="h-2.5 w-2.5" />}
                   {p.status === 'live' ? 'live' : p.status === 'in-progress' ? 'in progress' : 'planned'}
                 </span>
@@ -164,37 +188,28 @@ export default function PqImplementationPage() {
             </div>
           ))}
         </div>
+
+        {/* Live telemetry, proxied from explorer.daisugi.fyi, flows seamlessly below. */}
+        <DaisugiPanel embedded />
       </section>
 
-      {/* Live Daisugi testnet telemetry, proxied from explorer.daisugi.fyi */}
-      <DaisugiPanel />
-
-      {/* PQ signature schemes in play */}
-      <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
-        <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
+      {/* ── Reference: PQ signature schemes in play ────────────────────── */}
+      <section className="rounded-xl border border-border bg-card/60 p-5">
+        <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-foreground">
           <KeyRound className="h-4 w-4 text-primary" /> PQ signature schemes in play
-        </h3>
+        </h2>
         <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
           {PQ_SCHEMES.map((s) => (
-            <div key={s.name} className="rounded-lg border border-border bg-background/60 p-3">
+            <div key={s.name} className="rounded-lg border border-border bg-background/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-mono text-xs font-semibold text-foreground">{s.name}</span>
                 <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">{s.family}</span>
               </div>
-              <p className="mt-1 text-[11px] text-muted-foreground"><span className="font-medium text-foreground/80">{s.use}.</span> {s.note}</p>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground"><span className="font-medium text-foreground/80">{s.use}.</span> {s.note}</p>
             </div>
           ))}
         </div>
       </section>
-
-      <Matrix title="Execution-layer PQ EIPs" clients={PQ_EL_CLIENTS} eips={elEips} />
-      <Matrix title="Consensus-layer PQ EIPs" clients={PQ_CL_CLIENTS} eips={clEips} />
-
-      <div className="rounded-xl border border-border bg-muted/30 p-3 text-[12px] leading-relaxed text-muted-foreground">
-        Curated from client PRs, the frames-devnet test suite, and ACD updates. Cells link to the implementation PR where
-        one exists. This creates a bridge between EIP specification and Forkcast-style upgrade readiness without
-        duplicating either. Corrections welcome at dev@avarch.org.
-      </div>
     </div>
   );
 }
