@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { Check, Copy, Download } from 'lucide-react';
+import { Check, Copy, Download, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ─────────────────────────── helpers ─────────────────────────── */
@@ -45,91 +45,156 @@ function SectionHead({ label, title, description }: { label: string; title: stri
 
 /* ─────────────────────────── logos ─────────────────────────── */
 
-const LOGOS = [
+const V2 = '/brand/logov2/';
+const assetHref = (file: string) => V2 + encodeURIComponent(file);
+const MARK_BLACK = 'eipsinsight_logo_hero[black].png';
+
+type Variant = {
+  id: string;
+  name: string;
+  desc: string;
+  black: string;
+  white: string | null;
+  wide: boolean;
+};
+
+const LOGO_VARIANTS: Variant[] = [
   {
-    name: 'Wordmark - Light',
-    file: '[LEFT] Logo + EIPsInsight [Black].png',
-    bg: 'bg-white',
-    hint: 'Use on light backgrounds',
-    animated: false,
+    id: 'stacked',
+    name: 'Primary lockup',
+    desc: 'Mark stacked above the wordmark. The default — reach for it wherever the space is roughly square.',
+    black: 'eipsinsight_logo_combined[black].png',
+    white: 'eipsinsight_logo_combined[white].png',
+    wide: false,
   },
   {
-    name: 'Wordmark - Dark',
-    file: '[LEFT] Logo + EIPsInsight [White].png',
-    bg: 'bg-zinc-950',
-    hint: 'Use on dark backgrounds',
-    animated: false,
+    id: 'landscape',
+    name: 'Horizontal lockup',
+    desc: 'Mark beside the wordmark. For wide spaces — site headers, banners, email signatures.',
+    black: 'eipsinsight_logo_landscape[black].png',
+    white: 'eipsinsight_logo_landscape[white].png',
+    wide: true,
   },
   {
-    name: 'Icon - Light',
-    file: 'Circle logo [Black].png',
-    bg: 'bg-white',
-    hint: 'Square / avatar contexts',
-    animated: false,
+    id: 'mark',
+    name: 'Icon / mark',
+    desc: 'The rising-chart mark on its own. Avatars, favicons, app icons, social profile pictures.',
+    black: 'eipsinsight_logo_hero[black].png',
+    white: 'eipsinsight_logo_hero[white].png',
+    wide: false,
   },
   {
-    name: 'Icon - Dark',
-    file: 'Circle logo [White].png',
-    bg: 'bg-zinc-950',
-    hint: 'Square / avatar contexts',
-    animated: false,
-  },
-  {
-    name: 'Animated (Light)',
-    file: 'EIPsInsightsDark.gif',
-    bg: 'bg-white',
-    hint: 'Loading states, splash screens',
-    animated: true,
-  },
-  {
-    name: 'Animated (Dark)',
-    file: 'EIPsInsights.gif',
-    bg: 'bg-zinc-950',
-    hint: 'Loading states, splash screens',
-    animated: true,
-  },
-  {
-    name: 'Favicon',
-    file: 'eipFavicon.png',
-    bg: 'bg-card',
-    hint: 'Browser tab, app icon',
-    animated: false,
+    id: 'wordmark',
+    name: 'Wordmark',
+    desc: 'The EIPsInsight name alone, set in Libre Baskerville — the same face as the site navbar.',
+    black: 'eipsinsight_logo_font[black].png',
+    white: null,
+    wide: true,
   },
 ];
 
-function LogoCard({ name, file, bg, hint, animated }: typeof LOGOS[0]) {
-  const encoded = encodeURIComponent(file);
-  const src = `/brand/logo/${encoded}`;
-  const isWide = name.startsWith('Wordmark');
-
+function DownloadPill({ file, label }: { file: string; label: string }) {
   return (
-    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card/60 hover:border-primary/40 transition-colors">
-      <div className={cn('flex items-center justify-center p-8', bg, isWide ? 'h-36' : 'h-36')}>
-        <div className={cn('relative', isWide ? 'h-10 w-52' : 'h-16 w-16')}>
-          <Image
-            src={src}
-            alt={name}
-            fill
-            unoptimized={animated}
-            className="object-contain"
-            sizes={isWide ? '208px' : '64px'}
-          />
+    <a
+      href={assetHref(file)}
+      download={file}
+      className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/60 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
+    >
+      <Download className="h-3 w-3" />
+      {label}
+    </a>
+  );
+}
+
+/** A preview panel showing a logo on a light or dark surface. */
+function LogoPreview({ file, wide, dark, label }: { file: string; wide: boolean; dark: boolean; label?: string }) {
+  return (
+    <div className={cn('relative flex h-40 items-center justify-center p-8', dark ? 'bg-zinc-950' : 'bg-white')}>
+      <div className={cn('relative', wide ? 'h-12 w-full max-w-[240px]' : 'h-24 w-24')}>
+        <Image src={assetHref(file)} alt={label ?? file} fill className="object-contain" sizes={wide ? '240px' : '96px'} />
+      </div>
+    </div>
+  );
+}
+
+function VariantCard({ v }: { v: Variant }) {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card/60 transition-colors hover:border-primary/40">
+      <div className="grid grid-cols-2 divide-x divide-border">
+        <LogoPreview file={v.black} wide={v.wide} dark={false} label={`${v.name} (black)`} />
+        {v.white ? (
+          <LogoPreview file={v.white} wide={v.wide} dark label={`${v.name} (white)`} />
+        ) : (
+          <div className="flex h-40 items-center justify-center bg-zinc-950 px-4 text-center">
+            <span className="dec-title text-2xl font-semibold text-white">EIPsInsight</span>
+          </div>
+        )}
+      </div>
+      <div className="flex flex-col gap-2.5 border-t border-border px-4 py-3">
+        <div>
+          <p className="text-sm font-semibold text-foreground">{v.name}</p>
+          <p className="mt-0.5 text-[11px] leading-relaxed text-muted-foreground">{v.desc}</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <DownloadPill file={v.black} label="PNG black" />
+          {v.white && <DownloadPill file={v.white} label="PNG white" />}
         </div>
       </div>
-      <div className="flex items-center justify-between gap-2 border-t border-border px-4 py-3">
-        <div className="min-w-0">
-          <p className="truncate text-xs font-semibold text-foreground">{name}</p>
-          <p className="truncate text-[10px] text-muted-foreground">{hint}</p>
+    </div>
+  );
+}
+
+/** Hero showcase of the primary lockup with a light/dark preview toggle. */
+function LogoHero() {
+  const [dark, setDark] = useState(true);
+  const file = dark ? 'eipsinsight_logo_combined[white].png' : 'eipsinsight_logo_combined[black].png';
+  const tab = (active: boolean) =>
+    cn('px-3 py-1 text-[11px] font-semibold transition-colors', active ? 'bg-primary/15 text-foreground' : 'text-muted-foreground hover:text-foreground');
+  return (
+    <div className="overflow-hidden rounded-2xl border border-border bg-card/60">
+      <div className={cn('relative flex h-64 items-center justify-center transition-colors', dark ? 'bg-zinc-950' : 'bg-white')}>
+        <div className="relative h-40 w-40">
+          <Image src={assetHref(file)} alt="EIPsInsight logo" fill className="object-contain" sizes="160px" priority />
         </div>
-        <a
-          href={src}
-          download={file}
-          className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-border bg-muted/60 px-2.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground transition hover:border-primary/40 hover:text-foreground"
-        >
-          <Download className="h-3 w-3" />
-          PNG
-        </a>
+        <div className="absolute right-4 top-4 flex overflow-hidden rounded-lg border border-border bg-card/80 backdrop-blur">
+          <button type="button" onClick={() => setDark(false)} className={tab(!dark)}>Light</button>
+          <button type="button" onClick={() => setDark(true)} className={tab(dark)}>Dark</button>
+        </div>
       </div>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-5 py-4">
+        <div>
+          <p className="text-sm font-semibold text-foreground">Primary lockup</p>
+          <p className="text-[11px] text-muted-foreground">The full EIPsInsight logo. Grab the variant that matches your background.</p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <DownloadPill file="eipsinsight_logo_combined[black].png" label="PNG black" />
+          <DownloadPill file="eipsinsight_logo_combined[white].png" label="PNG white" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+type Dont = { label: string; imgClass?: string; wrapStyle?: React.CSSProperties; imgStyle?: React.CSSProperties };
+const DONTS: Dont[] = [
+  { label: "Don't recolor", imgStyle: { filter: 'sepia(1) saturate(6) hue-rotate(320deg)' } },
+  { label: "Don't rotate", imgClass: 'rotate-12' },
+  { label: "Don't stretch", wrapStyle: { transform: 'scaleX(1.7)' } },
+  { label: "Don't add shadows", imgStyle: { filter: 'drop-shadow(3px 5px 4px rgba(0,0,0,0.55))' } },
+];
+
+function DontTile({ label, imgClass, wrapStyle, imgStyle }: Dont) {
+  return (
+    <div className="overflow-hidden rounded-lg border border-border">
+      <div className="relative flex h-24 items-center justify-center overflow-hidden bg-white">
+        <div className="relative h-14 w-14" style={wrapStyle}>
+          <Image src={assetHref(MARK_BLACK)} alt="" fill className={cn('object-contain', imgClass)} style={imgStyle} sizes="56px" />
+        </div>
+        <span className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-white">
+          <X className="h-3 w-3" />
+        </span>
+      </div>
+      <p className="border-t border-border bg-card/60 px-2 py-1.5 text-center text-[10px] font-medium text-muted-foreground">{label}</p>
     </div>
   );
 }
@@ -157,15 +222,6 @@ const STATUS_COLORS: { name: string; light: string; dark: string; bg: string; de
   { name: 'Living', light: '#0891b2', dark: '#22d3ee', bg: 'bg-cyan-500/20', desc: 'Continuously updated' },
   { name: 'Stagnant', light: '#6b7280', dark: '#9ca3af', bg: 'bg-gray-500/20', desc: 'No activity for 6 months' },
   { name: 'Withdrawn', light: '#dc2626', dark: '#ef4444', bg: 'bg-red-500/20', desc: 'Withdrawn by author' },
-];
-
-const PERSONA_COLORS = [
-  { name: 'Developer', primary: '#10b981', primaryDark: '#34d399', bg: 'bg-emerald-500/10', ring: '#10b981', desc: 'EIP developers and protocol engineers' },
-  { name: 'Editor', primary: '#3b82f6', primaryDark: '#60a5fa', bg: 'bg-blue-500/10', ring: '#3b82f6', desc: 'EIP editors and reviewers' },
-  { name: 'Researcher', primary: '#a78bfa', primaryDark: '#a78bfa', bg: 'bg-purple-500/10', ring: '#a78bfa', desc: 'Protocol researchers' },
-  { name: 'Builder', primary: '#fb923c', primaryDark: '#fdba74', bg: 'bg-orange-500/10', ring: '#fb923c', desc: 'dApp and tooling builders' },
-  { name: 'Enterprise', primary: '#8b5cf6', primaryDark: '#a78bfa', bg: 'bg-violet-500/10', ring: '#8b5cf6', desc: 'Enterprise & institutional users' },
-  { name: 'Newcomer', primary: '#a78bfa', primaryDark: '#c4b5fd', bg: 'bg-purple-500/10', ring: '#a78bfa', desc: 'First-time EIP explorers' },
 ];
 
 function SemanticSwatch({ name, cssVar, tailwind, desc }: typeof SEMANTIC_COLORS[0]) {
@@ -208,37 +264,6 @@ function StatusBadge({ name, light, dark, bg, desc }: typeof STATUS_COLORS[0]) {
         <div className="h-4 w-4 rounded-full border border-border" style={{ background: light }} title="Light" />
         <div className="h-4 w-4 rounded-full border border-border bg-zinc-900" style={{ background: dark }} title="Dark" />
         <CopyBtn text={light} />
-      </div>
-    </div>
-  );
-}
-
-function PersonaCard({ name, primary, primaryDark, bg, desc }: typeof PERSONA_COLORS[0]) {
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 hover:border-primary/40 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div
-          className={cn('flex h-10 w-10 items-center justify-center rounded-lg', bg)}
-          style={{ boxShadow: `0 0 0 1px ${primary}40` }}
-        >
-          <div className="h-3 w-3 rounded-full" style={{ background: `light-dark(${primary}, ${primaryDark})` }} />
-        </div>
-        <div className="flex gap-1">
-          <span className="text-[10px] text-muted-foreground">Light</span>
-          <div className="h-4 w-4 rounded border border-border" style={{ background: primary }} />
-          <span className="text-[10px] text-muted-foreground">Dark</span>
-          <div className="h-4 w-4 rounded border border-border" style={{ background: primaryDark }} />
-        </div>
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-foreground">{name}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>
-      </div>
-      <div className="flex gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1 rounded bg-muted/60 px-2 py-1">
-          <code className="truncate text-[10px] text-muted-foreground">{primary}</code>
-          <CopyBtn text={primary} />
-        </div>
       </div>
     </div>
   );
@@ -309,16 +334,59 @@ export default function AssetsPage() {
         <SectionHead
           label="01 - Identity"
           title="Logo & Wordmark"
-          description="Use the black variant on light backgrounds and the white variant on dark backgrounds. Never alter the logo proportions or colors."
+          description="The EIPsInsight logo is a rising-chart mark paired with the wordmark set in Libre Baskerville. Use the black variant on light backgrounds and the white variant on dark ones."
         />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {LOGOS.map((logo) => (
-            <LogoCard key={logo.name} {...logo} />
+
+        <LogoHero />
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {LOGO_VARIANTS.map((v) => (
+            <VariantCard key={v.id} v={v} />
           ))}
         </div>
-        <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">Usage rules: </span>
-          Maintain clear space equal to the icon height on all sides. Do not rotate, stretch, recolor, or add effects to the logo.
+
+        {/* Vector & source files */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
+          <div className="text-xs text-muted-foreground">
+            <span className="font-semibold text-foreground">Vector &amp; source files. </span>
+            Scalable and print-ready — use these for large formats, merch, or editing in design tools.
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <DownloadPill file="eipsinsight_svg.svg" label="SVG" />
+            <DownloadPill file="eipsinsight logo pdf.pdf" label="PDF" />
+            <DownloadPill file="eipsinsight logo.ai" label="AI" />
+          </div>
+        </div>
+
+        {/* Clear space + Do / Don't */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card/60 p-5">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Clear space &amp; sizing</p>
+            <div className="flex items-center gap-5">
+              <div className="relative flex h-28 w-28 shrink-0 items-center justify-center rounded-lg border border-dashed border-primary/50 bg-white p-5">
+                <div className="relative h-full w-full">
+                  <Image src={assetHref(MARK_BLACK)} alt="Clear space" fill className="object-contain" sizes="80px" />
+                </div>
+              </div>
+              <ul className="space-y-2 text-xs leading-relaxed text-muted-foreground">
+                <li>Keep clear space of at least the mark&apos;s height on every side.</li>
+                <li>Minimum size: <span className="font-medium text-foreground">24px</span> for the mark, <span className="font-medium text-foreground">120px</span> wide for the lockups.</li>
+                <li>Never crowd the logo with text, other marks, or busy imagery.</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/60 p-5">
+            <p className="mb-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Please don&apos;t</p>
+            <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+              {DONTS.map((d) => (
+                <DontTile key={d.label} {...d} />
+              ))}
+            </div>
+            <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">
+              Don&apos;t recolor, rotate, stretch, or add effects. Keep the logo in its original black or white.
+            </p>
+          </div>
         </div>
       </section>
 
@@ -350,36 +418,10 @@ export default function AssetsPage() {
         </div>
       </section>
 
-      {/* ── Persona Colors ── */}
-      <section>
-        <SectionHead
-          label="04 - Personas"
-          title="Persona Color System"
-          description="Six personas drive the app's accent system at runtime. The --persona-primary CSS variable switches automatically. Never hardcode persona colors in shared components - use text-primary and bg-primary/10 instead."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PERSONA_COLORS.map((p) => (
-            <PersonaCard key={p.name} {...p} />
-          ))}
-        </div>
-        <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">How it works: </span>
-          <code className="rounded bg-muted px-1">PersonaProvider</code> sets{' '}
-          <code className="rounded bg-muted px-1">data-persona</code> on{' '}
-          <code className="rounded bg-muted px-1">&lt;html&gt;</code> and{' '}
-          <code className="rounded bg-muted px-1">globals.css</code> maps each value to{' '}
-          <code className="rounded bg-muted px-1">--persona-primary</code>,{' '}
-          <code className="rounded bg-muted px-1">--persona-accent</code>, and{' '}
-          <code className="rounded bg-muted px-1">--persona-ring</code>. These feed into{' '}
-          <code className="rounded bg-muted px-1">--primary</code> and{' '}
-          <code className="rounded bg-muted px-1">--ring</code>.
-        </div>
-      </section>
-
       {/* ── Typography ── */}
       <section>
         <SectionHead
-          label="05 - Typography"
+          label="04 - Typography"
           title="Type Scale"
           description="Two font families: Inter for UI and body copy, Libre Baskerville for decorative headings (.dec-title)."
         />
@@ -422,7 +464,7 @@ export default function AssetsPage() {
       {/* ── Gradients ── */}
       <section>
         <SectionHead
-          label="06 - Effects"
+          label="05 - Effects"
           title="Gradients & Effects"
           description="Persona-aware utility classes for CTAs, backgrounds, and focus glows. These update automatically when the persona changes."
         />
@@ -458,7 +500,7 @@ export default function AssetsPage() {
       {/* ── Spacing & Tokens ── */}
       <section>
         <SectionHead
-          label="07 - Layout"
+          label="06 - Layout"
           title="Spacing & Layout Tokens"
           description="Shared layout primitives. Use these rather than raw Tailwind values to keep spacing consistent across pages."
         />

@@ -3,8 +3,9 @@
 import Image, { type ImageProps } from "next/image";
 import { cn } from "@/lib/utils";
 
-const LIGHT_LOGO_SRC = "/brand/logo/EIPsInsightsDark.gif";
-const DARK_LOGO_SRC = "/brand/logo/EIPsInsights.gif";
+// v2 brand mark (rising-chart). Black on light surfaces, white on dark.
+const LIGHT_LOGO_SRC = "/brand/logov2/mark-black.png";
+const DARK_LOGO_SRC = "/brand/logov2/mark-white.png";
 
 type ThemedLogoGifProps = Omit<ImageProps, "src" | "alt"> & {
   alt?: string;

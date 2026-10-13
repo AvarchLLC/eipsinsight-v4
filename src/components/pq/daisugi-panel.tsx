@@ -84,7 +84,7 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Boxes; label: st
   );
 }
 
-export function DaisugiPanel() {
+export function DaisugiPanel({ embedded = false }: { embedded?: boolean } = {}) {
   const [data, setData] = useState<Testnet | null>(null);
   const [history, setHistory] = useState<HistPoint[]>([]);
   const [failed, setFailed] = useState(false);
@@ -116,7 +116,12 @@ export function DaisugiPanel() {
 
   if (data === null) {
     return (
-      <section className="rounded-xl border border-border bg-card/60 p-4 text-xs text-muted-foreground">
+      <section
+        className={cn(
+          'text-xs text-muted-foreground',
+          embedded ? 'border-t border-border pt-4' : 'rounded-xl border border-border bg-card/60 p-4',
+        )}
+      >
         <span className="inline-flex items-center gap-2">
           <Radio className="h-3.5 w-3.5 animate-pulse" /> Connecting to the Daisugi testnet…
         </span>
@@ -127,7 +132,7 @@ export function DaisugiPanel() {
   const ex = data.explorerBase;
 
   return (
-    <section className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+    <section className={cn(embedded ? 'border-t border-border pt-4' : 'rounded-xl border border-border bg-card/60 p-4 sm:p-5')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
           <Activity className="h-4 w-4 text-primary" /> Daisugi testnet — live

@@ -7,6 +7,7 @@ import Footer from '@/components/footer';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
 import { GithubSourceLink } from '@/components/github-source-link';
 import { AIDisclaimerBox } from '@/components/ai-disclaimer-box';
+import { Breadcrumbs } from '@/components/breadcrumbs';
 
 /**
  * The default app chrome: sidebar + top navbar + footer. Extracted verbatim
@@ -22,6 +23,7 @@ export function MainAppShell({ children }: { children: React.ReactNode }) {
           <Navbar />
         </div>
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          <Breadcrumbs />
           <main className="min-h-full w-full">
             {children}
           </main>

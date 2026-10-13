@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import {
   BookOpen,
   Home,
@@ -199,7 +199,7 @@ const sidebarSections: SidebarSection[] = [
         icon: Boxes,
         href: "/aa",
         items: [
-          { title: "Dashboard", href: "/aa" },
+          { title: "Overview", href: "/aa/overview" },
           { title: "History & Timeline", href: "/aa/history" },
           { title: "Breakout Calls", href: "/aa/calls" },
         ],
@@ -220,7 +220,7 @@ const sidebarSections: SidebarSection[] = [
         icon: Shield,
         href: "/pq",
         items: [
-          { title: "Overview", href: "/pq" },
+          { title: "Overview", href: "/pq/overview" },
           { title: "EIP Registry", href: "/pq/eips" },
           { title: "Roadmap Coverage", href: "/pq/roadmap" },
           { title: "Dependencies", href: "/pq/dependencies" },
@@ -382,6 +382,7 @@ function AppSidebarContent() {
   const searchParams = useSearchParams();
   const { state, toggleSidebar: toggleSidebarUI } = useSidebar();
   const { isOpen, toggleSidebar } = useSidebarStore();
+  const router = useRouter();
 
   // Accordion behavior: only one parent open at a time
   const [openItem, setOpenItem] = React.useState<string | null>(null);
@@ -578,10 +579,31 @@ function AppSidebarContent() {
     return () => window.removeEventListener("toggle-sidebar", handler);
   }, [handleToggle]);
 
-  // Auto-expand the correct collapsible on route change.
+  // Auto-expand the collapsible that owns the current URL. Falls back from the
+  // curated map to a generic prefix match on each item's href, so featured hubs
+  // (/pq, /aa, /lucid, …) and any new section expand without special-casing.
   React.useEffect(() => {
-    const activeItem = getActiveItemTitle(pathname);
-    setOpenItem(activeItem ?? null);
+    let active = getActiveItemTitle(pathname);
+    if (!active) {
+      outer: for (const sec of sidebarSections) {
+        for (const it of sec.items) {
+          const base = it.href ? new URL(it.href, "http://localhost").pathname : null;
+          if (base && base !== "/" && (pathname === base || pathname.startsWith(base + "/"))) {
+            active = it.title;
+            break outer;
+          }
+          if (it.items?.some((s) => {
+            const u = new URL(s.href, "http://localhost");
+            const p = u.pathname;
+            return !u.search && p !== "/" && (pathname === p || pathname.startsWith(p + "/"));
+          })) {
+            active = it.title;
+            break outer;
+          }
+        }
+      }
+    }
+    setOpenItem(active ?? null);
   }, [pathname]);
 
   // ========================================================================
@@ -638,31 +660,60 @@ function AppSidebarContent() {
    * This fixes the old bug where "Overview" (/tools) was highlighted when
    * visiting /eip-builder, because the old code used prefix matching.
    */
+  // Every leaf sub-item href across the static sidebar config — used to pick the
+  // single best match for the current URL (so nested pages highlight the most
+  // specific item, and the left panel always tracks the URL).
+  const allLeafHrefs = React.useMemo(() => {
+    const out: { href: string; sectionId?: string }[] = [];
+    const walk = (subs?: SidebarSubItem[]) => {
+      for (const s of subs ?? []) {
+        if (s.items?.length) walk(s.items);
+        else out.push({ href: s.href, sectionId: s.sectionId });
+      }
+    };
+    for (const sec of sidebarSections) for (const it of sec.items) walk(it.items);
+    return out;
+  }, []);
+
+  // The href of the single sub-item that best matches the current URL.
+  // Priority: exact path+query (+ active section) > longest path-prefix match.
+  const bestSubHref = React.useMemo(() => {
+    let best: string | null = null;
+    let bestScore = -1;
+    for (const { href, sectionId: sid } of allLeafHrefs) {
+      const url = new URL(href, "http://localhost");
+      const p = url.pathname;
+      const params = new URLSearchParams(url.search);
+      params.sort();
+      const sectionId = sid || url.hash.replace(/^#/, "");
+      let score = -1;
+      if (pathname === p && params.toString() === currentSearchStr) {
+        if (sectionId) {
+          const sectionActive = activeSection ? activeSection === sectionId : hash === `#${sectionId}`;
+          score = sectionActive ? 100_000 + p.length : -1;
+        } else {
+          score = 10_000 + p.length;
+        }
+      } else if (!url.search && !sectionId && (pathname === p || pathname.startsWith(p + "/"))) {
+        // Nested page: longest matching ancestor path wins.
+        score = p.length;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        best = href;
+      }
+    }
+    return best;
+  }, [allLeafHrefs, pathname, currentSearchStr, activeSection, hash]);
+
   const isSubItemActive = React.useCallback(
     (subItem: SidebarSubItem): boolean => {
       if (subItem.items?.length) {
         return subItem.items.some((child) => isSubItemActive(child));
       }
-      // Parse the href into path + search
-      const url = new URL(subItem.href, "http://localhost");
-      const hrefPath = url.pathname;
-
-      // Path must match exactly (no prefix matching for sub-items!)
-      if (pathname !== hrefPath) return false;
-
-      // Compare query params — both sides sorted for order-insensitive match
-      const hrefParams = new URLSearchParams(url.search);
-      hrefParams.sort();
-      if (hrefParams.toString() !== currentSearchStr) return false;
-
-      const sectionId = subItem.sectionId || url.hash.replace(/^#/, "");
-      if (sectionId) {
-        if (activeSection) return activeSection === sectionId;
-        return hash === `#${sectionId}`;
-      }
-      return true;
+      return subItem.href === bestSubHref;
     },
-    [pathname, currentSearchStr, activeSection, hash]
+    [bestSubHref]
   );
 
   /**
@@ -910,6 +961,25 @@ function AppSidebarContent() {
     const isChildActive = hasActiveChild([...staticItems, ...contextualSectionItems]);
     const isHighlighted = isActive || isChildActive;
 
+    // A hub with its own landing page (e.g. /aa, /pq): clicking the row should
+    // take you to that page and reveal its sub-tabs, not just toggle the tray.
+    const hubBase = item.href
+      ? new URL(item.href, "http://localhost").pathname
+      : null;
+    const onHubPath =
+      !!hubBase &&
+      hubBase !== "/" &&
+      (pathname === hubBase || pathname.startsWith(hubBase + "/"));
+    const handleRowClick = () => {
+      if (item.href && !onHubPath) {
+        // Navigating from another tab: go to the hub's overview and open it.
+        setOpenItem(item.title);
+        router.push(item.href);
+      } else {
+        toggleItem(item.title);
+      }
+    };
+
     if (hasSubItems) {
       return (
         <Collapsible
@@ -919,8 +989,8 @@ function AppSidebarContent() {
           className="group/collapsible"
         >
           <SidebarMenuItem>
-            <CollapsibleTrigger asChild>
-              <SidebarMenuButton
+            <SidebarMenuButton
+                onClick={handleRowClick}
                 tooltip={state === "collapsed" ? item.title : undefined}
                 className={cn(
                   "group relative overflow-hidden rounded-lg motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
@@ -957,16 +1027,27 @@ function AppSidebarContent() {
                     >
                       {item.title}
                     </span>
-                    <ChevronRight
-                      className={cn(
-                        "h-3.5 w-3.5 text-muted-foreground transition-all duration-300",
-                        isItemOpen && "rotate-90 text-primary"
-                      )}
-                    />
+                    <span
+                      role="button"
+                      aria-label={isItemOpen ? `Collapse ${item.title}` : `Expand ${item.title}`}
+                      onClick={(e) => {
+                        // Chevron is a pure toggle: never navigate, just open/close.
+                        e.preventDefault();
+                        e.stopPropagation();
+                        toggleItem(item.title);
+                      }}
+                      className="-mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded hover:bg-muted"
+                    >
+                      <ChevronRight
+                        className={cn(
+                          "h-3.5 w-3.5 text-muted-foreground transition-all duration-300",
+                          isItemOpen && "rotate-90 text-primary"
+                        )}
+                      />
+                    </span>
                   </>
                 )}
               </SidebarMenuButton>
-            </CollapsibleTrigger>
             {state === "expanded" && (
               <CollapsibleContent
                 className={cn(
