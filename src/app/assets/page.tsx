@@ -224,15 +224,6 @@ const STATUS_COLORS: { name: string; light: string; dark: string; bg: string; de
   { name: 'Withdrawn', light: '#dc2626', dark: '#ef4444', bg: 'bg-red-500/20', desc: 'Withdrawn by author' },
 ];
 
-const PERSONA_COLORS = [
-  { name: 'Developer', primary: '#10b981', primaryDark: '#34d399', bg: 'bg-emerald-500/10', ring: '#10b981', desc: 'EIP developers and protocol engineers' },
-  { name: 'Editor', primary: '#3b82f6', primaryDark: '#60a5fa', bg: 'bg-blue-500/10', ring: '#3b82f6', desc: 'EIP editors and reviewers' },
-  { name: 'Researcher', primary: '#a78bfa', primaryDark: '#a78bfa', bg: 'bg-purple-500/10', ring: '#a78bfa', desc: 'Protocol researchers' },
-  { name: 'Builder', primary: '#fb923c', primaryDark: '#fdba74', bg: 'bg-orange-500/10', ring: '#fb923c', desc: 'dApp and tooling builders' },
-  { name: 'Enterprise', primary: '#8b5cf6', primaryDark: '#a78bfa', bg: 'bg-violet-500/10', ring: '#8b5cf6', desc: 'Enterprise & institutional users' },
-  { name: 'Newcomer', primary: '#a78bfa', primaryDark: '#c4b5fd', bg: 'bg-purple-500/10', ring: '#a78bfa', desc: 'First-time EIP explorers' },
-];
-
 function SemanticSwatch({ name, cssVar, tailwind, desc }: typeof SEMANTIC_COLORS[0]) {
   return (
     <div className="flex items-center gap-3 rounded-lg border border-border bg-card/60 p-3">
@@ -273,37 +264,6 @@ function StatusBadge({ name, light, dark, bg, desc }: typeof STATUS_COLORS[0]) {
         <div className="h-4 w-4 rounded-full border border-border" style={{ background: light }} title="Light" />
         <div className="h-4 w-4 rounded-full border border-border bg-zinc-900" style={{ background: dark }} title="Dark" />
         <CopyBtn text={light} />
-      </div>
-    </div>
-  );
-}
-
-function PersonaCard({ name, primary, primaryDark, bg, desc }: typeof PERSONA_COLORS[0]) {
-  return (
-    <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-4 hover:border-primary/40 transition-colors">
-      <div className="flex items-start justify-between gap-2">
-        <div
-          className={cn('flex h-10 w-10 items-center justify-center rounded-lg', bg)}
-          style={{ boxShadow: `0 0 0 1px ${primary}40` }}
-        >
-          <div className="h-3 w-3 rounded-full" style={{ background: `light-dark(${primary}, ${primaryDark})` }} />
-        </div>
-        <div className="flex gap-1">
-          <span className="text-[10px] text-muted-foreground">Light</span>
-          <div className="h-4 w-4 rounded border border-border" style={{ background: primary }} />
-          <span className="text-[10px] text-muted-foreground">Dark</span>
-          <div className="h-4 w-4 rounded border border-border" style={{ background: primaryDark }} />
-        </div>
-      </div>
-      <div>
-        <p className="text-sm font-semibold text-foreground">{name}</p>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{desc}</p>
-      </div>
-      <div className="flex gap-2">
-        <div className="flex min-w-0 flex-1 items-center gap-1 rounded bg-muted/60 px-2 py-1">
-          <code className="truncate text-[10px] text-muted-foreground">{primary}</code>
-          <CopyBtn text={primary} />
-        </div>
       </div>
     </div>
   );
@@ -458,36 +418,10 @@ export default function AssetsPage() {
         </div>
       </section>
 
-      {/* ── Persona Colors ── */}
-      <section>
-        <SectionHead
-          label="04 - Personas"
-          title="Persona Color System"
-          description="Six personas drive the app's accent system at runtime. The --persona-primary CSS variable switches automatically. Never hardcode persona colors in shared components - use text-primary and bg-primary/10 instead."
-        />
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {PERSONA_COLORS.map((p) => (
-            <PersonaCard key={p.name} {...p} />
-          ))}
-        </div>
-        <div className="mt-4 rounded-xl border border-border bg-muted/40 px-4 py-3 text-xs text-muted-foreground">
-          <span className="font-semibold text-foreground">How it works: </span>
-          <code className="rounded bg-muted px-1">PersonaProvider</code> sets{' '}
-          <code className="rounded bg-muted px-1">data-persona</code> on{' '}
-          <code className="rounded bg-muted px-1">&lt;html&gt;</code> and{' '}
-          <code className="rounded bg-muted px-1">globals.css</code> maps each value to{' '}
-          <code className="rounded bg-muted px-1">--persona-primary</code>,{' '}
-          <code className="rounded bg-muted px-1">--persona-accent</code>, and{' '}
-          <code className="rounded bg-muted px-1">--persona-ring</code>. These feed into{' '}
-          <code className="rounded bg-muted px-1">--primary</code> and{' '}
-          <code className="rounded bg-muted px-1">--ring</code>.
-        </div>
-      </section>
-
       {/* ── Typography ── */}
       <section>
         <SectionHead
-          label="05 - Typography"
+          label="04 - Typography"
           title="Type Scale"
           description="Two font families: Inter for UI and body copy, Libre Baskerville for decorative headings (.dec-title)."
         />
@@ -530,7 +464,7 @@ export default function AssetsPage() {
       {/* ── Gradients ── */}
       <section>
         <SectionHead
-          label="06 - Effects"
+          label="05 - Effects"
           title="Gradients & Effects"
           description="Persona-aware utility classes for CTAs, backgrounds, and focus glows. These update automatically when the persona changes."
         />
@@ -566,7 +500,7 @@ export default function AssetsPage() {
       {/* ── Spacing & Tokens ── */}
       <section>
         <SectionHead
-          label="07 - Layout"
+          label="06 - Layout"
           title="Spacing & Layout Tokens"
           description="Shared layout primitives. Use these rather than raw Tailwind values to keep spacing consistent across pages."
         />
