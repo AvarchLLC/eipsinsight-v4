@@ -136,16 +136,19 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Boxes; label: st
 }
 
 /**
- * Live EIP-8141 frame-transaction activity on frames-devnet-1, indexed from the
- * devnet execution RPC into Postgres by the scheduler. Shows whether native AA
+ * Live EIP-8141 frame-transaction activity on the Frame Transactions devnet
+ * (bogota-devnet-0), indexed from the devnet execution RPC into Postgres by the
+ * scheduler. Shows whether native AA
  * (batched frames + flexible signatures) is actually being exercised under load.
  */
 type UsageData = Awaited<ReturnType<typeof client.aa.getUsageStats>>;
 
 // Newest devnet first. The panel shows the first one that has indexed data, so it
 // auto-advances to a new devnet once the scheduler starts indexing it, and keeps
-// showing the previous one's history until then.
-const DEFAULT_DEVNET_PREFERENCE = ['frames-devnet-1', 'frames-devnet-0'];
+// showing the previous one's history until then. The Frame Transactions series was
+// renamed frames-devnet -> bogota-devnet (Oct 2026); bogota-devnet-0 is the live
+// continuation of frames-devnet-0 (same chain), which stays as ended history.
+const DEFAULT_DEVNET_PREFERENCE = ['bogota-devnet-1', 'bogota-devnet-0', 'frames-devnet-0'];
 
 export function FramesDevnetPanel({ network }: { network?: string }) {
   const [data, setData] = useState<FramesData | null>(null);

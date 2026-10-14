@@ -26,8 +26,8 @@ const TIMELINE: MileStone[] = [
   { date: 'Sep 22, 2026', label: 'Frame Transaction Breakout #5: max verified gas raised to 500K; breakouts move to a bi-weekly cadence', kind: 'done' },
   { date: 'Sep 24, 2026', label: 'frames-devnet-0 went live — first EIP-8141 frame transactions on a public devnet (block 2130)', kind: 'done' },
   { date: 'Oct 9, 2026', label: 'frames-devnet@v1.0.0 — EIP-8141 expiry verifier deployed on-chain at 0x8141…FFFF; EIP-8250 / 8272 / 7906 join the devnet batch', kind: 'done' },
-  { date: 'Oct 10, 2026', label: 'frames-devnet-1 live (ethrex); Hive picks it up automatically', kind: 'done' },
-  { date: 'Oct 14, 2026', label: 'bogota-devnet@v1.1.0 — EELS branch renamed devnets/frames/1 → devnets/bogota/1; 8141 approval-rollback pinned by tests', kind: 'now' },
+  { date: 'Oct 10, 2026', label: 'New Frame Transactions devnet live (ethrex), served as bogota-devnet-0 — the frames-devnet-0 chain continued on a new RPC; Hive picks it up automatically', kind: 'done' },
+  { date: 'Oct 14, 2026', label: 'bogota-devnet@v1.1.0 — series renamed frames-devnet → bogota-devnet (EELS devnets/frames/1 → devnets/bogota/1); 8141 approval-rollback pinned by tests', kind: 'now' },
   { date: 'Oct 20, 2026', label: 'Frame Transaction Breakout #7 (agenda: devnet status, spec changes, open items)', kind: 'next' },
   { date: 'By Nov 3, 2026', label: 'Hegota scoping to complete by DEVCON', kind: 'next' },
 ];
@@ -95,7 +95,7 @@ const RELEASES: Release[] = [
 
 type Client = { name: string; status: 'ready' | 'pending'; note: string };
 const CLIENTS: Client[] = [
-  { name: 'ethrex', status: 'ready', note: 'Reference implementation; runs the public Frame Transactions devnet (frames-devnet-1).' },
+  { name: 'ethrex', status: 'ready', note: 'Reference implementation; runs the public Frame Transactions devnet (bogota-devnet-0).' },
   { name: 'Geth', status: 'ready', note: 'Passing the devnet suite; frame / keyed-nonce rejection mappings landed in bogota-devnet v1.1.0.' },
   { name: 'Nethermind', status: 'ready', note: 'Passing the suite; joined the ethrex public testnet as a validator.' },
   { name: 'Besu', status: 'pending', note: 'Frame / keyed-nonce rejection mappings landed in v1.1.0; full implementation still in progress.' },
@@ -189,7 +189,7 @@ export default function Eip8141OverviewPage() {
             <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
               <Package className="h-4 w-4 text-primary" /> Devnet &amp; spec-test releases
             </h3>
-            <span className="text-[11px] text-muted-foreground">frames-devnet-1 · Geth / ethrex / Nethermind passing</span>
+            <span className="text-[11px] text-muted-foreground">bogota-devnet-0 · Geth / ethrex / Nethermind passing</span>
           </div>
           <div className="mt-4 space-y-3">
             {RELEASES.map((r) => (
