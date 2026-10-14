@@ -36,8 +36,9 @@ export default function Eip8141Layout({ children }: { children: React.ReactNode 
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               EIP-8141 is the leading native account-abstraction design (Frames): unlike EIP-7702 and ERC-4337, it builds
               AA directly into the protocol. It is scheduled for inclusion as the Hegota headliner and is being hardened
-              in the Native AA breakouts, with a live spec-test devnet (frames-devnet) and reference clients. It is not
-              live on a public network yet, but the frames-devnet is actively producing frame transactions. Switch to{' '}
+              in the Native AA breakouts, with a live spec-test devnet (bogota-devnet, formerly frames-devnet) and
+              reference clients. It is not live on a public network yet, but the devnet is actively producing frame
+              transactions. Switch to{' '}
               <span className="font-medium text-foreground">Devnet activity</span> for live metrics, or stay on{' '}
               <span className="font-medium text-foreground">Proposal &amp; status</span> for the proposal, releases, and
               calls shaping it.
