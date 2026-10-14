@@ -535,7 +535,7 @@ export function UpgradeDetailBody({
                     </>
                   ) : slug === 'hegota' ? (
                     <>
-                      Devnets and feature testnets (such as <strong>focil-devnet-0</strong> for FOCIL EIP-7805 and <strong>frames-devnet-0</strong> for Frame Transactions EIP-8141) are developer testbeds for the Hegotá upgrade (Heze consensus + Bogota execution). Discover all specifications and client support matrices on the <Link href="/upgrade/devnets" className="font-semibold text-primary underline underline-offset-2">full devnets directory</Link>.
+                      Devnets and feature testnets (such as <strong>focil-devnet-0</strong> for FOCIL EIP-7805 and <strong>frames-devnet-1</strong> for Frame Transactions EIP-8141) are developer testbeds for the Hegotá upgrade (Heze consensus + Bogota execution). Discover all specifications and client support matrices on the <Link href="/upgrade/devnets" className="font-semibold text-primary underline underline-offset-2">full devnets directory</Link>.
                     </>
                   ) : (
                     <>

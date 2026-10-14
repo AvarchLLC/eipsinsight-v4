@@ -6,7 +6,7 @@ const AS_OF = 'October 2026';
 
 const FACTS: { icon: typeof Radio; label: string; value: string; accent?: boolean }[] = [
   { icon: CheckCircle2, label: 'Status', value: "SFI'd · Hegota headliner", accent: true },
-  { icon: Radio, label: 'Devnet', value: 'frames-devnet-0 · live' },
+  { icon: Radio, label: 'Devnet', value: 'frames-devnet-1 · live' },
   { icon: Server, label: 'Clients', value: '3 of 4 ready (ethrex, Geth, Nethermind)' },
   { icon: Flag, label: 'Next', value: 'Hegota scoping by Devcon (Nov 3)' },
 ];

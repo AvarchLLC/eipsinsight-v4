@@ -636,9 +636,9 @@ async function getFramesDevnet(network: string): Promise<FramesDevnetData> {
 export const aaProcedures = {
   getAdoptionIndex: optionalAuthProcedure.handler(async (): Promise<AaAdoption> => getAdoption()),
 
-  /** EIP-8141 frame-transaction devnet activity (default: frames-devnet-0). */
+  /** EIP-8141 frame-transaction devnet activity (default: frames-devnet-1). */
   getFramesDevnet: optionalAuthProcedure
-    .input(z.object({ network: z.string().regex(/^[a-z0-9-]+$/).default('frames-devnet-0') }))
+    .input(z.object({ network: z.string().regex(/^[a-z0-9-]+$/).default('frames-devnet-1') }))
     .handler(async ({ input }): Promise<FramesDevnetData> => getFramesDevnet(input.network)),
 
   getValueSeries: optionalAuthProcedure
