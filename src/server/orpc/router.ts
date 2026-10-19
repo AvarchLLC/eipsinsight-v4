@@ -29,6 +29,7 @@ import { mevProcedures } from './procedures/mev'
 import { aaProcedures } from './procedures/aa'
 import { pqProcedures } from './procedures/pq'
 import { networkProcedures } from './procedures/network'
+import { blobProcedures } from './procedures/blob'
 
 export const router = {
   auth: authProcedures,
@@ -62,4 +63,5 @@ export const router = {
   aa: aaProcedures,
   pq: pqProcedures,
   network: networkProcedures,
+  blob: blobProcedures,
 }

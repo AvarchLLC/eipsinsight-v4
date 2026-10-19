@@ -23,6 +23,7 @@ import {
   Shield,
   Boxes,
   Lock,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -228,6 +229,11 @@ const sidebarSections: SidebarSection[] = [
           { title: "Migration", href: "/pq/migration" },
           { title: "Gaps & Blockers", href: "/pq/gaps" },
         ],
+      },
+      {
+        title: "Blob Data Layer",
+        icon: Database,
+        href: "/blobs",
       },
     ],
   },
