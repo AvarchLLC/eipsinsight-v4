@@ -49,7 +49,19 @@ const COUNTDOWN_CONFIG: Record<string, CountdownConfig> = {
         beaconApi: 'https://ethereum-sepolia-beacon-api.publicnode.com',
         rpc: 'https://ethereum-sepolia-rpc.publicnode.com',
       },
-      { key: 'hoodi', label: 'Hoodi', estimate: '~Oct 27, 2026' },
+      {
+        key: 'hoodi',
+        label: 'Hoodi',
+        // Gloas (CL) fork epoch 132352 = slot 4235264, activating 2026-10-26
+        // 17:42:48 UTC. Announced as "Oct 26, 17:42 UTC" (200M gas limit); the
+        // epoch-boundary lands 48s past the minute. GLOAS_FORK_EPOCH isn't yet
+        // pinned in public node configs — this is derived from Hoodi genesis
+        // (1742213400) + the announced time.
+        epoch: 132352,
+        timestamp: 1793036568, // 2026-10-26 17:42:48 UTC
+        beaconApi: 'https://ethereum-hoodi-beacon-api.publicnode.com',
+        rpc: 'https://ethereum-hoodi-rpc.publicnode.com',
+      },
       { key: 'mainnet', label: 'Mainnet', estimate: 'Early Dec 2026' },
     ],
   },
