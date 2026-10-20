@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { buildMetadata } from '@/lib/seo';
-import { BlobConsole } from '@/components/blobs/blob-console';
+import { BlobHub } from '@/components/blobs/blob-hub';
 
 export const revalidate = 300;
 
@@ -31,7 +31,7 @@ export default function BlobsPage() {
         </p>
       </header>
 
-      <BlobConsole />
+      <BlobHub />
     </div>
   );
 }
