@@ -352,6 +352,113 @@ async function getAttackRate(days: number): Promise<AttackRate> {
   }
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * DEX Impact (/lucid/dex): who runs the sandwich bots and which pools they
+ * hit, straight from the per-attack index (blob_lens.mev_sandwiches). This is
+ * the concrete MEV surface that Lucid (EIP-8184) removes by encrypting the
+ * mempool — searchers can't target a swap they can't read.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export interface DexBot {
+  bot: string
+  attacks: number
+  pools: number
+  protocols: number
+}
+export interface DexPool {
+  pool: string
+  protocol: string
+  token0: string
+  token1: string
+  attacks: number
+}
+export interface DexProtocol {
+  protocol: string
+  attacks: number
+  pools: number
+}
+export interface DexImpact {
+  available: boolean
+  totalSandwiches: number
+  uniqueBots: number
+  bots: DexBot[]
+  pools: DexPool[]
+  protocols: DexProtocol[]
+  from: string
+  to: string
+  source: string
+}
+
+const emptyDexImpact: DexImpact = {
+  available: false,
+  totalSandwiches: 0,
+  uniqueBots: 0,
+  bots: [],
+  pools: [],
+  protocols: [],
+  from: '',
+  to: '',
+  source: 'BlobLens',
+}
+
+const dexImpactCache = new Map<string, { at: number; data: DexImpact }>()
+
+async function getDexImpact(range: Range): Promise<DexImpact> {
+  if (!clickhouseConfigured()) return emptyDexImpact
+  const key = rangeKey(range)
+  const hit = dexImpactCache.get(key)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+
+  try {
+    const { from, to } = resolveRange(range)
+    const where = `block_timestamp >= toDateTime('${from} 00:00:00') AND block_timestamp < toDateTime('${to} 00:00:00') + INTERVAL 1 DAY`
+
+    const [botRows, poolRows, protoRows, totalRows] = await Promise.all([
+      clickhouseQuery<{ bot: string; attacks: string; pools: string; protocols: string }>(`
+        SELECT sandwicher AS bot, count() AS attacks, uniqExact(pool) AS pools, uniqExact(protocol) AS protocols
+        FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
+        GROUP BY sandwicher ORDER BY attacks DESC LIMIT 12
+      `),
+      clickhouseQuery<{ pool: string; protocol: string; token0: string; token1: string; attacks: string }>(`
+        SELECT pool, any(protocol) AS protocol, any(token0) AS token0, any(token1) AS token1, count() AS attacks
+        FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
+        GROUP BY pool ORDER BY attacks DESC LIMIT 12
+      `),
+      clickhouseQuery<{ protocol: string; attacks: string; pools: string }>(`
+        SELECT protocol, count() AS attacks, uniqExact(pool) AS pools
+        FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
+        GROUP BY protocol ORDER BY attacks DESC
+      `),
+      clickhouseQuery<{ total: string; bots: string }>(`
+        SELECT count() AS total, uniqExact(sandwicher) AS bots
+        FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
+      `),
+    ])
+
+    const data: DexImpact = {
+      available: true,
+      totalSandwiches: N(totalRows[0]?.total),
+      uniqueBots: N(totalRows[0]?.bots),
+      bots: botRows.map((b) => ({ bot: b.bot, attacks: N(b.attacks), pools: N(b.pools), protocols: N(b.protocols) })),
+      pools: poolRows.map((p) => ({
+        pool: p.pool,
+        protocol: p.protocol,
+        token0: p.token0,
+        token1: p.token1,
+        attacks: N(p.attacks),
+      })),
+      protocols: protoRows.map((p) => ({ protocol: p.protocol, attacks: N(p.attacks), pools: N(p.pools) })),
+      from,
+      to,
+      source: 'BlobLens',
+    }
+    dexImpactCache.set(key, { at: Date.now(), data })
+    return data
+  } catch {
+    return emptyDexImpact
+  }
+}
+
 export const mevProcedures = {
   getMempoolStats: optionalAuthProcedure
     .input(rangeInput)
@@ -360,4 +467,8 @@ export const mevProcedures = {
   getAttackRate: optionalAuthProcedure
     .input(z.object({ days: z.number().int().min(1).max(90).default(7) }))
     .handler(async ({ input }): Promise<AttackRate> => getAttackRate(input?.days ?? 7)),
+
+  getDexImpact: optionalAuthProcedure
+    .input(rangeInput)
+    .handler(async ({ input }): Promise<DexImpact> => getDexImpact(input ?? {})),
 }

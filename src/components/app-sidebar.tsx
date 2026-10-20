@@ -211,6 +211,7 @@ const sidebarSections: SidebarSection[] = [
         href: "/lucid",
         items: [
           { title: "Dashboard & MEV", href: "/lucid" },
+          { title: "DEX Impact", href: "/lucid/dex" },
           { title: "History & MEV Genealogy", href: "/lucid/history" },
           { title: "Working Group Calls", href: "/lucid/calls" },
           { title: "EIP-8184 Spec", href: "/eip/8184" },
