@@ -506,6 +506,67 @@ export interface RollupEfficiency {
   totalCostUsd: number
   avgCostPerTxUsd: number
   costPerMbUsd: number
+  // Blobscan-sourced blob fill (null when Blobscan has no slug for this rollup)
+  fullnessPct: number | null
+  usedDataGb: number | null
+  costPerUsedMbUsd: number | null
+}
+
+// BlobLens rollup name → Blobscan rollup slug (only chains Blobscan recognises).
+const BLOBSCAN_SLUG: Record<string, string> = {
+  base: 'base',
+  'op mainnet': 'optimism',
+  'arbitrum one': 'arbitrum',
+  scroll: 'scroll',
+  linea: 'linea',
+  blast: 'blast',
+  taiko: 'taiko',
+  starknet: 'starknet',
+  soneium: 'soneium',
+  unichain: 'unichain',
+  'zksync era': 'zksync',
+  zora: 'zora',
+  mode: 'mode',
+  ink: 'ink',
+  mantle: 'mantle',
+}
+
+type Fullness = { fullnessPct: number; avgUsedBytes: number }
+const fullnessCache: { at: number; data: Map<string, Fullness> } = { at: 0, data: new Map() }
+const FULLNESS_TTL_MS = 3_600_000 // 1h — blob fill is a slow-moving rollup trait
+
+/** Average blob fill per rollup from Blobscan (usageSize / 128KiB), sampled recent. */
+async function fetchFullness(slugs: string[]): Promise<Map<string, Fullness>> {
+  if (fullnessCache.data.size && Date.now() - fullnessCache.at < FULLNESS_TTL_MS) return fullnessCache.data
+  const out = new Map<string, Fullness>()
+  await Promise.all(
+    slugs.map(async (slug) => {
+      try {
+        const res = await fetch(`https://api.blobscan.com/blobs?rollups=${slug}&count=25&sort=desc`, {
+          signal: AbortSignal.timeout(6000),
+          headers: { accept: 'application/json' },
+        })
+        if (!res.ok) return
+        const j = (await res.json()) as { blobs?: Array<{ usageSize?: number; size?: number }> }
+        const b = j.blobs ?? []
+        if (!b.length) return
+        let us = 0
+        let sz = 0
+        for (const x of b) {
+          us += x.usageSize ?? 0
+          sz += x.size ?? 0
+        }
+        if (sz > 0) out.set(slug, { fullnessPct: Math.round((us / sz) * 1000) / 10, avgUsedBytes: Math.round(us / b.length) })
+      } catch {
+        /* skip this rollup */
+      }
+    }),
+  )
+  if (out.size) {
+    fullnessCache.at = Date.now()
+    fullnessCache.data = out
+  }
+  return out.size ? out : fullnessCache.data
 }
 
 export interface BlobRollupEfficiency {
@@ -566,7 +627,7 @@ async function getRollupEfficiency(range: Range): Promise<BlobRollupEfficiency> 
     `)
 
     const totalBlobs = rows.reduce((s, r) => s + N(r.blobs), 0)
-    const rollups: RollupEfficiency[] = rows
+    const base = rows
       .map((r) => {
         const blobs = N(r.blobs)
         const totalCostUsd = N(r.total_cost_usd)
@@ -584,6 +645,21 @@ async function getRollupEfficiency(range: Range): Promise<BlobRollupEfficiency> 
         }
       })
       .filter((r) => r.blobs > 0)
+
+    // Enrich with real blob-fill (Blobscan) → true "cost per byte used".
+    const slugs = [...new Set(base.map((r) => BLOBSCAN_SLUG[r.rollup.toLowerCase()]).filter(Boolean))]
+    const fullness = slugs.length ? await fetchFullness(slugs) : new Map<string, Fullness>()
+    const rollups: RollupEfficiency[] = base.map((r) => {
+      const slug = BLOBSCAN_SLUG[r.rollup.toLowerCase()]
+      const f = slug ? fullness.get(slug) : undefined
+      const usedMb = f ? (r.blobs * f.avgUsedBytes) / 1e6 : 0
+      return {
+        ...r,
+        fullnessPct: f?.fullnessPct ?? null,
+        usedDataGb: f ? Math.round(((r.blobs * f.avgUsedBytes) / 1e7)) / 100 : null,
+        costPerUsedMbUsd: usedMb > 0 ? Math.round((r.totalCostUsd / usedMb) * 10000) / 10000 : null,
+      }
+    })
 
     const data: BlobRollupEfficiency = {
       available: true,
