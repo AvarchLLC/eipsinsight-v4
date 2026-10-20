@@ -2,7 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
+  Cell,
   Line,
   LineChart,
   ReferenceLine,
@@ -11,9 +14,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Activity, Fuel, Gauge as GaugeIcon, Layers, TrendingUp, Zap } from 'lucide-react';
+import { Activity, CalendarRange, Fuel, Gauge as GaugeIcon, Layers, TrendingUp, Zap } from 'lucide-react';
 import { client } from '@/lib/orpc';
-import type { BlobFeeMarket, BlobRegime } from '@/server/orpc/procedures/blob';
+import type { BlobFeeMarket, BlobRegime, BlobRegimeTimeline } from '@/server/orpc/procedures/blob';
 import { CHART_AXIS, CHART_GRID } from '@/lib/chart-colors';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { cn } from '@/lib/utils';
@@ -122,6 +125,9 @@ export function BlobFeeMarketTab() {
         </ChartCard>
       </div>
 
+      {/* Historical market-state timeline */}
+      <RegimeTimeline />
+
       <p className="rounded-xl border border-border bg-muted/30 p-3 text-[11px] leading-relaxed text-muted-foreground">
         The blob base fee is <span className="font-mono text-foreground">exp(excess_blob_gas / update_fraction)</span> wei
         (EIP-4844). Excess blob gas rises when blocks run above the target blobs/block and drains below it. We derive the
@@ -229,5 +235,132 @@ function ForecastChart({ data, color }: { data: BlobFeeMarket; color: string }) 
         <Line type="monotone" dataKey="full" name="full" stroke="var(--muted-foreground)" strokeWidth={2} strokeDasharray="4 3" dot={false} isAnimationActive={false} />
       </LineChart>
     </ResponsiveContainer>
+  );
+}
+
+const REGIME_ORDER: BlobRegime[] = ['undersaturated', 'healthy', 'congested', 'spike'];
+const REGIME_NAME: Record<BlobRegime, string> = {
+  undersaturated: 'Undersaturated',
+  healthy: 'Healthy',
+  congested: 'Congested',
+  spike: 'Spike',
+};
+const TL_PRESETS = [
+  { key: 30, label: '30D' },
+  { key: 90, label: '90D' },
+  { key: 180, label: '180D' },
+];
+
+/** Historical "market state" timeline: each day coloured by its fee-market regime. */
+function RegimeTimeline() {
+  const [days, setDays] = useState(90);
+  const [data, setData] = useState<BlobRegimeTimeline | null>(null);
+  const [loadedKey, setLoadedKey] = useState<number | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    client.blob
+      .getRegimeTimeline({ days })
+      .then((d) => {
+        if (cancelled) return;
+        setData(d);
+        setLoadedKey(days);
+      })
+      .catch(() => {
+        if (!cancelled) setData(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [days]);
+
+  const loading = !data || loadedKey !== days;
+
+  return (
+    <div className="rounded-xl border border-border bg-card/60 p-4">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
+          <CalendarRange className="h-4 w-4 text-primary" /> Market state over time
+        </h3>
+        <div className="flex items-center gap-1 rounded-lg border border-border bg-background/50 p-0.5 text-[11px]">
+          {TL_PRESETS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setDays(p.key)}
+              className={cn(
+                'rounded-md px-2.5 py-1 font-medium transition-colors',
+                days === p.key ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="mb-3 text-[11px] leading-relaxed text-muted-foreground">
+        Each day classified by the fee-market regime — blobs/block vs the window target ({data?.targetBlobs ?? '…'}/block).
+        Bar height is average blobs per block.
+      </p>
+
+      {loading || !data || !data.available ? (
+        <div className="flex h-56 items-center justify-center text-xs text-muted-foreground">
+          {!data || loading ? 'Loading…' : 'Timeline unavailable.'}
+        </div>
+      ) : (
+        <>
+          {/* Time-in-state summary */}
+          <div className="mb-3 overflow-hidden rounded-lg border border-border">
+            <div className="flex h-6 w-full">
+              {REGIME_ORDER.map((r) =>
+                data.summary[r] > 0 ? (
+                  <div
+                    key={r}
+                    style={{ width: `${data.summary[r]}%`, background: REGIME_STYLE[r].color }}
+                    title={`${REGIME_NAME[r]} · ${data.summary[r]}% of days`}
+                    className="opacity-80"
+                  />
+                ) : null,
+              )}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-2 text-[10px] text-muted-foreground">
+              {REGIME_ORDER.map((r) => (
+                <span key={r} className="inline-flex items-center gap-1.5">
+                  <span className="h-2 w-2 rounded-sm" style={{ background: REGIME_STYLE[r].color }} />
+                  {REGIME_NAME[r]} <span className="font-semibold text-foreground">{data.summary[r]}%</span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="h-48 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data.days} margin={{ top: 8, right: 8, left: -8, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: CHART_AXIS, fontSize: 9 }}
+                  tickLine={false}
+                  axisLine={false}
+                  minTickGap={36}
+                  tickFormatter={(v) => new Date(`${v}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}
+                />
+                <YAxis tick={{ fill: CHART_AXIS, fontSize: 10 }} tickLine={false} axisLine={false} width={32} />
+                <Tooltip
+                  contentStyle={CHART_TOOLTIP}
+                  labelFormatter={(v) => new Date(`${v}T00:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                  formatter={(val: number, _n, p) => [`${Number(val).toFixed(2)} blobs/block · ${REGIME_NAME[(p?.payload as { regime: BlobRegime })?.regime] ?? ''}`, '']}
+                />
+                <ReferenceLine y={data.targetBlobs} stroke="var(--muted-foreground)" strokeDasharray="4 3" strokeOpacity={0.7} label={{ value: 'target', position: 'right', fill: 'var(--muted-foreground)', fontSize: 9 }} />
+                <Bar dataKey="blobsPerBlock" radius={[2, 2, 0, 0]} isAnimationActive={false}>
+                  {data.days.map((d, i) => (
+                    <Cell key={i} fill={REGIME_STYLE[d.regime].color} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </>
+      )}
+    </div>
   );
 }

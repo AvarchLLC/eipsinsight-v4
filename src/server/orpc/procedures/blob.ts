@@ -601,6 +601,108 @@ async function getRollupEfficiency(range: Range): Promise<BlobRollupEfficiency> 
   }
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * Market-state timeline (historical regime): how the blob fee market moved
+ * through undersaturated → healthy → congested → spike over a window. Uses the
+ * same economics as the live classifier (blobs/block vs the window's target),
+ * so it is consistent with the Fee Market gauge.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export interface RegimeDay {
+  date: string
+  blobsPerBlock: number
+  utilPct: number
+  feeGwei: number
+  regime: BlobRegime
+}
+export interface BlobRegimeTimeline {
+  available: boolean
+  windowDays: number
+  targetBlobs: number
+  days: RegimeDay[]
+  summary: Record<BlobRegime, number> // % of days in each regime
+  source: string
+}
+
+const emptyRegimeTimeline: BlobRegimeTimeline = {
+  available: false,
+  windowDays: 0,
+  targetBlobs: 0,
+  days: [],
+  summary: { undersaturated: 0, healthy: 0, congested: 0, spike: 0 },
+  source: 'BlobLens',
+}
+
+function regimeByRatio(ratio: number): BlobRegime {
+  if (ratio > 1.4) return 'spike'
+  if (ratio > 1.1) return 'congested'
+  if (ratio < 0.8) return 'undersaturated'
+  return 'healthy'
+}
+
+const regimeTimelineCache = new Map<number, { at: number; data: BlobRegimeTimeline }>()
+
+async function getRegimeTimeline(days: number): Promise<BlobRegimeTimeline> {
+  if (!clickhouseConfigured()) return emptyRegimeTimeline
+  const d = Math.min(365, Math.max(7, Math.round(days)))
+  const hit = regimeTimelineCache.get(d)
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.data
+
+  try {
+    const [targetRows, dayRows] = await Promise.all([
+      clickhouseQuery<{ target_blob_gas: number }>(`
+        SELECT round(median(target_per_block)) AS target_blob_gas
+        FROM (
+          SELECT blob_gas_used - (excess_blob_gas - lagInFrame(excess_blob_gas) OVER (ORDER BY block_number)) AS target_per_block
+          FROM blob_lens.block_blob_stats
+          WHERE is_canonical = 1 AND block_timestamp >= subtractDays(now(), ${d}) AND excess_blob_gas > 0
+        )
+      `),
+      clickhouseQuery<{ d: string; bpb: number; util: number; fee: number }>(`
+        SELECT toDate(block_timestamp) AS d,
+               round(avg(blob_count), 3) AS bpb,
+               round(avg(utilization) * 100, 1) AS util,
+               round(avgIf(blob_base_fee, blob_base_fee <= ${FEE_CAP_WEI}) / 1e9, 6) AS fee
+        FROM blob_lens.block_blob_stats
+        WHERE is_canonical = 1 AND block_timestamp >= subtractDays(now(), ${d})
+        GROUP BY d ORDER BY d ASC
+      `),
+    ])
+
+    const targetBlobGas = N(targetRows[0]?.target_blob_gas) || 393_216
+    const targetBlobs = Math.max(0.1, Math.round((targetBlobGas / GAS_PER_BLOB) * 10) / 10)
+
+    const daysOut: RegimeDay[] = dayRows.map((r) => {
+      const bpb = N(r.bpb)
+      const ratio = targetBlobGas > 0 ? (bpb * GAS_PER_BLOB) / targetBlobGas : 1
+      return { date: r.d, blobsPerBlock: bpb, utilPct: N(r.util), feeGwei: N(r.fee), regime: regimeByRatio(ratio) }
+    })
+
+    const counts: Record<BlobRegime, number> = { undersaturated: 0, healthy: 0, congested: 0, spike: 0 }
+    for (const day of daysOut) counts[day.regime] += 1
+    const total = daysOut.length || 1
+    const summary: Record<BlobRegime, number> = {
+      undersaturated: Math.round((counts.undersaturated / total) * 1000) / 10,
+      healthy: Math.round((counts.healthy / total) * 1000) / 10,
+      congested: Math.round((counts.congested / total) * 1000) / 10,
+      spike: Math.round((counts.spike / total) * 1000) / 10,
+    }
+
+    const data: BlobRegimeTimeline = {
+      available: true,
+      windowDays: d,
+      targetBlobs,
+      days: daysOut,
+      summary,
+      source: 'BlobLens',
+    }
+    regimeTimelineCache.set(d, { at: Date.now(), data })
+    return data
+  } catch {
+    return emptyRegimeTimeline
+  }
+}
+
 export const blobProcedures = {
   getOverview: optionalAuthProcedure
     .input(rangeInput)
@@ -611,4 +713,8 @@ export const blobProcedures = {
   getRollupEfficiency: optionalAuthProcedure
     .input(rangeInput)
     .handler(async ({ input }): Promise<BlobRollupEfficiency> => getRollupEfficiency(input ?? {})),
+
+  getRegimeTimeline: optionalAuthProcedure
+    .input(z.object({ days: z.number().int().min(7).max(365).default(90) }))
+    .handler(async ({ input }): Promise<BlobRegimeTimeline> => getRegimeTimeline(input?.days ?? 90)),
 }
