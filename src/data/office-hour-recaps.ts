@@ -53,7 +53,7 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     dateISO: "2026-10-21",
     displayDate: "Oct 21, 2026",
     title: "EIPIP Meeting #131",
-    youtube: "",
+    youtube: "https://www.youtube.com/watch?v=ZtBOSbF-m-k",
     issueUrl: "https://github.com/ethereum/pm/issues/2231",
     summary:
       "EIPIP Meeting #131 confirmed the EIP Coordinator role as distinct from associate editors and nominated Pooja as the first coordinator (call for input open until Nov 4). Editors agreed a discretionary merge policy for typo/formatting fixes on active, non-final EIPs, closed Calls-for-Input 409 and 413, and will merge EIP-5069 once conflicts are resolved. Sam is stepping down as Keeper of Consensus, with a successor vote added to the next agenda; Justin is onboarding as an editor starting with CL-related reviews. The team is moving toward AI tooling to help authors and editors follow EIP/ERC rules, and flagged a shortage of ERC reviewers. 24 proposals reached Last Call in the past month as Glamsterdam EIPs moved to testnet.",
