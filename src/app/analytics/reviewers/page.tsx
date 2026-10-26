@@ -839,33 +839,28 @@ export default function ReviewersAnalyticsPage() {
         <p className="mb-4 text-xs text-muted-foreground">Monthly distinct PRs reviewed by each official reviewer.</p>
         <ChartContainer
           config={Object.fromEntries(
-            reviewedTrendActors.map((actor, idx) => [
-              actor,
-              {
-                label: actor,
-                color: `hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 50%)`,
-              },
-            ])
+            reviewedTrendActors.map((actor, idx) => [actor, { label: actor, color: chartColor(idx) }])
           )}
           className="h-72 w-full"
         >
           <div className="relative h-full w-full">
             <ResponsiveContainer>
-              <LineChart data={monthlyReviewedTrend}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="month" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
+              <LineChart data={monthlyReviewedTrend} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="plainline" />
                 {reviewedTrendActors.map((actor, idx) => (
                   <Line
                     key={actor}
                     type="monotone"
                     dataKey={actor}
-                    stroke={`hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 50%)`}
+                    stroke={chartColor(idx)}
                     strokeWidth={2}
                     dot={false}
                     name={actor}
+                    isAnimationActive={false}
                   />
                 ))}
               </LineChart>
@@ -892,30 +887,25 @@ export default function ReviewersAnalyticsPage() {
         <p className="mb-4 text-xs text-muted-foreground">Stacked daily actions across official reviewers.</p>
         <ChartContainer
           config={Object.fromEntries(
-            dailyStackedChartData.actors.map((actor, idx) => [
-              actor,
-              {
-                label: actor,
-                color: `hsl(${(idx * 360) / Math.max(dailyStackedChartData.actors.length, 1)}, 70%, 50%)`,
-              },
-            ])
+            dailyStackedChartData.actors.map((actor, idx) => [actor, { label: actor, color: chartColor(idx) }])
           )}
           className="h-72 w-full"
         >
           <div className="relative h-full w-full">
             <ResponsiveContainer>
-              <BarChart data={dailyStackedChartData.rows}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="date" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
+              <BarChart data={dailyStackedChartData.rows} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                <XAxis dataKey="date" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Legend />
+                <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                 {dailyStackedChartData.actors.map((actor, idx) => (
                   <Bar
                     key={actor}
                     dataKey={actor}
                     stackId="reviewers"
-                    fill={`hsl(${(idx * 360) / Math.max(dailyStackedChartData.actors.length, 1)}, 70%, 50%)`}
+                    fill={chartColor(idx)}
+                    isAnimationActive={false}
                   />
                 ))}
               </BarChart>
@@ -1023,29 +1013,27 @@ export default function ReviewersAnalyticsPage() {
             config={Object.fromEntries(
               OFFICIAL_REVIEWERS.map((reviewer, idx) => [
                 reviewer,
-                {
-                  label: reviewer,
-                  color: `hsl(${(idx * 360) / Math.max(OFFICIAL_REVIEWERS.length, 1)}, 70%, 55%)`,
-                },
+                { label: reviewer, color: chartColor(idx) },
               ])
             )}
             className="h-64 w-full"
           >
             <div className="relative h-full w-full">
               <ResponsiveContainer>
-                <BarChart data={reviewerRepoStackedData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="repo" stroke="var(--muted-foreground)" />
-                  <YAxis stroke="var(--muted-foreground)" />
+                <BarChart data={reviewerRepoStackedData} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                  <XAxis dataKey="repo" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} />
                   {OFFICIAL_REVIEWERS.map((reviewer, idx) => (
                     <Bar
                       key={reviewer}
                       dataKey={reviewer}
                       stackId="reviewers"
-                      fill={`hsl(${(idx * 360) / Math.max(OFFICIAL_REVIEWERS.length, 1)}, 70%, 55%)`}
+                      fill={chartColor(idx)}
                       radius={[2, 2, 0, 0]}
+                      isAnimationActive={false}
                     />
                   ))}
                 </BarChart>
