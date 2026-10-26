@@ -13,6 +13,7 @@ export const CANONICAL_EIP_REVIEWERS = [
   "advaita-saha",
   "nalepae",
   "daniellehrner",
+  "jtraglia",
 ] as const;
 
 export const ASSOCIATE_EIP_EDITORS = [] as const;
