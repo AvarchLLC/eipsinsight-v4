@@ -48,6 +48,77 @@ export type OhRecap = {
 
 export const OFFICE_HOUR_RECAPS: OhRecap[] = [
   {
+    series: "eipip",
+    meeting: 131,
+    dateISO: "2026-10-21",
+    displayDate: "Oct 21, 2026",
+    title: "EIPIP Meeting #131",
+    youtube: "",
+    issueUrl: "https://github.com/ethereum/pm/issues/2231",
+    summary:
+      "EIPIP Meeting #131 confirmed the EIP Coordinator role as distinct from associate editors and nominated Pooja as the first coordinator (call for input open until Nov 4). Editors agreed a discretionary merge policy for typo/formatting fixes on active, non-final EIPs, closed Calls-for-Input 409 and 413, and will merge EIP-5069 once conflicts are resolved. Sam is stepping down as Keeper of Consensus, with a successor vote added to the next agenda; Justin is onboarding as an editor starting with CL-related reviews. The team is moving toward AI tooling to help authors and editors follow EIP/ERC rules, and flagged a shortage of ERC reviewers. 24 proposals reached Last Call in the past month as Glamsterdam EIPs moved to testnet.",
+    tldr: {
+      "Key Outcomes": [
+        "The discretionary merge policy for typo/formatting fixes on active or non-final EIPs is acceptable, provided it does not affect style or intent.",
+        "The EIP coordinator role is distinct from associate editors; the existing proposal will proceed, and Pooja is nominated as the first coordinator.",
+        "Sam is stepping down as Keeper of Consensus; a vote for a successor will be added to the next meeting agenda.",
+        "Justin will begin contributing as an editor, starting with technical reviews of CL-related EIPs.",
+        "The team is moving toward integrating AI tooling to help authors and editors follow EIP/ERC rules more consistently.",
+      ],
+      "Decisions": [
+        "Typo/Formatting Merges: Editors may merge typo or formatting fixes for active/non-final EIPs if the author is unresponsive or has approved; this should not apply to style-only changes.",
+        "EIP Coordinator Role: Confirmed as separate from associate editors with its own responsibilities; the decision to proceed stands.",
+        "Call for Input 409: Closed due to lack of consensus (one in favor, two opposed).",
+        "Call for Input 413: Closed after incorporating additional points from Matt.",
+        "EIP-5069: The PR will be merged after Sam resolves conflicts.",
+      ],
+      "Progress & Status": [
+        "Contributing.md: PR merged; the “don'ts” section for editors and reviewers is now active.",
+        "Status Update Checklist: Being added to contributing.md and the bot's comment to ensure valid PR numbers, template adherence, and correct repository placement.",
+        "EIP Insights: 24 proposals reached Last Call in the last month, largely due to Glamsterdam EIPs moving to testnet.",
+        "Glamsterdam Meta: Some Glamsterdam-related EIPs are still in review and not yet in Last Call; to be raised at the next All Core Devs meeting.",
+        "DEVCON 8 Community Hub: The EIP Hub is organizing a four-day event covering process, protocol/clients, applications/ERCs, and enterprise implementation, including a workshop for beginners and students.",
+      ],
+      "Pending Confirmation": [
+        "EIP Coordinator Nomination: Call for input open until November 4th; additional coordinators may be onboarded if needed.",
+        "EIP-1 Update: A PR to add the EIP coordinator role to EIP-1 will be opened after the nomination decision is finalized.",
+        "Engineering Support: Securing engineering support for EIP tooling remains an open action item.",
+        "Office Hours: October 27th and the following session need an editor to host; otherwise, they may resume after DEVCON from November 10th.",
+      ],
+      "Open Questions": [
+        "AI Tooling Scope: Define which rules can be automated via AI (e.g., abbreviation definitions, formatting) versus which require human judgment.",
+        "ERC Review Capacity: There is a shortage of editors for ERCs; more contributors are needed to support this side of the process.",
+      ],
+      "Action Items": [
+        "Sam: Resolve conflicts and merge the PR for EIP-5069.",
+        "Sam: Close the call for input on 413 after adding Matt's points.",
+        "Pooja: Follow up on the EIP Insights action item regarding engineering support.",
+        "Pooja: Bring up the Glamsterdam EIP status at the next All Core Devs meeting.",
+        "Justin: Begin reviewing EIPs and leaving approvals/comments to start editor onboarding.",
+        "Team: Add a vote for the next Keeper of Consensus to the next EIPIP meeting agenda.",
+      ],
+      "Next Meeting": ["EIPIP Meeting #132 · Nov 18, 2026, 16:00 UTC"],
+    },
+    keyDecisions: [
+      { original_text: "The discretionary merge policy for typo/formatting fixes on active or non-final EIPs is acceptable, provided it does not affect style or intent." },
+      { original_text: "The EIP coordinator role is distinct from associate editors; the proposal proceeds, with Pooja nominated as the first coordinator." },
+      { original_text: "Call for Input 409 is closed due to lack of consensus; Call for Input 413 is closed after incorporating Matt's points." },
+      { original_text: "EIP-5069 will be merged once Sam resolves the conflicts." },
+      { original_text: "Sam is stepping down as Keeper of Consensus; a successor vote is added to the next meeting agenda." },
+    ],
+    prs: [],
+    decisions: [],
+    actionItems: [
+      "Sam: Resolve conflicts and merge the PR for EIP-5069.",
+      "Sam: Close the call for input on 413 after adding Matt's points.",
+      "Pooja: Follow up on the EIP Insights action item regarding engineering support.",
+      "Pooja: Bring up the Glamsterdam EIP status at the next All Core Devs meeting.",
+      "Justin: Begin reviewing EIPs and leaving approvals/comments to start editor onboarding.",
+      "Team: Add a vote for the next Keeper of Consensus to the next EIPIP meeting agenda.",
+    ],
+    nextMeeting: "EIPIP Meeting #132 · Nov 18, 2026, 16:00 UTC",
+  },
+  {
     series: "ethproofs",
     meeting: 9,
     dateISO: "2026-08-01",

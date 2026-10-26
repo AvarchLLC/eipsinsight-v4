@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarClock, CheckSquare, FileText, Video } from "lucide-react";
 import "@/lib/orpc.server";
 import { EIPIP_MEETINGS } from "@/data/eipip-meetings.generated";
+import { OFFICE_HOUR_RECAPS } from "@/data/office-hour-recaps";
 import { getCachedRecentCalls } from "@/lib/upgrade-data.server";
 
 export const revalidate = 300;
@@ -22,7 +23,7 @@ export default async function EipipCallsPage() {
   const today = new Date().toISOString().slice(0, 10);
 
   // Ingested meetings (summary + decisions + recording + transcript) from the DB.
-  const calls = (await getCachedRecentCalls(300))
+  const dbCalls = (await getCachedRecentCalls(300))
     .filter((c) => c.series === "eipip")
     .map((c) => ({
       meeting: String(c.call_number ?? c.call_id),
@@ -30,8 +31,22 @@ export default async function EipipCallsPage() {
       decisions: decisionCount(c.tldr),
       hasTranscript: Boolean(c.has_transcript),
       hasVideo: Boolean(c.video_url),
-    }))
-    .sort((a, b) => (a.date < b.date ? 1 : -1));
+    }));
+
+  // Hand-curated EIPIP recaps (until the automated pipeline covers the series);
+  // the DB copy wins if a meeting is ingested, so there are no duplicates.
+  const dbMeetings = new Set(dbCalls.map((c) => c.meeting));
+  const staticCalls = OFFICE_HOUR_RECAPS.filter(
+    (r) => r.series === "eipip" && !dbMeetings.has(String(r.meeting)),
+  ).map((r) => ({
+    meeting: String(r.meeting),
+    date: r.dateISO,
+    decisions: r.keyDecisions?.length ?? r.decisions.length,
+    hasTranscript: false,
+    hasVideo: Boolean(r.youtube),
+  }));
+
+  const calls = [...dbCalls, ...staticCalls].sort((a, b) => (a.date < b.date ? 1 : -1));
 
   // The next scheduled meeting that is not yet recorded, from the schedule data.
   const ingested = new Set(calls.map((c) => c.meeting));
