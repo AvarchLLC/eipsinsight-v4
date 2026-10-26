@@ -70,7 +70,7 @@ const flagLabel = (b: string) => FLAG_LABEL[normHex(b)] ?? `flags ${normHex(b)}`
 const FRAME_TX_INTRINSIC = 15000;
 const FRAME_PER_FRAME = 475;
 const PLAIN_TRANSFER_GAS = 21000; // relatable baseline for normal users
-// Max verified (validation) gas on frames-devnet-0, raised from 100K in
+// Max verified (validation) gas on the frames devnet, raised from 100K in
 // Frame Transaction Breakout #5 (Sep 22 2026) to support complex test scenarios.
 const MAX_VERIFIED_GAS = 500000;
 
@@ -136,17 +136,29 @@ function Stat({ icon: Icon, label, value, sub }: { icon: typeof Boxes; label: st
 }
 
 /**
- * Live EIP-8141 frame-transaction activity on frames-devnet-0, indexed from the
- * devnet execution RPC into Postgres by the scheduler. Shows whether native AA
+ * Live EIP-8141 frame-transaction activity on the Frame Transactions devnet
+ * (bogota-devnet-0), indexed from the devnet execution RPC into Postgres by the
+ * scheduler. Shows whether native AA
  * (batched frames + flexible signatures) is actually being exercised under load.
  */
 type UsageData = Awaited<ReturnType<typeof client.aa.getUsageStats>>;
 
-export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: string }) {
+// Newest devnet first. The panel shows the first one that has indexed data, so it
+// auto-advances to a new devnet once the scheduler starts indexing it, and keeps
+// showing the previous one's history until then. The Frame Transactions series was
+// renamed frames-devnet -> bogota-devnet (Oct 2026); bogota-devnet-0 is the live
+// continuation of frames-devnet-0 (same chain), which stays as ended history.
+const DEFAULT_DEVNET_PREFERENCE = ['bogota-devnet-1', 'bogota-devnet-0', 'frames-devnet-0'];
+
+export function FramesDevnetPanel({ network }: { network?: string }) {
   const [data, setData] = useState<FramesData | null>(null);
   const [usage, setUsage] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [gran, setGran] = useState<Granularity>('hour');
+
+  // An explicit network pins the panel; otherwise fall back through the preference list.
+  const candidates = network ? [network] : DEFAULT_DEVNET_PREFERENCE;
+  const candidatesKey = candidates.join(',');
 
   // Re-bucket the hourly series to daily when the viewer chooses. Hourly stays raw.
   const chartSeries = useMemo<SeriesPoint[]>(
@@ -167,21 +179,30 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
       .catch(() => {
         if (!cancelled) setUsage(null);
       });
-    client.aa
-      .getFramesDevnet({ network })
-      .then((d) => {
-        if (!cancelled) setData(d);
-      })
-      .catch(() => {
-        if (!cancelled) setData(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    // Try each candidate newest-first; keep the first that has live/indexed data,
+    // otherwise keep the last response so the "unavailable" state still renders.
+    (async () => {
+      let chosen: FramesData | null = null;
+      for (const net of candidates) {
+        try {
+          const d = await client.aa.getFramesDevnet({ network: net });
+          chosen = d;
+          if (d?.available) break;
+        } catch {
+          /* try the next candidate */
+        }
+      }
+      if (!cancelled) {
+        setData(chosen);
+        setLoading(false);
+      }
+    })();
     return () => {
       cancelled = true;
     };
-  }, [network]);
+    // candidatesKey captures the resolved list; `candidates` is derived from `network`.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [candidatesKey]);
 
   if (loading) {
     return (
@@ -194,7 +215,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
   if (!data || !data.available) {
     return (
       <div className="rounded-xl border border-border bg-card/60 p-6 text-sm text-muted-foreground">
-        Live activity for <span className="font-mono text-foreground">{network}</span> is not available right now. The
+        Live activity for <span className="font-mono text-foreground">{data?.network ?? candidates[0]}</span> is not available right now. The
         devnet may not be running, or the indexer has not synced yet. Frame-transaction metrics appear here while the
         devnet is live.
       </div>
@@ -774,7 +795,7 @@ export function FramesDevnetPanel({ network = 'frames-devnet-0' }: { network?: s
         indexed every minute while the devnet is live. Frame transactions are EIP-8141 type-6 envelopes; each carries a{' '}
         <span className="text-foreground">frames[]</span> batch and a <span className="text-foreground">signatures[]</span>{' '}
         set. See the{' '}
-        <a href="/upgrade/devnets/frames-devnet-0" className="text-primary hover:underline">
+        <a href={`/upgrade/devnets/${data.network}`} className="text-primary hover:underline">
           devnet page
         </a>{' '}
         for spec, clients, and resources.

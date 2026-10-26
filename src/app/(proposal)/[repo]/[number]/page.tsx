@@ -29,6 +29,7 @@ import {
   Clock,
   Boxes,
   ArrowRight,
+  Database,
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { Button } from '@/components/ui/button';
@@ -998,6 +999,27 @@ export default function ProposalDetailPage() {
                 </div>
                 <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
                   Open /aa <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+                </span>
+              </Link>
+            )}
+
+            {/* Blob data-layer EIPs → link to the Blob Data Layer dashboard */}
+            {[4844, 7691, 7742, 7918, 7892].includes(number) && (
+              <Link
+                href="/blobs"
+                className="group flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 px-5 py-4 transition-colors hover:border-primary/50 hover:bg-primary/10"
+              >
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                    <Database className="h-4 w-4 text-primary" />
+                    Blob Data Layer dashboard
+                  </div>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Live blob throughput, the fee market &amp; congestion forecast, and per-rollup DA cost since Dencun.
+                  </p>
+                </div>
+                <span className="inline-flex shrink-0 items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary">
+                  Open /blobs <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
             )}

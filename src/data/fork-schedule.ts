@@ -43,13 +43,19 @@ export interface ForkScheduleConfig {
 export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
   {
     slug: 'glamsterdam',
-    mainnetTarget: '2026-11-04',
+    // Projected early Dec 2026 — ~5–6 weeks after the Hoodi fork (Oct 26). Keep
+    // in sync with the /upgrade countdown's mainnet estimate.
+    mainnetTarget: '2026-12-03',
     devnetCount: 9,
     lockedDates: {
       // ACDE #240 (2026-07-02): devnet-7 launch targeting week of July 7.
       'devnet-7': '2026-07-08',
       // Platterburg Testnet scope / Glamsterdam Devnet-8
       'devnet-8': '2026-08-12',
+      // Sepolia activated 2026-10-06 13:53 UTC (slot 11,296,768).
+      'sepolia': '2026-10-06',
+      // Hoodi scheduled 2026-10-26 17:42 UTC (Gloas epoch 132352, 200M gas limit).
+      'hoodi': '2026-10-26',
     },
   },
   {

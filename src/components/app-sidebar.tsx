@@ -23,6 +23,7 @@ import {
   Shield,
   Boxes,
   Lock,
+  Database,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -210,6 +211,7 @@ const sidebarSections: SidebarSection[] = [
         href: "/lucid",
         items: [
           { title: "Dashboard & MEV", href: "/lucid" },
+          { title: "DEX Impact", href: "/lucid/dex" },
           { title: "History & MEV Genealogy", href: "/lucid/history" },
           { title: "Working Group Calls", href: "/lucid/calls" },
           { title: "EIP-8184 Spec", href: "/eip/8184" },
@@ -228,6 +230,11 @@ const sidebarSections: SidebarSection[] = [
           { title: "Migration", href: "/pq/migration" },
           { title: "Gaps & Blockers", href: "/pq/gaps" },
         ],
+      },
+      {
+        title: "Blob Data Layer",
+        icon: Database,
+        href: "/blobs",
       },
     ],
   },

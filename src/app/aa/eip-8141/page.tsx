@@ -24,12 +24,40 @@ const TIMELINE: MileStone[] = [
   { date: 'Aug 27, 2026', label: "SFI'd for Hegota (ACDE #244), spec may still change", kind: 'done' },
   { date: 'Sep 10, 2026', label: 'Confirmed as the Hegota headliner (ACDE #245)', kind: 'done' },
   { date: 'Sep 22, 2026', label: 'Frame Transaction Breakout #5: max verified gas raised to 500K; breakouts move to a bi-weekly cadence', kind: 'done' },
-  { date: 'Sep 24, 2026', label: 'frames-devnet-0 went live — first EIP-8141 frame transactions on a public devnet (block 2130)', kind: 'now' },
+  { date: 'Sep 24, 2026', label: 'frames-devnet-0 went live — first EIP-8141 frame transactions on a public devnet (block 2130)', kind: 'done' },
+  { date: 'Oct 9, 2026', label: 'frames-devnet@v1.0.0 — EIP-8141 expiry verifier deployed on-chain at 0x8141…FFFF; EIP-8250 / 8272 / 7906 join the devnet batch', kind: 'done' },
+  { date: 'Oct 10, 2026', label: 'New Frame Transactions devnet live (ethrex), served as bogota-devnet-0 — the frames-devnet-0 chain continued on a new RPC; Hive picks it up automatically', kind: 'done' },
+  { date: 'Oct 14, 2026', label: 'bogota-devnet@v1.1.0 — series renamed frames-devnet → bogota-devnet (EELS devnets/frames/1 → devnets/bogota/1); 8141 approval-rollback pinned by tests', kind: 'now' },
+  { date: 'Oct 20, 2026', label: 'Frame Transaction Breakout #7 (agenda: devnet status, spec changes, open items)', kind: 'next' },
   { date: 'By Nov 3, 2026', label: 'Hegota scoping to complete by DEVCON', kind: 'next' },
 ];
 
 type Release = { tag: string; date: string; url: string; tracker: string; notes: string[] };
 const RELEASES: Release[] = [
+  {
+    tag: 'bogota-devnet@v1.1.0',
+    date: 'Oct 14, 2026',
+    url: 'https://github.com/ethereum/execution-specs/releases/tag/tests-bogota-devnet@v1.1.0',
+    tracker: 'https://github.com/ethereum/execution-specs/issues/3727',
+    notes: [
+      'EELS branch renamed devnets/frames/1 → devnets/bogota/1. Consensus-breaking since v1.0.0 (EIP-8250 now prices nonce keys); genesis unchanged.',
+      'EIP-8141: approval-context rollback on a reverted call is now pinned by tests; validation prefix and execution body defined in the EIP, plus new APPROVE edge-case coverage (EIPs#12458, #12471).',
+      'EIP-8250: each non-zero nonce key costs 12,100 gas (COLD_STORAGE_ACCESS + STORAGE_WRITE) in intrinsic gas and the calldata floor; consumed keys appear in the block access list (EIPs#12457).',
+      'Client mappings for geth, Besu, and ethrex frame / keyed-nonce rejections.',
+    ],
+  },
+  {
+    tag: 'frames-devnet@v1.0.0',
+    date: 'Oct 9, 2026',
+    url: 'https://github.com/ethereum/execution-specs/releases/tag/tests-frames-devnet@v1.0.0',
+    tracker: 'https://github.com/ethereum/execution-specs/issues/3727',
+    notes: [
+      'EIP-8141: expiry verifier deployed as an ordinary contract at 0x81413f0cF12e9b6a49B1D0439E081c577D57FfFf; approval-context rollback on revert above APPROVE (EIPs#12387, #12458).',
+      'EIP-8250: keyed nonces — nonce manager at 0x8250968C…e51cB7 with a static nonce_seq bound (EIPs#12440).',
+      'EIP-8272: recent roots — recent-root contract at 0x8272D9…00Ffff (EIPs#12443).',
+      'EIP-7906: transaction assertions — TXTRACE / TXDIFF / EVENTDATACOPY at 0xb6–0xb8 and POST_TX assigned (EIPs#12454, #12461).',
+    ],
+  },
   {
     tag: 'frames-devnet@v0.3.0',
     date: 'Sep 4, 2026',
@@ -67,14 +95,14 @@ const RELEASES: Release[] = [
 
 type Client = { name: string; status: 'ready' | 'pending'; note: string };
 const CLIENTS: Client[] = [
-  { name: 'ethrex', status: 'ready', note: 'Reference implementation; runs a public Frame Transactions testnet.' },
-  { name: 'Geth', status: 'ready', note: 'Passing the frames-devnet-0 test suite.' },
+  { name: 'ethrex', status: 'ready', note: 'Reference implementation; runs the public Frame Transactions devnet (bogota-devnet-0).' },
+  { name: 'Geth', status: 'ready', note: 'Passing the devnet suite; frame / keyed-nonce rejection mappings landed in bogota-devnet v1.1.0.' },
   { name: 'Nethermind', status: 'ready', note: 'Passing the suite; joined the ethrex public testnet as a validator.' },
-  { name: 'Besu', status: 'pending', note: 'No implementation yet; designating a point person (per Breakout #4).' },
+  { name: 'Besu', status: 'pending', note: 'Frame / keyed-nonce rejection mappings landed in v1.1.0; full implementation still in progress.' },
 ];
 
 // Active design threads surfaced in the recent Native AA / Frame Transaction
-// breakouts (latest: Breakout #5, Sep 22 2026). See the Calls tab for sources.
+// breakouts (latest agenda: Breakout #7, Oct 20 2026). See the Calls tab for sources.
 type Thread = { title: string; blurb: string };
 const OPEN_THREADS: Thread[] = [
   {
@@ -94,8 +122,10 @@ const OPEN_THREADS: Thread[] = [
 type Related = { eip: string; title: string; blurb: string };
 const RELATED: Related[] = [
   { eip: '8130', title: 'Direct dispatch / codeless accounts', blurb: 'Base-led design; collaboration underway with 8141 on a shared tx type or account interoperability.' },
+  { eip: '8250', title: 'Keyed nonces', blurb: 'Nonce manager with keyed nonce sequences; v1.1.0 prices each non-zero nonce key at 12,100 gas. Co-shipping in the frames / bogota devnet.' },
+  { eip: '8272', title: 'Recent Roots', blurb: 'Recent-root contract deployed in v1.0.0; proposed to move out of the tx envelope into a canonical frame/mempool rule.' },
+  { eip: '7906', title: 'Transaction assertions', blurb: 'TXTRACE / TXDIFF / EVENTDATACOPY opcodes and POST_TX; assertion tooling co-shipping in the same devnet batch.' },
   { eip: '8037', title: 'Child-frame state-gas reservoir', blurb: 'Cross-frame state-gas fix approved for Glamsterdam; consistency work landed in the frames devnet.' },
-  { eip: '8272', title: 'Recent Roots', blurb: 'Proposed to move out of the tx envelope into a canonical frame/mempool rule to avoid a protocol change.' },
   { eip: '7778', title: 'Block-level gas accounting', blurb: 'Accounts block execution gas before refunds. The accounting model the frame tests build on.' },
 ];
 
@@ -159,7 +189,7 @@ export default function Eip8141OverviewPage() {
             <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
               <Package className="h-4 w-4 text-primary" /> Devnet &amp; spec-test releases
             </h3>
-            <span className="text-[11px] text-muted-foreground">frames-devnet-0 · Geth / ethrex / Nethermind passing</span>
+            <span className="text-[11px] text-muted-foreground">bogota-devnet-0 · Geth / ethrex / Nethermind passing</span>
           </div>
           <div className="mt-4 space-y-3">
             {RELEASES.map((r) => (
@@ -216,7 +246,7 @@ export default function Eip8141OverviewPage() {
           <h3 className="flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
             <MessagesSquare className="h-4 w-4 text-primary" /> Open design threads
           </h3>
-          <p className="mt-1 text-[11px] text-muted-foreground">Active in the Native AA breakouts (latest #5, Sep 22).</p>
+          <p className="mt-1 text-[11px] text-muted-foreground">Active in the Native AA breakouts (latest agenda #7, Oct 20).</p>
           <div className="mt-4 space-y-3">
             {OPEN_THREADS.map((t) => (
               <div key={t.title} className="rounded-lg border border-border bg-background/60 p-4">
