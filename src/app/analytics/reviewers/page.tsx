@@ -25,6 +25,7 @@ import {
   Legend,
   Cell,
 } from "recharts";
+import { CHART_AXIS, CHART_GRID, chartColor } from "@/lib/chart-colors";
 
 interface ReviewerLeaderboardRow {
   actor: string;
@@ -136,6 +137,41 @@ function getTimeWindow(
   }
 
   return { from: from.toISOString().split('T')[0], to };
+}
+
+const STAT_ACCENT: Record<string, { chip: string; icon: string }> = {
+  emerald: { chip: "bg-emerald-500/15", icon: "text-emerald-500" },
+  blue: { chip: "bg-blue-500/15", icon: "text-blue-500" },
+  amber: { chip: "bg-amber-500/15", icon: "text-amber-500" },
+  violet: { chip: "bg-violet-500/15", icon: "text-violet-500" },
+};
+
+function StatCard({
+  icon: Icon,
+  accent,
+  label,
+  value,
+  sub,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  accent: keyof typeof STAT_ACCENT | string;
+  label: string;
+  value: string;
+  sub?: string;
+}) {
+  const a = STAT_ACCENT[accent] ?? STAT_ACCENT.emerald;
+  return (
+    <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm transition-colors hover:border-primary/40">
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${a.chip}`}>
+          <Icon className={`h-4 w-4 ${a.icon}`} />
+        </span>
+      </div>
+      <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground sm:text-3xl">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
+    </div>
+  );
 }
 
 export default function ReviewersAnalyticsPage() {
@@ -510,6 +546,14 @@ export default function ReviewersAnalyticsPage() {
     );
   }
 
+  const topReviewer = leaderboard[0] ?? null;
+  const maxReviews = leaderboard.reduce((m, r) => Math.max(m, r.totalReviews), 0) || 1;
+  const medianResponse = (() => {
+    const medians = leaderboard.map((r) => r.medianResponseDays).filter((d): d is number => d !== null);
+    if (medians.length === 0) return "–";
+    return `${Math.round(medians.reduce((a, b) => a + b, 0) / medians.length)}d`;
+  })();
+
   return (
     <div className="space-y-6">
       {error && (
@@ -519,68 +563,32 @@ export default function ReviewersAnalyticsPage() {
         </div>
       )}
 
-      {/* Hero KPIs */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Official Reviewers</p>
-              <p className="text-3xl font-bold text-foreground">{OFFICIAL_REVIEWERS.length}</p>
-            </div>
-            <div className="rounded-full bg-emerald-500/20 p-3">
-              <Users className="h-6 w-6 text-emerald-400" />
-            </div>
-          </div>
-        </div>
+      {/* Hero insight */}
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-primary/[0.07] via-card/50 to-card/40 p-5 sm:p-6">
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Editorial throughput</p>
+        <h2 className="dec-title mt-1.5 text-2xl font-bold leading-tight tracking-tight text-foreground sm:text-3xl">
+          {OFFICIAL_REVIEWERS.length} reviewers keeping the EIP pipeline moving
+        </h2>
+        <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+          Official EIP, ERC and RIP reviewers have logged{" "}
+          <span className="font-semibold text-foreground">{reviewerTotals.toLocaleString()}</span> review actions in this
+          window, with a <span className="font-semibold text-foreground">{medianResponse}</span> median turnaround.
+          {topReviewer && (
+            <>
+              {" "}
+              <span className="font-medium text-foreground">{topReviewer.actor}</span> leads with{" "}
+              <span className="font-semibold text-foreground">{topReviewer.totalReviews.toLocaleString()}</span> reviews.
+            </>
+          )}
+        </p>
+      </div>
 
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Active This Scope</p>
-              <p className="text-3xl font-bold text-foreground">
-                {activeReviewers}
-              </p>
-            </div>
-            <div className="rounded-full bg-blue-500/20 p-3">
-              <MessageSquare className="h-6 w-6 text-blue-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Reviewer Actions</p>
-              <p className="text-3xl font-bold text-foreground">
-                {reviewerTotals.toLocaleString()}
-              </p>
-            </div>
-            <div className="rounded-full bg-amber-500/20 p-3">
-              <Clock className="h-6 w-6 text-amber-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Median Response Time</p>
-              <p className="text-3xl font-bold text-foreground">
-                {(() => {
-                  const medians = leaderboard
-                    .map(r => r.medianResponseDays)
-                    .filter((d): d is number => d !== null);
-                  if (medians.length === 0) return "–";
-                  const overall = medians.reduce((a, b) => a + b, 0) / medians.length;
-                  return `${Math.round(overall)}d`;
-                })()}
-              </p>
-            </div>
-            <div className="rounded-full bg-violet-500/20 p-3">
-              <Clock className="h-6 w-6 text-violet-400" />
-            </div>
-          </div>
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard icon={Users} accent="emerald" label="Official reviewers" value={String(OFFICIAL_REVIEWERS.length)} sub={`${activeReviewers} active this window`} />
+        <StatCard icon={MessageSquare} accent="blue" label="Active reviewers" value={String(activeReviewers)} sub="logged ≥1 action" />
+        <StatCard icon={BarChart3} accent="amber" label="Review actions" value={reviewerTotals.toLocaleString()} sub="across EIP/ERC/RIP PRs" />
+        <StatCard icon={Clock} accent="violet" label="Median response" value={medianResponse} sub="time to review" />
       </div>
 
       {/* Reviewer Leaderboard */}
@@ -631,22 +639,43 @@ export default function ReviewersAnalyticsPage() {
                 return (
                   <tr
                     key={reviewer.actor}
-                    className="border-b border-border/60 hover:bg-muted/40 transition-colors"
+                    className={`border-b border-border/60 transition-colors hover:bg-muted/40 ${actualRank === 1 ? "bg-primary/[0.04]" : ""}`}
                   >
-                    <td className="py-3 px-4 text-sm text-muted-foreground">#{actualRank}</td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
+                      {actualRank <= 3 ? (
+                        <span className="text-base" title={`Rank ${actualRank}`}>
+                          {actualRank === 1 ? "🥇" : actualRank === 2 ? "🥈" : "🥉"}
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-muted-foreground">#{actualRank}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-4">
+                      <a
+                        href={`/people/${reviewer.actor}`}
+                        className="group inline-flex items-center gap-2"
+                      >
                         <img
                           src={getGitHubAvatarUrl(reviewer.actor)}
                           alt={`${reviewer.actor} avatar`}
                           className="h-7 w-7 rounded-full border border-border object-cover"
                           loading="lazy"
                         />
-                        <span className="font-medium text-foreground/90">{reviewer.actor}</span>
-                      </div>
+                        <span className="font-medium text-foreground/90 group-hover:text-primary group-hover:underline">{reviewer.actor}</span>
+                      </a>
                     </td>
-                    <td className="py-3 px-4 text-right text-sm text-foreground/85">
-                      {reviewer.totalReviews.toLocaleString()}
+                    <td className="py-3 px-4">
+                      <div className="flex items-center justify-end gap-2">
+                        <span className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-muted sm:block">
+                          <span
+                            className="block h-full rounded-full bg-primary"
+                            style={{ width: `${Math.max(4, (reviewer.totalReviews / maxReviews) * 100)}%` }}
+                          />
+                        </span>
+                        <span className="w-12 text-right text-sm font-semibold tabular-nums text-foreground">
+                          {reviewer.totalReviews.toLocaleString()}
+                        </span>
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-right text-sm text-foreground/85">
                       {reviewer.prsTouched.toLocaleString()}
@@ -716,33 +745,28 @@ export default function ReviewersAnalyticsPage() {
           <p className="mb-3 text-xs text-muted-foreground">All reviewer actions per month; each line is one reviewer.</p>
           <ChartContainer
             config={Object.fromEntries(
-              trendActors.map((actor, idx) => [
-                actor,
-                {
-                  label: actor,
-                  color: `hsl(${(idx * 360) / trendActors.length}, 70%, 50%)`,
-                },
-              ])
+              trendActors.map((actor, idx) => [actor, { label: actor, color: chartColor(idx) }])
             )}
             className="h-72 w-full"
           >
             <div className="relative h-full w-full">
               <ResponsiveContainer>
-                <LineChart data={monthlyTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="month" stroke="var(--muted-foreground)" />
-                  <YAxis stroke="var(--muted-foreground)" />
+                <LineChart data={monthlyTrend} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                  <XAxis dataKey="month" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                  <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="plainline" />
                   {trendActors.map((actor, idx) => (
                     <Line
                       key={actor}
                       type="monotone"
                       dataKey={actor}
-                      stroke={`hsl(${(idx * 360) / trendActors.length}, 70%, 50%)`}
+                      stroke={chartColor(idx)}
                       strokeWidth={2}
                       dot={false}
                       name={actor}
+                      isAnimationActive={false}
                     />
                   ))}
                 </LineChart>
@@ -775,16 +799,16 @@ export default function ReviewersAnalyticsPage() {
           >
             <div className="relative h-full w-full">
               <ResponsiveContainer>
-                <BarChart data={cyclesData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                  <XAxis dataKey="cycles" stroke="var(--muted-foreground)" label={{ value: "Number of Reviewers", position: "insideBottom", offset: -5 }} />
-                  <YAxis stroke="var(--muted-foreground)" />
+                <BarChart data={cyclesData} margin={{ top: 8, right: 8, left: -12, bottom: 16 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                  <XAxis dataKey="cycles" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} label={{ value: "Reviewers per PR", position: "insideBottom", offset: -8, fill: CHART_AXIS, fontSize: 11 }} />
+                  <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                   <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#22c55e">
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} fill="#22c55e" isAnimationActive={false}>
                     {cyclesData.map((entry, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={entry.cycles <= 2 ? "#22c55e" : entry.cycles <= 4 ? "#eab308" : "#ef4444"}
+                        fill={entry.cycles <= 2 ? "#10b981" : entry.cycles <= 4 ? "#f59e0b" : "#ef4444"}
                       />
                     ))}
                   </Bar>
