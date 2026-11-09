@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { client } from "@/lib/orpc";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { ActivityTimelineSection, type ActivityDetail } from "@/components/people/activity-timeline-section";
-import { RepositoryBreakdownSection } from "@/components/people/repository-breakdown-section";
+import { ActivityTimelineSection, type ActivityDetail } from "@/components/user/activity-timeline-section";
+import { RepositoryBreakdownSection } from "@/components/user/repository-breakdown-section";
 import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { CANONICAL_EIP_EDITORS, CANONICAL_EIP_REVIEWERS } from "@/data/eip-contributor-roles";
@@ -23,6 +23,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -127,6 +128,8 @@ export default function PersonProfilePage() {
   const [rangePreset, setRangePreset] = useState<RangePreset>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
+  // null = "all selected"; a Set means the explicit set the user picked.
+  const [selectedActions, setSelectedActions] = useState<Set<string> | null>(null);
 
   const range = useMemo(() => {
     const now = new Date();
@@ -184,18 +187,28 @@ export default function PersonProfilePage() {
     return "Custom range";
   }, [rangePreset, customFrom, customTo]);
 
-  const filteredMonthly = useMemo(() => {
+  // Action-type check options drive BOTH the timeline and the breakdown.
+  const allActions: string[] = (data?.actionBreakdown ?? []).map((a: ActionCount) => a.actionType);
+  const activeActions = selectedActions ?? new Set(allActions);
+  const toggleAction = (a: string) =>
+    setSelectedActions((prev) => {
+      const base = new Set(prev ?? allActions);
+      if (base.has(a)) base.delete(a);
+      else base.add(a);
+      return base;
+    });
+  const filteredActionBreakdown = (data?.actionBreakdown ?? []).filter((a: ActionCount) =>
+    activeActions.has(a.actionType),
+  );
+  // Per-action-type monthly series so the timeline can show the selected actions over time.
+  const monthlyByAction = useMemo(() => {
     if (!data) return [];
-    return data.monthlyActivity.map((point: MonthlyPoint) => {
-      return {
-        month: point.month,
-        label: monthLabel(point.month),
-        total: point.total,
-      };
+    return data.monthlyActivity.map((p: MonthlyPoint) => {
+      const row: Record<string, string | number> = { month: p.month, label: monthLabel(p.month), total: p.total };
+      for (const ac of p.actionCounts) row[ac.actionType] = ac.count;
+      return row;
     });
   }, [data]);
-
-  const filteredActionBreakdown = data?.actionBreakdown ?? [];
 
   // eslint-disable-next-line react-hooks/preserve-manual-memoization
   const topRepo = useMemo(() => {
@@ -363,39 +376,98 @@ export default function PersonProfilePage() {
         </div>
       </section>
 
-      <section className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Progress Over Time (24 months)</h2>
-          <ChartContainer config={{ total: { label: "Activity", color: "#22d3ee" } }} className="h-72 w-full">
-            <ResponsiveContainer>
-              <LineChart data={filteredMonthly}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#33415533" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Line type="monotone" dataKey="total" stroke="#06b6d4" strokeWidth={2.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </div>
+      <section className="mb-6 space-y-4">
+        {/* Check options — pick which action types to show in both charts below */}
+        {allActions.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-card/60 px-4 py-3">
+            <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Show</span>
+            {allActions.map((a) => {
+              const on = activeActions.has(a);
+              const color = actionColors[a] ?? "#22d3ee";
+              return (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => toggleAction(a)}
+                  aria-pressed={on}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors",
+                    on ? "border-border bg-muted/60 text-foreground" : "border-border/50 text-muted-foreground opacity-55 hover:opacity-80",
+                  )}
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                    style={{ background: on ? color : "transparent", border: `1.5px solid ${color}` }}
+                  />
+                  {prettyAction(a)}
+                </button>
+              );
+            })}
+            {selectedActions && (
+              <button
+                type="button"
+                onClick={() => setSelectedActions(null)}
+                className="ml-1 text-xs font-medium text-primary hover:underline"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+        )}
 
-        <div className="rounded-xl border border-border bg-card/60 p-4">
-          <h2 className="mb-3 text-sm font-semibold text-foreground">Activity by Action Type</h2>
-          <ChartContainer config={{ count: { label: "Count", color: "#10b981" } }} className="h-72 w-full">
-            <ResponsiveContainer>
-              <BarChart data={filteredActionBreakdown}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#33415533" />
-                <XAxis dataKey="actionType" tickFormatter={(value) => prettyAction(value)} tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                  {filteredActionBreakdown.map((entry: ActionCount) => (
-                    <Cell key={entry.actionType} fill={actionColors[entry.actionType] ?? "#22d3ee"} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+          <div className="rounded-xl border border-border bg-card/60 p-4">
+            <h2 className="mb-3 text-sm font-semibold text-foreground">Activity over time</h2>
+            <p className="mb-2 text-[11px] text-muted-foreground">Monthly actions by type for the selected options.</p>
+            <ChartContainer
+              config={Object.fromEntries(allActions.map((a) => [a, { label: prettyAction(a), color: actionColors[a] ?? "#22d3ee" }]))}
+              className="h-72 w-full"
+            >
+              <ResponsiveContainer>
+                <LineChart data={monthlyByAction} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#33415533" vertical={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} tickLine={false} axisLine={false} minTickGap={24} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="plainline" />
+                  {allActions
+                    .filter((a) => activeActions.has(a))
+                    .map((a) => (
+                      <Line
+                        key={a}
+                        type="monotone"
+                        dataKey={a}
+                        name={prettyAction(a)}
+                        stroke={actionColors[a] ?? "#22d3ee"}
+                        strokeWidth={2}
+                        dot={false}
+                        isAnimationActive={false}
+                      />
+                    ))}
+                </LineChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card/60 p-4">
+            <h2 className="mb-3 text-sm font-semibold text-foreground">Activity by action type</h2>
+            <p className="mb-2 text-[11px] text-muted-foreground">Totals for the selected options.</p>
+            <ChartContainer config={{ count: { label: "Count", color: "#10b981" } }} className="h-72 w-full">
+              <ResponsiveContainer>
+                <BarChart data={filteredActionBreakdown} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#33415533" vertical={false} />
+                  <XAxis dataKey="actionType" tickFormatter={(value) => prettyAction(value)} tick={{ fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} isAnimationActive={false}>
+                    {filteredActionBreakdown.map((entry: ActionCount) => (
+                      <Cell key={entry.actionType} fill={actionColors[entry.actionType] ?? "#22d3ee"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </ChartContainer>
+          </div>
         </div>
       </section>
 

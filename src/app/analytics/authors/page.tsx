@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { AlertCircle, Download, FileText, Repeat2, Sparkles, Users } from "lucide-react";
+import { StatCard, AnalyticsHero } from "@/components/analytics/stat-card";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import ReactECharts from "echarts-for-react";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
@@ -371,51 +372,22 @@ export default function AuthorsAnalyticsPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Authors</p>
-              <p className="text-3xl font-semibold text-foreground">{kpis?.totalAuthors.toLocaleString() ?? "0"}</p>
-            </div>
-            <div className="rounded-full bg-primary/10 p-3">
-              <Users className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">New Authors</p>
-              <p className="text-3xl font-semibold text-foreground">{kpis?.newAuthors.toLocaleString() ?? "0"}</p>
-            </div>
-            <div className="rounded-full bg-primary/10 p-3">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Repeat Authors</p>
-              <p className="text-3xl font-semibold text-foreground">{kpis?.repeatAuthors.toLocaleString() ?? "0"}</p>
-            </div>
-            <div className="rounded-full bg-primary/10 p-3">
-              <Repeat2 className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-        </div>
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Proposals Authored</p>
-              <p className="text-3xl font-semibold text-foreground">{kpis?.proposalsAuthored.toLocaleString() ?? "0"}</p>
-            </div>
-            <div className="rounded-full bg-primary/10 p-3">
-              <FileText className="h-6 w-6 text-primary" />
-            </div>
-          </div>
-        </div>
+      {/* Hero insight */}
+      <AnalyticsHero eyebrow="Authorship" title="Who writes Ethereum&rsquo;s standards">
+        <span className="font-semibold text-foreground">{kpis?.totalAuthors.toLocaleString() ?? "0"}</span> authors have
+        written <span className="font-semibold text-foreground">{kpis?.proposalsAuthored.toLocaleString() ?? "0"}</span>{" "}
+        proposals across EIPs, ERCs and RIPs, including{" "}
+        <span className="font-semibold text-foreground">{kpis?.newAuthors.toLocaleString() ?? "0"}</span> new authors this
+        window and <span className="font-semibold text-foreground">{kpis?.repeatAuthors.toLocaleString() ?? "0"}</span>{" "}
+        who have come back for more.
+      </AnalyticsHero>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard icon={Users} accent="emerald" label="Total authors" value={kpis?.totalAuthors.toLocaleString() ?? "0"} sub="all-time" />
+        <StatCard icon={Sparkles} accent="blue" label="New authors" value={kpis?.newAuthors.toLocaleString() ?? "0"} sub="this window" />
+        <StatCard icon={Repeat2} accent="violet" label="Repeat authors" value={kpis?.repeatAuthors.toLocaleString() ?? "0"} sub="more than one proposal" />
+        <StatCard icon={FileText} accent="amber" label="Proposals authored" value={kpis?.proposalsAuthored.toLocaleString() ?? "0"} sub="EIP/ERC/RIP" />
       </div>
 
       <div className="rounded-xl border border-border/70 bg-card/60 px-4 py-3 text-sm text-foreground">
@@ -579,8 +551,14 @@ export default function AuthorsAnalyticsPage() {
             </thead>
             <tbody>
               {topAuthors.map((author, idx) => (
-                <tr key={author.author} className="border-b border-border/60 hover:bg-muted/40 transition-colors">
-                  <td className="px-4 py-3 text-sm text-muted-foreground">#{idx + 1}</td>
+                <tr key={author.author} className={`border-b border-border/60 transition-colors hover:bg-muted/40 ${idx === 0 ? "bg-primary/[0.04]" : ""}`}>
+                  <td className="px-4 py-3">
+                    {idx <= 2 ? (
+                      <span className="text-base" title={`Rank ${idx + 1}`}>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : "🥉"}</span>
+                    ) : (
+                      <span className="text-sm font-medium text-muted-foreground">#{idx + 1}</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <img

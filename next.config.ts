@@ -18,6 +18,12 @@ const nextConfig: NextConfig = {
     return [
       // Legacy route redirects
       {
+        // /people was renamed to /user (contributor profiles).
+        source: '/people/:actor',
+        destination: '/user/:actor',
+        permanent: true,
+      },
+      {
         source: '/standards-by-repo',
         destination: '/standards',
         permanent: true,

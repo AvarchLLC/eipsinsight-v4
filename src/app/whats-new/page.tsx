@@ -111,10 +111,10 @@ const NAV_MAP = [
     highlights: ["Blogs & News", "Video Guides", "Documentation"],
   },
   {
-    name: "People",
+    name: "Users",
     icon: UserCheck,
     description: "Dedicated profiles for EIP authors, core contributors, and editorial reviewers.",
-    href: "/people/SamWilsn",
+    href: "/user/SamWilsn",
     highlights: ["Contributor Cards", "Review Activity", "Actor Profiles"],
   },
 ];

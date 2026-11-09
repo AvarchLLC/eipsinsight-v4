@@ -645,7 +645,7 @@ function githubRepoLabel(repo: string, kind: string) {
 }
 
 function peopleUrl(actor: string) {
-  return `/people/${encodeURIComponent(actor)}`;
+  return `/user/${encodeURIComponent(actor)}`;
 }
 
 function extractGithubUsername(author: string): string | null {

@@ -19,7 +19,7 @@ const LABELS: Record<string, string> = {
   tools: 'Tools',
   resources: 'Resources',
   eipip: 'EIPIP Meetings',
-  people: 'People',
+  user: 'User',
   // hub sub-pages
   overview: 'Overview',
   eips: 'EIP Registry',

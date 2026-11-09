@@ -1080,7 +1080,7 @@ const searchTerm = `%${input.query}%`;
       }));
     }),
 
-  // Search authors/people (from EIPs, PRs, Issues, and contributor_activity)
+  // Search authors/user (from EIPs, PRs, Issues, and contributor_activity)
   searchAuthors: optionalAuthProcedure
     .input(z.object({
       query: z.string().min(1),

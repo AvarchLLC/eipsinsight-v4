@@ -583,7 +583,7 @@ function SearchPageContent() {
                   ["proposals", "Proposals"],
                   ["prs", "Pull Requests"],
                   ["issues", "Issues"],
-                  ["people", "People"],
+                  ["people", "Users"],
                 ].map(([value, label]) => (
                   <FilterChip
                     key={value}
@@ -653,7 +653,7 @@ function SearchPageContent() {
           />
           <OverviewCard
             icon={<UserRound className="h-4 w-4 text-primary" />}
-            title="People"
+            title="Users"
             description="Look up authors, reviewers, editors, and contributors across protocol work."
           />
         </section>
@@ -673,7 +673,7 @@ function SearchPageContent() {
                   { key: "proposals", label: "Proposals", count: filteredProposals.length },
                   { key: "prs", label: "PRs", count: filteredPrs.length },
                   { key: "issues", label: "Issues", count: filteredIssues.length },
-                  { key: "people", label: "People", count: filteredPeople.length },
+                  { key: "people", label: "Users", count: filteredPeople.length },
                 ] as const
               ).map((tab) => (
                 <button
@@ -977,10 +977,10 @@ function SearchPageContent() {
               )}
 
               {visibleSections.some((section) => section.key === "people" && section.count > 0) && (
-                <ResultSection title="People" description="Authors, reviewers, editors, and active contributors." count={filteredPeople.length}>
+                <ResultSection title="Users" description="Authors, reviewers, editors, and active contributors." count={filteredPeople.length}>
                   {filteredPeople.slice(0, 16).map((item) => {
                     const total = item.eipCount + item.prCount + item.issueCount + item.reviewCount;
-                    const href = `/people/${encodeURIComponent(item.name)}`;
+                    const href = `/user/${encodeURIComponent(item.name)}`;
                     return (
                       <li key={item.name}>
                         <Link

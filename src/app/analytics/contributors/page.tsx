@@ -4,6 +4,8 @@ import React, { useEffect, useState, useMemo } from "react";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { Users, Activity, Zap, Database, AlertCircle } from "lucide-react";
+import { StatCard, AnalyticsHero } from "@/components/analytics/stat-card";
+import { CHART_AXIS, CHART_GRID } from "@/lib/chart-colors";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
@@ -285,63 +287,21 @@ export default function ContributorsAnalyticsPage() {
         </div>
       )}
 
-      {/* Hero KPIs */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Contributors</p>
-              <p className="text-3xl font-bold text-foreground">
-                {kpis?.totalContributors.toLocaleString() || 0}
-              </p>
-            </div>
-            <div className="rounded-full bg-pink-500/20 p-3">
-              <Users className="h-6 w-6 text-pink-400" />
-            </div>
-          </div>
-        </div>
+      {/* Hero insight */}
+      <AnalyticsHero eyebrow="Contributor activity" title="Everyone moving Ethereum standards forward">
+        Across the EIP, ERC and RIP repositories,{" "}
+        <span className="font-semibold text-foreground">{(kpis?.totalContributors ?? 0).toLocaleString()}</span> contributors
+        have logged <span className="font-semibold text-foreground">{(kpis?.totalActivities ?? 0).toLocaleString()}</span>{" "}
+        activities, with <span className="font-semibold text-foreground">{(kpis?.activeContributors30d ?? 0).toLocaleString()}</span>{" "}
+        active in the last 30 days.
+      </AnalyticsHero>
 
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Active (30d)</p>
-              <p className="text-3xl font-bold text-foreground">
-                {kpis?.activeContributors30d.toLocaleString() || 0}
-              </p>
-            </div>
-            <div className="rounded-full bg-emerald-500/20 p-3">
-              <Activity className="h-6 w-6 text-emerald-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Total Activities</p>
-              <p className="text-3xl font-bold text-foreground">
-                {kpis?.totalActivities.toLocaleString() || 0}
-              </p>
-            </div>
-            <div className="rounded-full bg-blue-500/20 p-3">
-              <Database className="h-6 w-6 text-blue-400" />
-            </div>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Last 24h</p>
-              <p className="text-3xl font-bold text-foreground">
-                {kpis?.last24hCount.toLocaleString() || 0}
-              </p>
-            </div>
-            <div className="rounded-full bg-amber-500/20 p-3">
-              <Zap className="h-6 w-6 text-amber-400" />
-            </div>
-          </div>
-        </div>
+      {/* KPIs */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <StatCard icon={Users} accent="rose" label="Total contributors" value={(kpis?.totalContributors ?? 0).toLocaleString()} sub="all-time" />
+        <StatCard icon={Activity} accent="emerald" label="Active (30d)" value={(kpis?.activeContributors30d ?? 0).toLocaleString()} sub="recently engaged" />
+        <StatCard icon={Database} accent="blue" label="Total activities" value={(kpis?.totalActivities ?? 0).toLocaleString()} sub="commits, PRs, reviews" />
+        <StatCard icon={Zap} accent="amber" label="Last 24h" value={(kpis?.last24hCount ?? 0).toLocaleString()} sub="activities today" />
       </div>
 
       {/* Contributor Activity Heatmap */}
@@ -370,12 +330,12 @@ export default function ContributorsAnalyticsPage() {
             className="h-64 w-full"
           >
             <ResponsiveContainer>
-              <BarChart data={activityByType} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis type="number" stroke="var(--muted-foreground)" />
-                <YAxis dataKey="actionType" type="category" stroke="var(--muted-foreground)" width={100} />
+              <BarChart data={activityByType} layout="vertical" margin={{ top: 4, right: 12, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} horizontal={false} />
+                <XAxis type="number" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis dataKey="actionType" type="category" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={100} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" radius={[0, 8, 8, 0]}>
+                <Bar dataKey="count" radius={[0, 8, 8, 0]} isAnimationActive={false}>
                   {activityByType.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -400,12 +360,12 @@ export default function ContributorsAnalyticsPage() {
             className="h-64 w-full"
           >
             <ResponsiveContainer>
-              <BarChart data={repoHeatmap}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="repo" stroke="var(--muted-foreground)" />
-                <YAxis stroke="var(--muted-foreground)" />
+              <BarChart data={repoHeatmap} margin={{ top: 4, right: 8, left: -12, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} vertical={false} />
+                <XAxis dataKey="repo" tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} />
+                <YAxis tick={{ fill: CHART_AXIS, fontSize: 11 }} tickLine={false} axisLine={false} width={32} />
                 <ChartTooltip content={<ChartTooltipContent />} />
-                <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                <Bar dataKey="count" radius={[4, 4, 0, 0]} isAnimationActive={false}>
                   {repoHeatmap.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}

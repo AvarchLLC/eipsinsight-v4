@@ -215,7 +215,7 @@ export function SearchBar() {
     } else if (result.kind === 'proposal') {
       router.push(`/${result.repo}/${result.number}`);
     } else if (result.kind === 'author') {
-      router.push(`/people/${encodeURIComponent(result.name)}`);
+      router.push(`/user/${encodeURIComponent(result.name)}`);
     } else if (result.kind === 'pr') {
       // Navigate to internal PR detail page
       // Convert full repo name (ethereum/EIPs) to short name (eips)

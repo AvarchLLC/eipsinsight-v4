@@ -26,6 +26,7 @@ import {
   Cell,
 } from "recharts";
 import { CHART_AXIS, CHART_GRID, chartColor } from "@/lib/chart-colors";
+import { StatCard } from "@/components/analytics/stat-card";
 
 interface ReviewerLeaderboardRow {
   actor: string;
@@ -137,41 +138,6 @@ function getTimeWindow(
   }
 
   return { from: from.toISOString().split('T')[0], to };
-}
-
-const STAT_ACCENT: Record<string, { chip: string; icon: string }> = {
-  emerald: { chip: "bg-emerald-500/15", icon: "text-emerald-500" },
-  blue: { chip: "bg-blue-500/15", icon: "text-blue-500" },
-  amber: { chip: "bg-amber-500/15", icon: "text-amber-500" },
-  violet: { chip: "bg-violet-500/15", icon: "text-violet-500" },
-};
-
-function StatCard({
-  icon: Icon,
-  accent,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  accent: keyof typeof STAT_ACCENT | string;
-  label: string;
-  value: string;
-  sub?: string;
-}) {
-  const a = STAT_ACCENT[accent] ?? STAT_ACCENT.emerald;
-  return (
-    <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm transition-colors hover:border-primary/40">
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${a.chip}`}>
-          <Icon className={`h-4 w-4 ${a.icon}`} />
-        </span>
-      </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground sm:text-3xl">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
-    </div>
-  );
 }
 
 export default function ReviewersAnalyticsPage() {
@@ -652,7 +618,7 @@ export default function ReviewersAnalyticsPage() {
                     </td>
                     <td className="py-3 px-4">
                       <a
-                        href={`/people/${reviewer.actor}`}
+                        href={`/user/${reviewer.actor}`}
                         className="group inline-flex items-center gap-2"
                       >
                         <img

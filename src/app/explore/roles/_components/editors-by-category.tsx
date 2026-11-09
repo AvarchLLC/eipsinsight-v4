@@ -99,7 +99,7 @@ export function EditorsByCategory({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <Link
-                        href={`/people/${encodeURIComponent(editor.actor)}`}
+                        href={`/user/${encodeURIComponent(editor.actor)}`}
                         className="text-sm font-semibold text-foreground hover:text-primary"
                         onClick={(event) => event.stopPropagation()}
                       >

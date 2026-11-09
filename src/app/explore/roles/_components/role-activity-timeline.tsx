@@ -152,7 +152,7 @@ export function RoleActivityTimeline({ events, loading }: RoleActivityTimelinePr
                   <div className="flex-1 min-w-0 pt-0.5">
                     <p className="text-xs leading-snug">
                       <Link 
-                        href={`/people/${encodeURIComponent(event.actor)}`}
+                        href={`/user/${encodeURIComponent(event.actor)}`}
                         className="font-medium text-foreground transition-colors hover:text-primary"
                       >
                         {event.actor}

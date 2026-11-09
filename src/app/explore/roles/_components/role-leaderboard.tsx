@@ -178,7 +178,7 @@ export function RoleLeaderboard({
                   </td>
                   <td className="px-3 py-3 align-top">
                     <Link
-                      href={`/people/${encodeURIComponent(entry.actor)}`}
+                      href={`/user/${encodeURIComponent(entry.actor)}`}
                       className="group flex items-start gap-3"
                     >
                       <img

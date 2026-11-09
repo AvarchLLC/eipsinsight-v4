@@ -31,6 +31,18 @@ import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation"
 import ReactECharts from "echarts-for-react";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { CopyLinkButton } from "@/components/header";
+import { StatCard, AnalyticsHero } from "@/components/analytics/stat-card";
+
+// Fixed categorical palette for the ECharts canvas charts (which can't read the
+// CSS-variable design tokens). Mirrors the site chart palette, replacing the old
+// rainbow hsl() ramp. editorAreaColor appends ~8% alpha for faint area fills.
+const EDITOR_PALETTE = ["#3b82f6", "#10b981", "#06b6d4", "#f59e0b", "#ec4899", "#8b5cf6", "#ef4444", "#84cc16"];
+function editorColor(idx: number): string {
+  return EDITOR_PALETTE[((idx % EDITOR_PALETTE.length) + EDITOR_PALETTE.length) % EDITOR_PALETTE.length];
+}
+function editorAreaColor(idx: number): string {
+  return `${editorColor(idx)}14`;
+}
 
 interface EditorLeaderboardRow {
   actor: string;
@@ -796,7 +808,7 @@ export default function EditorsAnalyticsPage() {
             return match ? match.count : 0;
           }),
           itemStyle: {
-            color: `hsl(${(idx * 360) / Math.max(actors.length, 1)}, 70%, 55%)`
+            color: editorColor(idx)
           }
         };
       }),
@@ -875,7 +887,7 @@ export default function EditorsAnalyticsPage() {
           const v = m?.get(actor) || 0;
           return total > 0 ? Math.round((v / total) * 1000) / 10 : 0;
         }),
-        itemStyle: { color: `hsl(${(idx * 360) / Math.max(actors.length, 1)}, 70%, 55%)` },
+        itemStyle: { color: editorColor(idx) },
       })),
     };
   }, [categoryCoverage, categoryData]);
@@ -967,10 +979,10 @@ export default function EditorsAnalyticsPage() {
       smooth: false,
       symbol: "circle",
       symbolSize: 4,
-      lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
-      itemStyle: { color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
+      lineStyle: { width: 2, color: editorColor(idx) },
+      itemStyle: { color: editorColor(idx) },
       areaStyle: {
-        color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%, 0.08)`,
+        color: editorAreaColor(idx),
       },
       data: monthlyTrend.map((p) => Number(p[actor] || 0)),
     })),
@@ -1062,10 +1074,10 @@ export default function EditorsAnalyticsPage() {
       smooth: false,
       symbol: "circle",
       symbolSize: 4,
-      lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 55%)` },
-      itemStyle: { color: `hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 55%)` },
+      lineStyle: { width: 2, color: editorColor(idx) },
+      itemStyle: { color: editorColor(idx) },
       areaStyle: {
-        color: `hsl(${(idx * 360) / Math.max(reviewedTrendActors.length, 1)}, 70%, 55%, 0.08)`,
+        color: editorAreaColor(idx),
       },
       data: monthlyReviewedTrend.map((p) => Number(p[actor] || 0)),
     })),
@@ -1170,10 +1182,10 @@ export default function EditorsAnalyticsPage() {
         smooth: false,
         symbol: "circle",
         symbolSize: 4,
-        lineStyle: { width: 2, color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
-        itemStyle: { color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%)` },
+        lineStyle: { width: 2, color: editorColor(idx) },
+        itemStyle: { color: editorColor(idx) },
         areaStyle: {
-          color: `hsl(${(idx * 360) / Math.max(trendActors.length, 1)}, 70%, 55%, 0.08)`,
+          color: editorAreaColor(idx),
         },
         data: otherTrend.map((p) => Number(p[actor] || 0)),
       })),
@@ -1319,7 +1331,7 @@ export default function EditorsAnalyticsPage() {
           return row?.count ?? 0;
         }),
         itemStyle: {
-          color: `hsl(${(idx * 360) / Math.max(actors.length, 1)}, 70%, 55%)`,
+          color: editorColor(idx),
         },
       })),
     };
@@ -1474,6 +1486,18 @@ export default function EditorsAnalyticsPage() {
           <span>{error}</span>
         </div>
       )}
+
+      {/* Hero insight */}
+      <AnalyticsHero eyebrow="Editorial throughput" title="The editors shaping Ethereum standards">
+        {OFFICIAL_EDITOR_HANDLES.length} official EIP editors have taken{" "}
+        <span className="font-semibold text-foreground">{totalActions.toLocaleString()}</span> editorial actions in this
+        window, with <span className="font-semibold text-foreground">{activeEditors}</span> active and a{" "}
+        <span className="font-semibold text-foreground">{avgResponseDays != null ? `${Math.round(avgResponseDays)}d` : "–"}</span>{" "}
+        average response time.
+        {thinCoverageCategories.length > 0 && (
+          <> Coverage runs thin in <span className="font-semibold text-rose-400">{thinCoverageCategories.length}</span> categories.</>
+        )}
+      </AnalyticsHero>
 
       {/* Top Subtle Stats Summary Bar */}
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2.5 rounded-2xl border border-border/45 bg-gradient-to-r from-card/85 to-card/45 px-5 py-3.5 text-xs text-muted-foreground backdrop-blur-md shadow-md hover:border-primary/20 transition-all duration-300">

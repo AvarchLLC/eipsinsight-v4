@@ -308,7 +308,7 @@ export function UpgradeStatsPanel() {
         row.totalEips,
         row.eipNumbers.map((eipNumber) => `EIP-${eipNumber}`).join(' | '),
         row.upgrades.join(' | '),
-        `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}${row.githubHandle ? `/people/${encodeURIComponent(row.githubHandle)}` : `/search?q=${encodeURIComponent(row.author)}`}`,
+        `${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}${row.githubHandle ? `/user/${encodeURIComponent(row.githubHandle)}` : `/search?q=${encodeURIComponent(row.author)}`}`,
       ]
         .map(csvEscape)
         .join(',')

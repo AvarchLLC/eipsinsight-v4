@@ -527,7 +527,7 @@ export function EditorialActivityDashboard({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <Link href={`/people/${e.editor}`} className="truncate text-sm font-medium text-foreground hover:text-primary">{e.editor}</Link>
+                              <Link href={`/user/${e.editor}`} className="truncate text-sm font-medium text-foreground hover:text-primary">{e.editor}</Link>
                               <span className="shrink-0 text-[11px] text-muted-foreground"><Eye className="mr-0.5 inline h-3 w-3" />{e.reviews} <MessageSquare className="ml-1 mr-0.5 inline h-3 w-3" />{e.comments}{e.merges > 0 && <> <GitMerge className="ml-1 mr-0.5 inline h-3 w-3 text-emerald-500" />{e.merges}</>}</span>
                             </div>
                             <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
