@@ -364,7 +364,7 @@ export const PERSONA_UPGRADE_HIGHLIGHTS: Record<Persona, UpgradeHighlight[]> = {
       title: "What is a Network Upgrade?",
       description: "Learn how Ethereum evolves through coordinated improvements",
       ctaLabel: "Learn More",
-      ctaLink: "/resources/getting-started",
+      ctaLink: "/resources/docs",
     },
     {
       title: "Upgrade Timeline",
