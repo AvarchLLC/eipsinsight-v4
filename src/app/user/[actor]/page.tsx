@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -59,6 +60,31 @@ type AuthoredIssue = {
   updatedAt: string | null;
   closedAt: string | null;
   labels: string[];
+};
+
+type AuthoredEip = {
+  eipNumber: number;
+  repo: string | null;
+  repoShort: string | null;
+  title: string | null;
+  author: string | null;
+  status: string;
+  type: string;
+  category: string;
+  createdAt: string | null;
+};
+
+type AuthoredPR = {
+  prNumber: number;
+  repo: string | null;
+  title: string | null;
+  state: string | null;
+  createdAt: string | null;
+  mergedAt: string | null;
+  closedAt: string | null;
+  updatedAt: string | null;
+  labels: string[];
+  governanceState: string | null;
 };
 
 type RangePreset = "7d" | "30d" | "365d" | "all" | "custom";
@@ -124,7 +150,7 @@ function deriveRoleSummary(data: {
 export default function PersonProfilePage() {
   const params = useParams();
   const actorParam = decodeURIComponent(String(params.actor ?? "")).trim();
-  const [activeTab, setActiveTab] = useState<"timeline" | "prs" | "issues">("timeline");
+  const [activeTab, setActiveTab] = useState<"timeline" | "eips" | "authoredPrs" | "prs" | "issues">("timeline");
   const [rangePreset, setRangePreset] = useState<RangePreset>("all");
   const [customFrom, setCustomFrom] = useState("");
   const [customTo, setCustomTo] = useState("");
@@ -475,6 +501,8 @@ export default function PersonProfilePage() {
         <div className="mb-4 flex items-center gap-2">
           {([
             { key: "timeline", label: "Timeline" },
+            { key: "eips", label: `EIPs Authored (${data.authoredEips.length})` },
+            { key: "authoredPrs", label: `PRs Authored (${data.authoredPRs.length})` },
             { key: "prs", label: `PR Activity (${data.involvedPRs.length})` },
             { key: "issues", label: `Issues (${data.authoredIssues.length})` },
           ] as const).map((tab) => (
@@ -499,6 +527,97 @@ export default function PersonProfilePage() {
             rangeLabel={rangeLabel}
             activities={data.activityDetails as ActivityDetail[]}
           />
+        )}
+
+        {activeTab === "eips" && (
+          <div className="space-y-3">
+            {(data.authoredEips as AuthoredEip[]).map((eip) => {
+              const repoShort = eip.repoShort || "eips";
+              const prefix = repoShort.replace(/s$/, "").toUpperCase();
+              return (
+                <Link
+                  key={`${eip.repo}-${eip.eipNumber}`}
+                  href={`/${repoShort}/${eip.eipNumber}`}
+                  className="block rounded-lg border border-border bg-muted/20 p-3 transition-colors hover:border-primary/40 hover:bg-muted/40"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">
+                        <span className="font-mono text-primary">{prefix}-{eip.eipNumber}</span>
+                        <span className="text-muted-foreground"> · </span>
+                        {eip.title || "Untitled"}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{eip.status}</span>
+                        {eip.type && eip.type !== "Unknown" && (
+                          <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">{eip.type}</span>
+                        )}
+                        {eip.category && eip.category !== eip.type && eip.category !== "Other" && (
+                          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">{eip.category}</span>
+                        )}
+                        {eip.createdAt && (
+                          <span className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">
+                            {new Date(eip.createdAt).getFullYear()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground">View →</span>
+                  </div>
+                </Link>
+              );
+            })}
+            {data.authoredEips.length === 0 && (
+              <p className="text-sm text-muted-foreground">No authored EIPs, ERCs or RIPs found for this handle.</p>
+            )}
+          </div>
+        )}
+
+        {activeTab === "authoredPrs" && (
+          <div className="space-y-3">
+            {(data.authoredPRs as AuthoredPR[]).map((pr) => {
+              const when = pr.mergedAt ?? pr.closedAt ?? pr.updatedAt ?? pr.createdAt;
+              return (
+                <div key={`${pr.repo}-${pr.prNumber}`} className="rounded-lg border border-border bg-muted/20 p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium text-foreground">#{pr.prNumber} · {pr.title || "Untitled PR"}</p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {pr.repo ?? "Unknown"}
+                        {pr.mergedAt
+                          ? ` · Merged ${new Date(pr.mergedAt).toLocaleDateString()}`
+                          : when
+                            ? ` · ${new Date(when).toLocaleDateString()}`
+                            : ""}
+                      </p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        <span className="rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
+                          {pr.mergedAt ? "merged" : pr.state || "unknown"}
+                        </span>
+                        {pr.governanceState && (
+                          <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] text-primary">{pr.governanceState}</span>
+                        )}
+                        {pr.labels.slice(0, 3).map((label) => (
+                          <span key={label} className="rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] text-muted-foreground">{label}</span>
+                        ))}
+                      </div>
+                    </div>
+                    <a
+                      href={`https://github.com/${pr.repo ?? "ethereum/EIPs"}/pull/${pr.prNumber}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-muted/60"
+                    >
+                      Open
+                    </a>
+                  </div>
+                </div>
+              );
+            })}
+            {data.authoredPRs.length === 0 && (
+              <p className="text-sm text-muted-foreground">No PRs authored by this handle.</p>
+            )}
+          </div>
         )}
 
         {activeTab === "prs" && (
