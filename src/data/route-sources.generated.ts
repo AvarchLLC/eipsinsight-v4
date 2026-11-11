@@ -85,6 +85,7 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/privacy-policy", source: "src/app/privacy-policy/page.tsx" },
   { pattern: "/calls/:series", source: "src/app/calls/[series]/page.tsx" },
   { pattern: "/upgrade/:slug", source: "src/app/upgrade/[slug]/page.tsx" },
+  { pattern: "/testimonials", source: "src/app/(public)/testimonials/page.tsx" },
   { pattern: "/dependencies", source: "src/app/(tools)/dependencies/page.tsx" },
   { pattern: "/eip-builder", source: "src/app/(tools)/eip-builder/page.tsx" },
   { pattern: "/officehours", source: "src/app/officehours/page.tsx" },
