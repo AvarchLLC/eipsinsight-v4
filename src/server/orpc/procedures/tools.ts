@@ -871,8 +871,8 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
         )
         SELECT *, COUNT(*) OVER()::bigint AS total_count
         FROM grouped
-        -- Calls happening soonest first; PRs with no upcoming call fall to the end.
-        ORDER BY next_call_on ASC NULLS LAST, pr_number DESC
+        -- Newest PRs first.
+        ORDER BY created_at DESC, pr_number DESC
         LIMIT $4 OFFSET $5
         `,
         series ?? null,

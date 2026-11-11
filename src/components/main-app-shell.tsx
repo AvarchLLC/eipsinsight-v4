@@ -3,7 +3,6 @@
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
 import Navbar from '@/components/navbar';
-import { DevconBanner } from '@/components/devcon-banner';
 import Footer from '@/components/footer';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
 import { GithubSourceLink } from '@/components/github-source-link';
@@ -21,7 +20,6 @@ export function MainAppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset className="flex h-screen flex-col overflow-hidden">
         <div className="shrink-0">
-          <DevconBanner />
           <Navbar />
         </div>
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">

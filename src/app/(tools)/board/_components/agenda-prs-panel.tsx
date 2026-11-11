@@ -355,17 +355,13 @@ export function AgendaPrsPanel() {
           </p>
 
           <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-            {/* Column header (desktop) — the list is sorted by "Next call" ascending. */}
+            {/* Column header (desktop) — the list is sorted newest PR first. */}
             <div className="hidden items-center gap-x-3 border-b border-border bg-muted/50 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground sm:flex">
               <span className="shrink-0">PR</span>
               <span className="min-w-0 flex-1">Title</span>
               <span className="shrink-0">Author</span>
               <span className="shrink-0">Status</span>
               <span className="shrink-0">EIPs</span>
-              <span className="inline-flex shrink-0 items-center gap-1">
-                Next call
-                <ChevronDown className="h-3 w-3" aria-label="sorted ascending" />
-              </span>
               <span className="shrink-0">Mentions</span>
             </div>
             <ul className="divide-y divide-border/60">
@@ -442,16 +438,6 @@ export function AgendaPrsPanel() {
                           </span>
                         )}
                       </span>
-
-                      {row.nextCallOn && (
-                        <span
-                          className="inline-flex shrink-0 items-center gap-1 text-xs font-medium text-foreground"
-                          title="Next call whose agenda mentions this EIP"
-                        >
-                          <CalendarClock className="h-3.5 w-3.5 text-primary" />
-                          {formatDate(row.nextCallOn)}
-                        </span>
-                      )}
 
                       <button
                         type="button"
