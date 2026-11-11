@@ -40,6 +40,8 @@ export default function Footer() {
     { name: `${monthName} ${year} Insights`, href: `/insights/${year}/${month}` },
     { name: "About Us", href: "/about" },
     { name: "Resources", href: "/resources" },
+    { name: "Events", href: "/events" },
+    { name: "Testimonials", href: "/testimonials" },
   ];
   return (
     <footer className="relative border-t border-border bg-background">

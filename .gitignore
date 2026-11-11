@@ -53,3 +53,6 @@ CLAUDE.mdprisma/seed-blogs.ts
 scripts/*
 # Build-time script (invoked by prebuild/predev) must be versioned:
 !scripts/gen-route-sources.mjs
+
+# Original (unoptimized) event photo drops — keep only the optimized web copies under public/events/<slug>/
+public/events/devcon 8/

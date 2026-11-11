@@ -50,6 +50,7 @@ import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { HomeHeroSection } from './_components/home-hero-section';
 import HomeFAQs from './_components/home-faqs';
 import SocialCommunityUpdates from './_components/social-community-updates';
+import { TestimonialsSection } from '@/components/testimonials-section';
 import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
 import GovernanceOverTime from '@/app/dashboard/_components/governance-over-time';
 import EditorHomeDashboard from './_components/persona-home/EditorHomeDashboard';
@@ -4029,6 +4030,9 @@ export default function EIPsHomePage() {
         </section>
       )}
       </PersonaDashboardComponent>
+
+      <hr className="my-8 border-border/70" />
+      <TestimonialsSection featuredOnly limit={3} showViewAll eyebrow className="mb-4" />
     </div>
   );
 }
