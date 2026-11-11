@@ -4598,7 +4598,7 @@ export const analyticsProcedures = {
             (
               SELECT COUNT(*)::bigint
               FROM eips e
-              WHERE COALESCE(e.author, '') ILIKE '%' || $1 || '%'
+              WHERE COALESCE(e.author, '') ILIKE '%(@' || $1 || ')%'
             ) AS eips_authored
         `,
           actor,
@@ -4706,6 +4706,49 @@ export const analyticsProcedures = {
         const total = actionCounts.reduce((acc, item) => acc + item.count, 0);
         return { month, total, actionCounts };
       });
+
+      // The actual EIPs/ERCs this person is a preamble author of (the summary
+      // only carries the count). Matches the same ILIKE the count uses so the
+      // list length lines up with `eipsAuthored`. Latest snapshot per proposal
+      // supplies status/type/category and the owning repo.
+      const authoredEipRows = await prisma.$queryRawUnsafe<Array<{
+        eip_number: number;
+        repo: string | null;
+        repo_short: string | null;
+        title: string | null;
+        author: string | null;
+        status: string;
+        type: string;
+        category: string;
+        created_at: Date | null;
+      }>>(
+        `
+        SELECT
+          e.eip_number,
+          r.name AS repo,
+          LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) AS repo_short,
+          e.title,
+          e.author,
+          COALESCE(NULLIF(s.status, ''), 'Unknown') AS status,
+          COALESCE(NULLIF(s.type, ''), 'Unknown') AS type,
+          COALESCE(NULLIF(s.category, ''), NULLIF(s.type, ''), 'Other') AS category,
+          e.created_at::timestamp AS created_at
+        FROM eips e
+        LEFT JOIN LATERAL (
+          SELECT s.status, s.type, s.category, s.repository_id, s.updated_at
+          FROM eip_snapshots s
+          WHERE s.eip_id = e.id
+          ORDER BY s.updated_at DESC NULLS LAST
+          LIMIT 1
+        ) s ON TRUE
+        LEFT JOIN repositories r ON r.id = s.repository_id
+        WHERE COALESCE(e.author, '') ILIKE '%(@' || $1 || ')%'
+          AND ($2::text IS NULL OR LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = LOWER($2))
+        ORDER BY e.eip_number ASC
+      `,
+        actor,
+        repo
+      );
 
       return {
         actor,
@@ -4823,6 +4866,17 @@ export const analyticsProcedures = {
           updatedAt: r.updated_at?.toISOString() ?? null,
           closedAt: r.closed_at?.toISOString() ?? null,
           labels: r.labels ?? [],
+        })),
+        authoredEips: authoredEipRows.map((r) => ({
+          eipNumber: r.eip_number,
+          repo: r.repo,
+          repoShort: r.repo_short,
+          title: r.title,
+          author: r.author,
+          status: r.status,
+          type: r.type,
+          category: r.category,
+          createdAt: r.created_at?.toISOString() ?? null,
         })),
       };
     }),
