@@ -3,6 +3,7 @@ import { getCachedCall } from '@/lib/upgrade-data.server';
 import { callDisplayName, callSeriesShort } from '@/data/call-series';
 import type { KeyDecision } from '@/components/upgrade/key-decisions';
 import { ogCard, ogFallback, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og-card';
+import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 
 /**
  * Per-call social card. Share intents can't attach an image — the picture in a
@@ -22,7 +23,43 @@ export default async function Image({ params }: Props) {
   const { series, number } = await params;
   const call = await getCachedCall(series, number);
 
-  if (!call) return new ImageResponse(ogFallback(), size);
+  if (!call) {
+    // Static office-hour / EIPIP recaps aren't in the call DB, so build their
+    // card from the hand-curated recap instead of falling back to the site logo.
+    if (OFFICE_HOUR_SERIES.has(series)) {
+      const recap = findOfficeHourRecap(series, number);
+      if (recap) {
+        const decisionCount = recap.keyDecisions?.length ?? recap.decisions.length;
+        const mergedCount = recap.prs.filter((p) => p.status === 'MERGED').length;
+        const clip = (t: string, max: number) => {
+          const clean = String(t ?? '').replace(/\s+/g, ' ').trim();
+          if (clean.length <= max) return clean;
+          const cut = clean.slice(0, max - 1);
+          return `${cut.slice(0, cut.lastIndexOf(' ')) || cut}…`;
+        };
+        const rows = (recap.keyDecisions?.map((d) => d.original_text) ?? recap.decisions)
+          .slice(0, 2)
+          .map((t) => clip(t, 110));
+        const chips = [
+          recap.prs.length > 0 ? `${recap.prs.length} PRs reviewed` : null,
+          mergedCount > 0 ? `${mergedCount} merged` : null,
+          decisionCount > 0 ? `${decisionCount} decisions` : null,
+          recap.youtube ? 'Recording' : null,
+        ].filter(Boolean) as string[];
+        return new ImageResponse(
+          ogCard({
+            badge: callSeriesShort(recap.series),
+            meta: recap.displayDate,
+            title: recap.title,
+            rows,
+            chips,
+          }),
+          size
+        );
+      }
+    }
+    return new ImageResponse(ogFallback(), size);
+  }
 
   const payload = call.key_decisions as
     | KeyDecision[]
