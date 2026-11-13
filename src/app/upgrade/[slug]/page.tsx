@@ -98,10 +98,21 @@ function compositionFromStaticTimeline(slug: string): {
 
 export default async function UpgradeDetailPage({ params }: Props) {
   const { slug } = await params;
-  const upgrade = await getCachedUpgrade(slug);
-  if (!upgrade) notFound();
-
   const entry = getUpgradeRegistryEntry(slug);
+  const rawUpgrade = await getCachedUpgrade(slug);
+  const upgrade =
+    rawUpgrade ??
+    (entry
+      ? {
+          id: 0,
+          slug,
+          name: entry.name,
+          meta_eip: entry.mascot?.eip ?? (slug === 'glamsterdam' ? 7773 : null),
+          created_at: null,
+        }
+      : null);
+
+  if (!upgrade) notFound();
 
   const [dbComposition, events, dbTimeline, allDevnets] = await Promise.all([
     getCachedUpgradeComposition(slug),

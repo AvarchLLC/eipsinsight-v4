@@ -54,8 +54,8 @@ export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
       'devnet-8': '2026-08-12',
       // Sepolia activated 2026-10-06 13:53 UTC (slot 11,296,768).
       'sepolia': '2026-10-06',
-      // Hoodi scheduled 2026-10-26 17:42 UTC (Gloas epoch 132352, 200M gas limit).
-      'hoodi': '2026-10-26',
+      // Note: Hoodi was scheduled for 2026-10-26 in Meta EIP-7773, but was postponed by ACD.
+      // Do not lock to a past date so testnets phase correctly reflects pending rollout.
     },
   },
   {
