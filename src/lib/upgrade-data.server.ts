@@ -2,6 +2,7 @@ import 'server-only';
 import { unstable_cache } from 'next/cache';
 import { createRouterClient } from '@orpc/server';
 import { router } from '@/server/orpc/router';
+import { getUpgradeRegistryEntry } from '@/data/upgrade-registry';
 import type { UpgradeCompositionEip } from '@/components/upgrade/types';
 
 /**
@@ -21,10 +22,22 @@ const CACHE_VERSION = 'v11';
 export const getCachedUpgrade = unstable_cache(
   async (slug: string) => {
     try {
-      return await publicClient.upgrades.getUpgrade({ slug });
+      const upgrade = await publicClient.upgrades.getUpgrade({ slug });
+      if (upgrade) return upgrade;
     } catch {
-      return null;
+      // Fall through to registry fallback if database or procedure fails
     }
+    const reg = getUpgradeRegistryEntry(slug);
+    if (reg) {
+      return {
+        id: 0,
+        slug,
+        name: reg.name,
+        meta_eip: reg.mascot?.eip ?? (slug === 'glamsterdam' ? 7773 : null),
+        created_at: null,
+      };
+    }
+    return null;
   },
   ['upgrade-detail', CACHE_VERSION],
   { revalidate: REVALIDATE_SECONDS }

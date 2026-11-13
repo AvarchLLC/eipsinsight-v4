@@ -404,9 +404,14 @@ export const upgradesProcedures = {
       slug: z.string(),
     }))
     .handler(async ({ context, input }) => {
-      const upgrade = await prisma.upgrades.findUnique({
-        where: { slug: input.slug },
-      });
+      let upgrade = null;
+      try {
+        upgrade = await prisma.upgrades.findUnique({
+          where: { slug: input.slug },
+        });
+      } catch {
+        // Fall back to registry if database is unreachable
+      }
 
       if (!upgrade) {
         const reg = getUpgradeRegistryEntry(input.slug);
@@ -423,7 +428,7 @@ export const upgradesProcedures = {
             id: 0,
             slug: input.slug,
             name,
-            meta_eip: Number.isNaN(meta_eip) ? null : meta_eip,
+            meta_eip: reg?.mascot?.eip ?? (Number.isNaN(meta_eip) ? null : meta_eip),
             created_at: null,
           };
         }
