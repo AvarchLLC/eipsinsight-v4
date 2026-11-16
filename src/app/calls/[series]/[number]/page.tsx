@@ -28,6 +28,8 @@ import {
 import { CallTldr } from '@/components/upgrade/call-tldr';
 import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
+import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
+import { ProvisionalCallView } from '@/components/provisional-call-view';
 import { ShareButtons } from '@/components/share-buttons';
 import { classifyProposalRef, proposalRefHref, proposalRefLabel } from '@/lib/proposal-ref';
 import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-decisions';
@@ -68,6 +70,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         ? buildMetadata({ title: recap.title, description: `Recording, summary, decisions, and transcript for ${recap.title}.`, path: `/calls/${recap.series}/${recap.meeting}`, image: null })
         : {};
     }
+    const provisional = findProvisionalCallRecap(resolvedParams.series, resolvedParams.number);
+    if (provisional) {
+      return buildMetadata({
+        title: provisional.title,
+        description: `Early summary and key decisions for ${provisional.title}.`,
+        path: `/calls/${provisional.series}/${provisional.number}`,
+        image: null,
+      });
+    }
     return {};
   }
   return buildMetadata({
@@ -101,6 +112,11 @@ export default async function CallDetailPage({ params }: Props) {
       const recap = findOfficeHourRecap(series, number);
       if (recap) return <OfficeHourCallView recap={recap} />;
     }
+    // Stop-gap for a call not yet ingested by the ACDbot pipeline. Once the
+    // scheduler indexes it into protocol_calls, getCachedCall returns a row and
+    // the DB-backed view above replaces this automatically.
+    const provisional = findProvisionalCallRecap(series, number);
+    if (provisional) return <ProvisionalCallView recap={provisional} />;
     notFound();
   }
 
