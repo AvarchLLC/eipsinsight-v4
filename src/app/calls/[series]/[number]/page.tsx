@@ -10,6 +10,7 @@ import {
   Video,
   Gavel,
   FileText,
+  ListChecks,
   MessagesSquare,
 } from 'lucide-react';
 import '@/lib/orpc.server';
@@ -26,6 +27,7 @@ import {
   callSeriesShort,
 } from '@/data/call-series';
 import { CallTldr } from '@/components/upgrade/call-tldr';
+import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
@@ -58,6 +60,44 @@ function getYoutubeId(url: string | null): string | null {
 
 async function getTranscriptCues(series: string, callId: string) {
   return fetchTranscriptCues(series, callId);
+}
+
+/** Pull the Agenda section out of an ethereum/pm issue body. */
+function extractAgenda(body: string): string | null {
+  const norm = body.replace(/\r\n/g, '\n');
+  const heading = norm.match(/^#{1,6}\s*Agenda\s*$/im);
+  if (!heading || heading.index === undefined) return null;
+  // Drop the "Agenda" heading line itself; the UI renders its own heading.
+  let section = norm.slice(heading.index).replace(/^#{1,6}\s*Agenda\s*$\n?/im, '');
+  // Trim trailing issue boilerplate (call series, autopilot, zoom resources).
+  const cutMarkers = [
+    /^#{1,6}\s*Call Series/im,
+    /Autopilot Mode/i,
+    /Meeting Configuration/i,
+    /Protocol Call Resources/i,
+  ];
+  let cutAt = section.length;
+  for (const re of cutMarkers) {
+    const i = section.search(re);
+    if (i !== -1) cutAt = Math.min(cutAt, i);
+  }
+  const out = section.slice(0, cutAt).trim();
+  return out.length > 0 ? out : null;
+}
+
+/** Fetch and extract the agenda for a call's GitHub issue (cached via ISR). */
+async function getCallAgenda(issueNumber: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/ethereum/pm/issues/${issueNumber}`,
+      { headers: { Accept: 'application/vnd.github+json' }, next: { revalidate: 300 } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { body?: string | null };
+    return data.body ? extractAgenda(data.body) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -146,6 +186,8 @@ export default async function CallDetailPage({ params }: Props) {
     : (payload?.key_decisions ?? []);
 
   const neighbors = await getCachedCallNeighbors(call.series, call.occurred_on);
+
+  const agenda = call.issue_number ? await getCallAgenda(call.issue_number) : null;
 
   // Series tag (ACDT/ACDE/…) first, matching how the account tags its posts.
   const shareHashtags = [callSeriesShort(call.series).replace(/[^A-Za-z0-9]/g, ''), 'Ethereum'];
@@ -322,6 +364,25 @@ export default async function CallDetailPage({ params }: Props) {
               </p>
             )}
           </section>
+
+          {agenda && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <ListChecks className="h-4 w-4 text-muted-foreground" />
+                Agenda
+              </h2>
+              <details className="group rounded-xl border border-border bg-card/60 px-4 py-3" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
+                  <span>From the call issue{call.issue_number ? ` #${call.issue_number}` : ''}</span>
+                  <span className="text-xs text-primary group-open:hidden">Show</span>
+                  <span className="hidden text-xs text-primary group-open:inline">Hide</span>
+                </summary>
+                <div className="mt-3 border-t border-border/50 pt-3 text-sm">
+                  <MarkdownRenderer content={agenda} />
+                </div>
+              </details>
+            </section>
+          )}
 
           {/* Transcript fallback when there's a transcript but no embeddable video */}
           {call.has_transcript && !youtubeId && !selfIndexed && (
