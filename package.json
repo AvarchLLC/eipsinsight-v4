@@ -6,7 +6,7 @@
     "gen:routes": "node scripts/gen-route-sources.mjs",
     "prebuild": "node scripts/gen-route-sources.mjs",
     "predev": "node scripts/gen-route-sources.mjs",
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "postinstall": "prisma generate",

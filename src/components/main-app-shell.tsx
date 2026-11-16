@@ -2,6 +2,7 @@
 
 import { SidebarProvider, SidebarInset } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/app-sidebar';
+import { TheDaoBanner } from '@/components/thedao-banner';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import { GlobalPageFeedback } from '@/components/global-page-feedback';
@@ -20,6 +21,7 @@ export function MainAppShell({ children }: { children: React.ReactNode }) {
       <AppSidebar />
       <SidebarInset className="flex h-screen flex-col overflow-hidden">
         <div className="shrink-0">
+          <TheDaoBanner />
           <Navbar />
         </div>
         <div className="min-h-0 min-w-0 flex-1 overflow-y-auto">

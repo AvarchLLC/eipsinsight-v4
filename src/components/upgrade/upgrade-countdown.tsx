@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import Confetti from 'react-confetti';
-import { Rocket, FileText, Boxes, Layers } from 'lucide-react';
+import { Rocket, FileText, Boxes, Layers, AlertTriangle, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const SECONDS_PER_SLOT = 12;
@@ -32,6 +32,8 @@ type CountdownTarget = {
   estimate?: string;
   beaconApi?: string;
   rpc?: string;
+  postponed?: boolean;
+  postponedNote?: string;
 };
 
 type CountdownConfig = { title: string; metaEip?: number; targets: CountdownTarget[] };
@@ -52,15 +54,13 @@ const COUNTDOWN_CONFIG: Record<string, CountdownConfig> = {
       {
         key: 'hoodi',
         label: 'Hoodi',
-        // Gloas (CL) fork epoch 132352 = slot 4235264, activating 2026-10-26
-        // 17:42:48 UTC. Announced as "Oct 26, 17:42 UTC" (200M gas limit); the
-        // epoch-boundary lands 48s past the minute. GLOAS_FORK_EPOCH isn't yet
-        // pinned in public node configs — this is derived from Hoodi genesis
-        // (1742213400) + the announced time.
-        epoch: 132352,
-        timestamp: 1793036568, // 2026-10-26 17:42:48 UTC
-        beaconApi: 'https://ethereum-hoodi-beacon-api.publicnode.com',
-        rpc: 'https://ethereum-hoodi-rpc.publicnode.com',
+        // Gloas (CL) fork epoch 132352 was originally scheduled in EIP-7773
+        // for 2026-10-26 17:42:48 UTC, but was postponed by All Core Devs (ACD).
+        // It must not be marked live.
+        postponed: true,
+        estimate: 'Postponed',
+        postponedNote:
+          'Hoodi activation was postponed by All Core Devs (ACD). Although it might still appear as scheduled or live in the Meta EIP (EIP-7773), the rollout was deferred pending further client testing. A revised activation slot has not yet been locked.',
       },
       { key: 'mainnet', label: 'Mainnet', estimate: 'Early Dec 2026' },
     ],
@@ -102,7 +102,7 @@ export function UpgradeCountdown({ slug }: { slug: string }) {
   const [selected, setSelected] = useState<string>(() => {
     if (!config) return '';
     const nowSec = Date.now() / 1000;
-    const upcoming = config.targets.find((t) => t.timestamp && t.timestamp > nowSec);
+    const upcoming = config.targets.find((t) => !t.postponed && t.timestamp && t.timestamp > nowSec);
     return (upcoming ?? config.targets[0])?.key ?? '';
   });
   const [nowMs, setNowMs] = useState<number | null>(null);
@@ -159,7 +159,7 @@ export function UpgradeCountdown({ slug }: { slug: string }) {
     };
   }, [target, fetchChain]);
 
-  const live = Boolean(target?.timestamp && nowMs !== null && nowMs >= target.timestamp * 1000);
+  const live = Boolean(!target?.postponed && target?.timestamp && nowMs !== null && nowMs >= target.timestamp * 1000);
 
   useEffect(() => {
     if (live && !celebrated) {
@@ -207,49 +207,153 @@ export function UpgradeCountdown({ slug }: { slug: string }) {
         <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 sm:px-5">
           <div className="flex items-center gap-2">
             <span className="relative flex h-2 w-2">
-              <span className={cn('absolute inline-flex h-full w-full rounded-full opacity-75',
-                live ? 'bg-emerald-400 animate-ping' : 'bg-primary animate-ping')} />
-              <span className={cn('relative inline-flex h-2 w-2 rounded-full', live ? 'bg-emerald-500' : 'bg-primary')} />
+              <span
+                className={cn(
+                  'absolute inline-flex h-full w-full rounded-full opacity-75',
+                  target?.postponed
+                    ? 'bg-amber-400 animate-pulse'
+                    : live
+                    ? 'bg-emerald-400 animate-ping'
+                    : 'bg-primary animate-ping'
+                )}
+              />
+              <span
+                className={cn(
+                  'relative inline-flex h-2 w-2 rounded-full',
+                  target?.postponed ? 'bg-amber-500' : live ? 'bg-emerald-500' : 'bg-primary'
+                )}
+              />
             </span>
             <h2 className="text-sm font-semibold tracking-tight text-foreground">
-              {config.title} {live ? 'activation' : 'activates in'}
+              {config.title} {target?.postponed ? 'activation status' : live ? 'activation' : 'activates in'}
             </h2>
           </div>
 
           <div className="flex items-center gap-1.5">
-            {config.targets.map((t) => (
-              <button
-                key={t.key}
-                onClick={() => setSelected(t.key)}
-                className={cn(
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
-                  t.key === selected
-                    ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
-                    : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-                )}
-              >
-                <span className={cn('h-1.5 w-1.5 rounded-full', t.timestamp ? 'bg-emerald-500' : 'bg-amber-500')} />
-                {t.label}
-              </button>
-            ))}
+            {config.targets.map((t) => {
+              const isTargetLive = Boolean(
+                !t.postponed && t.timestamp && nowMs !== null && nowMs >= t.timestamp * 1000
+              );
+              const dotColor =
+                t.postponed
+                  ? 'bg-amber-500'
+                  : isTargetLive
+                  ? 'bg-emerald-500'
+                  : t.timestamp
+                  ? 'bg-primary'
+                  : 'bg-amber-500';
+
+              return (
+                <button
+                  key={t.key}
+                  onClick={() => setSelected(t.key)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium transition-colors',
+                    t.key === selected
+                      ? 'bg-primary/15 text-primary ring-1 ring-primary/30'
+                      : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                  )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full', dotColor)} />
+                  {t.label}
+                  {t.postponed && (
+                    <span className="text-[10px] text-amber-600 dark:text-amber-400 font-normal">
+                      (Postponed)
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         <div className="px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
-          {!target?.timestamp ? (
+          {target?.postponed ? (
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400 mt-0.5">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-lg font-bold text-foreground">
+                      {config.title} on {target.label}: <span className="text-amber-600 dark:text-amber-400">Postponed</span>
+                    </p>
+                    <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                      Deferred
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Activation delayed by All Core Devs · Revised schedule pending
+                  </p>
+                </div>
+              </div>
+
+              {/* Informational Callout regarding Meta EIP */}
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:p-4 text-xs text-amber-950 dark:text-amber-100">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="font-semibold text-amber-900 dark:text-amber-200">
+                      Note regarding Meta EIP status:
+                    </p>
+                    <p className="leading-relaxed text-amber-800 dark:text-amber-200/90">
+                      {target.postponedNote ?? (
+                        <>
+                          While Hoodi might be shown as scheduled or live in the Meta EIP (
+                          {config.metaEip ? (
+                            <Link
+                              href={`/eip/${config.metaEip}`}
+                              className="font-semibold underline hover:text-foreground inline-flex items-center gap-0.5 text-amber-900 dark:text-amber-100"
+                            >
+                              EIP-{config.metaEip}
+                              <FileText className="inline h-3 w-3 ml-0.5" />
+                            </Link>
+                          ) : (
+                            'EIP-7773'
+                          )}
+                          ), the Hoodi activation was <strong>postponed</strong> following consensus at All Core Devs (ACD). A revised activation date will be announced once client stability is verified.
+                        </>
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : !target?.timestamp ? (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground">{target?.label}</span> activation is tentative
               {target?.estimate ? ` (${target.estimate})` : ''}. A live countdown appears once ACD locks the slot.
             </p>
           ) : live ? (
-            <div className="flex items-center gap-2.5">
-              <Rocket className="h-6 w-6 text-emerald-500" />
-              <div>
-                <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
-                  {config.title} is live on {target.label}
-                </p>
-                {dateLabel && <p className="text-xs text-muted-foreground">Activated {dateLabel}</p>}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2.5">
+                <Rocket className="h-6 w-6 text-emerald-500" />
+                <div>
+                  <p className="text-lg font-bold text-emerald-600 dark:text-emerald-400">
+                    {config.title} is live on {target.label}
+                  </p>
+                  {dateLabel && <p className="text-xs text-muted-foreground">Activated {dateLabel}</p>}
+                </div>
               </div>
+
+              {/* Next testnet footnote when Sepolia is viewed */}
+              {config.targets.some((t) => t.postponed) && (
+                <div className="flex items-start gap-2 rounded-lg border border-border/70 bg-card/60 px-3 py-2 text-xs text-muted-foreground">
+                  <Info className="h-3.5 w-3.5 shrink-0 text-amber-500 mt-0.5" />
+                  <span>
+                    <strong className="text-foreground">Next testnet note:</strong> Although Hoodi may be shown as scheduled or live in the Meta EIP (
+                    {config.metaEip ? (
+                      <Link href={`/eip/${config.metaEip}`} className="underline font-medium text-foreground hover:text-primary">
+                        EIP-{config.metaEip}
+                      </Link>
+                    ) : (
+                      'EIP-7773'
+                    )}
+                    ), its activation was postponed by ACD.
+                  </span>
+                </div>
+              )}
             </div>
           ) : (
             <>
