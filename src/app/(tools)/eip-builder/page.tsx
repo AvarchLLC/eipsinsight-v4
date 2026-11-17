@@ -32,6 +32,16 @@ interface TemplateData {
 
 interface ValidationItem { summary: string; detail?: string; code?: string; section?: string; field?: string }
 
+// ── Validation Checklist Definitions ──
+const VALIDATION_CHECKS = [
+  { id: "preamble", label: "Preamble & Frontmatter", desc: "Checks field ordering, required keys, formatting, and constraints" },
+  { id: "title_desc", label: "Title & Description", desc: "Title Case, length limits (≤44 & ≤140), and verb checks" },
+  { id: "authors_disc", label: "Author & Discussions-To", desc: "Validates GitHub handle/email and Magicians URL" },
+  { id: "sections", label: "Sections & Structure", desc: "Verifies section sequence, CC0 copyright, and completeness" },
+  { id: "normative", label: "RFC 2119 / Normative Language", desc: "Checks keywords scope (MUST/SHOULD) and RFC boilerplate notice" },
+  { id: "prose_links", label: "Prose, Links & Quality", desc: "Validates EIP-N format, disallowed links, no LaTeX, no TODO markers" },
+];
+
 type TemplateKey = keyof TemplateData;
 
 interface ValidationItem { summary: string; detail?: string; code?: string }
@@ -189,6 +199,7 @@ export default function EIPBuilderPage() {
   // Validation
   const [validated, setValidated] = useState(false);
   const [validating, setValidating] = useState(false);
+  const [activeCheckStep, setActiveCheckStep] = useState<number>(-1);
   const [validationErrors, setValidationErrors] = useState<ValidationItem[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
 
@@ -376,7 +387,14 @@ export default function EIPBuilderPage() {
   // ── Validate ──
   const handleValidate = async () => {
     setValidating(true);
+    setShowValidationDialog(true);
+    setActiveCheckStep(0);
     const errors: ValidationItem[] = [];
+
+    // Step animation for clear visual inspection
+    const stepInterval = setInterval(() => {
+      setActiveCheckStep((prev) => (prev < VALIDATION_CHECKS.length - 1 ? prev + 1 : prev));
+    }, 220);
 
     try {
       const res = await fetch("/api/validate-eip", {
@@ -398,13 +416,15 @@ export default function EIPBuilderPage() {
       }
     } catch (err) {
       errors.push({ summary: "Validation failed to run.", detail: String(err), code: "error" });
+    } finally {
+      clearInterval(stepInterval);
+      setActiveCheckStep(VALIDATION_CHECKS.length);
+      setValidating(false);
     }
 
-    setValidating(false);
     if (errors.length > 0) {
       setValidated(false);
       setValidationErrors(errors);
-      setShowValidationDialog(true);
     } else {
       setValidated(true);
       setValidationErrors([]);
@@ -741,60 +761,141 @@ export default function EIPBuilderPage() {
         </div>
       </div>
 
-      {/* ─── Validation Error Dialog ─── */}
+      {/* ─── Validation Dialog & Real-Time Inspection ─── */}
       {showValidationDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => setShowValidationDialog(false)}>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[80vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => !validating && setShowValidationDialog(false)}>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700/50">
-              <h3 className="text-base font-semibold text-red-700 dark:text-red-400 flex items-center gap-2">
-                <AlertCircle className="h-5 w-5" />Validation Errors
-              </h3>
-              <button onClick={() => setShowValidationDialog(false)} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"><X className="h-5 w-5" /></button>
+              <div className="flex items-center gap-2">
+                {validating ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                    <h3 className="text-base font-semibold text-foreground">Running Compliance Checks...</h3>
+                  </>
+                ) : validationErrors.length > 0 ? (
+                  <>
+                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                    <h3 className="text-base font-semibold text-red-600 dark:text-red-400">
+                      Validation Issues ({validationErrors.length})
+                    </h3>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                    <h3 className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
+                      All Rules Passed
+                    </h3>
+                  </>
+                )}
+              </div>
+              <button
+                disabled={validating}
+                onClick={() => setShowValidationDialog(false)}
+                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40"
+              >
+                <X className="h-5 w-5" />
+              </button>
             </div>
-            <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2">
-              {validationErrors.map((err, i) => (
-                <div
-                  key={i}
-                  className={cn(
-                    "rounded-lg border p-3",
-                    err.code === "error"
-                      ? "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300"
-                      : err.code === "warning"
-                      ? "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300"
-                      : "border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-300"
-                  )}
-                >
-                  <div className="flex items-start gap-2">
-                    <AlertCircle
-                      className={cn(
-                        "h-4 w-4 shrink-0 mt-0.5",
-                        err.code === "error"
-                          ? "text-red-600 dark:text-red-400"
-                          : err.code === "warning"
-                          ? "text-amber-600 dark:text-amber-400"
-                          : "text-blue-600 dark:text-blue-400"
-                      )}
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">{err.summary}</p>
-                        {err.section && (
-                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-muted/60 opacity-80 whitespace-nowrap">
-                            {err.section}
-                          </span>
+
+            <div className="overflow-y-auto p-4 space-y-3 flex-1">
+              {/* Progress Checklist */}
+              <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  EIP Standards & Editorial Checks
+                </p>
+                <div className="space-y-1.5">
+                  {VALIDATION_CHECKS.map((chk, idx) => {
+                    const isPassed = !validating || activeCheckStep > idx;
+                    const isCurrent = validating && activeCheckStep === idx;
+                    return (
+                      <div key={chk.id} className="flex items-start gap-2 text-xs py-0.5">
+                        {isCurrent ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 mt-0.5" />
+                        ) : isPassed ? (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                        ) : (
+                          <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0 mt-0.5" />
                         )}
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("font-medium", isCurrent ? "text-primary" : isPassed ? "text-foreground" : "text-muted-foreground")}>
+                            {chk.label}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground truncate">{chk.desc}</p>
+                        </div>
                       </div>
-                      {err.detail && err.detail !== err.summary && (
-                        <p className="text-xs text-muted-foreground mt-1">{err.detail}</p>
-                      )}
-                    </div>
-                  </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
+
+              {/* Error list once checks finish */}
+              {!validating && validationErrors.length > 0 && (
+                <div className="space-y-2 pt-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
+                    Flagged Items ({validationErrors.length})
+                  </p>
+                  {validationErrors.map((err, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "rounded-lg border p-3",
+                        err.code === "error"
+                          ? "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300"
+                          : err.code === "warning"
+                          ? "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300"
+                          : "border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-300"
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        <AlertCircle
+                          className={cn(
+                            "h-4 w-4 shrink-0 mt-0.5",
+                            err.code === "error"
+                              ? "text-red-600 dark:text-red-400"
+                              : err.code === "warning"
+                              ? "text-amber-600 dark:text-amber-400"
+                              : "text-blue-600 dark:text-blue-400"
+                          )}
+                        />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-xs font-medium">{err.summary}</p>
+                            {err.section && (
+                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-muted/60 opacity-80 whitespace-nowrap">
+                                {err.section}
+                              </span>
+                            )}
+                          </div>
+                          {err.detail && err.detail !== err.summary && (
+                            <p className="text-[11px] text-muted-foreground mt-1">{err.detail}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Success message when valid */}
+              {!validating && validationErrors.length === 0 && (
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-center space-y-1">
+                  <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                    Proposal Ready for Submission!
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Complies with EIP formatting and editorial rules. No errors or warnings detected.
+                  </p>
+                </div>
+              )}
             </div>
-            <div className="flex justify-end px-5 py-3 border-t border-slate-200 dark:border-slate-700/50">
-              <button onClick={() => setShowValidationDialog(false)}
-                className="px-4 py-2 text-sm font-medium text-slate-900 dark:text-white bg-red-500/20 border border-red-500/40 rounded-lg hover:bg-red-500/30 transition-colors">
+
+            <div className="flex justify-end px-5 py-3 border-t border-slate-200 dark:border-slate-700/50 bg-card/40">
+              <button
+                disabled={validating}
+                onClick={() => setShowValidationDialog(false)}
+                className="px-4 py-2 text-xs font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-muted/80 transition-colors disabled:opacity-50"
+              >
                 Close
               </button>
             </div>
