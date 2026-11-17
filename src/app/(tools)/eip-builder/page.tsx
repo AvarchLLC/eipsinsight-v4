@@ -7,7 +7,7 @@ import {
   ChevronDown, ChevronRight, AlertCircle, CheckCircle2, Info,
   Bold, Italic, Heading1, Heading2, Heading3, Code, Quote,
   List, ListOrdered, CheckSquare, Link2, Table, Minus, Columns2,
-  Pencil, Eye, X, FileCode, BookOpen,
+  Pencil, Eye, X, FileCode, BookOpen, GitPullRequest, ExternalLink,
 } from "lucide-react";
 import NextLink from "next/link";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,15 @@ import { MarkdownRenderer } from "@/components/markdown-renderer";
 // ──────────────────────────────────────────────
 type EipType = "eip" | "erc" | "rip";
 type ViewMode = "edit" | "output" | "split";
-type TabMode = "new" | "import";
+type TabMode = "new" | "import" | "pr";
+
+interface ImportedPrInfo {
+  prNumber: number;
+  prTitle: string;
+  prAuthor?: string;
+  prUrl: string;
+  filename: string;
+}
 
 interface TemplateData {
   eip: string; title: string; description: string; author: string;
@@ -44,8 +52,6 @@ const VALIDATION_CHECKS = [
 
 type TemplateKey = keyof TemplateData;
 
-interface ValidationItem { summary: string; detail?: string; code?: string }
-
 // ──────────────────────────────────────────────
 // Constants
 // ──────────────────────────────────────────────
@@ -61,7 +67,7 @@ const INITIAL_DATA: TemplateData = {
 const INSTRUCTIONS: Record<string, string> = {
   eip: "EIP number (use placeholder until editor assigns one)",
   title: "A few words in Title Case, ≤44 characters. No EIP number, no word \"standard\"",
-  description: "One full sentence starting with a verb (e.g., \"Adds…\"), ≤140 characters. No colon, no \"standard\"",
+  description: "One full (short) sentence, ≤140 characters. No colon, no \"standard\"",
   author: "Name (@GitHubUsername), Name <email@example.com> — at least one handle or email required",
   discussionsTo: "Must be an Ethereum Magicians topic URL (https://ethereum-magicians.org/t/...)",
   status: "Draft, Review, Last Call, Final, Stagnant, Withdrawn, Living",
@@ -195,6 +201,7 @@ export default function EIPBuilderPage() {
   const [importQuery, setImportQuery] = useState("");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
+  const [importedPrInfo, setImportedPrInfo] = useState<ImportedPrInfo | null>(null);
 
   // Validation
   const [validated, setValidated] = useState(false);
@@ -209,6 +216,24 @@ export default function EIPBuilderPage() {
   // Refs for cursor-based markdown insert
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
   const codeSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Group validation issues by field/section
+  const issuesByTarget = useMemo(() => {
+    const map: Record<string, ValidationItem[]> = {};
+    for (const err of validationErrors) {
+      if (err.field) {
+        const k = err.field.toLowerCase();
+        if (!map[k]) map[k] = [];
+        map[k].push(err);
+      }
+      if (err.section) {
+        const s = err.section.toLowerCase();
+        if (!map[s]) map[s] = [];
+        map[s].push(err);
+      }
+    }
+    return map;
+  }, [validationErrors]);
 
   // ── URL hash state ──
   useEffect(() => {
@@ -359,8 +384,42 @@ export default function EIPBuilderPage() {
     }
   };
 
-  // ── Import ──
+  // ── Import PR ──
+  const handleImportPR = async () => {
+    const prNum = importQuery.replace(/[^0-9]/g, "");
+    if (!prNum) { setImportError("Enter a valid PR number"); return; }
+
+    setImporting(true); setImportError(null);
+    try {
+      const res = await fetch(`/api/eip-builder/import-pr?repo=${repoType}&pr=${prNum}`);
+      const dataJson = await res.json();
+      if (!res.ok || !dataJson.success) {
+        throw new Error(dataJson.error || `Could not find PR #${prNum}`);
+      }
+      const parsed = parseMarkdownToForm(dataJson.markdownContent);
+      setData({ ...INITIAL_DATA, ...parsed });
+      setLastEdited("form");
+      setExpandedSections(SECTION_DEFS.filter((s) => parsed[s.key]?.trim()).map((s) => s.key));
+      setImportedPrInfo({
+        prNumber: dataJson.prNumber,
+        prTitle: dataJson.prTitle,
+        prAuthor: dataJson.prAuthor,
+        prUrl: dataJson.prUrl,
+        filename: dataJson.filename,
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : `Failed to load PR #${prNum}`;
+      setImportError(msg);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  // ── Import standard by number ──
   const handleImport = async () => {
+    if (tabMode === "pr") {
+      return handleImportPR();
+    }
     const num = importQuery.replace(/[^0-9]/g, "");
     if (!num) { setImportError("Enter a valid number"); return; }
 
@@ -372,13 +431,40 @@ export default function EIPBuilderPage() {
     };
 
     try {
-      const res = await fetch(urls[repoType]);
+      let activeRepo = repoType;
+      let res = await fetch(urls[activeRepo]);
+
+      // If in EIP mode, check if the standard was moved to ERC or 404s
+      if (activeRepo === "eip") {
+        if (res.ok) {
+          const testText = await res.clone().text();
+          // Detect moved stub: "status: Moved" or "This file was moved to ... ercs"
+          if (/status:\s*Moved/i.test(testText) || /ethereum\/ercs/i.test(testText)) {
+            const ercRes = await fetch(urls.erc);
+            if (ercRes.ok) {
+              res = ercRes;
+              activeRepo = "erc";
+              setRepoType("erc");
+            }
+          }
+        } else {
+          // If 404 in EIPs repo, check if it lives in ERCs
+          const ercRes = await fetch(urls.erc);
+          if (ercRes.ok) {
+            res = ercRes;
+            activeRepo = "erc";
+            setRepoType("erc");
+          }
+        }
+      }
+
       if (!res.ok) throw new Error("not found");
       const md = await res.text();
       const parsed = parseMarkdownToForm(md);
       setData({ ...INITIAL_DATA, ...parsed });
       setLastEdited("form");
       setExpandedSections(SECTION_DEFS.filter((s) => parsed[s.key]?.trim()).map((s) => s.key));
+      setImportedPrInfo(null);
     } catch {
       setImportError(`Could not find ${repoType.toUpperCase()}-${num}`);
     } finally { setImporting(false); }
@@ -490,7 +576,7 @@ export default function EIPBuilderPage() {
   const showOutput = viewMode === "output" || viewMode === "split";
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* ─── Top Bar ─── */}
       <div className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-sm">
         <div className="w-full px-4 py-2 sm:px-6 lg:px-8 xl:px-12">
@@ -498,7 +584,7 @@ export default function EIPBuilderPage() {
             <ArrowLeft className="h-3.5 w-3.5" />Tools
           </NextLink>
           <div className="flex flex-wrap items-center gap-2">
-            {/* New / Import toggle */}
+            {/* New / Import / PR toggle */}
             <div className="flex overflow-hidden rounded-lg border border-border">
               <button onClick={() => setTabMode("new")} className={cn("px-3 py-1.5 text-xs font-medium transition-colors", tabMode === "new" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
                 New {repoType.toUpperCase()}
@@ -506,21 +592,29 @@ export default function EIPBuilderPage() {
               <button onClick={() => setTabMode("import")} className={cn("border-l border-border px-3 py-1.5 text-xs font-medium transition-colors", tabMode === "import" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
                 Import {repoType.toUpperCase()}
               </button>
+              <button onClick={() => setTabMode("pr")} className={cn("border-l border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors", tabMode === "pr" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
+                <GitPullRequest className="h-3 w-3" />
+                Review PR
+              </button>
             </div>
 
-            {/* Import search */}
-            {tabMode === "import" && (
+            {/* Import / PR search */}
+            {(tabMode === "import" || tabMode === "pr") && (
               <div className="flex items-center gap-1.5">
                 <div className="relative">
-                  <input type="text" value={importQuery} onChange={(e) => setImportQuery(e.target.value)}
+                  <input
+                    type="text"
+                    value={importQuery}
+                    onChange={(e) => setImportQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleImport()}
-                    placeholder={`Enter ${repoType.toUpperCase()} number`}
-                    className="w-40 rounded-lg border border-border bg-muted/60 py-1.5 pl-3 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30" />
+                    placeholder={tabMode === "pr" ? `Enter PR # (e.g. 12449)` : `Enter ${repoType.toUpperCase()} number`}
+                    className="w-48 rounded-lg border border-border bg-muted/60 py-1.5 pl-3 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
                   <button onClick={handleImport} disabled={importing} className="absolute right-1.5 top-1/2 -translate-y-1/2">
                     {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Search className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />}
                   </button>
                 </div>
-                {importError && <span className="text-xs text-red-500">{importError}</span>}
+                {importError && <span className="text-xs text-red-500 max-w-xs truncate" title={importError}>{importError}</span>}
               </div>
             )}
 
@@ -546,86 +640,206 @@ export default function EIPBuilderPage() {
                 <Eye className="h-3.5 w-3.5" />
               </button>
             </div>
+
+            {/* Validate & Download in Topbar */}
+            <div className="flex items-center gap-2 pl-1 border-l border-border/80">
+              {validationErrors.length > 0 && !validated && (
+                <button
+                  onClick={() => setShowValidationDialog(true)}
+                  className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-amber-600 dark:text-amber-400 hover:underline"
+                >
+                  <AlertCircle className="h-3.5 w-3.5" />
+                  <span>{validationErrors.length} issue{validationErrors.length > 1 ? "s" : ""}</span>
+                </button>
+              )}
+              {validated && validationErrors.length === 0 && (
+                <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>Ready</span>
+                </span>
+              )}
+              <button
+                onClick={handleValidate}
+                disabled={validating}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+              >
+                {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                <span>Validate</span>
+              </button>
+              <button
+                onClick={handleDownload}
+                disabled={!validated}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+                  validated
+                    ? "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
+                    : "cursor-not-allowed border border-border bg-muted/60 text-muted-foreground opacity-60"
+                )}
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Download</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ─── Split View ─── */}
-      <div className={cn("flex flex-1 overflow-hidden", viewMode === "split" ? "flex-row" : "flex-col")}>
+      {/* ─── Split View (Independent Fixed Scroll) ─── */}
+      <div className={cn("flex flex-1 min-h-0 overflow-hidden", viewMode === "split" ? "flex-row" : "flex-col")}>
         {/* LEFT: Editor */}
         {showEdit && (
-          <div className={cn("overflow-y-auto p-4 space-y-3", viewMode === "split" ? "w-1/2 border-r border-border" : "w-full")}>
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
-              Document {repoType === "eip" ? "an EIP" : repoType === "erc" ? "an ERC" : "a RIP"}
-            </h2>
+          <div className={cn("h-full overflow-y-auto p-4 space-y-3", viewMode === "split" ? "w-1/2 border-r border-border" : "w-full")}>
+            <div className="flex items-center justify-between">
+              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
+                Document {repoType === "eip" ? "an EIP" : repoType === "erc" ? "an ERC" : "a RIP"}
+              </h2>
+              {importedPrInfo && (
+                <a
+                  href={importedPrInfo.prUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
+                >
+                  <GitPullRequest className="h-3.5 w-3.5" />
+                  <span>PR #{importedPrInfo.prNumber}: {importedPrInfo.filename}</span>
+                  <ExternalLink className="h-3 w-3 opacity-70" />
+                </a>
+              )}
+            </div>
 
             {/* Preamble */}
             <div className="rounded-xl border border-border bg-card/60 p-4">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preamble</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {preambleFields.map((field) => (
-                  <div key={field.key} className={cn(field.wide ? "md:col-span-2" : "")}>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                        {field.label}
-                        {INSTRUCTIONS[field.key] && (
-                          <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-slate-500" /></span>
+                {preambleFields.map((field) => {
+                  const fieldIssues = issuesByTarget[field.key.toLowerCase()] || [];
+                  const hasError = fieldIssues.some((i) => i.code === "error");
+                  const hasWarning = fieldIssues.some((i) => i.code === "warning");
+
+                  return (
+                    <div key={field.key} className={cn(field.wide ? "md:col-span-2" : "")}>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className={cn(
+                          "flex items-center gap-1.5 text-xs font-medium",
+                          hasError ? "text-red-600 dark:text-red-400 font-semibold" : hasWarning ? "text-amber-600 dark:text-amber-400" : "text-muted-foreground"
+                        )}>
+                          {field.label}
+                          {INSTRUCTIONS[field.key] && (
+                            <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-slate-500" /></span>
+                          )}
+                          {hasError && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />}
+                          {!hasError && hasWarning && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />}
+                        </label>
+                        {field.key === "title" && (
+                          <span className={cn("text-[10px]", data.title.length > 44 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
+                            {data.title.length}/44
+                          </span>
                         )}
-                      </label>
-                      {field.key === "title" && (
-                        <span className={cn("text-[10px]", data.title.length > 44 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
-                          {data.title.length}/44
-                        </span>
+                        {field.key === "description" && (
+                          <span className={cn("text-[10px]", data.description.length > 140 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
+                            {data.description.length}/140
+                          </span>
+                        )}
+                      </div>
+                      {field.type === "select" ? (
+                        <select
+                          value={data[field.key]} onChange={(e) => handleInput(field.key, e.target.value)}
+                          disabled={field.disabled}
+                          className={cn(
+                            "w-full rounded-lg border bg-muted/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1",
+                            hasError
+                              ? "border-red-500/60 ring-1 ring-red-500/20"
+                              : hasWarning
+                              ? "border-amber-500/60 ring-1 ring-amber-500/20"
+                              : "border-border focus:ring-primary/30",
+                            field.disabled && "opacity-40 cursor-not-allowed"
+                          )}>
+                          <option value="">Select...</option>
+                          {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
+                        </select>
+                      ) : (
+                        <input type="text" value={data[field.key]} onChange={(e) => handleInput(field.key, e.target.value)}
+                          disabled={field.disabled}
+                          placeholder={
+                            field.key === "created" ? "YYYY-MM-DD" :
+                            field.key === "requires" ? "2537, 2935, ..." :
+                            field.key === "author" ? "FirstName LastName (@GitHubUsername)" :
+                            field.key === "discussionsTo" ? "https://ethereum-magicians.org/t/..." :
+                            field.key === "lastCallDeadline" ? "YYYY-MM-DD" :
+                            field.key === "withdrawalReason" ? "Reason for withdrawing this proposal..." :
+                            `Enter ${field.label.toLowerCase()}`
+                          }
+                          className={cn(
+                            "w-full rounded-lg border bg-muted/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1",
+                            hasError
+                              ? "border-red-500/60 ring-1 ring-red-500/20"
+                              : hasWarning
+                              ? "border-amber-500/60 ring-1 ring-amber-500/20"
+                              : "border-border focus:ring-primary/30",
+                            field.disabled && "opacity-40 cursor-not-allowed"
+                          )} />
                       )}
-                      {field.key === "description" && (
-                        <span className={cn("text-[10px]", data.description.length > 140 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
-                          {data.description.length}/140
-                        </span>
+                      {fieldIssues.length > 0 && (
+                        <p className={cn("text-[10px] mt-1 font-medium", hasError ? "text-red-500" : "text-amber-500")}>
+                          {fieldIssues[0].summary}
+                        </p>
                       )}
                     </div>
-                    {field.type === "select" ? (
-                      <select
-                        value={data[field.key]} onChange={(e) => handleInput(field.key, e.target.value)}
-                        disabled={field.disabled}
-                        className={cn("w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30", field.disabled && "opacity-40 cursor-not-allowed")}>
-                        <option value="">Select...</option>
-                        {field.options?.map((o) => <option key={o} value={o}>{o}</option>)}
-                      </select>
-                    ) : (
-                      <input type="text" value={data[field.key]} onChange={(e) => handleInput(field.key, e.target.value)}
-                        disabled={field.disabled}
-                        placeholder={
-                          field.key === "created" ? "YYYY-MM-DD" :
-                          field.key === "requires" ? "2537, 2935, ..." :
-                          field.key === "author" ? "FirstName LastName (@GitHubUsername)" :
-                          field.key === "discussionsTo" ? "https://ethereum-magicians.org/t/..." :
-                          field.key === "lastCallDeadline" ? "YYYY-MM-DD" :
-                          field.key === "withdrawalReason" ? "Reason for withdrawing this proposal..." :
-                          `Enter ${field.label.toLowerCase()}`
-                        }
-                        className={cn("w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30", field.disabled && "opacity-40 cursor-not-allowed")} />
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
 
             {/* Sections with markdown toolbar */}
             {SECTION_DEFS.map((sec) => {
               const isExpanded = expandedSections.includes(sec.key);
+              const secIssues = issuesByTarget[sec.key.toLowerCase()] || issuesByTarget[sec.heading.toLowerCase()] || [];
+              const hasError = secIssues.some((i) => i.code === "error");
+              const hasWarning = secIssues.some((i) => i.code === "warning");
+
               return (
-                <div key={sec.key} className="overflow-hidden rounded-xl border border-border bg-card/60">
+                <div
+                  key={sec.key}
+                  className={cn(
+                    "overflow-hidden rounded-xl border bg-card/60 transition-colors",
+                    hasError
+                      ? "border-red-500/50 bg-red-500/[0.02]"
+                      : hasWarning
+                      ? "border-amber-500/50 bg-amber-500/[0.02]"
+                      : "border-border"
+                  )}
+                >
                   <button onClick={() => toggleSection(sec.key)}
                     className="w-full flex items-center justify-between px-4 py-2.5 transition-colors hover:bg-primary/5">
                     <span className="flex items-center gap-2 text-sm font-medium text-foreground">
                       {sec.label}
                       {data[sec.key]?.trim() && <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />}
+                      {hasError && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-red-600 dark:text-red-400 font-semibold px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20">
+                          <AlertCircle className="h-3 w-3" /> Issue
+                        </span>
+                      )}
+                      {!hasError && hasWarning && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                          <AlertCircle className="h-3 w-3" /> Advisory
+                        </span>
+                      )}
                     </span>
                     {isExpanded ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
                   </button>
                   {isExpanded && (
                     <div className="px-4 pb-4">
                       <p className="mb-2 text-xs text-muted-foreground">{INSTRUCTIONS[sec.key]}</p>
+                      {secIssues.length > 0 && (
+                        <div className="mb-2.5 p-2 rounded-lg bg-muted/70 border border-border text-xs space-y-1">
+                          {secIssues.map((issue, idx) => (
+                            <p key={idx} className={cn("text-[11px] font-medium flex items-center gap-1.5", issue.code === "error" ? "text-red-500" : "text-amber-500")}>
+                              <AlertCircle className="h-3 w-3 shrink-0" />
+                              <span>{issue.summary}</span>
+                            </p>
+                          ))}
+                        </div>
+                      )}
                       {/* Toolbar */}
                       <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
                         <div className="flex flex-wrap gap-1">
@@ -639,14 +853,12 @@ export default function EIPBuilderPage() {
                             );
                           })}
                         </div>
-                        {sec.key === "specification" && (
+                        {sec.key === "specification" && !data.specification.includes("RFC 2119") && (
                           <button
                             type="button"
                             onClick={() => {
                               const boilerplate = `The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174).\n\n`;
-                              if (!data.specification.includes("RFC 2119")) {
-                                handleInput("specification", boilerplate + (data.specification || ""));
-                              }
+                              handleInput("specification", boilerplate + (data.specification || ""));
                             }}
                             className="text-[11px] font-medium text-primary hover:underline px-2 py-1 rounded bg-primary/10 border border-primary/20"
                           >
@@ -661,7 +873,14 @@ export default function EIPBuilderPage() {
                         onKeyDown={(e) => handleTextareaKeyDown(e, sec.key)}
                         rows={8}
                         placeholder={`Write your ${sec.label.toLowerCase()} here (markdown supported)...`}
-                        className="w-full resize-y rounded-lg border border-border bg-muted/60 px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                        className={cn(
+                          "w-full resize-y rounded-lg border bg-muted/60 px-3 py-2 font-mono text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1",
+                          hasError
+                            ? "border-red-500/60 ring-1 ring-red-500/20"
+                            : hasWarning
+                            ? "border-amber-500/60 ring-1 ring-amber-500/20"
+                            : "border-border focus:ring-primary/30"
+                        )}
                       />
                     </div>
                   )}
@@ -673,7 +892,7 @@ export default function EIPBuilderPage() {
 
         {/* RIGHT: Output */}
         {showOutput && (
-          <div className={cn("flex flex-col overflow-y-auto bg-muted/20", viewMode === "split" ? "w-1/2" : "w-full")}>
+          <div className={cn("h-full flex flex-col overflow-y-auto bg-muted/20", viewMode === "split" ? "w-1/2" : "w-full")}>
             {/* Toggle: Code / Preview */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-sm">
               <div className="flex overflow-hidden rounded-lg border border-border">

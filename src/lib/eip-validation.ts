@@ -121,24 +121,6 @@ function isTitleCase(title: string): boolean {
   return true;
 }
 
-const VERB_STARTERS = new Set([
-  "adds", "allows", "amends", "changes", "converts", "creates",
-  "defines", "deprecates", "describes", "enables", "enforces",
-  "establishes", "extends", "fixes", "formalizes", "implements",
-  "improves", "increases", "introduces", "makes", "modifies",
-  "moves", "normalizes", "optimizes", "proposes", "provides",
-  "reduces", "refactors", "removes", "renames", "reorganizes",
-  "replaces", "requires", "restructures", "separates", "simplifies",
-  "specifies", "standardizes", "supersedes", "unifies", "updates",
-  "upgrades",
-]);
-
-function startsWithVerb(description: string): boolean {
-  const firstWord = description.split(/\s+/)[0]?.toLowerCase().replace(/[^a-z]/g, "");
-  if (!firstWord) return false;
-  return VERB_STARTERS.has(firstWord);
-}
-
 // ── Validation Functions ──
 
 function validateFieldOrder(fm: ParsedFrontmatter): ValidationMessage[] {
@@ -268,15 +250,6 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "error",
       message: `Description must not contain the word "standard"`,
-      section: "Preamble",
-      field: "description",
-    });
-  }
-
-  if (!startsWithVerb(description)) {
-    msgs.push({
-      level: "info",
-      message: `Description should start with a verb (e.g., "Adds…", "Allows…", "Separates…")`,
       section: "Preamble",
       field: "description",
     });
