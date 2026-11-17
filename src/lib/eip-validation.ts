@@ -3,7 +3,7 @@
 export interface ValidationMessage {
   level: "error" | "warning" | "info";
   message: string;
-  section?: string; 
+  section?: string; // e.g. "Preamble", "Sections", "Normative Language"
   field?: string;   // Which field or section is affected
 }
 
@@ -151,7 +151,7 @@ function validateFieldOrder(fm: ParsedFrontmatter): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Preamble fields are not in the required order. Expected: ${ordered.join(", ")}. Got: ${actual.join(", ")}`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "order",
     });
   }
@@ -163,7 +163,7 @@ function validateFieldOrder(fm: ParsedFrontmatter): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `Unknown preamble field: "${f}"`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field: f,
       });
     }
@@ -181,7 +181,7 @@ function validateRequiredFields(fm: ParsedFrontmatter): ValidationMessage[] {
       msgs.push({
         level: "error",
         message: `Missing required preamble field: ${field}`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field,
       });
     }
@@ -198,7 +198,7 @@ function validateTitle(title: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Title is ${title.length} characters — maximum is 44`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "title",
     });
   }
@@ -207,7 +207,7 @@ function validateTitle(title: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Title should be in Title Case`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "title",
     });
   }
@@ -216,7 +216,7 @@ function validateTitle(title: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Title must not contain the EIP number`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "title",
     });
   }
@@ -225,7 +225,7 @@ function validateTitle(title: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Title must not contain the word "standard"`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "title",
     });
   }
@@ -234,7 +234,7 @@ function validateTitle(title: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Title should be a few words, not a sentence (remove trailing punctuation)`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "title",
     });
   }
@@ -250,7 +250,7 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "error",
       message: `Description is ${description.length} characters — maximum is 140`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "description",
     });
   }
@@ -259,7 +259,7 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "warning",
       message: `Description should not contain a colon`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "description",
     });
   }
@@ -268,7 +268,7 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "error",
       message: `Description must not contain the word "standard"`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "description",
     });
   }
@@ -277,7 +277,7 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "info",
       message: `Description should start with a verb (e.g., "Adds…", "Allows…", "Separates…")`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "description",
     });
   }
@@ -288,7 +288,7 @@ function validateDescription(description: string | undefined): ValidationMessage
     msgs.push({
       level: "warning",
       message: `Description should be one sentence`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "description",
     });
   }
@@ -307,7 +307,7 @@ function validateAuthor(author: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Author must include at least one GitHub handle (@username) or email address`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "author",
     });
   }
@@ -325,7 +325,7 @@ function validateAuthor(author: string | undefined): ValidationMessage[] {
         msgs.push({
           level: "warning",
           message: `Author "${entry}" — a real name before the handle is preferred`,
-          section: "§2 Preamble",
+          section: "Preamble",
           field: "author",
         });
       }
@@ -341,7 +341,7 @@ function validateDiscussionsTo(url: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `discussions-to should link to an Ethereum Magicians topic`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "discussions-to",
     });
     return msgs;
@@ -351,7 +351,7 @@ function validateDiscussionsTo(url: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `discussions-to must be an ethereum-magicians.org topic URL, not "${url}"`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "discussions-to",
     });
   }
@@ -367,7 +367,7 @@ function validateStatus(status: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Invalid status: "${status}". Must be one of: ${VALID_STATUSES.join(", ")}`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "status",
     });
   }
@@ -383,7 +383,7 @@ function validateType(type: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Invalid type: "${type}". Must be one of: ${VALID_TYPES.join(", ")}`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "type",
     });
   }
@@ -399,7 +399,7 @@ function validateCategory(type: string | undefined, category: string | undefined
       msgs.push({
         level: "warning",
         message: `Category is required for Standards Track EIPs`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field: "category",
       });
     } else {
@@ -408,7 +408,7 @@ function validateCategory(type: string | undefined, category: string | undefined
         msgs.push({
           level: "error",
           message: `Invalid category: "${category}". Must be one of: ${VALID_CATEGORIES_EIP.join(", ")}`,
-          section: "§2 Preamble",
+          section: "Preamble",
           field: "category",
         });
       }
@@ -417,7 +417,7 @@ function validateCategory(type: string | undefined, category: string | undefined
     msgs.push({
       level: "error",
       message: `Category must only be present for Standards Track EIPs`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "category",
     });
   }
@@ -435,7 +435,7 @@ function validateConditionalFields(fm: ParsedFrontmatter): ValidationMessage[] {
       msgs.push({
         level: "error",
         message: `last-call-deadline is required when status is Last Call`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field: "last-call-deadline",
       });
     }
@@ -443,7 +443,7 @@ function validateConditionalFields(fm: ParsedFrontmatter): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `last-call-deadline should only be present when status is Last Call`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "last-call-deadline",
     });
   }
@@ -454,7 +454,7 @@ function validateConditionalFields(fm: ParsedFrontmatter): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `withdrawal-reason is expected when status is Withdrawn`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field: "withdrawal-reason",
       });
     }
@@ -462,7 +462,7 @@ function validateConditionalFields(fm: ParsedFrontmatter): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `withdrawal-reason should only be present when status is Withdrawn`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "withdrawal-reason",
     });
   }
@@ -478,7 +478,7 @@ function validateCreatedDate(created: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Created date must be in ISO format (YYYY-MM-DD), got "${created}"`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "created",
     });
   }
@@ -497,7 +497,7 @@ function validateRequires(requires: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `requires entries must be positive integers`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "requires",
     });
   }
@@ -508,7 +508,7 @@ function validateRequires(requires: string | undefined): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `requires entries should be in ascending order`,
-        section: "§2 Preamble",
+        section: "Preamble",
         field: "requires",
       });
       break;
@@ -530,7 +530,7 @@ function validateEIPNumber(eip: string | undefined): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `EIP number must be a positive integer (or use placeholder)`,
-      section: "§2 Preamble",
+      section: "Preamble",
       field: "eip",
     });
   }
@@ -551,7 +551,7 @@ function validateSections(body: string): ValidationMessage[] {
       msgs.push({
         level: req === "Copyright" ? "error" : "warning",
         message: `Missing required section: ## ${req}`,
-        section: "§3 Sections",
+        section: "Sections",
         field: req,
       });
     }
@@ -565,7 +565,7 @@ function validateSections(body: string): ValidationMessage[] {
     msgs.push({
       level: "error",
       message: `Sections are not in the required order. Expected: ${expectedOrder.join(" → ")}`,
-      section: "§3 Sections",
+      section: "Sections",
     });
   }
 
@@ -575,7 +575,7 @@ function validateSections(body: string): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `Unrecognized section: "## ${h}" — the linter may reject extra top-level sections`,
-        section: "§3 Sections",
+        section: "Sections",
         field: h,
       });
     }
@@ -589,7 +589,7 @@ function validateSections(body: string): ValidationMessage[] {
       msgs.push({
         level: "error",
         message: `Copyright section must contain exactly: "${expected}"`,
-        section: "§3 Sections",
+        section: "Sections",
         field: "Copyright",
       });
     }
@@ -601,7 +601,7 @@ function validateSections(body: string): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `Section "## ${sec.heading}" is empty — remove it or add content`,
-        section: "§3 Sections",
+        section: "Sections",
         field: sec.heading,
       });
     }
@@ -627,7 +627,7 @@ function validateSections(body: string): ValidationMessage[] {
         msgs.push({
           level: "warning",
           message: `Security Considerations must be specific to this proposal — generic text like "${phrase}" is insufficient`,
-          section: "§3 Sections",
+          section: "Sections",
           field: "Security Considerations",
         });
         break;
@@ -649,7 +649,7 @@ function validateNoTemplateArtifacts(md: string): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Found ${htmlComments.length} HTML comment(s) — delete all template comments before submitting`,
-      section: "§3 Sections",
+      section: "Sections",
     });
   }
 
@@ -672,7 +672,7 @@ function validateNoTemplateArtifacts(md: string): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `Found ${matches.length} "${name}" marker(s) — remove before submitting`,
-        section: "§3 Sections",
+        section: "Sections",
       });
     }
   }
@@ -716,7 +716,7 @@ function validateNormativeLanguage(body: string): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `RFC 2119/8174 keywords used but boilerplate paragraph is missing from Specification — add the standard paragraph with links to both RFCs`,
-      section: "§4 Normative Language",
+      section: "Normative Language",
     });
   }
 
@@ -724,7 +724,7 @@ function validateNormativeLanguage(body: string): ValidationMessage[] {
     msgs.push({
       level: "info",
       message: `RFC 2119 boilerplate is present but no keywords are used — consider removing it`,
-      section: "§4 Normative Language",
+      section: "Normative Language",
     });
   }
 
@@ -735,7 +735,7 @@ function validateNormativeLanguage(body: string): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Normative keywords should only appear in Specification — found: ${display}`,
-      section: "§4 Normative Language",
+      section: "Normative Language",
     });
   }
 
@@ -754,7 +754,7 @@ function validateProse(body: string): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `Use "EIP-N" with a hyphen, not "EIP N". Found: ${[...new Set(badEipRefs)].slice(0, 3).join(", ")}`,
-      section: "§7 Prose",
+      section: "Prose & Style",
     });
   }
 
@@ -763,7 +763,7 @@ function validateProse(body: string): ValidationMessage[] {
     msgs.push({
       level: "warning",
       message: `LaTeX math ($...$, \\(...\\)) renders literally — use code spans like \`2**24\` instead`,
-      section: "§7 Prose",
+      section: "Prose & Style",
     });
   }
 
@@ -778,7 +778,7 @@ function validateProse(body: string): ValidationMessage[] {
       msgs.push({
         level: "info",
         message: `Section "${sec.heading}" consists only of a bulleted list — add a lead-in sentence`,
-        section: "§7 Prose",
+        section: "Prose & Style",
         field: sec.heading,
       });
     }
@@ -800,7 +800,7 @@ function validateLinks(body: string): ValidationMessage[] {
       msgs.push({
         level: "warning",
         message: `Found link to ${name} — this is not on the allowed link list`,
-        section: "§8 Links",
+        section: "Links & References",
       });
     }
   }
@@ -817,7 +817,7 @@ function validateLinks(body: string): ValidationMessage[] {
           msgs.push({
             level: "warning",
             message: `Permalink "${link}" uses a branch/tag ref — commit-pinned links require a 40-character hex hash`,
-            section: "§8 Links",
+            section: "Links & References",
           });
           break; // Don't spam
         }
@@ -846,7 +846,7 @@ function validatePRMetadata(body: string): ValidationMessage[] {
       msgs.push({
         level: "info",
         message: `Avoid ${name} — write as if already Final, describing the protocol, not the proposal's journey`,
-        section: "§6 Other Proposals",
+        section: "Cross-References",
       });
     }
   }
@@ -862,7 +862,7 @@ export function validateEIPMarkdown(md: string): ValidationResult {
   // Check frontmatter exists
   const parsed = parseFrontmatter(md);
   if (!parsed) {
-    messages.push({ level: "error", message: "Missing YAML frontmatter (---)", section: "§2 Preamble" });
+    messages.push({ level: "error", message: "Missing YAML frontmatter (---)", section: "Preamble" });
     return { success: false, messages };
   }
 
