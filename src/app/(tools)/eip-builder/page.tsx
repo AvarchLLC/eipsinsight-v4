@@ -25,6 +25,7 @@ interface ImportedPrInfo {
   prTitle: string;
   prAuthor?: string;
   prUrl: string;
+  prState?: "merged" | "draft" | "closed" | "open";
   filename: string;
 }
 
@@ -405,6 +406,7 @@ export default function EIPBuilderPage() {
         prTitle: dataJson.prTitle,
         prAuthor: dataJson.prAuthor,
         prUrl: dataJson.prUrl,
+        prState: dataJson.prState,
         filename: dataJson.filename,
       });
     } catch (err: unknown) {
@@ -689,21 +691,40 @@ export default function EIPBuilderPage() {
         {/* LEFT: Editor */}
         {showEdit && (
           <div className={cn("h-full overflow-y-auto p-4 space-y-3", viewMode === "split" ? "w-1/2 border-r border-border" : "w-full")}>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
                 Document {repoType === "eip" ? "an EIP" : repoType === "erc" ? "an ERC" : "a RIP"}
               </h2>
               {importedPrInfo && (
-                <a
-                  href={importedPrInfo.prUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-primary/10 text-primary border border-primary/20 hover:bg-primary/15 transition-colors"
-                >
-                  <GitPullRequest className="h-3.5 w-3.5" />
-                  <span>PR #{importedPrInfo.prNumber}: {importedPrInfo.filename}</span>
-                  <ExternalLink className="h-3 w-3 opacity-70" />
-                </a>
+                <div className="flex items-center gap-1.5">
+                  <a
+                    href={importedPrInfo.prUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md bg-muted border border-border hover:bg-muted/80 transition-colors"
+                  >
+                    <GitPullRequest className="h-3.5 w-3.5 text-primary" />
+                    <span className="font-medium">PR #{importedPrInfo.prNumber}</span>
+                    <span className="text-muted-foreground text-[11px] truncate max-w-[140px] sm:max-w-[200px]">({importedPrInfo.filename})</span>
+                    <ExternalLink className="h-3 w-3 opacity-60 ml-0.5" />
+                  </a>
+                  {importedPrInfo.prState && (
+                    <span
+                      className={cn(
+                        "text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border tracking-wide",
+                        importedPrInfo.prState === "merged"
+                          ? "bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30"
+                          : importedPrInfo.prState === "draft"
+                          ? "bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-500/30"
+                          : importedPrInfo.prState === "closed"
+                          ? "bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30"
+                          : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30"
+                      )}
+                    >
+                      {importedPrInfo.prState}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
