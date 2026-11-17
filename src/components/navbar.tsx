@@ -25,6 +25,7 @@ import {
   Video,
   CalendarClock,
   Boxes,
+  FlaskConical,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -135,6 +136,13 @@ const mobileNavSections = [
       { title: "Timeline", href: "/timeline", icon: Wrench },
       { title: "Dependencies", href: "/dependencies", icon: Wrench },
       { title: "Account Abstraction", href: "/aa", icon: Boxes },
+    ],
+  },
+  {
+    label: "Research",
+    items: [
+      { title: "All Research", href: "/research", icon: FlaskConical },
+      { title: "What Glamsterdam Breaks", href: "/research/glamsterdam", icon: FlaskConical },
     ],
   },
   {

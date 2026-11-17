@@ -24,6 +24,7 @@ import {
   Boxes,
   Lock,
   Database,
+  FlaskConical,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -258,6 +259,15 @@ const sidebarSections: SidebarSection[] = [
     id: "learn",
     label: "Learn",
     items: [
+      {
+        title: "Research",
+        icon: FlaskConical,
+        href: "/research",
+        items: [
+          { title: "All Research", href: "/research" },
+          { title: "What Glamsterdam Breaks", href: "/research/glamsterdam" },
+        ],
+      },
       {
         title: "Resources",
         icon: BookOpen,
