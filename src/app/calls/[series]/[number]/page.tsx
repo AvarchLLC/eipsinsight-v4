@@ -5,12 +5,11 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  ExternalLink,
   Github,
   Video,
   Gavel,
   FileText,
-  MessagesSquare,
+  ListChecks,
 } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
@@ -25,7 +24,9 @@ import {
   callSeriesBadgeClass,
   callSeriesShort,
 } from '@/data/call-series';
-import { CallTldr } from '@/components/upgrade/call-tldr';
+import { CallSummary } from '@/components/upgrade/call-summary';
+import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { normalizeForGrounding } from '@/lib/date-grounding';
 import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
@@ -38,7 +39,6 @@ import { CallChat } from '@/components/upgrade/call-chat';
 import { CallAskAi } from '@/components/upgrade/call-ask-ai';
 import { FEATURES } from '@/lib/features';
 import {
-  getRemoteSeries,
   fetchTranscriptCues,
   fetchChatMessages,
   parseVtt,
@@ -58,6 +58,44 @@ function getYoutubeId(url: string | null): string | null {
 
 async function getTranscriptCues(series: string, callId: string) {
   return fetchTranscriptCues(series, callId);
+}
+
+/** Pull the Agenda section out of an ethereum/pm issue body. */
+function extractAgenda(body: string): string | null {
+  const norm = body.replace(/\r\n/g, '\n');
+  const heading = norm.match(/^#{1,6}\s*Agenda\s*$/im);
+  if (!heading || heading.index === undefined) return null;
+  // Drop the "Agenda" heading line itself; the UI renders its own heading.
+  let section = norm.slice(heading.index).replace(/^#{1,6}\s*Agenda\s*$\n?/im, '');
+  // Trim trailing issue boilerplate (call series, autopilot, zoom resources).
+  const cutMarkers = [
+    /^#{1,6}\s*Call Series/im,
+    /Autopilot Mode/i,
+    /Meeting Configuration/i,
+    /Protocol Call Resources/i,
+  ];
+  let cutAt = section.length;
+  for (const re of cutMarkers) {
+    const i = section.search(re);
+    if (i !== -1) cutAt = Math.min(cutAt, i);
+  }
+  const out = section.slice(0, cutAt).trim();
+  return out.length > 0 ? out : null;
+}
+
+/** Fetch and extract the agenda for a call's GitHub issue (cached via ISR). */
+async function getCallAgenda(issueNumber: number): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/ethereum/pm/issues/${issueNumber}`,
+      { headers: { Accept: 'application/vnd.github+json' }, next: { revalidate: 300 } },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as { body?: string | null };
+    return data.body ? extractAgenda(data.body) : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -121,10 +159,6 @@ export default async function CallDetailPage({ params }: Props) {
   }
 
   const youtubeId = getYoutubeId(call.video_url);
-  const remoteSeries = getRemoteSeries(call.series);
-  // Self-indexed calls (e.g. ethproofs) carry their transcript inline and have no
-  // ACDbot GitHub artifacts, so hide the artifact links that would 404.
-  const selfIndexed = Boolean(call.transcript_vtt);
 
   const [transcriptCues, chatMessages] = await Promise.all([
     // Self-indexed series carry the transcript inline (transcript_vtt); ACDbot
@@ -146,6 +180,14 @@ export default async function CallDetailPage({ params }: Props) {
     : (payload?.key_decisions ?? []);
 
   const neighbors = await getCachedCallNeighbors(call.series, call.occurred_on);
+
+  const agenda = call.issue_number ? await getCallAgenda(call.issue_number) : null;
+
+  // Normalized transcript text powers the date-grounding guard: summary lines
+  // that name a month/year absent from the transcript get a "verify" flag.
+  const transcriptText = transcriptCues
+    ? normalizeForGrounding(transcriptCues.map((c) => c.text).join(' '))
+    : null;
 
   // Series tag (ACDT/ACDE/…) first, matching how the account tags its posts.
   const shareHashtags = [callSeriesShort(call.series).replace(/[^A-Za-z0-9]/g, ''), 'Ethereum'];
@@ -309,32 +351,39 @@ export default async function CallDetailPage({ params }: Props) {
               always-expanded summary below it stays close to the top of the column. */}
           {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
 
-          <section className="space-y-3">
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Call summary
-            </h2>
-            {call.tldr ? (
-              <CallTldr tldr={call.tldr} />
-            ) : (
+          {call.tldr ? (
+            <CallSummary tldr={call.tldr} transcript={transcriptText} />
+          ) : (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Summary
+              </h2>
               <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
                 No summary synced for this call yet.
               </p>
-            )}
-          </section>
-
-          {/* Transcript fallback when there's a transcript but no embeddable video */}
-          {call.has_transcript && !youtubeId && !selfIndexed && (
-            <a
-              href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-            >
-              View transcript & raw artifacts on GitHub
-              <ExternalLink className="h-3 w-3" />
-            </a>
+            </section>
           )}
+
+          {agenda && (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <ListChecks className="h-4 w-4 text-muted-foreground" />
+                Agenda
+              </h2>
+              <details className="group rounded-xl border border-border bg-card/60 px-4 py-3" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
+                  <span>From the call issue{call.issue_number ? ` #${call.issue_number}` : ''}</span>
+                  <span className="text-xs text-primary group-open:hidden">Show</span>
+                  <span className="hidden text-xs text-primary group-open:inline">Hide</span>
+                </summary>
+                <div className="mt-3 border-t border-border/50 pt-3 text-sm">
+                  <MarkdownRenderer content={agenda} />
+                </div>
+              </details>
+            </section>
+          )}
+
         </div>
 
         <div className="space-y-6 lg:col-span-1">
@@ -404,32 +453,9 @@ export default async function CallDetailPage({ params }: Props) {
                   </a>
                 </li>
               )}
-              {call.has_chat && (
-                <li>
-                  <a
-                    href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <MessagesSquare className="h-4 w-4" />
-                    Meeting chat log
-                  </a>
-                </li>
-              )}
-              {!selfIndexed && (
-                <li>
-                  <a
-                    href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    All call artifacts
-                  </a>
-                </li>
-              )}
+              {/* The raw ACDbot artifact links (chat log / all artifacts) are
+                  intentionally omitted: the meeting chat and transcript are
+                  surfaced on-page, and we don't advertise the upstream source. */}
             </ul>
           </div>
         </div>
