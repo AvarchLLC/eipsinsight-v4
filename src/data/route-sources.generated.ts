@@ -106,6 +106,7 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/EIPOH100", source: "src/app/EIPOH100/page.tsx" },
   { pattern: "/feedback", source: "src/app/feedback/page.tsx" },
   { pattern: "/insights", source: "src/app/insights/page.tsx" },
+  { pattern: "/research", source: "src/app/research/page.tsx" },
   { pattern: "/settings", source: "src/app/settings/page.tsx" },
   { pattern: "/explore", source: "src/app/explore/page.tsx" },
   { pattern: "/landing", source: "src/app/landing/page.tsx" },

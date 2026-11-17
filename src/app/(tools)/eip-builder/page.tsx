@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/set-state-in-effect */
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
@@ -23,10 +24,13 @@ interface TemplateData {
   eip: string; title: string; description: string; author: string;
   discussionsTo: string; status: string; lastCallDeadline: string;
   type: string; category: string; created: string; requires: string;
+  withdrawalReason: string;
   abstract: string; motivation: string; specification: string;
   rationale: string; backwardsCompatibility: string; testCases: string;
   referenceImplementation: string; securityConsiderations: string;
 }
+
+interface ValidationItem { summary: string; detail?: string; code?: string; section?: string; field?: string }
 
 type TemplateKey = keyof TemplateData;
 
@@ -38,31 +42,33 @@ interface ValidationItem { summary: string; detail?: string; code?: string }
 const INITIAL_DATA: TemplateData = {
   eip: "<TBD>", title: "", description: "", author: "", discussionsTo: "",
   status: "Draft", lastCallDeadline: "", type: "", category: "", created: "",
-  requires: "", abstract: "", motivation: "", specification: "",
+  requires: "", withdrawalReason: "",
+  abstract: "", motivation: "", specification: "",
   rationale: "TBD", backwardsCompatibility: "No backward compatibility issues found.",
   testCases: "", referenceImplementation: "", securityConsiderations: "Needs discussion.",
 };
 
 const INSTRUCTIONS: Record<string, string> = {
-  eip: "EIP number",
-  title: "The EIP title is a few words, not a complete sentence",
-  description: "Description is one full (short) sentence",
-  author: "Comma separated list: FirstName LastName (@GitHubUsername), FirstName LastName <foo@bar.com>, FirstName (@GitHubUsername)",
-  discussionsTo: "The URL pointing to the official discussion thread",
+  eip: "EIP number (use placeholder until editor assigns one)",
+  title: "A few words in Title Case, ≤44 characters. No EIP number, no word \"standard\"",
+  description: "One full sentence starting with a verb (e.g., \"Adds…\"), ≤140 characters. No colon, no \"standard\"",
+  author: "Name (@GitHubUsername), Name <email@example.com> — at least one handle or email required",
+  discussionsTo: "Must be an Ethereum Magicians topic URL (https://ethereum-magicians.org/t/...)",
   status: "Draft, Review, Last Call, Final, Stagnant, Withdrawn, Living",
-  lastCallDeadline: "The date last call period ends on (only needed when status is Last Call)",
+  lastCallDeadline: "Required when status is Last Call (YYYY-MM-DD)",
   type: "One of Standards Track, Meta, or Informational",
   category: "One of Core, Networking, Interface, or ERC (only for Standards Track EIPs)",
   created: "Date the EIP was created on (YYYY-MM-DD)",
-  requires: "EIP number(s), comma-separated (Optional)",
-  abstract: "A multi-sentence (short paragraph) technical summary. Someone should be able to read only the abstract to get the gist of what this specification does.",
-  motivation: "(Optional) Clearly explain why the existing protocol specification is inadequate to address the problem that the EIP solves.",
-  specification: "The technical specification should describe the syntax and semantics of any new feature in detail.",
-  rationale: "Describe what motivated the design and why particular design decisions were made. Discuss alternate designs and related work.",
-  backwardsCompatibility: "(Optional) Describe incompatibilities and their consequences. Explain how you propose to deal with them.",
-  testCases: "(Optional) Test cases for consensus changes. Include input/expected output pairs.",
-  referenceImplementation: "(Optional) Example implementation to assist understanding.",
-  securityConsiderations: "Discuss security implications, risks, and how they are being addressed. Required for Final status.",
+  requires: "EIP number(s), comma-separated, in ascending order (Optional)",
+  withdrawalReason: "Required when status is Withdrawn — explain why",
+  abstract: "A short technical paragraph. No normative keywords (MUST/SHOULD/MAY). Someone should grasp the gist from the abstract alone.",
+  motivation: "(Optional) The problem, not the solution. Written for a reader years from now who needs to know why this change was made.",
+  specification: "Everything an implementer needs. Start with RFC 2119 boilerplate if using MUST/SHOULD/MAY keywords.",
+  rationale: "Why each design decision was made. Alternatives considered, prior art cited. \"TBD\" tolerated in Draft.",
+  backwardsCompatibility: "(Optional) Required if the proposal introduces any incompatibility. Describe each one and how it is handled.",
+  testCases: "(Optional, required for consensus changes before Final). Include input/expected output pairs.",
+  referenceImplementation: "(Optional) Points at code in assets/ or at a permitted permalink.",
+  securityConsiderations: "Must be specific to this proposal. Generic text like \"no new risks\" is insufficient. Required for Final.",
 };
 
 const STATUS_OPTIONS = ["Draft", "Review", "Last Call", "Final", "Stagnant", "Withdrawn", "Living"];
@@ -102,6 +108,7 @@ const PARSE_PATTERNS: Record<string, RegExp> = {
   category: /category:\s*(.*)/i,
   created: /created:\s*(.*)/i,
   requires: /requires:\s*(.*)/i,
+  withdrawalReason: /withdrawal-reason:\s*(.*)/i,
   abstract: /## Abstract\s*\n([\s\S]*?)(?=\n##\s|$)/i,
   motivation: /## Motivation\s*\n([\s\S]*?)(?=\n##\s|$)/i,
   specification: /## Specification\s*\n([\s\S]*?)(?=\n##\s|$)/i,
@@ -240,6 +247,11 @@ export default function EIPBuilderPage() {
       lines.push(`requires: ${reqs.join(", ")}`);
     }
 
+    // Withdrawal reason
+    if (d.status === "Withdrawn" && d.withdrawalReason?.trim()) {
+      lines.push(`withdrawal-reason: ${d.withdrawalReason.trim()}`);
+    }
+
     lines.push("---");
     lines.push("");
 
@@ -375,11 +387,17 @@ export default function EIPBuilderPage() {
       const result = await res.json();
       if (!result.success && result.messages) {
         for (const msg of result.messages) {
-          errors.push({ summary: msg.message, detail: msg.message, code: msg.level });
+          errors.push({
+            summary: msg.message,
+            detail: msg.field ? `Field / Scope: ${msg.field}` : msg.section,
+            code: msg.level,
+            section: msg.section,
+            field: msg.field,
+          });
         }
       }
     } catch (err) {
-      errors.push({ summary: "Validation failed to run.", detail: String(err) });
+      errors.push({ summary: "Validation failed to run.", detail: String(err), code: "error" });
     }
 
     setValidating(false);
@@ -444,6 +462,7 @@ export default function EIPBuilderPage() {
     { key: "category" as TemplateKey, label: "Category", type: "select" as const, options: CATEGORY_OPTIONS[repoType], disabled: data.type !== "Standards Track", wide: false },
     { key: "created" as TemplateKey, label: "Created", type: "input" as const, disabled: false, wide: false },
     { key: "requires" as TemplateKey, label: "Requires", type: "input" as const, disabled: false, wide: false },
+    { key: "withdrawalReason" as TemplateKey, label: "Withdrawal Reason", type: "input" as const, disabled: data.status !== "Withdrawn", wide: true },
   ], [tabMode, data.status, data.type, repoType]);
 
   const showEdit = viewMode === "edit" || viewMode === "split";
@@ -525,12 +544,24 @@ export default function EIPBuilderPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {preambleFields.map((field) => (
                   <div key={field.key} className={cn(field.wide ? "md:col-span-2" : "")}>
-                    <label className="mb-1 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                      {field.label}
-                      {INSTRUCTIONS[field.key] && (
-                        <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-slate-500" /></span>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        {field.label}
+                        {INSTRUCTIONS[field.key] && (
+                          <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-slate-500" /></span>
+                        )}
+                      </label>
+                      {field.key === "title" && (
+                        <span className={cn("text-[10px]", data.title.length > 44 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
+                          {data.title.length}/44
+                        </span>
                       )}
-                    </label>
+                      {field.key === "description" && (
+                        <span className={cn("text-[10px]", data.description.length > 140 ? "text-red-500 font-semibold" : "text-muted-foreground")}>
+                          {data.description.length}/140
+                        </span>
+                      )}
+                    </div>
                     {field.type === "select" ? (
                       <select
                         value={data[field.key]} onChange={(e) => handleInput(field.key, e.target.value)}
@@ -548,6 +579,7 @@ export default function EIPBuilderPage() {
                           field.key === "author" ? "FirstName LastName (@GitHubUsername)" :
                           field.key === "discussionsTo" ? "https://ethereum-magicians.org/t/..." :
                           field.key === "lastCallDeadline" ? "YYYY-MM-DD" :
+                          field.key === "withdrawalReason" ? "Reason for withdrawing this proposal..." :
                           `Enter ${field.label.toLowerCase()}`
                         }
                         className={cn("w-full rounded-lg border border-border bg-muted/60 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30", field.disabled && "opacity-40 cursor-not-allowed")} />
@@ -574,16 +606,32 @@ export default function EIPBuilderPage() {
                     <div className="px-4 pb-4">
                       <p className="mb-2 text-xs text-muted-foreground">{INSTRUCTIONS[sec.key]}</p>
                       {/* Toolbar */}
-                      <div className="flex flex-wrap gap-1 mb-2">
-                        {MD_TOOLBAR.map((btn) => {
-                          const Icon = btn.icon;
-                          return (
-                            <button key={btn.label} onClick={() => insertMarkdown(sec.key, btn.syntax)} title={btn.label}
-                              className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary">
-                              <Icon className="h-3.5 w-3.5" />
-                            </button>
-                          );
-                        })}
+                      <div className="flex flex-wrap items-center justify-between gap-1 mb-2">
+                        <div className="flex flex-wrap gap-1">
+                          {MD_TOOLBAR.map((btn) => {
+                            const Icon = btn.icon;
+                            return (
+                              <button key={btn.label} onClick={() => insertMarkdown(sec.key, btn.syntax)} title={btn.label}
+                                className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary">
+                                <Icon className="h-3.5 w-3.5" />
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {sec.key === "specification" && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const boilerplate = `The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this document are to be interpreted as described in [RFC 2119](https://www.rfc-editor.org/rfc/rfc2119) and [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174).\n\n`;
+                              if (!data.specification.includes("RFC 2119")) {
+                                handleInput("specification", boilerplate + (data.specification || ""));
+                              }
+                            }}
+                            className="text-[11px] font-medium text-primary hover:underline px-2 py-1 rounded bg-primary/10 border border-primary/20"
+                          >
+                            + Insert RFC 2119/8174 Notice
+                          </button>
+                        )}
                       </div>
                       <textarea
                         ref={(el) => { textareaRefs.current[sec.key] = el; }}
@@ -705,13 +753,39 @@ export default function EIPBuilderPage() {
             </div>
             <div className="overflow-y-auto max-h-[60vh] p-4 space-y-2">
               {validationErrors.map((err, i) => (
-                <div key={i} className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                <div
+                  key={i}
+                  className={cn(
+                    "rounded-lg border p-3",
+                    err.code === "error"
+                      ? "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300"
+                      : err.code === "warning"
+                      ? "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300"
+                      : "border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-300"
+                  )}
+                >
                   <div className="flex items-start gap-2">
-                    <AlertCircle className="h-4 w-4 text-red-700 dark:text-red-400 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-sm text-red-700 dark:text-red-300 font-medium">{err.summary}</p>
+                    <AlertCircle
+                      className={cn(
+                        "h-4 w-4 shrink-0 mt-0.5",
+                        err.code === "error"
+                          ? "text-red-600 dark:text-red-400"
+                          : err.code === "warning"
+                          ? "text-amber-600 dark:text-amber-400"
+                          : "text-blue-600 dark:text-blue-400"
+                      )}
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{err.summary}</p>
+                        {err.section && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-muted/60 opacity-80 whitespace-nowrap">
+                            {err.section}
+                          </span>
+                        )}
+                      </div>
                       {err.detail && err.detail !== err.summary && (
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">{err.detail}</p>
+                        <p className="text-xs text-muted-foreground mt-1">{err.detail}</p>
                       )}
                     </div>
                   </div>
