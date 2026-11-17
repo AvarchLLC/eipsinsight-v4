@@ -403,7 +403,7 @@ export default function EIPBuilderPage() {
         body: JSON.stringify({ markdownContent: markdownRaw }),
       });
       const result = await res.json();
-      if (!result.success && result.messages) {
+      if (result.messages && result.messages.length > 0) {
         for (const msg of result.messages) {
           errors.push({
             summary: msg.message,
@@ -422,12 +422,13 @@ export default function EIPBuilderPage() {
       setValidating(false);
     }
 
-    if (errors.length > 0) {
+    const hasHardErrors = errors.some((e) => e.code === "error");
+    if (hasHardErrors) {
       setValidated(false);
       setValidationErrors(errors);
     } else {
       setValidated(true);
-      setValidationErrors([]);
+      setValidationErrors(errors);
     }
   };
 
@@ -774,9 +775,9 @@ export default function EIPBuilderPage() {
                   </>
                 ) : validationErrors.length > 0 ? (
                   <>
-                    <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-                    <h3 className="text-base font-semibold text-red-600 dark:text-red-400">
-                      Validation Issues ({validationErrors.length})
+                    <AlertCircle className={cn("h-5 w-5", validationErrors.some(e => e.code === "error") ? "text-red-600 dark:text-red-400" : "text-amber-500")} />
+                    <h3 className={cn("text-base font-semibold", validationErrors.some(e => e.code === "error") ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400")}>
+                      {validationErrors.some(e => e.code === "error") ? `Validation Issues (${validationErrors.length})` : `Advisories (${validationErrors.length})`}
                     </h3>
                   </>
                 ) : (
