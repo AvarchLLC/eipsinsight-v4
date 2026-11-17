@@ -1,8 +1,9 @@
 'use client';
 
-import { CalendarClock, FileText, Gavel, ListTodo, Sparkles } from 'lucide-react';
+import { AlertTriangle, CalendarClock, FileText, Gavel, ListTodo, Sparkles } from 'lucide-react';
 import { EipLinkedText } from '@/components/upgrade/key-decisions';
 import { CallTldr } from '@/components/upgrade/call-tldr';
+import { ungroundedDateTokens } from '@/lib/date-grounding';
 
 /**
  * Two-tier renderer for an ACDbot-shaped tldr.json:
@@ -33,7 +34,33 @@ function Stamp({ value }: { value: string }) {
   );
 }
 
-export function CallSummary({ tldr }: { tldr: unknown }) {
+/** Summary text + an amber "verify" flag when it names a date not in the transcript. */
+function GroundedText({ text, transcript }: { text: string; transcript: string | null }) {
+  const ungrounded = transcript ? ungroundedDateTokens(text, transcript) : [];
+  return (
+    <>
+      <EipLinkedText text={text} />
+      {ungrounded.length > 0 && (
+        <span
+          className="ml-1.5 inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-500/30 bg-amber-500/15 px-1.5 py-0.5 align-middle text-[10px] font-medium text-amber-700 dark:text-amber-300"
+          title={`${ungrounded.join(', ')} not found in the call transcript. This date is auto-generated and may be inaccurate, so verify it against the recording.`}
+        >
+          <AlertTriangle className="h-2.5 w-2.5" />
+          verify date
+        </span>
+      )}
+    </>
+  );
+}
+
+export function CallSummary({
+  tldr,
+  transcript = null,
+}: {
+  tldr: unknown;
+  /** Normalized transcript text; enables the date-grounding flag when present. */
+  transcript?: string | null;
+}) {
   if (!tldr || typeof tldr !== 'object') return null;
   const t = tldr as Record<string, unknown>;
 
@@ -83,7 +110,7 @@ export function CallSummary({ tldr }: { tldr: unknown }) {
               <div key={`d-${i}`} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
                 <Gavel className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <span>
-                  <EipLinkedText text={d.text} />
+                  <GroundedText text={d.text} transcript={transcript} />
                 </span>
               </div>
             ))}
@@ -91,7 +118,7 @@ export function CallSummary({ tldr }: { tldr: unknown }) {
               <div key={`t-${i}`} className="flex gap-2.5 text-sm leading-relaxed text-foreground">
                 <CalendarClock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
                 <span>
-                  <EipLinkedText text={d.text} />
+                  <GroundedText text={d.text} transcript={transcript} />
                 </span>
               </div>
             ))}
@@ -119,7 +146,7 @@ export function CallSummary({ tldr }: { tldr: unknown }) {
                     >
                       <span className="mt-0.5 shrink-0 text-primary">•</span>
                       <span>
-                        <EipLinkedText text={str(it.highlight)} />
+                        <GroundedText text={str(it.highlight)} transcript={transcript} />
                         <Stamp value={str(it.timestamp)} />
                       </span>
                     </li>

@@ -5,13 +5,11 @@ import {
   ArrowLeft,
   ArrowRight,
   CalendarDays,
-  ExternalLink,
   Github,
   Video,
   Gavel,
   FileText,
   ListChecks,
-  MessagesSquare,
 } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
@@ -28,6 +26,7 @@ import {
 } from '@/data/call-series';
 import { CallSummary } from '@/components/upgrade/call-summary';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { normalizeForGrounding } from '@/lib/date-grounding';
 import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
@@ -40,7 +39,6 @@ import { CallChat } from '@/components/upgrade/call-chat';
 import { CallAskAi } from '@/components/upgrade/call-ask-ai';
 import { FEATURES } from '@/lib/features';
 import {
-  getRemoteSeries,
   fetchTranscriptCues,
   fetchChatMessages,
   parseVtt,
@@ -161,10 +159,6 @@ export default async function CallDetailPage({ params }: Props) {
   }
 
   const youtubeId = getYoutubeId(call.video_url);
-  const remoteSeries = getRemoteSeries(call.series);
-  // Self-indexed calls (e.g. ethproofs) carry their transcript inline and have no
-  // ACDbot GitHub artifacts, so hide the artifact links that would 404.
-  const selfIndexed = Boolean(call.transcript_vtt);
 
   const [transcriptCues, chatMessages] = await Promise.all([
     // Self-indexed series carry the transcript inline (transcript_vtt); ACDbot
@@ -188,6 +182,12 @@ export default async function CallDetailPage({ params }: Props) {
   const neighbors = await getCachedCallNeighbors(call.series, call.occurred_on);
 
   const agenda = call.issue_number ? await getCallAgenda(call.issue_number) : null;
+
+  // Normalized transcript text powers the date-grounding guard: summary lines
+  // that name a month/year absent from the transcript get a "verify" flag.
+  const transcriptText = transcriptCues
+    ? normalizeForGrounding(transcriptCues.map((c) => c.text).join(' '))
+    : null;
 
   // Series tag (ACDT/ACDE/…) first, matching how the account tags its posts.
   const shareHashtags = [callSeriesShort(call.series).replace(/[^A-Za-z0-9]/g, ''), 'Ethereum'];
@@ -352,7 +352,7 @@ export default async function CallDetailPage({ params }: Props) {
           {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
 
           {call.tldr ? (
-            <CallSummary tldr={call.tldr} />
+            <CallSummary tldr={call.tldr} transcript={transcriptText} />
           ) : (
             <section className="space-y-3">
               <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
@@ -384,18 +384,6 @@ export default async function CallDetailPage({ params }: Props) {
             </section>
           )}
 
-          {/* Transcript fallback when there's a transcript but no embeddable video */}
-          {call.has_transcript && !youtubeId && !selfIndexed && (
-            <a
-              href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
-            >
-              View transcript & raw artifacts on GitHub
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          )}
         </div>
 
         <div className="space-y-6 lg:col-span-1">
@@ -465,32 +453,9 @@ export default async function CallDetailPage({ params }: Props) {
                   </a>
                 </li>
               )}
-              {call.has_chat && (
-                <li>
-                  <a
-                    href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <MessagesSquare className="h-4 w-4" />
-                    Meeting chat log
-                  </a>
-                </li>
-              )}
-              {!selfIndexed && (
-                <li>
-                  <a
-                    href={`https://github.com/ethereum/pm/tree/master/.github/ACDbot/artifacts/${remoteSeries}/${call.call_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    All call artifacts
-                  </a>
-                </li>
-              )}
+              {/* The raw ACDbot artifact links (chat log / all artifacts) are
+                  intentionally omitted: the meeting chat and transcript are
+                  surfaced on-page, and we don't advertise the upstream source. */}
             </ul>
           </div>
         </div>
