@@ -138,6 +138,13 @@ const mobileNavSections = [
     ],
   },
   {
+    label: "Research",
+    items: [
+      { title: "All Research", href: "/research", icon: FlaskConical },
+      { title: "What Glamsterdam Breaks", href: "/research/glamsterdam", icon: FlaskConical },
+    ],
+  },
+  {
     label: "Resources",
     items: [
       { title: "Docs", href: "/resources/docs", icon: BookOpen },
