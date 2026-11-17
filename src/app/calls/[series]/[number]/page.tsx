@@ -26,7 +26,7 @@ import {
   callSeriesBadgeClass,
   callSeriesShort,
 } from '@/data/call-series';
-import { CallTldr } from '@/components/upgrade/call-tldr';
+import { CallSummary } from '@/components/upgrade/call-summary';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
@@ -351,19 +351,19 @@ export default async function CallDetailPage({ params }: Props) {
               always-expanded summary below it stays close to the top of the column. */}
           {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
 
-          <section className="space-y-3">
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-              <FileText className="h-4 w-4 text-muted-foreground" />
-              Call summary
-            </h2>
-            {call.tldr ? (
-              <CallTldr tldr={call.tldr} />
-            ) : (
+          {call.tldr ? (
+            <CallSummary tldr={call.tldr} />
+          ) : (
+            <section className="space-y-3">
+              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Summary
+              </h2>
               <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
                 No summary synced for this call yet.
               </p>
-            )}
-          </section>
+            </section>
+          )}
 
           {agenda && (
             <section className="space-y-3">
