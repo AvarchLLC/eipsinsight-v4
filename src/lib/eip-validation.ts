@@ -379,24 +379,15 @@ function validateConditionalFields(fm: ParsedFrontmatter): ValidationMessage[] {
   const lcLine = fm.lineMap.get("last-call-deadline") ?? fm.lineMap.get("status");
   const wrLine = fm.lineMap.get("withdrawal-reason") ?? fm.lineMap.get("status");
 
-  // last-call-deadline
+  // last-call-deadline — eipw requires it to be present (when Last Call) and a
+  // valid date. It is NOT required to be in the future: an existing proposal in
+  // Last Call legitimately has a past deadline while it awaits Final.
   if (status === "Last Call") {
     const raw = fm.fieldMap.get("last-call-deadline")?.trim();
     if (!raw) {
       msgs.push({ level: "error", message: `last-call-deadline is required when status is Last Call`, section: "Preamble", field: "last-call-deadline", line: lcLine });
-    } else {
-      const d = parseISODate(raw);
-      if (!d) {
-        msgs.push({ level: "error", message: `last-call-deadline must be a valid date (YYYY-MM-DD), got "${raw}"`, section: "Preamble", field: "last-call-deadline", line: lcLine });
-      } else {
-        const now = new Date();
-        const days = Math.round((d.getTime() - now.getTime()) / 86_400_000);
-        if (days < 0) {
-          msgs.push({ level: "error", message: `last-call-deadline ${raw} is in the past`, section: "Preamble", field: "last-call-deadline", line: lcLine });
-        } else if (days < 14) {
-          msgs.push({ level: "warning", message: `last-call-deadline should be at least 14 days out (${raw} is ${days} day${days === 1 ? "" : "s"} away)`, section: "Preamble", field: "last-call-deadline", line: lcLine });
-        }
-      }
+    } else if (!parseISODate(raw)) {
+      msgs.push({ level: "error", message: `last-call-deadline must be a valid date (YYYY-MM-DD), got "${raw}"`, section: "Preamble", field: "last-call-deadline", line: lcLine });
     }
   } else if (fm.fieldMap.has("last-call-deadline")) {
     msgs.push({ level: "warning", message: `last-call-deadline should only be present when status is Last Call`, section: "Preamble", field: "last-call-deadline", line: lcLine });
