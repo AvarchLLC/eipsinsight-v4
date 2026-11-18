@@ -310,8 +310,11 @@ export default function EIPBuilderPage() {
   useEffect(() => {
     if (tabMode === "new") {
       setData({ ...INITIAL_DATA });
-      setValidated(false);
     }
+    // A tab/repo switch means the document context changed — clear stale results.
+    setValidated(false);
+    setValidationErrors([]);
+    setShowValidationDialog(false);
     setImportQuery("");
     setImportError(null);
   }, [repoType, tabMode]);
@@ -455,6 +458,10 @@ export default function EIPBuilderPage() {
       setData({ ...INITIAL_DATA, ...parsed });
       setLastEdited("form");
       setExpandedSections(SECTION_DEFS.filter((s) => parsed[s.key]?.trim()).map((s) => s.key));
+      // New document imported — drop any prior validation results/highlights.
+      setValidated(false);
+      setValidationErrors([]);
+      setShowValidationDialog(false);
       setImportedPrInfo({
         prNumber: dataJson.prNumber,
         prTitle: dataJson.prTitle,
@@ -523,6 +530,10 @@ export default function EIPBuilderPage() {
       setData({ ...INITIAL_DATA, ...parsed });
       setLastEdited("form");
       setExpandedSections(SECTION_DEFS.filter((s) => parsed[s.key]?.trim()).map((s) => s.key));
+      // New document imported — drop any prior validation results/highlights.
+      setValidated(false);
+      setValidationErrors([]);
+      setShowValidationDialog(false);
       setImportedPrInfo(null);
     } catch {
       setImportError(`Could not find ${repoType.toUpperCase()}-${num}`);
