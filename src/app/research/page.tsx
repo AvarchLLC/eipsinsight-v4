@@ -33,7 +33,7 @@ const ARTICLES: Article[] = [
 
 export default function ResearchIndexPage() {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-primary">
         <FlaskConical className="h-3.5 w-3.5" /> EIPsInsight Research
       </div>
@@ -43,7 +43,7 @@ export default function ResearchIndexPage() {
         gas audits, and measured on-chain impact, with every number reproducible.
       </p>
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2">
+      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         {ARTICLES.map((a) => (
           <Link
             key={a.slug}

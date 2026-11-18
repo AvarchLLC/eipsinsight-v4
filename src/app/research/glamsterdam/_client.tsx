@@ -35,6 +35,7 @@ import {
   REPLAYED,
   STEPS,
   AA_HARD_BREAKS,
+  BLAST,
   GAS_DELTA,
   GAS_SWEEP,
   OOG_BREAKS,
@@ -121,7 +122,7 @@ function More({ label = 'Technical detail', children }: { label?: string; childr
 
 export function GlamsterdamResearch() {
   return (
-    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
       {/* ── Masthead ── */}
       <Reveal>
         <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-primary">
@@ -130,7 +131,7 @@ export function GlamsterdamResearch() {
         <h1 className="dec-title mt-3 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-[3rem]">
           What Glamsterdam breaks
         </h1>
-        <p className="mt-4 max-w-3xl text-lg leading-relaxed text-muted-foreground">
+        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
           Ethereum&apos;s next upgrade reprices on-chain storage. We replayed real mainnet transactions under both
           today&apos;s rules and the new rules. Most apps just need to send a bit more gas. But smart-contract wallets,
           the ones built on account abstraction, <span className="font-medium text-foreground">genuinely break</span>, in
@@ -147,14 +148,14 @@ export function GlamsterdamResearch() {
       <Reveal>
         <div className="mt-10 border-l-2 border-primary/50 pl-5">
           <p className="text-base font-semibold text-foreground">{WHATS_CHANGING.title}</p>
-          <p className="mt-1.5 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">{WHATS_CHANGING.body}</p>
+          <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{WHATS_CHANGING.body}</p>
         </div>
       </Reveal>
 
       {/* ── Summary + explained numbers ── */}
       <Reveal>
         <div className="mt-8">
-          <p className="max-w-3xl text-[17px] leading-relaxed text-foreground">
+          <p className="text-[17px] leading-relaxed text-foreground">
             We scanned the {META.scanned} busiest contracts, flagged {META.flagged}, and replayed their real transactions
             under old vs new rules against our own archive node. The hard-breaks concentrate in{' '}
             <span className="font-semibold">ERC-4337 EntryPoints</span>: a large share of real user operations fail where
@@ -194,7 +195,7 @@ export function GlamsterdamResearch() {
               </div>
             ))}
           </div>
-          <p className="mt-6 max-w-3xl text-[15px] text-muted-foreground">
+          <p className="mt-6 text-[15px] text-muted-foreground">
             So when we say account abstraction breaks, we mean <span className="font-medium text-foreground">ERC-4337</span>,
             the deployed application-layer form. That is exactly why this is a live problem and not a theoretical one.
           </p>
@@ -268,7 +269,7 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <p className="mt-6 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-[15px] leading-relaxed text-muted-foreground">
             These are the live ERC-4337 contracts that real smart-wallets depend on. The rate is how many of 50 sampled
             recent transactions <span className="text-foreground">revert under Glamsterdam but succeed today</span>. Open a
             row for the exact revert and the on-chain proof.
@@ -281,7 +282,7 @@ export function GlamsterdamResearch() {
         <Reveal>
           <div className="mt-8 border-l-2 border-[var(--chart-7)]/50 pl-5">
             <p className="text-[15px] font-semibold text-foreground">Why AA specifically breaks</p>
-            <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
               In ERC-4337 the user operation carries a <span className="font-medium text-foreground">signed</span>{' '}
               <code className="rounded bg-muted px-1 py-0.5 font-mono text-[13px]">verificationGasLimit</code>. The EntryPoint
               calls the account&apos;s validation with exactly that much gas. Validation reads and writes storage (nonce,
@@ -300,7 +301,7 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <p className="mt-8 mb-1 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-8 mb-1 text-[15px] leading-relaxed text-muted-foreground">
             It is not a near miss. At worst, validation needs hundreds of thousands of gas more than the signed limit
             allows, so no realistic estimate would have covered it.
           </p>
@@ -320,6 +321,43 @@ export function GlamsterdamResearch() {
             </ResponsiveContainer>
           </ChartFrame>
         </Reveal>
+
+        <Reveal>
+          <p className="mb-1 mt-10 text-[15px] leading-relaxed text-muted-foreground">
+            And it is not a rare path. Over the last 24 hours, these two EntryPoints processed{' '}
+            <span className="font-semibold text-foreground">{BLAST.totalPerDay.toLocaleString()} real user operations</span> on
+            mainnet (counted on our own archive node). At the break rates we measured, roughly{' '}
+            <span className="font-semibold text-[var(--chart-7)]">{BLAST.totalAtRisk.toLocaleString()} of them a day</span>{' '}
+            would fail under Glamsterdam.
+          </p>
+          <div className="mb-4 mt-4 flex flex-wrap gap-x-12 gap-y-4">
+            <div>
+              <div className="font-mono text-[2rem] font-bold leading-none tabular-nums text-foreground">~{Math.round(BLAST.totalPerDay / 1000)}k</div>
+              <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">userOps / day</div>
+            </div>
+            <div>
+              <div className="font-mono text-[2rem] font-bold leading-none tabular-nums text-[var(--chart-7)]">~{(BLAST.totalAtRisk / 1000).toFixed(1)}k</div>
+              <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">would fail / day</div>
+            </div>
+          </div>
+          <ChartFrame title="Blast radius: userOps per day" sub="last 24h on mainnet · red = would fail under Glamsterdam">
+            <ResponsiveContainer width="100%" height={150}>
+              <BarChart layout="vertical" data={BLAST.entryPoints.map((e) => ({ name: e.name, atRisk: e.atRisk, rest: e.perDay - e.atRisk, total: e.perDay }))} margin={{ left: 0, right: 56, top: 4, bottom: 4 }} barCategoryGap={18}>
+                <XAxis type="number" tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'var(--foreground)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [`${v.toLocaleString()} userOps`, n === 'atRisk' ? 'would fail under Glamsterdam' : 'rest of daily traffic']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
+                <Bar dataKey="atRisk" stackId="a" isAnimationActive={false} barSize={22} fill="var(--chart-7)" />
+                <Bar dataKey="rest" stackId="a" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={22} fill="var(--chart-8)">
+                  <LabelList dataKey="total" position="right" formatter={(v: number) => v.toLocaleString()} fill="var(--foreground)" fontSize={11.5} fontFamily="var(--font-mono)" fontWeight={700} />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-7)' }} />would fail under Glamsterdam</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-8)' }} />rest of daily userOps</span>
+            </div>
+          </ChartFrame>
+        </Reveal>
       </section>
 
       {/* ── 04 The 8 invariants ── */}
@@ -327,7 +365,7 @@ export function GlamsterdamResearch() {
         <Reveal><SectionHead n="04" title="Which assumptions break" sub="The hidden rules Glamsterdam can turn false, and how widely each is relied on." /></Reveal>
 
         <Reveal>
-          <p className="mb-6 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mb-6 text-[15px] leading-relaxed text-muted-foreground">
             An <span className="font-medium text-foreground">invariant</span> is an assumption a contract quietly depends
             on, for example &quot;a hard-coded gas amount will always be enough.&quot; The repricing can make some of these
             false. The chart counts how many of the 115 flagged contracts lean on each of the 8 invariants; the two in red
@@ -377,7 +415,7 @@ export function GlamsterdamResearch() {
             ran on mainnet and <span className="font-semibold text-foreground">succeeded</span>. Under today&apos;s rules
             our replay reproduces that success (0% fail). The bars are failures <span className="font-semibold text-foreground">under Glamsterdam&apos;s rules only</span>.
           </div>
-          <p className="mb-1 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mb-1 text-[15px] leading-relaxed text-muted-foreground">
             Read this one as <span className="text-foreground">before and after</span>. The blue bar is how many fail{' '}
             <span className="text-foreground">under Glamsterdam with the gas the transaction originally carried</span>.
             The red bar is after we re-run each with triple the gas: the{' '}
@@ -413,7 +451,7 @@ export function GlamsterdamResearch() {
               <p className="text-[15px] font-semibold text-foreground">Create-and-throw-away contracts</p>
               <span className="ml-auto font-mono text-sm font-bold text-[var(--chart-4)]">~{(CREATE_SELFDESTRUCT.perDay / 1000).toFixed(1)}k/day</span>
             </div>
-            <p className="mt-2 max-w-3xl text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
               Many flows, like payment processors and bridge aggregators, spin up a throwaway contract (a one-time deposit
               address), sweep the funds, and destroy it in the same transaction. Today that is cheap. Under Glamsterdam it
               is charged the full {CREATE_SELFDESTRUCT.stateGas.toLocaleString()} gas for creating an account even though
@@ -464,10 +502,11 @@ export function GlamsterdamResearch() {
       <section className="mt-11">
         <Reveal><SectionHead n="06" title="Caveats" sub="Read before citing." /></Reveal>
         <Reveal>
-          <p className="max-w-3xl border-l-2 border-primary/50 pl-5 text-sm leading-relaxed text-muted-foreground">
+          <p className="border-l-2 border-primary/50 pl-5 text-sm leading-relaxed text-muted-foreground">
             Replay forks state at the parent block and runs the tx first-in-block, so exact gas margins can differ slightly;
             the osaka-success / amsterdam-fail flip controls for replay error. 50 txs per contract is a strong signal, not a
-            population rate. The per-invariant counts are from the static scan (contracts relying on each assumption), not all
+            population rate, so the blast-radius figure (daily userOp volume × that rate) is an order-of-magnitude
+            projection rather than a guaranteed count. The daily volumes themselves are exact, counted on our archive node. The per-invariant counts are from the static scan (contracts relying on each assumption), not all
             confirmed by replay; only INV-4 and INV-7 are confirmed here. EIP-8037/8038 are still in flux (rival fixes exist);
             numbers use the pinned <code className="rounded bg-muted px-1 py-0.5 font-mono text-[13px]">glamsterdam-devnet-8</code> schedule
             and should be re-measured if the spec moves. Affected teams were disclosed to privately before this write-up.
@@ -503,7 +542,7 @@ function ReplayedTable() {
       </button>
       {open && (
         <div className="mt-3">
-          <p className="mb-3 max-w-3xl text-[13.5px] leading-relaxed text-muted-foreground">
+          <p className="mb-3 text-[13.5px] leading-relaxed text-muted-foreground">
             The replayed set was the 25 most active flagged contracts. Twelve are individually notable and listed here; the
             rest were high-volume contracts whose transactions passed unchanged or only needed more gas. Each name links to
             Etherscan. &quot;Affected txs&quot; is how many of the 50 sampled transactions the outcome applies to.
