@@ -17,6 +17,7 @@ const LABELS: Record<string, string> = {
   standards: 'Standards',
   explore: 'Explore',
   tools: 'Tools',
+  'eip-builder': 'EIP Builder',
   resources: 'Resources',
   eipip: 'EIPIP Meetings',
   user: 'User',

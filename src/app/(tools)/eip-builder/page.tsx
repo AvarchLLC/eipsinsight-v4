@@ -20,6 +20,22 @@ type EipType = "eip" | "erc" | "rip";
 type ViewMode = "edit" | "output" | "split";
 type TabMode = "new" | "import" | "pr";
 
+interface PrGovernance {
+  state?: string;
+  category?: string | null;
+  subcategory?: string | null;
+  needsEditorAttention?: boolean;
+  ciState?: string | null;
+  failingChecks?: string | null;
+  hasMergeConflicts?: boolean;
+  hasFailingRequiredChecks?: boolean;
+  reason?: string | null;
+  waitingSince?: string | null;
+  numReviews?: number | null;
+}
+
+interface PrStatusTransition { eipNumber: number; from: string | null; to: string | null }
+
 interface ImportedPrInfo {
   prNumber: number;
   prTitle: string;
@@ -27,6 +43,9 @@ interface ImportedPrInfo {
   prUrl: string;
   prState?: "merged" | "draft" | "closed" | "open";
   filename: string;
+  proposalFiles?: string[];
+  governance?: PrGovernance;
+  statusTransition?: PrStatusTransition;
 }
 
 interface TemplateData {
@@ -39,16 +58,17 @@ interface TemplateData {
   referenceImplementation: string; securityConsiderations: string;
 }
 
-interface ValidationItem { summary: string; detail?: string; code?: string; section?: string; field?: string }
+interface ValidationItem { summary: string; detail?: string; code?: string; section?: string; field?: string; line?: number }
 
 // ── Validation Checklist Definitions ──
 const VALIDATION_CHECKS = [
-  { id: "preamble", label: "Preamble & Frontmatter", desc: "Checks field ordering, required keys, formatting, and constraints" },
-  { id: "title_desc", label: "Title & Description", desc: "Title Case, length limits (≤44 & ≤140), and verb checks" },
-  { id: "authors_disc", label: "Author & Discussions-To", desc: "Validates GitHub handle/email and Magicians URL" },
-  { id: "sections", label: "Sections & Structure", desc: "Verifies section sequence, CC0 copyright, and completeness" },
-  { id: "normative", label: "RFC 2119 / Normative Language", desc: "Checks keywords scope (MUST/SHOULD) and RFC boilerplate notice" },
-  { id: "prose_links", label: "Prose, Links & Quality", desc: "Validates EIP-N format, disallowed links, no LaTeX, no TODO markers" },
+  { id: "preamble", label: "Preamble & Frontmatter", desc: "Field order, required keys, repo-specific status/type/category" },
+  { id: "title_desc", label: "Title & Description", desc: "Title Case, length limits (≤44 & ≤140), one-sentence rules" },
+  { id: "authors_disc", label: "Author & Discussions-To", desc: "GitHub handle required, Magicians topic URL" },
+  { id: "sections", label: "Sections & Structure", desc: "Section sequence, required sections by type, CC0 copyright" },
+  { id: "normative", label: "RFC 2119 / Normative Language", desc: "Keyword scope (MUST/SHOULD) and RFC boilerplate" },
+  { id: "prose_links", label: "Prose, Links & Quality", desc: "EIP-N format, allowed links, no LaTeX, no template artifacts" },
+  { id: "crossref", label: "Cross-references & Database", desc: "requires exist and the number is free (live proposal database)" },
 ];
 
 type TemplateKey = keyof TemplateData;
@@ -99,7 +119,7 @@ const TYPE_OPTIONS: Record<EipType, string[]> = {
 const CATEGORY_OPTIONS: Record<EipType, string[]> = {
   eip: ["Core", "Networking", "Interface"],
   erc: ["ERC", "Interface"],
-  rip: ["Core", "RRC", "Others"],
+  rip: ["Core", "RRC", "Networking", "Interface"],
 };
 
 const SECTION_DEFS: Array<{ key: TemplateKey; label: string; heading: string }> = [
@@ -210,13 +230,47 @@ export default function EIPBuilderPage() {
   const [activeCheckStep, setActiveCheckStep] = useState<number>(-1);
   const [validationErrors, setValidationErrors] = useState<ValidationItem[]>([]);
   const [showValidationDialog, setShowValidationDialog] = useState(false);
+  const [showRulesDialog, setShowRulesDialog] = useState(false);
 
   // Clipboard
   const [copied, setCopied] = useState(false);
 
   // Refs for cursor-based markdown insert
   const textareaRefs = useRef<Record<string, HTMLTextAreaElement | null>>({});
+  const codeEditorRef = useRef<HTMLTextAreaElement | null>(null);
   const codeSyncTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Severity counts for the validation summary.
+  const severityCounts = useMemo(() => {
+    let error = 0, warning = 0, info = 0;
+    for (const e of validationErrors) {
+      if (e.code === "error") error++;
+      else if (e.code === "warning") warning++;
+      else info++;
+    }
+    return { error, warning, info };
+  }, [validationErrors]);
+
+  // Jump the code editor to a 1-based line and select it.
+  const jumpToLine = useCallback((line?: number) => {
+    if (!line) return;
+    setShowValidationDialog(false);
+    setPreview(false);
+    if (viewMode === "edit") setViewMode("split");
+    setTimeout(() => {
+      const ta = codeEditorRef.current;
+      if (!ta) return;
+      const lines = ta.value.split("\n");
+      let start = 0;
+      for (let i = 0; i < line - 1 && i < lines.length; i++) start += lines[i].length + 1;
+      const end = start + (lines[line - 1]?.length ?? 0);
+      ta.focus();
+      ta.setSelectionRange(start, end);
+      // Scroll the selected line roughly into view.
+      const lineHeight = 22;
+      ta.scrollTop = Math.max(0, (line - 4) * lineHeight);
+    }, 60);
+  }, [viewMode]);
 
   // Group validation issues by field/section
   const issuesByTarget = useMemo(() => {
@@ -408,6 +462,9 @@ export default function EIPBuilderPage() {
         prUrl: dataJson.prUrl,
         prState: dataJson.prState,
         filename: dataJson.filename,
+        proposalFiles: dataJson.proposalFiles,
+        governance: dataJson.governance,
+        statusTransition: dataJson.statusTransition,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : `Failed to load PR #${prNum}`;
@@ -488,7 +545,12 @@ export default function EIPBuilderPage() {
       const res = await fetch("/api/validate-eip", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ markdownContent: markdownRaw }),
+        body: JSON.stringify({
+          markdownContent: markdownRaw,
+          repo: repoType,
+          filename: tabMode === "pr" ? importedPrInfo?.filename : undefined,
+          isNew: tabMode === "new",
+        }),
       });
       const result = await res.json();
       if (result.messages && result.messages.length > 0) {
@@ -499,6 +561,7 @@ export default function EIPBuilderPage() {
             code: msg.level,
             section: msg.section,
             field: msg.field,
+            line: msg.line,
           });
         }
       }
@@ -574,8 +637,20 @@ export default function EIPBuilderPage() {
     { key: "withdrawalReason" as TemplateKey, label: "Withdrawal Reason", type: "input" as const, disabled: data.status !== "Withdrawn", wide: true },
   ], [tabMode, data.status, data.type, repoType]);
 
-  const showEdit = viewMode === "edit" || viewMode === "split";
-  const showOutput = viewMode === "output" || viewMode === "split";
+  // On phones the 50/50 split is unusable — collapse it to a single pane.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    const update = () => setIsMobile(mq.matches);
+    update();
+    mq.addEventListener("change", update);
+    return () => mq.removeEventListener("change", update);
+  }, []);
+
+  const effectiveViewMode: ViewMode = isMobile && viewMode === "split" ? "edit" : viewMode;
+  const showEdit = effectiveViewMode === "edit" || effectiveViewMode === "split";
+  const showOutput = effectiveViewMode === "output" || effectiveViewMode === "split";
 
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
@@ -585,19 +660,28 @@ export default function EIPBuilderPage() {
           <NextLink href="/tools" className="mb-1.5 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
             <ArrowLeft className="h-3.5 w-3.5" />Tools
           </NextLink>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* New / Import / PR toggle */}
-            <div className="flex overflow-hidden rounded-lg border border-border">
-              <button onClick={() => setTabMode("new")} className={cn("px-3 py-1.5 text-xs font-medium transition-colors", tabMode === "new" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
-                New {repoType.toUpperCase()}
-              </button>
-              <button onClick={() => setTabMode("import")} className={cn("border-l border-border px-3 py-1.5 text-xs font-medium transition-colors", tabMode === "import" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
-                Import {repoType.toUpperCase()}
-              </button>
-              <button onClick={() => setTabMode("pr")} className={cn("border-l border-border px-3 py-1.5 text-xs font-medium flex items-center gap-1.5 transition-colors", tabMode === "pr" ? "bg-primary/10 text-primary font-semibold" : "text-muted-foreground hover:text-foreground")}>
-                <GitPullRequest className="h-3 w-3" />
-                Review PR
-              </button>
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
+            {/* New / Import / PR segmented control */}
+            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5">
+              {([
+                { key: "new" as TabMode, label: `New ${repoType.toUpperCase()}`, icon: null },
+                { key: "import" as TabMode, label: `Import ${repoType.toUpperCase()}`, icon: null },
+                { key: "pr" as TabMode, label: "Review PR", icon: GitPullRequest },
+              ]).map((t) => (
+                <button
+                  key={t.key}
+                  onClick={() => setTabMode(t.key)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    tabMode === t.key
+                      ? "bg-background text-primary shadow-sm ring-1 ring-border"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {t.icon && <t.icon className="h-3.5 w-3.5" />}
+                  {t.label}
+                </button>
+              ))}
             </div>
 
             {/* Import / PR search */}
@@ -609,42 +693,58 @@ export default function EIPBuilderPage() {
                     value={importQuery}
                     onChange={(e) => setImportQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleImport()}
-                    placeholder={tabMode === "pr" ? `Enter PR # (e.g. 12449)` : `Enter ${repoType.toUpperCase()} number`}
-                    className="w-48 rounded-lg border border-border bg-muted/60 py-1.5 pl-3 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    placeholder={tabMode === "pr" ? `PR # (e.g. 12449)` : `${repoType.toUpperCase()} number`}
+                    className="w-44 rounded-lg border border-border bg-muted/40 py-1.5 pl-3 pr-8 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/30"
                   />
-                  <button onClick={handleImport} disabled={importing} className="absolute right-1.5 top-1/2 -translate-y-1/2">
-                    {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Search className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />}
+                  <button onClick={handleImport} disabled={importing} className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md p-1 hover:bg-muted">
+                    {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Search className="h-3.5 w-3.5 text-muted-foreground" />}
                   </button>
                 </div>
-                {importError && <span className="text-xs text-red-500 max-w-xs truncate" title={importError}>{importError}</span>}
+                {importError && <span className="text-xs text-red-500 max-w-[160px] truncate" title={importError}>{importError}</span>}
               </div>
             )}
 
             {/* Repo selector */}
-            <div className="ml-auto flex overflow-hidden rounded-lg border border-border">
+            <div className="ml-auto inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5">
               {(["eip", "erc", "rip"] as EipType[]).map((r) => (
-                <button key={r} onClick={() => setRepoType(r)}
-                  className={cn("px-3 py-1.5 text-xs font-medium transition-colors", r !== "eip" && "border-l border-border", repoType === r ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}>
+                <button
+                  key={r}
+                  onClick={() => setRepoType(r)}
+                  className={cn(
+                    "rounded-md px-3 py-1.5 text-xs font-medium transition-all",
+                    repoType === r ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
                   {r.toUpperCase()}s
                 </button>
               ))}
             </div>
 
-            {/* View mode */}
-            <div className="flex overflow-hidden rounded-lg border border-border">
-              <button onClick={() => setViewMode("split")} className={cn("px-2.5 py-1.5 text-xs transition-colors", viewMode === "split" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} title="Split">
-                <Columns2 className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => setViewMode("edit")} className={cn("border-l border-border px-2.5 py-1.5 text-xs transition-colors", viewMode === "edit" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} title="Edit">
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => setViewMode("output")} className={cn("border-l border-border px-2.5 py-1.5 text-xs transition-colors", viewMode === "output" ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} title="Output">
-                <Eye className="h-3.5 w-3.5" />
-              </button>
+            {/* View mode (Split hidden on phones — collapses to a single pane) */}
+            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5">
+              {([
+                { key: "split" as ViewMode, icon: Columns2, title: "Split", desktopOnly: true },
+                { key: "edit" as ViewMode, icon: Pencil, title: "Edit", desktopOnly: false },
+                { key: "output" as ViewMode, icon: Eye, title: "Preview", desktopOnly: false },
+              ])
+                .filter((v) => !(isMobile && v.desktopOnly))
+                .map((v) => (
+                  <button
+                    key={v.key}
+                    onClick={() => setViewMode(v.key)}
+                    title={v.title}
+                    className={cn(
+                      "rounded-md px-2.5 py-1.5 transition-all",
+                      effectiveViewMode === v.key ? "bg-background text-primary shadow-sm ring-1 ring-border" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <v.icon className="h-3.5 w-3.5" />
+                  </button>
+                ))}
             </div>
 
-            {/* Validate & Download in Topbar */}
-            <div className="flex items-center gap-2 pl-1 border-l border-border/80">
+            {/* Validate & Download */}
+            <div className="flex items-center gap-2 pl-2 ml-0.5 border-l border-border">
               {validationErrors.length > 0 && !validated && (
                 <button
                   onClick={() => setShowValidationDialog(true)}
@@ -663,7 +763,7 @@ export default function EIPBuilderPage() {
               <button
                 onClick={handleValidate}
                 disabled={validating}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-50"
               >
                 {validating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                 <span>Validate</span>
@@ -672,10 +772,10 @@ export default function EIPBuilderPage() {
                 onClick={handleDownload}
                 disabled={!validated}
                 className={cn(
-                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors",
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors",
                   validated
-                    ? "border border-primary/30 bg-primary/10 text-primary hover:bg-primary/15"
-                    : "cursor-not-allowed border border-border bg-muted/60 text-muted-foreground opacity-60"
+                    ? "border-border bg-muted/40 text-foreground hover:bg-muted"
+                    : "cursor-not-allowed border-border bg-muted/40 text-muted-foreground opacity-50"
                 )}
               >
                 <Download className="h-3.5 w-3.5" />
@@ -687,10 +787,10 @@ export default function EIPBuilderPage() {
       </div>
 
       {/* ─── Split View (Independent Fixed Scroll) ─── */}
-      <div className={cn("flex flex-1 min-h-0 overflow-hidden", viewMode === "split" ? "flex-row" : "flex-col")}>
+      <div className={cn("flex flex-1 min-h-0 overflow-hidden", effectiveViewMode === "split" ? "flex-row" : "flex-col")}>
         {/* LEFT: Editor */}
         {showEdit && (
-          <div className={cn("h-full overflow-y-auto p-4 space-y-3", viewMode === "split" ? "w-1/2 border-r border-border" : "w-full")}>
+          <div className={cn("h-full overflow-y-auto p-3 space-y-3 sm:p-4", effectiveViewMode === "split" ? "w-1/2 border-r border-border" : "w-full")}>
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground">
                 Document {repoType === "eip" ? "an EIP" : repoType === "erc" ? "an ERC" : "a RIP"}
@@ -728,6 +828,67 @@ export default function EIPBuilderPage() {
               )}
             </div>
 
+            {/* PR review panel — editor posture + status transition from the governance DB */}
+            {importedPrInfo && (importedPrInfo.statusTransition || importedPrInfo.governance || (importedPrInfo.proposalFiles && importedPrInfo.proposalFiles.length > 1)) && (
+              <div className="rounded-xl border border-primary/25 bg-primary/5 p-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <GitPullRequest className="h-4 w-4 text-primary" />
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-primary">PR review</h3>
+                </div>
+
+                {importedPrInfo.statusTransition && importedPrInfo.statusTransition.from && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="font-mono text-foreground">{repoType.toUpperCase()}-{importedPrInfo.statusTransition.eipNumber}</span>
+                    <span className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-0.5 text-xs">
+                      <span className="text-muted-foreground">{importedPrInfo.statusTransition.from}</span>
+                      <span className="text-primary font-bold">→</span>
+                      <span className="font-semibold text-foreground">{importedPrInfo.statusTransition.to}</span>
+                    </span>
+                    <span className="text-[11px] text-muted-foreground">status change in this PR</span>
+                  </div>
+                )}
+
+                {importedPrInfo.governance && (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {importedPrInfo.governance.hasFailingRequiredChecks ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400"><AlertCircle className="h-3 w-3" />Required CI failing</span>
+                    ) : importedPrInfo.governance.ciState && /success|pass/i.test(importedPrInfo.governance.ciState) ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400"><CheckCircle2 className="h-3 w-3" />CI passing</span>
+                    ) : importedPrInfo.governance.ciState ? (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">CI {importedPrInfo.governance.ciState}</span>
+                    ) : null}
+                    {importedPrInfo.governance.needsEditorAttention && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">Needs editor review</span>
+                    )}
+                    {importedPrInfo.governance.hasMergeConflicts && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-red-500/30 bg-red-500/10 px-2 py-0.5 text-[11px] font-medium text-red-600 dark:text-red-400">Merge conflicts</span>
+                    )}
+                    {importedPrInfo.governance.category && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{importedPrInfo.governance.category}{importedPrInfo.governance.subcategory ? ` · ${importedPrInfo.governance.subcategory}` : ""}</span>
+                    )}
+                    {typeof importedPrInfo.governance.numReviews === "number" && importedPrInfo.governance.numReviews > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{importedPrInfo.governance.numReviews} review{importedPrInfo.governance.numReviews === 1 ? "" : "s"}</span>
+                    )}
+                    {importedPrInfo.governance.waitingSince && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        waiting {Math.max(0, Math.round((Date.now() - new Date(importedPrInfo.governance.waitingSince).getTime()) / 86400000))}d
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {importedPrInfo.governance?.reason && (
+                  <p className="text-[11px] text-muted-foreground">{importedPrInfo.governance.reason}</p>
+                )}
+
+                {importedPrInfo.proposalFiles && importedPrInfo.proposalFiles.length > 1 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    This PR touches {importedPrInfo.proposalFiles.length} proposal files — reviewing <span className="font-mono text-foreground">{importedPrInfo.filename.split("/").pop()}</span>.
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Preamble */}
             <div className="rounded-xl border border-border bg-card/60 p-4">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Preamble</h3>
@@ -746,7 +907,7 @@ export default function EIPBuilderPage() {
                         )}>
                           {field.label}
                           {INSTRUCTIONS[field.key] && (
-                            <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-slate-500" /></span>
+                            <span title={INSTRUCTIONS[field.key]} className="cursor-help"><Info className="h-3 w-3 text-muted-foreground" /></span>
                           )}
                           {hasError && <span className="h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />}
                           {!hasError && hasWarning && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 shrink-0" />}
@@ -913,7 +1074,7 @@ export default function EIPBuilderPage() {
 
         {/* RIGHT: Output */}
         {showOutput && (
-          <div className={cn("h-full flex flex-col overflow-y-auto bg-muted/20", viewMode === "split" ? "w-1/2" : "w-full")}>
+          <div className={cn("h-full flex flex-col overflow-y-auto bg-muted/20", effectiveViewMode === "split" ? "w-1/2" : "w-full")}>
             {/* Toggle: Code / Preview */}
             <div className="sticky top-0 z-10 flex items-center justify-between border-b border-border bg-card/80 px-4 py-2.5 backdrop-blur-sm">
               <div className="flex overflow-hidden rounded-lg border border-border">
@@ -964,6 +1125,7 @@ export default function EIPBuilderPage() {
               ) : (
                 /* ── Code editor mode ── */
                 <textarea
+                  ref={codeEditorRef}
                   value={markdownRaw}
                   onChange={(e) => { setLastEdited("code"); setMarkdownRaw(e.target.value); setValidated(false); }}
                   className="h-full min-h-[600px] w-full resize-none rounded-xl border border-border bg-card/60 px-4 py-3 font-mono text-sm leading-relaxed text-foreground/90 focus:outline-none focus:ring-1 focus:ring-primary/30"
@@ -1004,134 +1166,147 @@ export default function EIPBuilderPage() {
 
       {/* ─── Validation Dialog & Real-Time Inspection ─── */}
       {showValidationDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm" onClick={() => !validating && setShowValidationDialog(false)}>
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-xl shadow-2xl max-w-lg w-full mx-4 max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700/50">
-              <div className="flex items-center gap-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4" onClick={() => !validating && setShowValidationDialog(false)}>
+          <div className="bg-background border border-border rounded-xl shadow-2xl max-w-lg w-full max-h-[85vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2 min-w-0">
                 {validating ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <h3 className="text-base font-semibold text-foreground">Running Compliance Checks...</h3>
-                  </>
+                  <><Loader2 className="h-5 w-5 animate-spin text-primary shrink-0" /><h3 className="text-base font-semibold text-foreground truncate">Running checks…</h3></>
+                ) : severityCounts.error > 0 ? (
+                  <><AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 shrink-0" /><h3 className="text-base font-semibold text-red-600 dark:text-red-400 truncate">Validation failed</h3></>
                 ) : validationErrors.length > 0 ? (
-                  <>
-                    <AlertCircle className={cn("h-5 w-5", validationErrors.some(e => e.code === "error") ? "text-red-600 dark:text-red-400" : "text-amber-500")} />
-                    <h3 className={cn("text-base font-semibold", validationErrors.some(e => e.code === "error") ? "text-red-600 dark:text-red-400" : "text-amber-600 dark:text-amber-400")}>
-                      {validationErrors.some(e => e.code === "error") ? `Validation Issues (${validationErrors.length})` : `Advisories (${validationErrors.length})`}
-                    </h3>
-                  </>
+                  <><Info className="h-5 w-5 text-amber-500 shrink-0" /><h3 className="text-base font-semibold text-amber-600 dark:text-amber-400 truncate">Passed with advisories</h3></>
                 ) : (
-                  <>
-                    <CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                    <h3 className="text-base font-semibold text-emerald-600 dark:text-emerald-400">
-                      All Rules Passed
-                    </h3>
-                  </>
+                  <><CheckCircle2 className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" /><h3 className="text-base font-semibold text-emerald-600 dark:text-emerald-400 truncate">All checks passed</h3></>
                 )}
               </div>
-              <button
-                disabled={validating}
-                onClick={() => setShowValidationDialog(false)}
-                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white disabled:opacity-40"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center gap-0.5 shrink-0">
+                <button onClick={() => setShowRulesDialog(true)} title="How validation works" className="p-1.5 rounded-md text-muted-foreground hover:text-primary hover:bg-muted transition-colors">
+                  <BookOpen className="h-4 w-4" />
+                </button>
+                <button disabled={validating} onClick={() => setShowValidationDialog(false)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-40 transition-colors">
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
-            <div className="overflow-y-auto p-4 space-y-3 flex-1">
-              {/* Progress Checklist */}
-              <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                  EIP Standards & Editorial Checks
-                </p>
-                <div className="space-y-1.5">
-                  {VALIDATION_CHECKS.map((chk, idx) => {
-                    const isPassed = !validating || activeCheckStep > idx;
-                    const isCurrent = validating && activeCheckStep === idx;
-                    return (
-                      <div key={chk.id} className="flex items-start gap-2 text-xs py-0.5">
-                        {isCurrent ? (
-                          <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 mt-0.5" />
-                        ) : isPassed ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
-                        ) : (
-                          <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className={cn("font-medium", isCurrent ? "text-primary" : isPassed ? "text-foreground" : "text-muted-foreground")}>
-                            {chk.label}
-                          </p>
-                          <p className="text-[10px] text-muted-foreground truncate">{chk.desc}</p>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+            {/* Summary strip */}
+            {!validating && (
+              <div className="flex flex-wrap items-center gap-2 px-5 py-2.5 border-b border-border bg-muted/30 text-[11px]">
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold", severityCounts.error > 0 ? "bg-red-500/10 text-red-600 dark:text-red-400" : "bg-muted text-muted-foreground")}>
+                  {severityCounts.error} error{severityCounts.error === 1 ? "" : "s"}
+                </span>
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold", severityCounts.warning > 0 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "bg-muted text-muted-foreground")}>
+                  {severityCounts.warning} warning{severityCounts.warning === 1 ? "" : "s"}
+                </span>
+                <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold", severityCounts.info > 0 ? "bg-blue-500/10 text-blue-600 dark:text-blue-400" : "bg-muted text-muted-foreground")}>
+                  {severityCounts.info} suggestion{severityCounts.info === 1 ? "" : "s"}
+                </span>
+                <span className="ml-auto font-mono text-muted-foreground truncate">
+                  {repoType.toUpperCase()} rules{tabMode === "pr" && importedPrInfo ? ` · PR #${importedPrInfo.prNumber}` : ""}
+                </span>
               </div>
+            )}
 
-              {/* Error list once checks finish */}
-              {!validating && validationErrors.length > 0 && (
-                <div className="space-y-2 pt-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-red-600 dark:text-red-400">
-                    Flagged Items ({validationErrors.length})
-                  </p>
-                  {validationErrors.map((err, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "rounded-lg border p-3",
-                        err.code === "error"
-                          ? "border-red-500/20 bg-red-500/5 text-red-700 dark:text-red-300"
-                          : err.code === "warning"
-                          ? "border-amber-500/20 bg-amber-500/5 text-amber-700 dark:text-amber-300"
-                          : "border-blue-500/20 bg-blue-500/5 text-blue-700 dark:text-blue-300"
-                      )}
-                    >
-                      <div className="flex items-start gap-2">
-                        <AlertCircle
-                          className={cn(
-                            "h-4 w-4 shrink-0 mt-0.5",
-                            err.code === "error"
-                              ? "text-red-600 dark:text-red-400"
-                              : err.code === "warning"
-                              ? "text-amber-600 dark:text-amber-400"
-                              : "text-blue-600 dark:text-blue-400"
-                          )}
-                        />
-                        <div className="flex-1">
-                          <div className="flex items-center justify-between gap-2">
-                            <p className="text-xs font-medium">{err.summary}</p>
-                            {err.section && (
-                              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-muted/60 opacity-80 whitespace-nowrap">
-                                {err.section}
-                              </span>
-                            )}
+            <div className="overflow-y-auto p-4 space-y-3 flex-1">
+              {/* Progress checklist (while validating) */}
+              {validating && (
+                <div className="rounded-lg border border-border bg-card/60 p-3 space-y-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Standards &amp; editorial checks</p>
+                  <div className="space-y-1.5">
+                    {VALIDATION_CHECKS.map((chk, idx) => {
+                      const isPassed = activeCheckStep > idx;
+                      const isCurrent = activeCheckStep === idx;
+                      return (
+                        <div key={chk.id} className="flex items-start gap-2 text-xs py-0.5">
+                          {isCurrent ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary shrink-0 mt-0.5" />
+                            : isPassed ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                            : <div className="h-3.5 w-3.5 rounded-full border border-muted-foreground/30 shrink-0 mt-0.5" />}
+                          <div className="flex-1 min-w-0">
+                            <p className={cn("font-medium", isCurrent ? "text-primary" : isPassed ? "text-foreground" : "text-muted-foreground")}>{chk.label}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{chk.desc}</p>
                           </div>
-                          {err.detail && err.detail !== err.summary && (
-                            <p className="text-[11px] text-muted-foreground mt-1">{err.detail}</p>
-                          )}
                         </div>
-                      </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Grouped flagged items */}
+              {!validating && validationErrors.length > 0 && (
+                <div className="space-y-4">
+                  {([
+                    { key: "error", title: "Errors", hint: "These block submission — the editors' CI will reject them.", items: validationErrors.filter(e => e.code === "error") },
+                    { key: "warning", title: "Warnings", hint: "Strongly recommended fixes.", items: validationErrors.filter(e => e.code === "warning") },
+                    { key: "info", title: "Suggestions", hint: "Optional polish.", items: validationErrors.filter(e => e.code !== "error" && e.code !== "warning") },
+                  ] as const).map((group) => group.items.length === 0 ? null : (
+                    <div key={group.key} className="space-y-2">
+                      <p className={cn("text-[11px] font-semibold uppercase tracking-wider", group.key === "error" ? "text-red-600 dark:text-red-400" : group.key === "warning" ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400")}>
+                        {group.title} ({group.items.length})
+                      </p>
+                      {group.items.map((err, i) => (
+                        <div
+                          key={i}
+                          className={cn(
+                            "rounded-lg border p-3",
+                            err.code === "error" ? "border-red-500/20 bg-red-500/5"
+                              : err.code === "warning" ? "border-amber-500/20 bg-amber-500/5"
+                              : "border-blue-500/20 bg-blue-500/5"
+                          )}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            {err.line ? (
+                              <button
+                                onClick={() => jumpToLine(err.line)}
+                                title={`Jump to line ${err.line}`}
+                                className={cn(
+                                  "shrink-0 mt-0.5 font-mono text-[10px] font-semibold rounded px-1.5 py-0.5 border transition-colors",
+                                  err.code === "error" ? "border-red-500/30 text-red-600 dark:text-red-400 hover:bg-red-500/10"
+                                    : err.code === "warning" ? "border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
+                                    : "border-blue-500/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10"
+                                )}
+                              >
+                                L{err.line}
+                              </button>
+                            ) : (
+                              <span className="shrink-0 mt-1 h-2 w-2 rounded-full bg-muted-foreground/40" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-2">
+                                <p className="text-xs font-medium text-foreground">{err.summary}</p>
+                                {err.section && (
+                                  <span className="shrink-0 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border bg-muted/60 text-muted-foreground whitespace-nowrap">{err.section}</span>
+                                )}
+                              </div>
+                              {err.detail && err.detail !== err.summary && err.detail !== err.section && (
+                                <p className="text-[11px] text-muted-foreground mt-1">{err.detail}</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
               )}
 
-              {/* Success message when valid */}
+              {/* Success */}
               {!validating && validationErrors.length === 0 && (
-                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-4 text-center space-y-1">
+                <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 p-5 text-center space-y-1.5">
                   <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto" />
-                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                    Proposal Ready for Submission!
-                  </p>
-                  <p className="text-xs text-muted-foreground">
-                    Complies with EIP formatting and editorial rules. No errors or warnings detected.
-                  </p>
+                  <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Ready for submission</p>
+                  <p className="text-xs text-muted-foreground">Passes the {repoType.toUpperCase()} formatting and editorial rules with no errors, warnings, or suggestions.</p>
                 </div>
               )}
             </div>
 
-            <div className="flex justify-end px-5 py-3 border-t border-slate-200 dark:border-slate-700/50 bg-card/40">
+            {/* Footer */}
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-card/40">
+              <button onClick={() => setShowRulesDialog(true)} className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors">
+                <Info className="h-3.5 w-3.5" /> How validation works
+              </button>
               <button
                 disabled={validating}
                 onClick={() => setShowValidationDialog(false)}
@@ -1139,6 +1314,110 @@ export default function EIPBuilderPage() {
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ─── "How validation works" info dialog ─── */}
+      {showRulesDialog && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 dark:bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowRulesDialog(false)}>
+          <div className="bg-background border border-border rounded-xl shadow-2xl max-w-2xl w-full max-h-[88vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-primary" />
+                <h3 className="text-base font-semibold text-foreground">How validation works</h3>
+              </div>
+              <button onClick={() => setShowRulesDialog(false)} className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"><X className="h-4 w-4" /></button>
+            </div>
+
+            <div className="overflow-y-auto p-5 space-y-5 flex-1">
+              <p className="text-sm text-muted-foreground">
+                Your draft is checked against the same rules the EIP editors enforce in CI (the <span className="font-medium text-foreground">eipw</span> walidator), plus live cross-checks against EIPsInsight&apos;s proposal database. Rules adapt to whether you&apos;re writing an <span className="font-mono text-foreground">EIP</span>, <span className="font-mono text-foreground">ERC</span>, or <span className="font-mono text-foreground">RIP</span>.
+              </p>
+
+              {/* Pipeline diagram */}
+              <div className="rounded-lg border border-border bg-card/60 p-4 overflow-x-auto">
+                <svg viewBox="0 0 680 220" className="w-full min-w-[560px]" role="img" aria-label="Validation pipeline">
+                  <defs>
+                    <marker id="vb-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                      <path d="M0,0 L6,3 L0,6 Z" className="fill-muted-foreground" />
+                    </marker>
+                  </defs>
+                  {/* Input */}
+                  <g>
+                    <rect x="8" y="88" width="104" height="44" rx="8" className="fill-primary/10 stroke-primary/40" strokeWidth="1.5" />
+                    <text x="60" y="106" textAnchor="middle" className="fill-foreground" fontSize="12" fontWeight="600">Markdown</text>
+                    <text x="60" y="122" textAnchor="middle" className="fill-muted-foreground" fontSize="10">draft / PR</text>
+                  </g>
+                  <line x1="112" y1="110" x2="150" y2="110" className="stroke-muted-foreground" strokeWidth="1.5" markerEnd="url(#vb-arrow)" />
+                  {/* Parse */}
+                  <g>
+                    <rect x="150" y="88" width="104" height="44" rx="8" className="fill-muted stroke-border" strokeWidth="1.5" />
+                    <text x="202" y="106" textAnchor="middle" className="fill-foreground" fontSize="12" fontWeight="600">Parse</text>
+                    <text x="202" y="122" textAnchor="middle" className="fill-muted-foreground" fontSize="10">preamble + sections</text>
+                  </g>
+                  <line x1="254" y1="110" x2="292" y2="110" className="stroke-muted-foreground" strokeWidth="1.5" markerEnd="url(#vb-arrow)" />
+                  {/* Rule groups stacked */}
+                  <g>
+                    <rect x="292" y="20" width="150" height="38" rx="8" className="fill-muted stroke-border" strokeWidth="1.5" />
+                    <text x="367" y="43" textAnchor="middle" className="fill-foreground" fontSize="11" fontWeight="500">Preamble &amp; frontmatter</text>
+                    <rect x="292" y="66" width="150" height="38" rx="8" className="fill-muted stroke-border" strokeWidth="1.5" />
+                    <text x="367" y="89" textAnchor="middle" className="fill-foreground" fontSize="11" fontWeight="500">Sections &amp; structure</text>
+                    <rect x="292" y="112" width="150" height="38" rx="8" className="fill-muted stroke-border" strokeWidth="1.5" />
+                    <text x="367" y="135" textAnchor="middle" className="fill-foreground" fontSize="11" fontWeight="500">Normative / prose / links</text>
+                    <rect x="292" y="158" width="150" height="38" rx="8" className="fill-blue-500/10 stroke-blue-500/40" strokeWidth="1.5" />
+                    <text x="367" y="176" textAnchor="middle" className="fill-foreground" fontSize="11" fontWeight="500">Database cross-check</text>
+                    <text x="367" y="190" textAnchor="middle" className="fill-muted-foreground" fontSize="9">requires exist · number free</text>
+                  </g>
+                  <line x1="442" y1="110" x2="486" y2="110" className="stroke-muted-foreground" strokeWidth="1.5" markerEnd="url(#vb-arrow)" />
+                  {/* Result */}
+                  <g>
+                    <rect x="486" y="70" width="110" height="80" rx="8" className="fill-card stroke-border" strokeWidth="1.5" />
+                    <circle cx="506" cy="92" r="4" className="fill-red-500" /><text x="518" y="96" className="fill-foreground" fontSize="11">Errors</text>
+                    <circle cx="506" cy="112" r="4" className="fill-amber-500" /><text x="518" y="116" className="fill-foreground" fontSize="11">Warnings</text>
+                    <circle cx="506" cy="132" r="4" className="fill-blue-500" /><text x="518" y="136" className="fill-foreground" fontSize="11">Suggestions</text>
+                  </g>
+                </svg>
+              </div>
+
+              {/* Severity legend */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
+                  <p className="text-xs font-semibold text-red-600 dark:text-red-400">Errors</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Block submission — CI will reject them. Fix before opening a PR.</p>
+                </div>
+                <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+                  <p className="text-xs font-semibold text-amber-600 dark:text-amber-400">Warnings</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Strongly recommended. Editors will usually ask for these.</p>
+                </div>
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-3">
+                  <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">Suggestions</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Optional polish and style nudges.</p>
+                </div>
+              </div>
+
+              {/* Rule groups */}
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">What gets checked</p>
+                {VALIDATION_CHECKS.map((chk) => (
+                  <div key={chk.id} className="flex items-start gap-2 rounded-lg border border-border bg-card/40 px-3 py-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-xs font-medium text-foreground">{chk.label}</p>
+                      <p className="text-[11px] text-muted-foreground">{chk.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-[11px] text-muted-foreground">
+                Each finding shows the line it came from — click the <span className="font-mono text-foreground">L##</span> badge to jump straight to it in the editor. A clean run here means your draft matches what CI expects, but editors still review substance.
+              </p>
+            </div>
+
+            <div className="flex justify-end px-5 py-3 border-t border-border bg-card/40">
+              <button onClick={() => setShowRulesDialog(false)} className="px-4 py-2 text-xs font-medium text-foreground bg-muted border border-border rounded-lg hover:bg-muted/80 transition-colors">Got it</button>
             </div>
           </div>
         </div>

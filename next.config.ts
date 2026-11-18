@@ -55,6 +55,12 @@ const nextConfig: NextConfig = {
         destination: '/lucid',
         permanent: false,
       },
+      // Aliases for the EIP Builder tool.
+      { source: '/eipbuilder', destination: '/eip-builder', permanent: false },
+      { source: '/eip_builder', destination: '/eip-builder', permanent: false },
+      { source: '/eip-builder-tool', destination: '/eip-builder', permanent: false },
+      { source: '/builder', destination: '/eip-builder', permanent: false },
+      { source: '/eip/builder', destination: '/eip-builder', permanent: false },
       // Analytics merged into the main /upgrade page (#analytics section).
       {
         source: '/upgrade/analytics',

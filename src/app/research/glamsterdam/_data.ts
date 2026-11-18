@@ -164,6 +164,18 @@ export const FIXED_GAS: { name: string; flips: string }[] = [
   { name: '1inch Aggregation Router V6', flips: '32 / 50' },
 ];
 
+// Blast radius: real UserOperationEvent counts through each EntryPoint over the
+// last 24h, straight from our archive node (eth_getLogs). at-risk = perDay x the
+// sampled hard-break rate (an estimate, not a population rate — see caveats).
+export const BLAST = {
+  entryPoints: [
+    { name: 'EntryPoint v0.7', perDay: 19927, pct: 34, atRisk: 6775 },
+    { name: 'EntryPoint v0.6', perDay: 3005, pct: 26, atRisk: 781 },
+  ],
+  totalPerDay: 22932,
+  totalAtRisk: 7556,
+} as const;
+
 // Worst-case extra gas each break needs beyond its budget (from the replay).
 export const GAS_DELTA: { name: string; delta: number; kind: 'aa' | 'oog' }[] = [
   { name: 'ERC-4337 account / module', delta: 411180, kind: 'aa' },
