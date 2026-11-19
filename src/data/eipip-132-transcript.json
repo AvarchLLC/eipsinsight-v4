@@ -1,772 +1,782 @@
 [
   {
-    "start": "00:07:56",
-    "end": "00:08:58",
+    "start": "00:00:08",
+    "end": "00:00:12",
+    "text": "Akash | ECH: Yeah, we're live."
+  },
+  {
+    "start": "00:00:12",
+    "end": "00:01:12",
     "text": "Pooja Ranjan: Thank you. Welcome to EIPIP Meeting Number 132. Today is November 18th, and the agenda is added on Ethereum slash PM. GitHub issue, the number is 2288. On agenda, we have AI in EIP ecosystem, some discussions, some presentations. And some editors point to figure out on how we can make the EIP process even more beneficial for the ecosystem so we can move forward faster. So we have listed some exceptional PR merging circumstances. We'll discuss on that. Further, we have called for input and updates from previous meetings. We are joined by Jochem, so I would like to invite him to maybe kick off this meeting with AI in the EIP ecosystem. He has agents.md to be shared. Jochem?"
   },
   {
-    "start": "00:08:58",
-    "end": "00:09:10",
+    "start": "00:01:12",
+    "end": "00:01:23",
     "text": "jochem-brouwer: Yes, can you see my screen?"
   },
   {
-    "start": "00:09:10",
-    "end": "00:10:57",
+    "start": "00:01:23",
+    "end": "00:01:25",
     "text": "Pooja Ranjan: Yes."
   },
   {
-    "start": "00:10:57",
-    "end": "00:12:07",
+    "start": "00:01:25",
+    "end": "00:03:12",
+    "text": "jochem-brouwer: Okay, cool. To kick this off, I think it is always very important to stage your workflows, and I want to state that I did not use AI to make these slides. That's also why they are simple. I want to talk about automating EIP and the ERC with AI and also want to introduce a pilot. This presentation is basically a brain dump of what I've been thinking about a lot, what we as an ecosystem have been thinking about, and especially my take on this matter. It might look or sound a little bit chaotic, but I hope that you can at least follow my train of thought. One thing first that I want everyone to realize is that EIPs and ERCs are not just documents, because these are like the root documents of the entire ecosystem in terms of high-level ideas that are going to be presented to all core devs. This is not a bureaucratic process; these root documents have to be guarded so that we do not decrease the quality of these documents. What we are seeing currently is that AI has been used to write EIPs, which itself is not a problem because you just prompt your idea to AI and use AI to write this document for review. What we are also seeing on the Ethereum protocol improvement side is that AI is also being used to quickly write an implementation. So that means the EIP document is actually used as a spec document, and this is why we need to guard this quality."
+  },
+  {
+    "start": "00:03:12",
+    "end": "00:04:25",
     "text": "jochem-brouwer: I want to quote EIP-5069, which says it is imperative that the EIP process evolves, albeit cautiously. So, what AI also changes is that we see the EIP and the ERC influx, which is much higher. At least that's my perception. And what's also changing is that these documents are much more complex than we have seen in the past. So, what I used to do in the past is, at my lunch break, I would grab a coffee and then read an EIP, especially on the EL side. It is not possible anymore at all at this point, because these EIPs are incredibly complex. So the logical next step, I think, is to automate reviews using AI. And then the question is, what are we actually going to automate? Because we can now address stuff which we could not address automatically before."
   },
   {
-    "start": "00:12:07",
-    "end": "00:14:04",
+    "start": "00:04:25",
+    "end": "00:06:18",
     "text": "jochem-brouwer: What AI can address that was not possible in the past: things like backward references, so if you reference something backward, that things are first defined. And then that abbreviations, if you are using them, that they are defined. That documents are self-contained. That it has the correct copyright. And the claims in the documents, that we can actually use AI to verify these claims. So this is a nice property of AI. We should be careful, because we should not use too much AI. Because most of the EIPs or ERCs are, at some point, written by AI. And the problem is if people then use AI's feedback loop, the problem is if people use AI to then address a review, then you create a feedback loop where the ecosystem is basically a forum which only AI agents reply to. So this is something I think is very bad: if you have an original idea, and you use AI to generate it, and then we have a feedback loop reviewed by AI, and this review moves the original idea away. So I think the fix for this is that AI does not propose the changes, but rather asks questions to the author."
   },
   {
-    "start": "00:14:04",
-    "end": "00:15:17",
+    "start": "00:06:18",
+    "end": "00:07:30",
     "text": "jochem-brouwer: Uh, with some small exceptions, like if an abbreviation is first defined, then you can directly suggest, okay, you likely meant this, so maybe apply just a suggestion. And\u2026 Yeah, let me see if I can say anything else about this. Uh\u2026 Yeah, so the main idea here is that AI does not move the original idea from the original idea what the author had in mind. So again, we should use AI, I think, but not too much. And again, EIP-5069, it's imperative that the EIP process evolves, albeit cautiously. So the main thing: automerge is something I think we should absolutely not do. And so what is AI review for? So we do not have to read the entire EIP. And this is the question: what do we guard in this process? So on the EIP site, we guard that the entry point is high-level ideas of improvements to the Ethereum protocol."
   },
   {
-    "start": "00:15:17",
-    "end": "00:19:55",
+    "start": "00:07:30",
+    "end": "00:12:09",
     "text": "jochem-brouwer: What is also of course guarded is the EIP or ERC number, which are doing so if someone references to your EIP or ERC number. It is very clear what we are talking about, and another nice property of the EIPs or the ERCs is that it is a memory for the ecosystem, to figure out why we are actually proposing this kind of changes. And of course, if you have a new idea, then the entry point for the EIP process to propose your idea is an EIP. And as editor, we of course do not make any decisions. So we stay neutral on this, even if in our personal opinion it does not make any sense, then this is not our task as editor. We will just move forward so people can discuss on ACD, because that's for ACD, and that's not our job. So who then changes or merges the changes on the site? So these AI reviews are automated, and I want to start a pilot with this. The current reviews, what I'm doing, is a hybrid mode. So it is, I open the EIP, and I point an agent to it, with access only to open the EIP's repository. And then what it does is close pending review to get updated. And then I check all these comments, do they make sense or do they not make sense? Because I don't want to bring any false positives or tasks that give extra work to the author. I want this automated process to be in a private kind of mind, but I want to publish the reviews. This is read-only. So if it approves or whatever, that this will not move the EIP forward. But our responsibility is that we answer that it is not total slop, it is not a total scam. Because we have to realize, of course, EIPs, these documents are also open to abuse. So we should be very careful about this. And therefore, this is also part of responsibility: we should look at an EIP, let's say to date change something related to this, these AI reviews. We should likely define more what is okay in each state of this EIP. So what is okay for draft? What should be addressed in the review? What should be in Last Call? And that is a final. So that especially on the final state, this EIP, that we answer that we do not have to change anything about this. There's one URL I want to share. This is from the IETF and the RFC site. They are also studying RFC AI and large language models. It is a very nice discussion. Our post is a public chat, and it is worth it to read. So to give over, finally, what I want to do is to start AI reviews here as a pilot. And what we also want to do is, if an EIP or ERC changes the status from draft to review, we re-review the entire document to see if it matches the status, what we expect on these on the status. And we do not want to just any text influence the original identity of this EIP. So I think we should start to think about this, and of course this is harnessed: a human still skims the documents before approving, so we do not approve any slop or scam. Any questions or initial comments?"
   },
   {
-    "start": "00:19:55",
-    "end": "00:20:00",
+    "start": "00:12:09",
+    "end": "00:12:14",
     "text": "Sam: No, that's great. I think that aligns pretty closely with how I feel."
   },
   {
-    "start": "00:20:00",
-    "end": "00:20:06",
+    "start": "00:12:14",
+    "end": "00:12:20",
     "text": "jochem-brouwer: Okay, that is good. And just checking, this is, let me stop sharing the screen."
   },
   {
-    "start": "00:20:06",
-    "end": "00:20:11",
+    "start": "00:12:20",
+    "end": "00:12:25",
     "text": "Pooja Ranjan: Yeah, you have stopped sharing right now, but it was, yeah."
   },
   {
-    "start": "00:20:11",
-    "end": "00:20:15",
+    "start": "00:12:25",
+    "end": "00:12:32",
     "text": "jochem-brouwer: Interesting, okay, yeah."
   },
   {
-    "start": "00:20:15",
-    "end": "00:21:05",
+    "start": "00:12:32",
+    "end": "00:13:22",
     "text": "Pooja Ranjan: Yep. I have a couple of comments here. I mean, I'm generally in favor of AI review, or any way that can help editors to review these proposals, because we have too many proposals to review right now. But, uh, I am a little concerned of auto merging, especially at two statuses. One, when we are merging it at draft, and second, when we are merging it as final. Other than that, for review and last call, it seems fine and okay to be auto merged with AI review, but I feel like having human intervention at the level of draft and final would be useful. I love the idea of harnessing AI things more over time, yeah."
   },
   {
-    "start": "00:21:05",
-    "end": "00:21:35",
+    "start": "00:13:22",
+    "end": "00:13:49",
     "text": "jochem-brouwer: Yes, okay. Not too clear on the presentation about this, but I do not want to automerge anything at all. The AI reviews, it is a read-only pilot. So this will send reviews, and then based on this, we still do a human check, if you can afterwards merge it or not. So I do not want to automate merging anything using AI. I just want to state this."
   },
   {
-    "start": "00:21:35",
-    "end": "00:21:49",
+    "start": "00:13:49",
+    "end": "00:14:03",
     "text": "Pooja Ranjan: That is cool. I mean, at this stage, it sounds good to me. I wonder, yeah, if anyone has any question, comment, please feel free to unmute and share it."
   },
   {
-    "start": "00:21:49",
-    "end": "00:24:20",
+    "start": "00:14:03",
+    "end": "00:16:34",
     "text": "jochem-brouwer: Maybe to address Marc's question. So Marc is asking, biggest EIP merge, is the initial review correct? And it is an interesting question, because I think I am starting to shift a little bit about this, because of the workflow. What we used to do in the past, which was before I was a formal editor, I would say, this idea of the lunch break, I will just review them, et cetera. But I realize these EIPs are actually going to get merged in the draft status. So directly, I think my work in the past was to always review the EIPs in the review status and not in the draft status. So what I think for the biggest EIP merge, the initial review is: what should be very clear before an EIP is in draft is that these ideas presented in the EIP, which will then get moved to be presented at ACD, is that this document is unambiguous. So it is very clear what the author intends to do with this EIP, and that it is self-contained. So doesn't\u2026 there is a certain quality of this EIP document. So it will be well-defined references, read it in one go. Because the idea is that if you read this document, we want to read it one go and not read it like two times in order to understand this. So in that sense, I would think that I can actually do a very good job about it still. We are not going to automate draft reviews. That will be automoted, but there is still human do into it. But I think the main realization is that the complexity of these, they are simply too complex at this point for me to initially crisply review. And this should not block the entire process. So if the draft looks okay, if it is understandable, then it is the job of like ACD and the ecosystem to figure out, okay, do you want this, do you want the change. That's of course the entire idea of the draft status. So yeah, I think this is here."
   },
   {
-    "start": "00:24:20",
-    "end": "00:24:34",
+    "start": "00:16:34",
+    "end": "00:16:56",
     "text": "Justin Traglia: I have a question, and I might have just missed it from your presentation. When will the bot \u2014 or if and when will the bot \u2014 uh, re-review. Oh. Will it re-review?"
   },
   {
-    "start": "00:24:34",
-    "end": "00:24:53",
+    "start": "00:16:56",
+    "end": "00:17:07",
     "text": "jochem-brouwer: If an EIP, so whenever a PR, then the bot reviews it. And then the next review, I would say, the ones, uh, a new command, or if there have been comments added to this review."
   },
   {
-    "start": "00:24:53",
-    "end": "00:24:57",
+    "start": "00:17:07",
+    "end": "00:17:12",
     "text": "Justin Traglia: Okay, so you'd re-review after each new commit. Is that what you're saying?"
   },
   {
-    "start": "00:24:57",
-    "end": "00:25:07",
+    "start": "00:17:12",
+    "end": "00:17:21",
     "text": "jochem-brouwer: Yes, I guess so, maybe with some wait time, because not directly wait, and then work it, yeah."
   },
   {
-    "start": "00:25:07",
-    "end": "00:25:14",
+    "start": "00:17:21",
+    "end": "00:17:29",
     "text": "Justin Traglia: Yeah, that's sort of what I was thinking as well. There needs to be some type of\u2026 delay. Yeah."
   },
   {
-    "start": "00:25:14",
-    "end": "00:25:41",
+    "start": "00:17:29",
+    "end": "00:17:55",
     "text": "jochem-brouwer: Yeah. You can also think about like the author explicitly adding and scan and ready. So maybe it waits two hours, and then if the bot reviews, then we send a review, and if not, then it reviews in two hours."
   },
   {
-    "start": "00:25:41",
-    "end": "00:25:58",
+    "start": "00:17:55",
+    "end": "00:18:12",
     "text": "Justin Traglia: Maybe, maybe a simple idea would be if, uh, the bot were to mark it as a draft after leaving your review with feedback that requires changes, and then when the contributor is ready for another review, they could just mark it as ready again. Or something like that."
   },
   {
-    "start": "00:25:58",
-    "end": "00:26:07",
+    "start": "00:18:12",
+    "end": "00:18:23",
     "text": "jochem-brouwer: Yeah, okay, I would not like that because this would grant this pilot bot access as a right writing, and I do not want to do that. But yeah, I like the idea."
   },
   {
-    "start": "00:26:07",
-    "end": "00:26:11",
+    "start": "00:18:23",
+    "end": "00:18:24",
     "text": "Justin Traglia: Okay, that's fair."
   },
   {
-    "start": "00:26:11",
-    "end": "00:26:20",
+    "start": "00:18:24",
+    "end": "00:18:44",
     "text": "jochem-brouwer: It's a very good idea, but I think we should not do this here, because I'm somewhat scared that, uh, like, these documents are of high value, and with all the CVEs, et cetera, et cetera, that we at some point get something nasty that produces very nasty stuff on the ERC side, for instance. I do not want to do that."
   },
   {
-    "start": "00:26:20",
-    "end": "00:26:32",
+    "start": "00:18:44",
+    "end": "00:18:46",
     "text": "Justin Traglia: Yep. We're on the same page, I agree."
   },
   {
-    "start": "00:26:32",
-    "end": "00:26:54",
+    "start": "00:18:46",
+    "end": "00:19:08",
     "text": "Pooja Ranjan: But there can be a mid-path here, even if it is not changing the, like, you know, the draft and GitHub's PR itself, maybe add a label. Um, if bot reviews it, it can add a label that can give indication to editor or author, like, whose attention is required the next."
   },
   {
-    "start": "00:26:54",
-    "end": "00:27:02",
+    "start": "00:19:08",
+    "end": "00:19:16",
     "text": "Justin Traglia: I think you might still need to write access to add labels, like as a maintainer. Alright. Maybe that's not true."
   },
   {
-    "start": "00:27:02",
-    "end": "00:27:07",
+    "start": "00:19:16",
+    "end": "00:19:21",
     "text": "Sam: I think you just need the triage permission."
   },
   {
-    "start": "00:27:07",
-    "end": "00:27:11",
+    "start": "00:19:21",
+    "end": "00:19:25",
     "text": "Justin Traglia: Ah, I see, okay."
   },
   {
-    "start": "00:27:11",
-    "end": "00:27:15",
+    "start": "00:19:25",
+    "end": "00:19:29",
     "text": "Pooja Ranjan: Yes, Marc, please go ahead."
   },
   {
-    "start": "00:27:15",
-    "end": "00:28:03",
+    "start": "00:19:29",
+    "end": "00:20:20",
     "text": "marc | wolovim: Um, just curious to learn, like, what kind of pain, so to speak, exists if we don't\u2026 uh\u2026 the current process is abused. So let's say, like, um\u2026 Well, it sounds like there already is a sort of a flood of new EIPs coming in. um\u2026 What pain does it cause to have a bunch of those outstanding, or maybe asked another way, like, if many are admitted draft status that don't deserve it, necessarily. I understand that's, like, ambiguously bad, but does that cause you any other, like, forms of process pain?"
   },
   {
-    "start": "00:28:03",
-    "end": "00:28:37",
+    "start": "00:20:20",
+    "end": "00:20:51",
     "text": "jochem-brouwer: Maybe to be, frank. Like in terms of neutrality, I think that there are no bad EIPs or ERCs. More in the sense of that we clearly get phishing or scam EIPs. This, what is obviously not, must actually be then this could be automated. Automatically point is like with prompt injection of tricks like this, so it will not harm the process at all. It actually improves the process."
   },
   {
-    "start": "00:28:37",
-    "end": "00:29:38",
+    "start": "00:20:51",
+    "end": "00:21:53",
     "text": "jochem-brouwer: Because the common workflow is that at least what I do is I read EIPs, ERCs, and the complexity of EIP documents is going up. Not only the complexity but also, I think what we also see is that AI output is sometimes very not\u2026 you have less text. At least the current understanding, at least what I see. And so the thing is that this reduces the editor workload in a sense that we have to read, let's delegate, is reading task for like things what we do not completely understand, like I cannot review ERC, ERCs, because I do not really get the ERCs, because I'm not an app developer. Documents. And now I delegate this to the AI. So yeah, that is to answer your question."
   },
   {
-    "start": "00:29:38",
-    "end": "00:29:53",
+    "start": "00:21:53",
+    "end": "00:22:07",
     "text": "marc | wolovim: Yeah, um, it's helpful. I guess the main, like, the heart of it is trying to understand, uh, how painful false positives are, I guess you could say."
   },
   {
-    "start": "00:29:53",
-    "end": "00:31:07",
+    "start": "00:22:07",
+    "end": "00:23:21",
     "text": "jochem-brouwer: Yes, so this is a good point. Uh, so this is also why what the bot does: if, um, hybrid reviews, I read the entire EIP, the EL side of the AI being points that it, and I explicitly state, okay, you load a pending review, because I want to review the comments. What the AI is saying before actually sending it. Because we do not want to put extra work on the proposer with the document. And there is an AI review which is clearly the point. It is like extra work. It's a very good point. I actually don't know how to do this. And what I could do, so in my pilot, it will be to directly publicize reviews. This was maybe, indeed, instead move to the pending reviews, that the reviews are even the pending reviews. It looks like no clear false positives."
   },
   {
-    "start": "00:31:07",
-    "end": "00:32:08",
+    "start": "00:23:21",
+    "end": "00:24:22",
     "text": "Pooja Ranjan: Um, I would like to maybe, um, share my screen for a few minutes to, uh, give a picture of where we are. So, the present status of EIP is, or the PRs, is not because they are waiting for editors review. I want to share this trend here. If we take a look at it, this purple line denotes like the open PRs every month which we are going in. So if let's say, for an example of November, we are taking over 550 PRs are open right now. We did merge 11, closed 14, but the volume is too much. And on top of that, they are not ready for editors to be reviewed. So if you take a look at this breakdown, the orange ones are waiting on authors for some or the other reason, maybe some editor took a look and they left a comment and it is not being addressed here. Yes, Jochem."
   },
   {
-    "start": "00:32:08",
-    "end": "00:33:22",
+    "start": "00:24:22",
+    "end": "00:25:36",
     "text": "jochem-brouwer: Yes, um. Okay. So look at this. These are mostly update EIP PRs. And I think this is also most likely related to this. This is a bad thing, but it is something to realize because taking the execution spec perspective, what we are seeing here is that we are seeing a lot of external EIP PRs being open. Because the finish you can, the sponsor, I like, okay, at this idea EIP implemented and upgrade this EIP PR. And this is also what is happening to EIPs. So, for instance, EIP-8037, I'm not going to check this, but I think that a lot of draft changes to EIP-8037 do not have anybody's policy on the editor side to close these, to guide us. Because I think currently this is not a responsibility. And because this is really on the side of the authors of these EIPs, like you, EIP editor, state, you merge, or you state that you do not want it closed. But that is likely also the wish. We have so many of these open PRs. But these design update EIP PRs, the people who open these PRs are not authors of these EIPs. So this will not get auto-merged."
   },
   {
-    "start": "00:33:22",
-    "end": "00:34:17",
+    "start": "00:25:36",
+    "end": "00:26:31",
     "text": "Pooja Ranjan: That's very correct. Yeah, thank you for adding that. So yes, they are waiting for author. That means not on the person who opened the PR, maybe the related author who is responsible for approving it, because as per present process, editors cannot force merge all those. And there are some PRs which are open, and they remain in draft, and we are going to talk about it. I have added one of those examples in our agenda, which makes a lot of sense. There are two more questions in chat. Should you limit the PR per new contributor and normal contributor? I'm not sure, this is a, like, open source ecosystem, if limiting PR on GitHub is the right thing to do, or is it possible? I don't know about that part. I wonder if anyone else has any comment on this one? Yes."
   },
   {
-    "start": "00:34:17",
-    "end": "00:35:45",
+    "start": "00:26:31",
+    "end": "00:27:59",
     "text": "jochem-brouwer: Yeah, maybe on this, the PR limit question. Like I think the problem of limiting the amount of PRs open by a new contributor, is that if you have ideas, if you are a new contributor and just specific ideas about many EIPs, for instance Hegota EIPs, present state, okay, you can only open three PRs. This is not the way how we should gate-keep IDs. It is not the right move for the EIPs repository slash ecosystem. Because the special, what sets it apart, is it is an open ecosystem. We have to figure another way to deal with this. But I think, I think maybe a good way to frame this is you should see each EIP as its own repository. And the EIPs repo is then like the monorepo of all these EIPs. So if you are an owner of an EIP, you have an external PR being open against it. The PR is open against, you have against repository of the. So yeah, I don't think the principle that to sort of date keeping."
   },
   {
-    "start": "00:35:45",
-    "end": "00:36:06",
+    "start": "00:27:59",
+    "end": "00:28:20",
     "text": "Pooja Ranjan: Right. And moving on to the next question here, should bot close the stale PRs with instructions to reopen? I think that that is already there in place. I guess the limit is six months inactivity. Um, Sam, I don't know if that is still working, if you have any visibility on that?"
   },
   {
-    "start": "00:36:06",
-    "end": "00:36:10",
+    "start": "00:28:20",
+    "end": "00:28:27",
     "text": "Sam: Uh, I think that's what Cyber Sentry was working on. Um, I don't know where we're at."
   },
   {
-    "start": "00:36:10",
-    "end": "00:36:38",
+    "start": "00:28:27",
+    "end": "00:28:52",
     "text": "Pooja Ranjan: Okay, yeah, so we have it on agenda and we will get there. Okay, perfect. So yes, that is already there. I have one more question for Jochem about the agents.md. So the document that we are discussing here, if it is added to the repository, is it going to be the canonical source of all rules? Or is it just going to be, like, document that is ready for any author? Like, how are we seeing it?"
   },
   {
-    "start": "00:36:38",
-    "end": "00:38:07",
+    "start": "00:28:52",
+    "end": "00:30:21",
     "text": "jochem-brouwer: Yes, okay. This is a good good question. So it is a guideline for people proposing new EIPs or a change. It is a static, it is an entry point for my agent in order to, the case for writing an EIP, or if you update an EIP, and also for the review site. So this bot itself opens this pilot for very soon, but the content of agents.md, this condensed person of, check the file, so that EIP-1, a contributing.md and. Yeah."
   },
   {
-    "start": "00:38:07",
-    "end": "00:38:22",
+    "start": "00:30:21",
+    "end": "00:30:41",
     "text": "Pooja Ranjan: Alright, uh, that is good to know. So, I'm assuming that this agents.md will be updated based on, like, any rules or changes that is added to EIP-1 or contributing.md. Okay, perfect. That's very good."
   },
   {
-    "start": "00:38:22",
-    "end": "00:38:52",
+    "start": "00:30:41",
+    "end": "00:31:06",
     "text": "jochem-brouwer: Because we are just going to add this thing. At some point this of course going to be like a very evolving document. Because there will be things that the agent does which we do not want, and then if we in the process find that it does not address something, we add it to contributing.md or EIP-1 or whatever the white is. And then they get reflected in this."
   },
   {
-    "start": "00:38:52",
-    "end": "00:40:35",
+    "start": "00:31:06",
+    "end": "00:32:50",
     "text": "Pooja Ranjan: Sounds good. Thank you. I wonder if anyone else has any question on agents.md or the presentation that we just had. Ship it. All right. That's very cool. Please feel free to add any comments if you have any. The PR is 12661. That is still in draft mode. And yeah, it would require editor's approval, one more editor's approval, in order to move it forward. While looking into the agents.md document, I understand this is an entry point for AI agents, as Jochem mentioned. I also looked into another tool, which I think was there for quite some time, because I remember a presentation about a year ago by EIPsInsight team of creating a new EIP, and I explored a way that it is helpful not only for documenting a new proposal but also to update an existing proposal and also for review purposes, like for review done by not editor, by the author itself, or people like us, or associated editors who are trying to help into the process. So, I would like to invite, um, Dhanush from EIPsInsight, uh, to maybe give a demo, I guess. Uh, he wanted to share how this is possible, that we make use of that tool to create the document, as well as review the document."
   },
   {
-    "start": "00:40:35",
-    "end": "00:42:57",
+    "start": "00:32:50",
+    "end": "00:35:13",
     "text": "Dhanush | EIPsInsight: GMGM, everyone. Thank you for having me. So I'll just share my screen first. So for those who might not be familiar with EIPsInsight, it's a platform where we track proposals through every stage, for network upgrades and the protocol calls behind them. We provide toolings and help measure editorial and contributor activity. So, yeah, as Pooja mentioned, one of the things we have been working on is EIP Builder. Uh, with the recent discussion around agents.md and AI-assisted EIP authoring, I thought that, uh, it would be a good opportunity to showcase what we already have, and how it could be useful to contributors and editors. Uh, I'll just, uh, so let me walk you through what, uh, we have built here. Let's collapse this. So this is the general UI of the EIP builder. Uh, so in general, uh, if you see there's different views, uh, where for the EIP builder, we have, uh, split screen, we have edit, mark and review, and another preview view. So, uh, in general, contributors can start a new EIP, fill in the required metadata, work through individual sections, and see the generated markdown here alongside the draft. And the EIP builder will handle the document structure, allowing authors to focus on the actual proposal. But yeah, beyond drafting a new EIP, we also have a built-in validation engine which uses the template from EIP-1 and in general EIP template and also eipw lint."
   },
   {
-    "start": "00:42:57",
-    "end": "00:45:51",
+    "start": "00:35:13",
+    "end": "00:38:05",
     "text": "Dhanush | EIPsInsight: Uh, so, uh, yeah, let's start with a clean example. Uh, I'll just take an ERC, for example, import ERC, and I'll type 8113. I'll just press enter, and it will import the, uh, proposal MD file. We can see everything is here, and I'll just drag this on here. So, I'll, uh, just go on and try to validate it. It'll go, it'll check all the related rules. For example, this is how the validation works, how it generates errors, warnings, and suggestions, and it also follows RFC 2119. So, since this has already passed all the tests, I'll take another example of an older EIP, which might not follow the rule. So I'll just add, check in the EIPs and then I'll type the 1559 proposal. So yeah, uh, this is fairly an older proposal, and I'll just try to validate it once. And yeah, it shows that the description is missing. So it highlights all the section where changes is required or how critical is the change. For example, this is just a warning. This description missing thingy is one of the critical thingy. And also there is a specification validated. There is a few more warnings. Title should have been title case, to-do marker, and RFC 2119. Let's take another example. We'll take another ERC, which is 5114, I'll just change this to ERC, and I'll type 5114. So yeah, we'll just try to validate this too. And yeah, it specifically mentions RFC 2119 keywords are used, but the boilerplate paragraph is missing. So we'll just go to this particular section, which is specification. And we do get this specific button to insert RFC 2119 notice if it's not available there in the specification. So if I just press on it, the template would be appended in the specification section. So if you try to validate it again, yeah, so all checks have been passed and it's ready for submission. So yeah, but apart from this, we have another, we have built a dedicated PR review workflow too. So, for example, I choose a PR, for example, 12449. So it's an EIP, so I'll just choose EIP and I'll just type it again. 12449. So it brings in the proposal EIP-7773, which is the main proposal which has been changed in PR 12449. And it will show it's an open PR and it's ready for author. We'll just try to validate this too. And yep, it shows there's another warning according to like field scope security consideration. So it'll just highlight it. It'll give an advisory that it should not be none. So yeah, you can import an existing GitHub PR, inspect the proposal and run the same validation directly within the builder."
   },
   {
-    "start": "00:45:51",
-    "end": "00:46:31",
+    "start": "00:38:05",
+    "end": "00:38:45",
     "text": "Dhanush | EIPsInsight: This makes it useful not just for contributors drafting new proposals, but also for editors reviewing existing ones. So yeah, what we are trying to do is we simply want to make it easier for more people to participate and arrive with better prepared proposals. Uh, yeah, I would love to hear your thoughts, if there are any additional features you'd like to see. And yeah, we'd like to make that first step easier and help more people participate in the EIP process. That's from my side, thanks. Happy to take any questions or suggestions, if anyone has any."
   },
   {
-    "start": "00:46:31",
-    "end": "00:46:45",
+    "start": "00:38:45",
+    "end": "00:39:00",
     "text": "Sam: That looks great. Yeah, that's amazing. I'd like to add a link to this from, uh, the template, uh, and from maybe EIP-1, and I think this is going to be very useful for people writing their first EIP."
   },
   {
-    "start": "00:46:45",
-    "end": "00:46:49",
+    "start": "00:39:00",
+    "end": "00:39:03",
     "text": "Dhanush | EIPsInsight: Yes, sir."
   },
   {
-    "start": "00:46:49",
-    "end": "00:47:43",
+    "start": "00:39:03",
+    "end": "00:39:57",
     "text": "Pooja Ranjan: I also noticed it not only helps, if Dhanush, can you maybe type 8133? It's an informational EIP. I was reviewing the proposal. The proposal is drafted by myself, and I also made a mistake, and that was caught by this. So this is very small, like I used in, normally we use may, may not, in specification section, but I think it was used in abstract section, which is not the right thing to do, and it was caught by this tool. So I also find it useful, for, like, you know, smaller mistakes that can be missed by human. Maybe using this tool, we'll be in a position to look into it, and authors may validate on their own, then take the .md file, and then make the PRs, helpful for editors, too."
   },
   {
-    "start": "00:47:43",
-    "end": "00:47:50",
+    "start": "00:39:57",
+    "end": "00:40:05",
     "text": "Sam: So one thing I would like to ask is, for all of the additional checks that you've added here, they should also be added to eipw, um, so that\u2026"
   },
   {
-    "start": "00:47:50",
-    "end": "00:47:53",
+    "start": "00:40:05",
+    "end": "00:40:09",
     "text": "Pooja Ranjan: I think it's other way around, we have taken it from eipw, I guess."
   },
   {
-    "start": "00:47:53",
-    "end": "00:47:54",
+    "start": "00:40:09",
+    "end": "00:40:10",
     "text": "Dhanush | EIPsInsight: eipw, yeah, exactly."
   },
   {
-    "start": "00:47:53",
-    "end": "00:47:55",
+    "start": "00:40:10",
+    "end": "00:40:11",
     "text": "Sam: Oh, okay, perfect."
   },
   {
-    "start": "00:47:55",
-    "end": "00:47:56",
+    "start": "00:40:11",
+    "end": "00:40:12",
     "text": "Pooja Ranjan: Yeah."
   },
   {
-    "start": "00:47:56",
-    "end": "00:47:58",
+    "start": "00:40:12",
+    "end": "00:40:13",
     "text": "Sam: Okay, perfect."
   },
   {
-    "start": "00:47:58",
-    "end": "00:48:04",
+    "start": "00:40:13",
+    "end": "00:40:18",
     "text": "Pooja Ranjan: So currently, it is taking everything from eipw, EIP-1 and contributing.md."
   },
   {
-    "start": "00:48:04",
-    "end": "00:48:10",
+    "start": "00:40:18",
+    "end": "00:40:24",
     "text": "Dhanush | EIPsInsight: Yes, yes, enforcing the CI from eipw to be validated."
   },
   {
-    "start": "00:48:10",
-    "end": "00:48:29",
+    "start": "00:40:24",
+    "end": "00:40:50",
     "text": "jochem-brouwer: Maybe one question, because EIP is like a deterministic check. I know this check, no key words outside specification section. Yeah, okay, sorry, okay, yeah."
   },
   {
-    "start": "00:48:29",
-    "end": "00:48:52",
+    "start": "00:40:50",
+    "end": "00:41:07",
     "text": "Pooja Ranjan: Yeah. All right. Thank you so much, Dhanush, for this. And I wondered, like, how do we make this template more useful for people? Is there a place maybe on README or somewhere where we can share it with people to use? And yeah."
   },
   {
-    "start": "00:48:52",
-    "end": "00:49:04",
+    "start": "00:41:07",
+    "end": "00:41:18",
     "text": "Dhanush | EIPsInsight: Yeah, I'll just, the, uh, to use this, uh, like, if people want to learn, like, how the validation works, it's provided here itself, so, like, uh, it's in the\u2026"
   },
   {
-    "start": "00:49:04",
-    "end": "00:49:07",
+    "start": "00:41:18",
+    "end": "00:41:21",
     "text": "Pooja Ranjan: Oh, no, I mean, my question was for editors, Dhanush."
   },
   {
-    "start": "00:49:07",
-    "end": "00:49:08",
+    "start": "00:41:21",
+    "end": "00:41:23",
     "text": "Dhanush | EIPsInsight: Oh, yeah. Oh, okay. Sorry. I'm sorry."
   },
   {
-    "start": "00:49:08",
-    "end": "00:49:13",
+    "start": "00:41:23",
+    "end": "00:41:28",
     "text": "Pooja Ranjan: All right, no problem. Thank you so much. Maybe you can stop sharing now. Yeah."
   },
   {
-    "start": "00:49:13",
-    "end": "00:49:52",
+    "start": "00:41:28",
+    "end": "00:42:09",
     "text": "jochem-brouwer: Yeah, okay, maybe comment on this. I don't think that on the EIP side, we should promote any of the sites, because this would question the neutrality of the EIP repository. So I don't think that we can promote it in any way on the EIP repository. Because, uh, then that this, but also means that another use with this is that we then also would be promoting, the Ministry has to promote for custom ones, yeah."
   },
   {
-    "start": "00:49:52",
-    "end": "00:50:04",
+    "start": "00:42:09",
+    "end": "00:42:20",
     "text": "Sam: Fair enough. Is it\u2026 would it be more acceptable if we were to take this editor and, like, adopt it as something that we, like, own, um, like, on eips.ethereum.org?"
   },
   {
-    "start": "00:50:04",
-    "end": "00:50:09",
+    "start": "00:42:20",
+    "end": "00:42:23",
     "text": "Pooja Ranjan: Yeah, I was about\u2026"
   },
   {
-    "start": "00:50:09",
-    "end": "00:50:15",
+    "start": "00:42:23",
+    "end": "00:42:29",
     "text": "jochem-brouwer: I see, so we want to integrate this UI on. You got the field that."
   },
   {
-    "start": "00:50:15",
-    "end": "00:50:24",
+    "start": "00:42:29",
+    "end": "00:42:43",
     "text": "Sam: Just as an idea, like, I think having an EIP editor like this is really, really nice."
   },
   {
-    "start": "00:50:24",
-    "end": "00:50:25",
+    "start": "00:42:43",
+    "end": "00:42:44",
     "text": "jochem-brouwer: Yes. Okay, this."
   },
   {
-    "start": "00:50:24",
-    "end": "00:50:29",
+    "start": "00:42:44",
+    "end": "00:42:45",
     "text": "Sam: I don't know how useful it'll be in the age of AI, but yeah."
   },
   {
-    "start": "00:50:29",
-    "end": "00:50:52",
+    "start": "00:42:45",
+    "end": "00:43:06",
     "text": "jochem-brouwer: Yeah, so, yes. I don't think that it is ready. A web artifact of a story turned external site. But if you own this, then I think I will be open to this. Yes."
   },
   {
-    "start": "00:50:52",
-    "end": "00:51:03",
+    "start": "00:43:06",
+    "end": "00:43:19",
     "text": "Sam: How hard would this be to, like, lift into, um, like, a self-contained file or two that we could just host on, um, on eips.ethereum.org?"
   },
   {
-    "start": "00:51:03",
-    "end": "00:51:12",
+    "start": "00:43:19",
+    "end": "00:43:28",
     "text": "jochem-brouwer: Because is this, uh, is this self-serving? Or do you also like a backend which serves?"
   },
   {
-    "start": "00:51:12",
-    "end": "00:51:39",
+    "start": "00:43:28",
+    "end": "00:43:53",
     "text": "Dhanush | EIPsInsight: Uh, I, uh, we have, we do, I do have a self-hosted API, which, like, passes, like, the whole proposal passes through an, uh, an API, which uses all the eipw linting proposal, this thing. So yeah, we might need a backend to check it, but I don't think it's necessary, to be honest. We can just have a self-hosted set of rules. And yeah, that might be possible."
   },
   {
-    "start": "00:51:39",
-    "end": "00:51:49",
+    "start": "00:43:53",
+    "end": "00:44:05",
     "text": "Sam: Maybe. If it's too much work, don't stress about it. It's not that important that we have an editor. But if this is something you can do in an hour or two, that'd be great."
   },
   {
-    "start": "00:51:49",
-    "end": "00:51:52",
+    "start": "00:44:05",
+    "end": "00:44:06",
     "text": "Dhanush | EIPsInsight: Yeah. Yep."
   },
   {
-    "start": "00:51:52",
-    "end": "00:52:02",
+    "start": "00:44:06",
+    "end": "00:44:18",
     "text": "Sam: We might want to talk to Matt first. I feel like he might object to this. But, uh, yeah, if it's easy enough, and if you can do it all client-side, that'd be great."
   },
   {
-    "start": "00:52:02",
-    "end": "00:52:08",
+    "start": "00:44:18",
+    "end": "00:44:33",
     "text": "Dhanush | EIPsInsight: Let's sort of work on\u2026"
   },
   {
-    "start": "00:52:08",
-    "end": "00:52:28",
+    "start": "00:44:33",
+    "end": "00:44:42",
     "text": "jochem-brouwer: Yeah, nice."
   },
   {
-    "start": "00:52:28",
-    "end": "00:54:43",
+    "start": "00:44:42",
+    "end": "00:47:02",
     "text": "Pooja Ranjan: From where I see, I think it is very much possible on all client side. The backend that they are using right now is because they host their own database, and that is again getting it from the GitHub. So if we use the GitHub directly, we may not need that. But I mean, I will let Dhanush, Matt and yeah, other people to discuss about it and then take it forward. Very well, um, if there are any further comments, please feel free to add it either in this agenda or drop it on ECH Discord. Dhanush is already there, so it will be easier to pick up all those comments. Moving forward on agenda, we have exceptional PR merging situation. Um, I know in earlier meeting, we agreed that if there is an EIP which is not finalized, for those EIPs, we will wait for authors to approve it if the PR is made by someone else, and then only we will merge it. And that is also valid if the proposer itself is author, but has left the PR in the draft status. For example, we all know that Hoodi is postponed. Uh, for some time, we don't know what is the next date, but the current Meta EIP still shows the Hoodi activation date, 26th October, and we are not able to update this Meta EIP because this PR is still in draft status. So I would like to understand here, can we make exceptional PR merging permission enabled for editors in such circumstances? I have added two examples and both of them are for 7773. The first PR here is to, like, update the date of Hoodi, and the second PR is to list the total number of EIPs in Glamsterdam EIP. So, uh, yeah, I wonder what editors think about it."
   },
   {
-    "start": "00:54:43",
-    "end": "00:55:03",
+    "start": "00:47:02",
+    "end": "00:47:17",
     "text": "jochem-brouwer: To merge anything related to open PRs. But, uh, it is postponed Hoodi activation. As I think very carefully postpose, so effectively merge it. And Sam, what do you think of this?"
   },
   {
-    "start": "00:55:03",
-    "end": "00:55:09",
+    "start": "00:47:17",
+    "end": "00:47:23",
     "text": "Sam: Uh, well, let's see, so who's approved this so far? Um\u2026"
   },
   {
-    "start": "00:55:09",
-    "end": "00:55:10",
+    "start": "00:47:23",
+    "end": "00:47:25",
     "text": "Pooja Ranjan: Uh, the proposal is in draft status, that's the blocker here."
   },
   {
-    "start": "00:55:09",
-    "end": "00:55:12",
+    "start": "00:47:25",
+    "end": "00:47:27",
     "text": "Sam: Matt has\u2026"
   },
   {
-    "start": "00:55:12",
-    "end": "00:55:24",
+    "start": "00:47:27",
+    "end": "00:47:39",
     "text": "Sam: Yeah, yeah, I'm just saying, like, if we have another author that's approved it, then I think we can probably go ahead and do it, but since we don't have another author that's approved it, I would not merge it. Um\u2026"
   },
   {
-    "start": "00:55:24",
-    "end": "00:55:53",
+    "start": "00:47:39",
+    "end": "00:48:07",
     "text": "jochem-brouwer: The thing with this specific case, like, but it is very clear that it has been postponed. This EIP is now disagreeing itself. It has already been, well, who, it is always, which is absolutely not the case. It is confusing. So I think this case we should be a bit more pragmatic, because this is very clear from the entire context, that this is the true case."
   },
   {
-    "start": "00:55:53",
-    "end": "00:56:09",
+    "start": "00:48:07",
+    "end": "00:48:25",
     "text": "Sam: Yeah, that's true. I definitely feel more comfortable if we could just get at least one other author to approve it, because, like, that is our process. Um, but if not, I mean, yeah, we\u2026 this has to be merged. Um, but, uh, yeah, let's try\u2026"
   },
   {
-    "start": "00:56:09",
-    "end": "00:56:26",
+    "start": "00:48:25",
+    "end": "00:48:40",
     "text": "jochem-brouwer: Yes, sorry, sorry. What I think, what you just raised, point from the ACD channel bottom. And yeah, okay, let's do that."
   },
   {
-    "start": "00:56:26",
-    "end": "00:56:42",
+    "start": "00:48:40",
+    "end": "00:49:03",
     "text": "Sam: Yeah, exactly, yeah. Like, even, like, if Alex takes it off draft, or, like, Ansgar approves it, just some indication that an author wants this to be merged. Um, but yeah, no, I agree, this has to get merged at some point, I would just feel more comfortable with an author approval."
   },
   {
-    "start": "00:56:42",
-    "end": "00:57:11",
+    "start": "00:49:03",
+    "end": "00:49:27",
     "text": "jochem-brouwer: Yeah, okay, as we also, like, also in this case. Because then we get this like, okay, that is in the past, not the second time, et cetera. And yeah, okay, cool, thanks. And it is also, I study the second PR. I cannot, again, not entirely short if this is correct about these EIPs. So for this PR, I really would like, yeah."
   },
   {
-    "start": "00:57:11",
-    "end": "00:57:14",
+    "start": "00:49:27",
+    "end": "00:49:28",
     "text": "Sam: Yep."
   },
   {
-    "start": "00:57:14",
-    "end": "00:57:20",
+    "start": "00:49:28",
+    "end": "00:49:34",
     "text": "jochem-brouwer: For the first one, it is just a percentage, that is the case, because Hoodi is not\u2026 yeah, okay."
   },
   {
-    "start": "00:57:20",
-    "end": "00:58:32",
+    "start": "00:49:34",
+    "end": "00:50:46",
     "text": "Pooja Ranjan: So, I mean, the point I wanted to, like, discuss here is, like, should we have some exceptional PR merging power with editors where we know that this is true? Because, you know, if we are holding it, the information is misleading on Meta EIP, which is not correct, and at the end of the day, like, we are, like, not providing right information to the community. For the second PR, I know this EIP is like, you know, in the required field, so it has to be a part of Glamsterdam because both of them are core. It seems like, you know, Trojan horse, we are putting something in. But yeah, if we take a look at it, we know that this is correct EIP and that should be part of the Glamsterdam listing. So how comfortable we are? I know people would want to have it in permissions and authors approval, but if we know something is fact, it is true after two weeks of wait period, should editor be able to merge it? If there are enough proofs that this is correct."
   },
   {
-    "start": "00:58:32",
-    "end": "00:59:35",
+    "start": "00:50:46",
+    "end": "00:51:49",
     "text": "Sam: So it isn't really about whether we know something to be correct or not. It's about, like, we can know 100% that those things are in Glamsterdam. Um, they could be, like, we could be talking about, you know, correcting an EIP after it went live or whatever. We know what the outcome is. That's irrelevant. These are not our proposals to edit. It is up to the authors of these proposals to make that call. And we have to apply that policy uniformly. Um, because in the cases where we aren't as sure, or, or, um, like, following that kind of logic, we just should never care about the content of an EIP. If we really care that much, we could open a new EIP with the correct information and, um, you know, update that one, but I think that would be even more confusing. So I think the best thing that we can do is just annoy the authors to try and get it corrected. Um, yeah."
   },
   {
-    "start": "00:59:35",
-    "end": "00:59:58",
+    "start": "00:51:49",
+    "end": "00:52:12",
     "text": "jochem-brouwer: Yes, to add on this point, like I said, if we start to do this kind of things, that also means who are making ourselves somewhat responsible for whatever. We should not do as editors. This is the responsibility of the authors of this EIP. And not our responsibility, it is the author side."
   },
   {
-    "start": "00:59:58",
-    "end": "01:00:07",
+    "start": "00:52:12",
+    "end": "00:52:21",
     "text": "Sam: That's a good point. Yeah, I don't want to \u2014 like, if we start doing this, we might be expected to continue doing this, and I'd like to avoid that."
   },
   {
-    "start": "01:00:07",
-    "end": "01:00:53",
+    "start": "00:52:21",
+    "end": "00:53:07",
     "text": "Pooja Ranjan: I would agree. As much as I feel bad that we are not able to provide the right information at the right time, but I agree, from a process point of view, this makes a lot of sense. Very well. I hope this will be discussed in the upcoming ACD meeting, and we get them merged, because those are Glamsterdam-related EIPs. Um, yeah. We have about five minutes left, and I want to quickly cover a couple of items. Number one, about Stagnant Bot. Jochem, I think you have left a change request. It is already reviewed by Sam. I guess the proposal will be merged only after you take a look and make additional approving to it. Okay. All right."
   },
   {
-    "start": "01:00:53",
-    "end": "01:01:06",
+    "start": "00:53:07",
+    "end": "00:53:20",
     "text": "jochem-brouwer: Yes, thanks for this review. Changes. Sam, you have checked this PR already on Cyber Sentry?"
   },
   {
-    "start": "01:01:06",
-    "end": "01:01:09",
+    "start": "00:53:20",
+    "end": "00:53:26",
     "text": "Sam: Uh, I think I had looked over it, and I think it looked okay, yeah."
   },
   {
-    "start": "01:01:09",
-    "end": "01:01:15",
+    "start": "00:53:26",
+    "end": "00:53:30",
     "text": "jochem-brouwer: Yeah, thank you."
   },
   {
-    "start": "01:01:15",
-    "end": "01:01:32",
+    "start": "00:53:30",
+    "end": "00:53:48",
     "text": "Pooja Ranjan: Very well. The next item here is EIP-1 update, but before we go for EIP-1 update, I would quickly like to invite Sam for call for input 414, because EIP-1 update is based as, like, outcome for that. So, Sam."
   },
   {
-    "start": "01:01:32",
-    "end": "01:01:33",
+    "start": "00:53:48",
+    "end": "00:53:49",
     "text": "Sam: Sure."
   },
   {
-    "start": "01:01:32",
-    "end": "01:01:35",
+    "start": "00:53:49",
+    "end": "00:53:50",
     "text": "Pooja Ranjan: Over to you."
   },
   {
-    "start": "01:01:35",
-    "end": "01:02:17",
+    "start": "00:53:50",
+    "end": "00:54:31",
     "text": "Sam: Let me go and pull that up. So this is, oh, yeah, Ada, you as an EIP coordinator. Yeah, uh, I think we're past the time for this. We have two in favor and one against, but one against on, like, based off a previous call for input that passed, um, yeah, so, uh, I, like I said, I'm stepping down as the EIP coordinator, so I, or, uh, keeper of consensus, so I don't want to make the call on this one. But yeah, I think that's where we're at with this particular call for input."
   },
   {
-    "start": "01:02:17",
-    "end": "01:02:29",
+    "start": "00:54:31",
+    "end": "00:54:43",
     "text": "Pooja Ranjan: Quick question here. Um, we don't have any new keeper of consensus, so how long should we be waiting on the result? Because, you know, the, um, processing will be dependent on that."
   },
   {
-    "start": "01:02:29",
-    "end": "01:03:04",
+    "start": "00:54:43",
+    "end": "00:55:18",
     "text": "Sam: That's true. Um, I guess it would be best for me to stick around until the keeper of consensus. Yeah. Okay, so this should be 30 days from when this was open, so one week ago, so that would be, like, December 11th? December 12th. Um, yeah, so I guess we keep the vote open until December 12th, and until then, I'm keeper of consensus. Yay. So yeah, I guess I'll close that one, um, unless anybody objects now. Um, are you okay if I approve this, uh, Jochem?"
   },
   {
-    "start": "01:03:04",
-    "end": "01:03:05",
+    "start": "00:55:18",
+    "end": "00:55:21",
     "text": "jochem-brouwer: Yeah, that is, uh, that is true."
   },
   {
-    "start": "01:03:05",
-    "end": "01:03:10",
+    "start": "00:55:21",
+    "end": "00:55:25",
     "text": "Sam: Cool. Um\u2026 Awesome."
   },
   {
-    "start": "01:03:10",
-    "end": "01:04:03",
+    "start": "00:55:25",
+    "end": "00:56:17",
     "text": "Pooja Ranjan: All right. Then as, like, you know, every CFI has a call to action. And here we have not mentioned, but I have opened a PR separately. The PR number is 12643 that talks about adding the details to EIP-1. As recommended in the last EIPIP meeting, that is the best place to add the nomination, not nomination, the individual's name over there. So that is there, would require two editors approval to get it merged. I wonder if anyone has, uh, thoughts here? Want to add anything? Seems okay. Of course, approval or comment can be added later on."
   },
   {
-    "start": "01:04:03",
-    "end": "01:04:18",
+    "start": "00:56:17",
+    "end": "00:56:32",
     "text": "jochem-brouwer: Yes, I guess we should approve this, but I will just need to comment on this. I'm not really sure if we should put EIP coordinator responsibilities explicitly into this EIP, because you can just reference to EIP-5069 for this."
   },
   {
-    "start": "01:04:18",
-    "end": "01:04:19",
+    "start": "00:56:32",
+    "end": "00:56:34",
     "text": "Pooja Ranjan: Yeah, I actually, it's just adding the name, not the responsibility. I'm sure that is a little\u2026"
   },
   {
-    "start": "01:04:18",
-    "end": "01:04:26",
+    "start": "00:56:34",
+    "end": "00:56:41",
     "text": "jochem-brouwer: Because otherwise we are\u2026"
   },
   {
-    "start": "01:04:26",
-    "end": "01:04:29",
+    "start": "00:56:41",
+    "end": "00:56:44",
     "text": "Pooja Ranjan: Misleading, the title, but yes, it's just the name."
   },
   {
-    "start": "01:04:29",
-    "end": "01:04:30",
+    "start": "00:56:44",
+    "end": "00:56:45",
     "text": "jochem-brouwer: Okay, but this is not in the PR, because it has an EIP coordinator responsibility section, so\u2026"
   },
   {
-    "start": "01:04:29",
-    "end": "01:04:39",
+    "start": "00:56:45",
+    "end": "00:56:53",
     "text": "Pooja Ranjan: There is\u2026 Yes."
   },
   {
-    "start": "01:04:39",
-    "end": "01:04:42",
+    "start": "00:56:53",
+    "end": "00:56:56",
     "text": "jochem-brouwer: We are talking about PR 12643, right?"
   },
   {
-    "start": "01:04:42",
-    "end": "01:04:43",
+    "start": "00:56:56",
+    "end": "00:56:57",
     "text": "Pooja Ranjan: That's correct."
   },
   {
-    "start": "01:04:43",
-    "end": "01:04:55",
+    "start": "00:56:57",
+    "end": "00:57:10",
     "text": "jochem-brouwer: Okay, let me then quickly share my screen. Yeah, so it has, like, this section in it, and I think this should not be in there."
   },
   {
-    "start": "01:04:55",
-    "end": "01:05:26",
+    "start": "00:57:10",
+    "end": "00:57:40",
     "text": "Pooja Ranjan: OK. Yeah, I would love to hear feedback from Sam and others here. I think it is based on the EIP editor section. So, if we want to update this EIP-1, is it right to keep it there, or is there any other recommended way to move forward with it?"
   },
   {
-    "start": "01:05:26",
-    "end": "01:05:39",
+    "start": "00:57:40",
+    "end": "00:57:53",
     "text": "jochem-brouwer: Yeah, okay, uh, if I check this, then\u2026 Yeah, okay, it matches EIP-1 altogether. Okay, yeah, I guess this is, it's fine, yeah."
   },
   {
-    "start": "01:05:39",
-    "end": "01:05:40",
+    "start": "00:57:53",
+    "end": "00:57:55",
     "text": "Pooja Ranjan: All right."
   },
   {
-    "start": "01:05:39",
-    "end": "01:05:42",
+    "start": "00:57:55",
+    "end": "00:57:56",
     "text": "Sam: Cool."
   },
   {
-    "start": "01:05:42",
-    "end": "01:06:06",
+    "start": "00:57:56",
+    "end": "00:58:20",
     "text": "Pooja Ranjan: Cool. And the last important item I wanted to pick up today. I don't know how much we want to discuss about it, but that was keeper of consensus. Ideally, we have kept it for today the nomination and voting. But that's not a call for input. So do we want to keep it open till December 11th, or do we want to have any discussion or like, you know, quick responses today."
   },
   {
-    "start": "01:06:06",
-    "end": "01:07:33",
+    "start": "00:58:20",
+    "end": "00:59:48",
     "text": "jochem-brouwer: Yeah, I want to add here. So just for its black clear. And so I have left two comments on this, in order to the site is leave from sensitive protest made responsibility. What keeper of process should take head. So I have voted for light client, because I want to move this forward. Because we can just wait for one extra month waiting. This is not what you do. And so have changes it to light client. And as we, for myself, I don't really like voting for myself. Made like a very good comment that here. Remember that we can vote you out, if I think you are being unreasonable. Reserving is a very good argument. I also, um, so yeah, I guess this is just like my accept. I think this is good, because we can this way another month. But I think, sorry."
   },
   {
-    "start": "01:07:33",
-    "end": "01:07:49",
+    "start": "00:59:48",
+    "end": "01:00:03",
     "text": "Sam: Uh, there is also the, um, if you have a tie with, like, client, we can flip a coin. That is one of the, there is a tie resolution process, if you prefer. Um, but yeah, we can\u2026"
   },
   {
-    "start": "01:07:49",
-    "end": "01:08:00",
+    "start": "01:00:03",
+    "end": "01:00:14",
     "text": "jochem-brouwer: I was just, it was good in a goal point. Yeah. To take on this is work. That's okay."
   },
   {
-    "start": "01:08:00",
-    "end": "01:08:01",
+    "start": "01:00:14",
+    "end": "01:00:16",
     "text": "Sam: Yeah, that works for me."
   },
   {
-    "start": "01:08:00",
-    "end": "01:08:24",
+    "start": "01:00:16",
+    "end": "01:00:39",
     "text": "Pooja Ranjan: Yep. Yeah, and there is no tie, at least not so far. Alright, so in the proposal itself, it was mentioned to have the response deadline today, November 18th. Maybe we can wait till the end of the day for editors to vote, and after that we can go ahead with the session. How do\u2026"
   },
   {
-    "start": "01:08:24",
-    "end": "01:08:38",
+    "start": "01:00:39",
+    "end": "01:00:52",
     "text": "jochem-brouwer: Yeah, this is good, because all the wise folks, like, I am just changing one hour before this call, uh, to vouch for myself. Let's wait that they do something, and then if there's no response, then I guess we can move forward."
   },
   {
-    "start": "01:08:38",
-    "end": "01:08:52",
+    "start": "01:00:52",
+    "end": "01:01:07",
     "text": "Pooja Ranjan: I know there will be a month's time before we come up with the next EIPIP meeting. Could we take it async and close this issue? I know, Sam, you are going to be the keeper of consensus till you decide for the next one."
   },
   {
-    "start": "01:08:52",
-    "end": "01:09:10",
+    "start": "01:01:07",
+    "end": "01:01:25",
     "text": "Sam: Um, so I was just reading, um, 5069, and the election follows the same quorum rules as, um, call for inputs. So, it is either everybody votes, or we wait 30 days."
   },
   {
-    "start": "01:09:10",
-    "end": "01:09:12",
+    "start": "01:01:25",
+    "end": "01:01:28",
     "text": "Pooja Ranjan: Okay. All right."
   },
   {
-    "start": "01:09:12",
-    "end": "01:09:13",
+    "start": "01:01:28",
+    "end": "01:01:29",
     "text": "Sam: Yeah, um, yeah, like\u2026"
   },
   {
-    "start": "01:09:12",
-    "end": "01:09:15",
+    "start": "01:01:29",
+    "end": "01:01:30",
     "text": "Pooja Ranjan: Alright, we can keep\u2026"
   },
   {
-    "start": "01:09:15",
-    "end": "01:09:49",
+    "start": "01:01:30",
+    "end": "01:02:03",
     "text": "Sam: I regret making that 30 days. Um, I thought, you know, people would be a little bit more active in terms of commenting on things, and they aren't. So, um, maybe we need to do another round of removing editors, um\u2026 But yeah, I don't know. It would be really nice to not have to wait 30 days for every single decision. So maybe we annoy some people here. Um, yeah, anyways, I'll leave a comment on here, and then, yeah, we will keep this for 30 days."
   },
   {
-    "start": "01:09:49",
-    "end": "01:09:51",
+    "start": "01:02:03",
+    "end": "01:02:06",
     "text": "jochem-brouwer: Yeah, sounds good."
   },
   {
-    "start": "01:09:51",
-    "end": "01:10:26",
+    "start": "01:02:06",
+    "end": "01:02:40",
     "text": "Pooja Ranjan: All right. So I will go ahead and edit this comment to make it for 30 days again, and I agree we should go for another round of like, you know, looking into editors availability. It's a good idea to keep shuffling, like have active people listed as editors so we can keep moving. I know we are over time. I would just request editors to maybe take a look at and add themselves to the office hour in upcoming weeks, and yeah, anything else people want to quickly go over today."
   },
   {
-    "start": "01:10:26",
-    "end": "01:10:27",
+    "start": "01:02:40",
+    "end": "01:02:43",
     "text": "Justin Traglia: I just want to\u2026"
   },
   {
-    "start": "01:10:27",
-    "end": "01:10:28",
+    "start": "01:02:43",
+    "end": "01:02:44",
     "text": "Pooja Ranjan: Yes."
   },
   {
-    "start": "01:10:27",
-    "end": "01:10:40",
+    "start": "01:02:44",
+    "end": "01:02:55",
     "text": "Justin Traglia: Like I said, I'm not sure how much time I'll actually have to help you guys. Like, I feel like I've been very busy recently with the, well, other responsibilities, especially regarding, like, PQ stuff that came up."
   },
   {
-    "start": "01:10:40",
-    "end": "01:10:41",
+    "start": "01:02:55",
+    "end": "01:02:57",
     "text": "Sam: Yeah, I mean, we all are, don't worry too much about it."
   },
   {
-    "start": "01:10:41",
-    "end": "01:10:44",
+    "start": "01:02:57",
+    "end": "01:03:00",
     "text": "Justin Traglia: Uh, I keep, yeah."
   },
   {
-    "start": "01:10:44",
-    "end": "01:11:29",
+    "start": "01:03:00",
+    "end": "01:03:44",
     "text": "Pooja Ranjan: Right? The process, as I mentioned in the last meeting, Justin, is going to be a review for 6 months. So everything that you have been working on is being captured on EIPsInsight. So I think it is on EIPIP office hours, I guess, or somewhere. I know it is somewhere. I'm going to share the link later with you. And after six months, the process of onboarding you formally and being added to EIP-1 will be done there. So in the meantime, whatever time you have got is a blessing for us. We have too many open PRs. So wherever you can add your input comment, even if you are not adding too many things, that's fine. Perfectly all right."
   },
   {
-    "start": "01:11:29",
-    "end": "01:11:47",
+    "start": "01:03:44",
+    "end": "01:04:01",
     "text": "Justin Traglia: Okay. If you can find someone that's better suited, or that has more time, it actually may be better, like, I don't know if Jihoon is that person or not. But just keep this in mind that there may be someone better than me for this."
   },
   {
-    "start": "01:11:47",
-    "end": "01:11:56",
+    "start": "01:04:01",
+    "end": "01:04:11",
     "text": "Pooja Ranjan: Yeah, I mean, we have been noticing a couple of other developers who are more active in reviewing, and we are trying to reach them out, too. So yeah. Thank you."
   },
   {
-    "start": "01:11:56",
-    "end": "01:11:59",
+    "start": "01:04:11",
+    "end": "01:04:13",
     "text": "Justin Traglia: Sounds good."
   },
   {
-    "start": "01:11:59",
-    "end": "01:12:17",
+    "start": "01:04:13",
+    "end": "01:04:24",
     "text": "Pooja Ranjan: All right, uh, that brings us to the end of this meeting. Do we have any preference on the next meeting? Next meeting, ideally, would be December 3rd week, which is going to be 16th of December. Does that date work for everyone?"
   },
   {
-    "start": "01:12:17",
-    "end": "01:12:26",
+    "start": "01:04:24",
+    "end": "01:04:40",
     "text": "jochem-brouwer: December. Uh, yes, that works. Yeah."
   },
   {
-    "start": "01:12:26",
-    "end": "01:12:38",
+    "start": "01:04:40",
+    "end": "01:04:54",
     "text": "Pooja Ranjan: All right. Then we are going to see each other on December 16th at 1600 UTC. Thank you, everyone, for joining today's meeting and staying a bit longer. See you around."
   },
   {
-    "start": "01:12:38",
-    "end": "01:12:42",
+    "start": "01:04:54",
+    "end": "01:04:55",
     "text": "jochem-brouwer: Bye."
   }
 ]
