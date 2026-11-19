@@ -37,6 +37,10 @@ export type OhRecap = {
   title: string;
   youtube: string;
   issueUrl: string;
+  /** Full recording embedded from X when the YouTube upload is trimmed. */
+  xStatusUrl?: string;
+  /** Short note shown above the video explaining a non-default source. */
+  videoNote?: string;
   summary: string;
   prs: OhPrItem[];
   decisions: string[];
@@ -156,6 +160,9 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     displayDate: "Nov 18, 2026",
     title: "EIPIP Meeting #132",
     youtube: "https://www.youtube.com/watch?v=ra3wXbEap1I",
+    xStatusUrl: "https://x.com/ECHInstitute/status/2123083288659320880",
+    videoNote:
+      "The YouTube upload of this meeting is trimmed, so we have embedded the full recording from X (@ECHInstitute). The transcript below is shown read-only with it.",
     issueUrl: "https://github.com/ethereum/pm/issues/2288",
     summary:
       "EIPIP Meeting #132 focused on using AI to help editors manage a growing proposal backlog without compromising neutrality or author control. Editors agreed to pilot an AI review bot as a read-only process that posts structural and formatting feedback as comments, with no auto-merging, and to keep its scope to formal checks such as backward references, abbreviations, copyright, and RFC 2119 keywords rather than changing an author's ideas. EIPsInsight's EIP Builder was demonstrated for drafting, validating, and reviewing proposals, and editors were open to hosting it on eips.ethereum.org if it can be fully client-side, pending a discussion with Matt. The meeting rejected exceptional PR merging without author approval, even for factual corrections, to preserve neutrality and author responsibility, and confirmed the Keeper of Consensus election stays open for 30 days due to quorum rules. With over 550 open PRs, editors agreed to add themselves to upcoming office hours to help clear the backlog.",

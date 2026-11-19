@@ -1,9 +1,11 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, FileText, Gavel } from "lucide-react";
+import { ArrowLeft, CalendarClock, FileText, Gavel, Info } from "lucide-react";
 import {
   CallPlayer,
   CallVideoFallback,
 } from "@/components/upgrade/call-player";
+import { CallTranscript } from "@/components/upgrade/call-transcript";
+import { TwitterEmbed } from "@/components/twitter-embed";
 import { OfficeHourRecap } from "@/components/office-hour-recap";
 import type { OhRecap } from "@/data/office-hour-recaps";
 import type { TranscriptCue } from "@/lib/call-artifacts";
@@ -83,7 +85,18 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
         </div>
       </header>
 
-      {youtubeId ? (
+      {recap.xStatusUrl ? (
+        <div className="space-y-4">
+          {recap.videoNote && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{recap.videoNote}</p>
+            </div>
+          )}
+          <TwitterEmbed statusUrl={recap.xStatusUrl} />
+          {cues.length > 0 && <CallTranscript cues={cues} videoUrl={null} />}
+        </div>
+      ) : youtubeId ? (
         <CallPlayer youtubeId={youtubeId} cues={cues} />
       ) : recap.youtube ? (
         <CallVideoFallback videoUrl={recap.youtube} />
@@ -110,7 +123,7 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
               {recap.keyDecisions && recap.keyDecisions.length > 0 ? (
                 <KeyDecisionsList
                   decisions={recap.keyDecisions}
-                  seekable={Boolean(youtubeId)}
+                  seekable={Boolean(youtubeId) && !recap.xStatusUrl}
                 />
               ) : (
                 <div className="rounded-xl border border-border bg-card/60 px-4 py-6 text-center text-sm text-muted-foreground">
