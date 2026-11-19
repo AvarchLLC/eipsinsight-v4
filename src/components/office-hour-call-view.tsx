@@ -10,6 +10,7 @@ import type { TranscriptCue } from "@/lib/call-artifacts";
 import cues111 from "@/data/office-hour-111-transcript.json";
 import cuesEthproofs009 from "@/data/ethproofs-009-transcript.json";
 import cuesEthproofs010 from "@/data/ethproofs-010-transcript.json";
+import cuesEipip132 from "@/data/eipip-132-transcript.json";
 import { CallTldr } from "@/components/upgrade/call-tldr";
 import { KeyDecisionsList } from "@/components/upgrade/key-decisions";
 
@@ -19,6 +20,7 @@ const TRANSCRIPTS: Record<string, TranscriptCue[]> = {
   "eipoh-111": cues111 as TranscriptCue[],
   "ethproofs-9": cuesEthproofs009 as TranscriptCue[],
   "ethproofs-10": cuesEthproofs010 as TranscriptCue[],
+  "eipip-132": cuesEipip132 as TranscriptCue[],
 };
 
 function getYoutubeId(url: string): string | null {
