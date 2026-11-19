@@ -159,10 +159,7 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     dateISO: "2026-11-18",
     displayDate: "Nov 18, 2026",
     title: "EIPIP Meeting #132",
-    youtube: "https://www.youtube.com/watch?v=ra3wXbEap1I",
-    xStatusUrl: "https://x.com/ECHInstitute/status/2123083288659320880",
-    videoNote:
-      "The YouTube upload of this meeting seems incomplete, so we have embedded the full recording from X (@ECHInstitute). The transcript below is shown read-only with it.",
+    youtube: "https://www.youtube.com/watch?v=jNhL-IYTUzU",
     issueUrl: "https://github.com/ethereum/pm/issues/2288",
     summary:
       "EIPIP Meeting #132 focused on using AI to help editors manage a growing proposal backlog without compromising neutrality or author control. Editors agreed to pilot an AI review bot as a read-only process that posts structural and formatting feedback as comments, with no auto-merging, and to keep its scope to formal checks such as backward references, abbreviations, copyright, and RFC 2119 keywords rather than changing an author's ideas. EIPsInsight's EIP Builder was demonstrated for drafting, validating, and reviewing proposals, and editors were open to hosting it on eips.ethereum.org if it can be fully client-side, pending a discussion with Matt. The meeting rejected exceptional PR merging without author approval, even for factual corrections, to preserve neutrality and author responsibility, and confirmed the Keeper of Consensus election stays open for 30 days due to quorum rules. With over 550 open PRs, editors agreed to add themselves to upcoming office hours to help clear the backlog.",
@@ -207,11 +204,26 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
       "Next Meeting": ["EIPIP Meeting #133 · Dec 16, 2026, 16:00 UTC"],
     },
     keyDecisions: [
-      { original_text: "AI review pilot approved as a read-only bot that posts reviews as comments, with no auto-merging of PRs." },
-      { original_text: "AI review scope is limited to structural and formal checks (backward references, abbreviations, copyright, RFC 2119 keywords), not changes to an author's ideas." },
-      { original_text: "Exceptional merging without author approval is rejected, even for factual corrections, to preserve neutrality and author responsibility." },
-      { original_text: "Editors are open to hosting the EIP Builder on eips.ethereum.org if it is fully client-side, pending a discussion with Matt." },
-      { original_text: "The Keeper of Consensus election remains open for 30 days due to quorum rules." },
+      {
+        original_text: "AI review pilot approved as a read-only bot that posts reviews as comments, with no auto-merging of PRs.",
+        timestamp: "00:13:22",
+      },
+      {
+        original_text: "AI review scope is limited to structural and formal checks (backward references, abbreviations, copyright, RFC 2119 keywords), not changes to an author's ideas.",
+        timestamp: "00:04:12",
+      },
+      {
+        original_text: "Exceptional merging without author approval is rejected, even for factual corrections, to preserve neutrality and author responsibility.",
+        timestamp: "00:50:46",
+      },
+      {
+        original_text: "Editors are open to hosting the EIP Builder on eips.ethereum.org if it is fully client-side, pending a discussion with Matt.",
+        timestamp: "00:42:23",
+      },
+      {
+        original_text: "The Keeper of Consensus election remains open for 30 days due to quorum rules.",
+        timestamp: "01:01:07",
+      },
     ],
     prs: [
       {
