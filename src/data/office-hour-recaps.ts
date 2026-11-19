@@ -37,6 +37,10 @@ export type OhRecap = {
   title: string;
   youtube: string;
   issueUrl: string;
+  /** Full recording embedded from X when the YouTube upload is trimmed. */
+  xStatusUrl?: string;
+  /** Short note shown above the video explaining a non-default source. */
+  videoNote?: string;
   summary: string;
   prs: OhPrItem[];
   decisions: string[];
@@ -156,6 +160,9 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
     displayDate: "Nov 18, 2026",
     title: "EIPIP Meeting #132",
     youtube: "https://www.youtube.com/watch?v=ra3wXbEap1I",
+    xStatusUrl: "https://x.com/ECHInstitute/status/2123083288659320880",
+    videoNote:
+      "The YouTube upload of this meeting is trimmed, so we have embedded the full recording from X (@ECHInstitute). The transcript below is shown read-only with it.",
     issueUrl: "https://github.com/ethereum/pm/issues/2288",
     summary:
       "EIPIP Meeting #132 focused on using AI to help editors manage a growing proposal backlog without compromising neutrality or author control. Editors agreed to pilot an AI review bot as a read-only process that posts structural and formatting feedback as comments, with no auto-merging, and to keep its scope to formal checks such as backward references, abbreviations, copyright, and RFC 2119 keywords rather than changing an author's ideas. EIPsInsight's EIP Builder was demonstrated for drafting, validating, and reviewing proposals, and editors were open to hosting it on eips.ethereum.org if it can be fully client-side, pending a discussion with Matt. The meeting rejected exceptional PR merging without author approval, even for factual corrections, to preserve neutrality and author responsibility, and confirmed the Keeper of Consensus election stays open for 30 days due to quorum rules. With over 550 open PRs, editors agreed to add themselves to upcoming office hours to help clear the backlog.",
@@ -169,7 +176,7 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
       "Decisions": [
         "AI Review Pilot: Start with a read-only AI bot that posts reviews as comments; no auto-merging of PRs.",
         "AI Scope: Focus on structural and formal checks (backward references, abbreviations, copyright, RFC 2119 keywords) rather than changing original ideas.",
-        "Exceptional Merging: Editors will not merge PRs without author approval, even for factual corrections like postponed activation dates.",
+        "Exceptional Merging: Editors will not merge PRs without author approval, even for clearly factual corrections like the postponed Hoodi activation date on EIP-7773; it stays the authors' responsibility.",
         "EIP Builder Integration: Open to hosting the EIP Builder on eips.ethereum.org if it can be self-contained and client-side, pending discussion with Matt.",
       ],
       "Progress & Status": [
@@ -191,10 +198,10 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
         "Keeper of Consensus: Who will take over the role after Sam steps down.",
       ],
       "Action Items": [
-        "Jochem: Start the AI review pilot as a read-only bot and refine the AGENTS.md guideline.",
+        "Jochem: Start the AI review pilot as a read-only bot and advance the AGENTS.md guideline (PR 12661, still in draft).",
         "Dhanush: Discuss EIP Builder integration with Matt and explore client-side hosting.",
         "Pooja: Edit the Keeper of Consensus call for input to reflect a 30-day voting window.",
-        "Editors: Review PR 12643 (EIP-1 update) and the Stagnant Bot PR.",
+        "Editors: Give PR 12643 (EIP-1 update) its second approval, and finish the Stagnant Bot review.",
         "Editors: Add themselves to upcoming office hours to help manage the PR backlog.",
       ],
       "Next Meeting": ["EIPIP Meeting #133 · Dec 16, 2026, 16:00 UTC"],
@@ -213,15 +220,15 @@ export const OFFICE_HOUR_RECAPS: OhRecap[] = [
         title: "Update EIP-1: Update EIP-1 with EIP Coordinator details",
         author: "poojaranjan",
         status: "WAITING_ON_EDITOR",
-        note: "Adds the EIP coordinator role and name to EIP-1. Pending editor approval.",
+        note: "Adds the EIP coordinator's name to EIP-1 (from CFI 414). Needs a second editor approval to merge.",
       },
     ],
     decisions: [],
     actionItems: [
-      "Jochem: Start the AI review pilot as a read-only bot and refine the AGENTS.md guideline.",
+      "Jochem: Start the AI review pilot as a read-only bot and advance the AGENTS.md guideline (PR 12661, still in draft).",
       "Dhanush: Discuss EIP Builder integration with Matt and explore client-side hosting.",
       "Pooja: Edit the Keeper of Consensus call for input to reflect a 30-day voting window.",
-      "Editors: Review PR 12643 (EIP-1 update) and the Stagnant Bot PR.",
+      "Editors: Give PR 12643 (EIP-1 update) its second approval, and finish the Stagnant Bot review.",
       "Editors: Add themselves to upcoming office hours to help manage the PR backlog.",
     ],
     nextMeeting: "EIPIP Meeting #133 · Dec 16, 2026, 16:00 UTC",

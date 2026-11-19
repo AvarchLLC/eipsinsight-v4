@@ -1,15 +1,18 @@
 import Link from "next/link";
-import { ArrowLeft, CalendarClock, FileText, Gavel } from "lucide-react";
+import { ArrowLeft, CalendarClock, FileText, Gavel, Info } from "lucide-react";
 import {
   CallPlayer,
   CallVideoFallback,
 } from "@/components/upgrade/call-player";
+import { CallTranscript } from "@/components/upgrade/call-transcript";
+import { TwitterEmbed } from "@/components/twitter-embed";
 import { OfficeHourRecap } from "@/components/office-hour-recap";
 import type { OhRecap } from "@/data/office-hour-recaps";
 import type { TranscriptCue } from "@/lib/call-artifacts";
 import cues111 from "@/data/office-hour-111-transcript.json";
 import cuesEthproofs009 from "@/data/ethproofs-009-transcript.json";
 import cuesEthproofs010 from "@/data/ethproofs-010-transcript.json";
+import cuesEipip132 from "@/data/eipip-132-transcript.json";
 import { CallTldr } from "@/components/upgrade/call-tldr";
 import { KeyDecisionsList } from "@/components/upgrade/key-decisions";
 
@@ -19,6 +22,7 @@ const TRANSCRIPTS: Record<string, TranscriptCue[]> = {
   "eipoh-111": cues111 as TranscriptCue[],
   "ethproofs-9": cuesEthproofs009 as TranscriptCue[],
   "ethproofs-10": cuesEthproofs010 as TranscriptCue[],
+  "eipip-132": cuesEipip132 as TranscriptCue[],
 };
 
 function getYoutubeId(url: string): string | null {
@@ -81,7 +85,18 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
         </div>
       </header>
 
-      {youtubeId ? (
+      {recap.xStatusUrl ? (
+        <div className="space-y-4">
+          {recap.videoNote && (
+            <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+              <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              <p>{recap.videoNote}</p>
+            </div>
+          )}
+          <TwitterEmbed statusUrl={recap.xStatusUrl} />
+          {cues.length > 0 && <CallTranscript cues={cues} videoUrl={null} />}
+        </div>
+      ) : youtubeId ? (
         <CallPlayer youtubeId={youtubeId} cues={cues} />
       ) : recap.youtube ? (
         <CallVideoFallback videoUrl={recap.youtube} />
@@ -108,7 +123,7 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
               {recap.keyDecisions && recap.keyDecisions.length > 0 ? (
                 <KeyDecisionsList
                   decisions={recap.keyDecisions}
-                  seekable={Boolean(youtubeId)}
+                  seekable={Boolean(youtubeId) && !recap.xStatusUrl}
                 />
               ) : (
                 <div className="rounded-xl border border-border bg-card/60 px-4 py-6 text-center text-sm text-muted-foreground">
