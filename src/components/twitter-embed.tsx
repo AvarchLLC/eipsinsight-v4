@@ -12,7 +12,7 @@ declare global {
 
 /**
  * Embeds a single X (Twitter) post with its video. Used where the YouTube
- * upload is trimmed and the full recording lives on X. The embed plays inline;
+ * upload seems incomplete and the full recording lives on X. The embed plays inline;
  * it cannot be seeked programmatically, so any transcript shown with it is
  * read-only.
  */
