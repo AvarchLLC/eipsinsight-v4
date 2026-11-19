@@ -87,13 +87,13 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
 
       {recap.xStatusUrl ? (
         <div className="space-y-4">
+          <TwitterEmbed statusUrl={recap.xStatusUrl} />
           {recap.videoNote && (
             <div className="flex items-start gap-2 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
               <Info className="mt-0.5 h-4 w-4 shrink-0" />
               <p>{recap.videoNote}</p>
             </div>
           )}
-          <TwitterEmbed statusUrl={recap.xStatusUrl} />
           {cues.length > 0 && <CallTranscript cues={cues} videoUrl={null} />}
         </div>
       ) : youtubeId ? (
