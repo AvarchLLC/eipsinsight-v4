@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   // Backward-compatible redirects for legacy routes
   async redirects() {
     return [
+      // Persona redirects (persona system deprecated)
+      { source: '/p', destination: '/', permanent: true },
+      { source: '/p/:path*', destination: '/', permanent: true },
+      { source: '/debug/persona', destination: '/', permanent: false },
       // Legacy route redirects
       {
         // /people was renamed to /user (contributor profiles).

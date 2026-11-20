@@ -2,10 +2,8 @@
 
 import * as React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { PersonaProvider } from "@/providers/PersonaProvider";
 import { ThemeProvider } from "@/providers/ThemeProvider";
 import { HashScrollProvider } from "@/providers/HashScrollProvider";
-import { OnboardingRedirect } from "@/components/onboarding-redirect";
 
 interface ProvidersProps {
   children: React.ReactNode;
@@ -39,10 +37,7 @@ export function Providers({ children }: ProvidersProps) {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <HashScrollProvider>
-          <PersonaProvider>
-            <OnboardingRedirect />
-            {children}
-          </PersonaProvider>
+          {children}
         </HashScrollProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -55,28 +55,15 @@ import { TestimonialsSection } from '@/components/testimonials-section';
 import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
 import GovernanceOverTime from '@/app/dashboard/_components/governance-over-time';
 
-const EditorHomeDashboard = dynamic(() => import('./_components/persona-home/EditorHomeDashboard'), {
-  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading editor workspace…" /></div>,
+const UpgradeWatchSection = dynamic(() => import('./_components/UpgradeWatchSection'), {
+  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading upgrade watch…" /></div>,
 });
-const DeveloperHomeDashboard = dynamic(() => import('./_components/persona-home/DeveloperHomeDashboard'), {
-  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading developer workspace…" /></div>,
-});
-const BuilderHomeDashboard = dynamic(() => import('./_components/persona-home/BuilderHomeDashboard'), {
-  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading builder workspace…" /></div>,
-});
-const NewcomerHomeDashboard = dynamic(() => import('./_components/persona-home/NewcomerHomeDashboard'), {
-  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading newcomer workspace…" /></div>,
-});
-const DeveloperUpgradeWatchSection = dynamic(() => import('./_components/persona-home/DeveloperUpgradeWatchSection'));
-const EditorReviewQueueSection = dynamic(() => import('./_components/persona-home/EditorReviewQueueSection'));
-const EditorCategoryBreakdownSection = dynamic(() => import('./_components/persona-home/EditorCategoryBreakdownSection'));
 import { WeeklyRecapSection } from './_components/WeeklyRecapSection';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
 import { ASSOCIATE_EIP_EDITORS, CANONICAL_EIP_EDITORS } from '@/data/eip-contributor-roles';
 import { getUpgradeTimelineData } from '@/data/upgrade-timelines';
-import { useEffectivePersona, useIsHydrated } from '@/stores/personaStore';
 import { chartTooltip, chartTooltipRow, chartTooltipTitle, CHART_TOOLTIP_BORDER } from '@/lib/chart-theme';
 
 type Dimension = 'status' | 'category' | 'repo' | 'stages';
@@ -180,8 +167,6 @@ type NewcomerTrendingProposal = {
 
 type EditorRepoFilter = '' | 'eips' | 'ercs' | 'rips';
 type DeveloperRepoFilter = '' | 'eips' | 'ercs' | 'rips';
-
-type HomePersona = 'developer' | 'editor' | 'builder' | 'newcomer' | 'enterprise';
 
 const STATUS_COLORS: Record<string, string> = {
   Draft: 'bg-slate-500',
@@ -403,81 +388,6 @@ const ENTRY_PATHS = [
   },
 ];
 
-const PERSONA_HOME_PLANS: Record<HomePersona, {
-  title: string;
-  description: string;
-  goal: string;
-  tools: Array<{
-    key: string;
-    title: string;
-    href: string;
-    cta: string;
-    icon: React.ComponentType<{ className?: string }>;
-    blurb: string;
-    /** Optional card illustration in /public; falls back to the icon tile when absent. */
-    image?: string;
-  }>;
-}> = {
-  developer: {
-    title: 'Developer Home',
-    description: 'See what is changing, what is active, and where to dive deeper next.',
-    goal: 'Quickly understand ongoing protocol changes and identify actionable items.',
-    tools: [
-      { key: 'upgrade-hub', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upgrade timelines, headliner EIPs, and what ships next.', image: '/quick-access/upgrade-hub.png' },
-      { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Key outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
-      { key: 'editor-insights', title: 'Editor Leadership Board', href: '/analytics/editors', cta: 'View leadership board', icon: Trophy, blurb: 'Editorial workload, coverage, and the leadership board.', image: '/quick-access/editor-insights.png' },
-      { key: 'eip-analytics', title: 'EIP Analytics', href: '/analytics/eips', cta: 'Explore analytics', icon: FileText, blurb: 'Proposal activity and lifecycle, Draft to Final.', image: '/quick-access/eip-analytics.png' },
-      { key: 'pr-board', title: 'Open PR Board', href: '/officehours/board', cta: 'Open the board', icon: GitPullRequest, blurb: "Open PRs, sorted by what's waiting on editors.", image: '/quick-access/pr-board.png' },
-      { key: 'monthly-insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: ArrowUpDown, blurb: 'A month-by-month standards & governance recap.', image: '/quick-access/monthly-insights.png' },
-    ],
-  },
-  editor: {
-    title: 'Editor Home',
-    description: 'Stay on top of review queue, editorial workload, and proposal progression.',
-    goal: 'Efficiently manage review workload and track proposal progression.',
-    tools: [
-      { key: 'editing-board', title: 'Editing Board', href: '/board?status=Waiting+on+Editor&page=1', cta: 'Open the board', icon: GitPullRequest, blurb: 'Direct waiting-on-editor view.', image: '/quick-access/pr-board.png' },
-      { key: 'editor-leaderboard', title: 'Editor Leaderboard', href: '/analytics/editors', cta: 'View leaderboard', icon: Trophy, blurb: 'Monthly editorial activity snapshot.', image: '/quick-access/editor-insights.png' },
-      { key: 'pr-analytics', title: 'PR Analytics', href: '/analytics/prs', cta: 'Explore analytics', icon: ArrowUpDown, blurb: 'PR flow, velocity, and waiting states.', image: '/quick-access/eip-analytics.png' },
-      { key: 'calls-decisions', title: 'Protocol Calls & Decisions', href: '/decisions', cta: 'See the decisions', icon: Gavel, blurb: 'Outcomes from All Core Devs and breakout calls.', image: '/quick-access/calls-decisions.png' },
-    ],
-  },
-  builder: {
-    title: 'Builder Home',
-    description: 'Discover active standards quickly and jump into contribution workflows.',
-    goal: 'Discover active standards and contribute quickly.',
-    tools: [
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore trending', icon: Activity, blurb: 'Find active standards quickly.', image: '/quick-access/eip-analytics.png' },
-      { key: 'eip-builder', title: 'EIP Builder', href: '/eip-builder', cta: 'Open the builder', icon: Code, blurb: 'Primary drafting and validation workflow.' },
-      { key: 'erc-focus', title: 'ERC-focused Browse', href: '/explore?repo=ercs', cta: 'Explore ERCs', icon: Boxes, blurb: 'ERC-focused exploration and filtering.' },
-      { key: 'contributors', title: 'Recent Activity Snapshot', href: '/analytics/contributors', cta: 'View contributors', icon: Activity, blurb: 'Latest contributor movement and momentum.', image: '/quick-access/editor-insights.png' },
-      { key: 'resources', title: 'Practical Docs/Resources', href: '/resources/docs', cta: 'Explore resources', icon: BookOpen, blurb: 'Guides, references, and examples.' },
-    ],
-  },
-  newcomer: {
-    title: 'Newcomer Home',
-    description: 'Start with clear context, then explore proposals and tools at your pace.',
-    goal: 'Make Ethereum standards approachable and easy to get started with.',
-    tools: [
-      { key: 'upgrade', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Zap, blurb: 'Simplified network-upgrade summary.', image: '/quick-access/upgrade-hub.png' },
-      { key: 'trending', title: 'Trending Proposals', href: '/explore/trending', cta: 'Explore trending', icon: Activity, blurb: 'A simple view of current activity.', image: '/quick-access/eip-analytics.png' },
-      { key: 'learn', title: 'Learning Resources', href: '/resources', cta: 'Start learning', icon: BookOpen, blurb: 'The primary entry point for beginners.' },
-      { key: 'tools', title: 'Beginner Tool Access', href: '/tools', cta: 'Browse tools', icon: Wrench, blurb: 'Board, timeline, dependencies, and builder.' },
-      { key: 'faq', title: 'FAQ / Reference', href: '/resources/faq', cta: 'Read the FAQ', icon: BookOpen, blurb: 'Core terms and quick answers.' },
-    ],
-  },
-  enterprise: {
-    title: 'Enterprise Home',
-    description: 'Understand protocol direction, upgrade timelines, and business impact without deep dives.',
-    goal: 'Translate Ethereum governance into actionable enterprise intelligence.',
-    tools: [
-      { key: 'upgrades', title: 'Upgrade Hub', href: '/upgrade', cta: 'Open the hub', icon: Network, blurb: 'Upcoming upgrades and their business implications.', image: '/quick-access/upgrade-hub.png' },
-      { key: 'standards', title: 'Standards Explorer', href: '/standards', cta: 'Browse standards', icon: FileText, blurb: 'EIPs and ERCs relevant to your infrastructure.', image: '/quick-access/eip-analytics.png' },
-      { key: 'analytics', title: 'Governance Analytics', href: '/analytics/prs', cta: 'View analytics', icon: Activity, blurb: 'High-level governance activity and trends.', image: '/quick-access/pr-board.png' },
-      { key: 'insights', title: 'Monthly Insights', href: '/insights', cta: 'Read the recap', icon: Zap, blurb: 'Month-by-month protocol roadmap summaries.', image: '/quick-access/monthly-insights.png' },
-    ],
-  },
-};
 
 /** Section title that links to its full page, with a hover arrow. Replaces the old
  *  "Explore X" footer buttons — the header itself is now the way in. */
@@ -501,102 +411,6 @@ function SectionTitleLink({ href, className, children }: { href: string; classNa
   );
 }
 
-const PERSONA_LABELS: Record<HomePersona, string> = {
-  developer: 'Developer',
-  editor: 'Editor',
-  builder: 'Builder',
-  newcomer: 'Newcomer',
-  enterprise: 'Enterprise',
-};
-
-const PERSONA_SECTION_VISIBILITY: Record<
-  HomePersona,
-  {
-    quickAccess: boolean;
-    upgradeWatch: boolean;
-    trending: boolean;
-    reviewQueue: boolean;
-    categoryBreakdown: boolean;
-    browse: boolean;
-    governanceOverTime: boolean;
-    board: boolean;
-    monthly: boolean;
-    governance: boolean;
-    social: boolean;
-    reference: boolean;
-  }
-> = {
-  developer: {
-    quickAccess: true,
-    upgradeWatch: true,
-    trending: true,
-    reviewQueue: false,
-    categoryBreakdown: false,
-    browse: true,
-    governanceOverTime: true,
-    board: true,
-    monthly: false,
-    governance: true,
-    social: false,
-    reference: false,
-  },
-  editor: {
-    quickAccess: true,
-    upgradeWatch: false,
-    trending: false,
-    reviewQueue: true,
-    categoryBreakdown: true,
-    browse: true,
-    governanceOverTime: false,
-    board: false,
-    monthly: true,
-    governance: true,
-    social: true,
-    reference: false,
-  },
-  builder: {
-    quickAccess: false,
-    upgradeWatch: false,
-    trending: true,
-    reviewQueue: false,
-    categoryBreakdown: false,
-    browse: true,
-    governanceOverTime: true,
-    board: true,
-    monthly: false,
-    governance: true,
-    social: true,
-    reference: false,
-  },
-  newcomer: {
-    quickAccess: false,
-    upgradeWatch: true,
-    trending: true,
-    reviewQueue: false,
-    categoryBreakdown: false,
-    browse: false,
-    governanceOverTime: false,
-    board: true,
-    monthly: false,
-    governance: false,
-    social: false,
-    reference: false,
-  },
-  enterprise: {
-    quickAccess: true,
-    upgradeWatch: true,
-    trending: false,
-    reviewQueue: false,
-    categoryBreakdown: false,
-    browse: true,
-    governanceOverTime: false,
-    board: false,
-    monthly: true,
-    governance: false,
-    social: false,
-    reference: false,
-  },
-};
 
 function monthLabel(monthYear: string) {
   const [y, m] = monthYear.split('-').map(Number);
@@ -757,16 +571,13 @@ function getBucketTheme(dimension: Dimension, bucket: string): BucketTheme {
 export default function EIPsHomePage() {
   const { data: session, loading: sessionLoading } = useSession();
   const { resolvedTheme } = useTheme();
-  const personaFromStore = useEffectivePersona();
-  const personaHydrated = useIsHydrated();
-  const activePersona: HomePersona = (personaHydrated ? personaFromStore : 'developer') as HomePersona;
+
   const isDark = resolvedTheme === 'dark';
   const [dimension, setDimension] = useState<Dimension>('status');
   const [sortBy, setSortBy] = useState<SortBy>('updated_at');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [page, setPage] = useState(1);
   const [activeBucket, setActiveBucket] = useState<string | null>(null);
-  const [showNewUserGuide, setShowNewUserGuide] = useState(false);
   const [columnSearch, setColumnSearch] = useState<ColumnSearch>({
     github: '',
     eip: '',
@@ -860,7 +671,6 @@ export default function EIPsHomePage() {
   // RIPs are a separate track — opt-in so status/category counts are not skewed.
   const [includeRips, setIncludeRips] = useState(false);
   const [showProposalTable, setShowProposalTable] = useState(false);
-  const [showPersonaWorkspace, setShowPersonaWorkspace] = useState(true);
   const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
   const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('');
   const [selectedBoardProcesses, setSelectedBoardProcesses] = useState<string[]>([]);
@@ -916,12 +726,6 @@ export default function EIPsHomePage() {
     setPage(1);
   }, [dimension, activeBucket, sortBy, sortDir, columnSearch]);
 
-  // Collapse the proposal table whenever the persona changes. It stays hidden for
-  // every persona now (not just editor) — the distribution cards are the scannable
-  // summary, and the table is opt-in via "Show table".
-  useEffect(() => {
-    setShowProposalTable(false);
-  }, [activePersona]);
 
   useEffect(() => {
     setEditorQueuePage(1);
@@ -937,9 +741,6 @@ export default function EIPsHomePage() {
     setEditorQueuePage(1);
   }, [selectedBoardProcesses]);
 
-  useEffect(() => {
-    setShowPersonaWorkspace(true);
-  }, [activePersona]);
 
   useEffect(() => {
     const { fromInput, toInput } = monthRange(currentMonthYear);
@@ -949,113 +750,11 @@ export default function EIPsHomePage() {
     }
   }, [currentMonthYear, editorContribWindow]);
 
-  useEffect(() => {
-    if (activePersona !== 'builder') return;
-    setDimension('repo');
-    setActiveBucket('ERCs');
-    setPage(1);
-  }, [activePersona]);
+
+
 
   useEffect(() => {
     let cancelled = false;
-    if (activePersona !== 'newcomer') {
-      setNewcomerTrendingRows([]);
-      return;
-    }
-    (async () => {
-      setNewcomerTrendingLoading(true);
-      try {
-        const data = await client.governanceTimeline.getTrendingProposals({ limit: 6 });
-        if (!cancelled) {
-          setNewcomerTrendingRows((data || []) as NewcomerTrendingProposal[]);
-        }
-      } catch (err) {
-        console.error('Failed to load newcomer trending proposals:', err);
-        if (!cancelled) setNewcomerTrendingRows([]);
-      } finally {
-        if (!cancelled) setNewcomerTrendingLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activePersona]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (activePersona !== 'editor') {
-      setBoardPreviewRows([]);
-      setBoardProcessStats([]);
-      setBoardPreviewTotal(0);
-      setBoardPreviewTotalPages(1);
-      setProcessBreakdownRows([]);
-      setParticipantBreakdownRows([]);
-      return;
-    }
-    (async () => {
-      setBoardPreviewLoading(true);
-      try {
-        const [data, statsData, classificationData, waitingData] = await Promise.all([
-          client.tools.getOpenPRBoard({
-            repo: editorRepoFilter || undefined,
-            govState: ['Waiting on Editor'],
-            processType: selectedBoardProcesses.length ? selectedBoardProcesses : undefined,
-            page: editorQueuePage,
-            pageSize: 6,
-          }),
-          client.tools.getOpenPRBoardStats({
-            repo: editorRepoFilter || undefined,
-            govState: ['Waiting on Editor'],
-          }),
-          client.analytics.getPROpenClassification({
-            repo: editorRepoFilter || undefined,
-            month: currentMonthYear,
-          }),
-          client.analytics.getPRGovernanceWaitingState({
-            repo: editorRepoFilter || undefined,
-            month: currentMonthYear,
-          }),
-        ]);
-        if (!cancelled) {
-          setBoardPreviewRows(data.rows ?? []);
-          setBoardProcessStats((statsData?.processTypes ?? []).map((row) => ({
-            type: row.type,
-            count: Number(row.count ?? 0),
-          })));
-          setBoardPreviewTotal(Number(data.total ?? 0));
-          setBoardPreviewTotalPages(Math.max(1, Number(data.totalPages ?? 1)));
-          setProcessBreakdownRows(
-            (classificationData ?? []).map((row) => ({
-              category: row.category,
-              count: Number(row.count ?? 0),
-            })),
-          );
-          setParticipantBreakdownRows(
-            (waitingData ?? []).map((row) => ({
-              label: row.label,
-              count: Number(row.count ?? 0),
-            })),
-          );
-        }
-      } catch (err) {
-        console.error('Failed to load board preview:', err);
-      } finally {
-        if (!cancelled) setBoardPreviewLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [activePersona, currentMonthYear, editorRepoFilter, editorQueuePage, selectedBoardProcesses]);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (activePersona !== 'developer') {
-      setDeveloperBoardRows([]);
-      setDeveloperBoardTotal(0);
-      setDeveloperBoardTotalPages(1);
-      return;
-    }
 
     (async () => {
       setDeveloperBoardLoading(true);
@@ -1080,7 +779,7 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [activePersona, developerRepoFilter, developerBoardPage]);
+  }, [developerRepoFilter, developerBoardPage]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -1089,15 +788,6 @@ export default function EIPsHomePage() {
     return () => window.clearTimeout(t);
   }, [columnSearch]);
 
-  useEffect(() => {
-    if (sessionLoading) return;
-    if (session) {
-      setShowNewUserGuide(false);
-      return;
-    }
-    const dismissed = window.localStorage.getItem('eipsinsight_home_start_here_dismissed') === '1';
-    setShowNewUserGuide(!dismissed);
-  }, [session, sessionLoading]);
 
   useEffect(() => {
     (async () => {
@@ -1371,75 +1061,6 @@ export default function EIPsHomePage() {
     };
   }, [currentMonthYear]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (activePersona !== 'editor') {
-      setEditorContributionRows([]);
-      setEditorRepoDistributionRows([]);
-      return;
-    }
-
-    (async () => {
-      setEditorContribLoading(true);
-      try {
-        let from: string | undefined;
-        let to: string | undefined;
-
-        if (editorContribWindow === 'month') {
-          const range = monthRange(currentMonthYear);
-          from = range.fromQuery;
-          to = range.toQuery;
-        } else if (editorContribWindow === 'custom') {
-          from = dayStartIso(editorContribFrom) ?? undefined;
-          to = dayEndIso(editorContribTo) ?? undefined;
-        }
-
-        const [leaders, repoDistribution] = await Promise.all([
-          client.analytics.getEditorsLeaderboard({
-            limit: 12,
-            from,
-            to,
-          }),
-          client.analytics.getEditorsRepoDistribution({
-            from,
-            to,
-          }),
-        ]);
-
-        if (cancelled) return;
-
-        setEditorContributionRows(
-          leaders.map((row) => ({
-            actor: row.actor,
-            totalActions: row.totalActions,
-            prsTouched: row.prsTouched,
-            reviews: row.reviews,
-            comments: row.comments,
-          })),
-        );
-        setEditorRepoDistributionRows(
-          repoDistribution.map((row) => ({
-            actor: row.actor,
-            repo: row.repo,
-            count: row.count,
-            pct: row.pct,
-          })),
-        );
-      } catch (err) {
-        console.error('Failed to load editor contribution snapshot:', err);
-        if (!cancelled) {
-          setEditorContributionRows([]);
-          setEditorRepoDistributionRows([]);
-        }
-      } finally {
-        if (!cancelled) setEditorContribLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [activePersona, currentMonthYear, editorContribWindow, editorContribFrom, editorContribTo]);
 
   const totalCount = useMemo(
     () => distribution.reduce((acc, row) => acc + row.count, 0),
@@ -1780,38 +1401,19 @@ export default function EIPsHomePage() {
   const downloadLeaderboardDetailedCSV = async () => {
     try {
       setDownloadingLeaderboard(true);
-      if (activePersona === 'editor' && editorContribWindow !== 'month') {
-        const from = editorContribWindow === 'custom' ? dayStartIso(editorContribFrom) ?? undefined : undefined;
-        const to = editorContribWindow === 'custom' ? dayEndIso(editorContribTo) ?? undefined : undefined;
-        const res = await client.analytics.getEditorsLeaderboardExport({
-          from,
-          to,
-          detailsOnly: true,
-        });
-        const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = res.filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } else {
-        const res = await client.analytics.exportMonthlyEditorLeaderboardDetailedCSV({
-          monthYear: currentMonthYear,
-          limit: 10,
-        });
-        const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = res.filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      }
+      const res = await client.analytics.exportMonthlyEditorLeaderboardDetailedCSV({
+        monthYear: currentMonthYear,
+        limit: 10,
+      });
+      const blob = new Blob([res.csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = res.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     } catch (err) {
       console.error('Failed to export editor leaderboard CSV:', err);
     } finally {
@@ -1986,20 +1588,6 @@ export default function EIPsHomePage() {
     'mt-1 text-sm leading-relaxed text-muted-foreground';
   const panelTitleClass =
     'text-base font-semibold tracking-tight text-foreground sm:text-lg';
-  const personaPlan = PERSONA_HOME_PLANS[activePersona];
-  const visibleSections = PERSONA_SECTION_VISIBILITY[activePersona];
-  const sectionOrder = useMemo(() => {
-    if (activePersona === 'editor') {
-      return { upgradeWatch: 0, trending: 0, reviewQueue: 2, categoryBreakdown: 3, browse: 4, governanceOverTime: 0, board: 0, monthly: 5, governance: 6, social: 7, learning: 8 };
-    }
-    if (activePersona === 'developer') {
-      return { upgradeWatch: 1, trending: 2, reviewQueue: 0, categoryBreakdown: 0, browse: 3, governanceOverTime: 4, board: 5, monthly: 0, governance: 6, social: 0, learning: 0 };
-    }
-    if (activePersona === 'builder') {
-      return { upgradeWatch: 0, trending: 1, reviewQueue: 0, categoryBreakdown: 0, browse: 2, governanceOverTime: 4, board: 3, monthly: 0, governance: 5, social: 6, learning: 0 };
-    }
-    return { upgradeWatch: 3, trending: 2, reviewQueue: 0, categoryBreakdown: 0, browse: 0, governanceOverTime: 0, board: 4, monthly: 0, governance: 0, social: 0, learning: 1 };
-  }, [activePersona]);
   const normalizedProcessRows = useMemo(
     () => processBreakdownRows.filter((row) => row.count > 0),
     [processBreakdownRows],
@@ -2237,10 +1825,6 @@ export default function EIPsHomePage() {
   }, [editorCategoryPage, editorCategoryTotalPages]);
   useEffect(() => {
     let cancelled = false;
-    if (activePersona !== 'developer' && activePersona !== 'newcomer') {
-      setUpgradeTimelineRows([]);
-      return;
-    }
 
     (async () => {
       setUpgradeTimelineLoading(true);
@@ -2279,28 +1863,8 @@ export default function EIPsHomePage() {
     return () => {
       cancelled = true;
     };
-  }, [activePersona, upgradeWatchSlug]);
-  useEffect(() => {
-    if (activePersona === 'editor') {
-      setShowProposalTable(false);
-    }
-  }, [activePersona]);
+  }, [upgradeWatchSlug]);
   const isTableFiltered = hasColumnFilters || activeBucket !== null;
-  const dismissNewUserGuide = () => {
-    window.localStorage.setItem('eipsinsight_home_start_here_dismissed', '1');
-    setShowNewUserGuide(false);
-  };
-  const togglePersonaWorkspace = () => {
-    setShowPersonaWorkspace((prev) => !prev);
-  };
-  const PersonaDashboardComponent =
-    activePersona === 'editor'
-      ? EditorHomeDashboard
-      : activePersona === 'developer'
-        ? DeveloperHomeDashboard
-        : activePersona === 'builder'
-          ? BuilderHomeDashboard
-          : NewcomerHomeDashboard;
 
   return (
     <div className="w-full overflow-x-clip px-2.5 py-6 sm:px-4 sm:py-7 lg:px-5 xl:px-6">
@@ -2310,419 +1874,41 @@ export default function EIPsHomePage() {
 
       <hr className="mb-6 border-border/70" />
 
-      {showNewUserGuide && activePersona === 'newcomer' && (
-        <section className="mb-6 rounded-xl border border-primary/25 bg-primary/5 p-3 sm:p-4 shadow-sm">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">Start Here</p>
-              <p className="mt-1 text-sm text-foreground">
-                New to EIPsInsight? Start with these quick paths.
-              </p>
-              <div className="mt-1 hidden items-center gap-1 text-xs text-primary sm:inline-flex">
-                Explore <ArrowRight className="h-3 w-3" /> Analytics <ArrowRight className="h-3 w-3" /> Resources
-              </div>
-              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
-                {ENTRY_PATHS.map((item) => (
-                  <a
-                    key={item.title}
-                    href={item.href}
-                    target={item.external ? '_blank' : undefined}
-                    rel={item.external ? 'noreferrer' : undefined}
-                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-border bg-background px-2 text-xs font-medium text-foreground/85 hover:border-primary/30 hover:text-foreground sm:w-auto sm:justify-start sm:px-2.5"
-                  >
-                    {item.title}
-                  </a>
-                ))}
-              </div>
-            </div>
-            <button
-              onClick={dismissNewUserGuide}
-              className="inline-flex h-8 items-center justify-center rounded-md border border-border bg-background px-2.5 text-xs text-muted-foreground hover:text-foreground"
-            >
-              Dismiss
-            </button>
-          </div>
-        </section>
-      )}
+      <UpgradeWatchSection
+        sectionTitleClass={sectionTitleClass}
+        sectionSubtitleClass={sectionSubtitleClass}
+        upgradeWatchSlug={upgradeWatchSlug}
+        setUpgradeWatchSlug={setUpgradeWatchSlug}
+        upgradeOptions={upgradeOptions}
+        upgradeTimelineLoading={upgradeTimelineLoading}
+        upgradeTimelineRows={upgradeTimelineRows}
+        upgradeWatchChartOption={upgradeWatchChartOption}
+        latestCounts={{
+          included: latestUpgradeSnapshot?.included.length ?? 0,
+          scheduled: latestUpgradeSnapshot?.scheduled.length ?? 0,
+          considered: latestUpgradeSnapshot?.considered.length ?? 0,
+          proposed: latestUpgradeSnapshot?.proposed.length ?? 0,
+          declined: latestUpgradeSnapshot?.declined.length ?? 0,
+        }}
+        onDownloadMetadata={downloadUpgradeMetadataCSV}
+        downloadMetadataLoading={upgradeMetadataDownloading}
+      />
 
-      {visibleSections.quickAccess && (
-        <section className="mb-6" id="workspace">
-          <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-                  {PERSONA_LABELS[activePersona]} Quick Access
-                </p>
-                <p className="mt-1 text-sm text-muted-foreground">{personaPlan.goal}</p>
-              </div>
-              <div className="inline-flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={togglePersonaWorkspace}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                >
-                  {showPersonaWorkspace ? 'Close' : 'Show'}
-                  <ChevronDown className={cn('h-3 w-3 transition-transform', showPersonaWorkspace && 'rotate-180')} />
-                </button>
-                <Link
-                  href="/p"
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-background/80 px-2 py-1 text-[11px] font-medium text-muted-foreground hover:border-primary/30 hover:text-foreground"
-                >
-                  Persona
-                  <ArrowRight className="h-3 w-3" />
-                </Link>
-              </div>
+      <section className="mb-6 border-t border-border/70 pt-6" id="trending">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <Flame className="h-5 w-5 text-rose-500 shrink-0" />
+              <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
+              <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
             </div>
-            {showPersonaWorkspace && (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-                  {personaPlan.tools.map((tool) => {
-                    const Icon = tool.icon;
-                    return (
-                      <Link
-                        key={tool.key}
-                        href={tool.href}
-                        className="group relative flex items-center gap-4 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-card/90 via-card/70 to-card/45 p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-lg hover:shadow-primary/10 sm:p-5"
-                      >
-                        {/* Bigger, frame-less illustration — a soft glow gives depth without a hard box. */}
-                        <div className="relative h-[92px] w-[92px] shrink-0">
-                          {tool.image ? (
-                            <>
-                              <div
-                                aria-hidden
-                                className="absolute inset-3 rounded-full bg-primary/20 opacity-0 blur-2xl transition-opacity duration-300 group-hover:opacity-100"
-                              />
-                              <div
-                                className="absolute inset-0 bg-contain bg-center bg-no-repeat transition-transform duration-300 group-hover:scale-110"
-                                style={{ backgroundImage: `url(${tool.image})` }}
-                              />
-                            </>
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center rounded-2xl bg-gradient-to-br from-primary/12 to-primary/5 text-primary">
-                              <Icon className="h-10 w-10" />
-                            </div>
-                          )}
-                        </div>
+            <p className={sectionSubtitleClass}>Most discussed proposals shaping Ethereum today.</p>
+          </div>
+        </div>
+        <TrendingProposals hideHeader />
+      </section>
 
-                        <div className="min-w-0 flex-1">
-                          <p className="dec-title text-base font-semibold leading-snug text-foreground transition-colors group-hover:text-primary sm:text-lg">
-                            {tool.title}
-                          </p>
-                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground sm:text-[13px]">
-                            {tool.blurb}
-                          </p>
-                        </div>
-
-                        <ArrowRight className="h-4 w-4 shrink-0 self-center text-muted-foreground/25 transition-all group-hover:translate-x-0.5 group-hover:text-primary" />
-                      </Link>
-                    );
-                  })}
-                </div>
-            )}
-          </div>
-        </section>
-      )}
-      <PersonaDashboardComponent>
-      {activePersona === 'editor' && (
-        <section className="mb-6 border-t border-border/70 pt-6" id="contributions">
-          <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-                <SectionTitleLink href="/analytics/editors" className={sectionTitleClass}>Editor Leadership Board - {editorContributionWindowLabel}</SectionTitleLink>
-                <CopyLinkButton sectionId="contributions" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>
-                Contribution ranking with action coverage and repository breakdown.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select
-                value={editorContribWindow}
-                onChange={(e) => setEditorContribWindow(e.target.value as EditorContributionWindow)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              >
-                <option value="month">This Month</option>
-                <option value="all">All-Time</option>
-                <option value="custom">Custom Range</option>
-              </select>
-              {editorContribWindow === 'month' && (
-                <select
-                  value={currentMonthYear}
-                  onChange={(e) => setCurrentMonthYear(e.target.value)}
-                  className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-                >
-                  {monthYearOptions.map((opt) => (
-                    <option key={`editor-contrib-month-${opt.value}`} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button
-                onClick={downloadLeaderboardDetailedCSV}
-                disabled={downloadingLeaderboard}
-                aria-label="Download editor leaderboard CSV"
-                title="Download editor leaderboard CSV"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          {editorContribWindow === 'custom' && (
-            <div className="mb-4 flex flex-wrap items-center gap-3">
-              <input
-                type="date"
-                value={editorContribFrom}
-                onChange={(e) => setEditorContribFrom(e.target.value)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              />
-              <span className="text-xs text-muted-foreground">to</span>
-              <input
-                type="date"
-                value={editorContribTo}
-                onChange={(e) => setEditorContribTo(e.target.value)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-              />
-            </div>
-          )}
-
-          <div className="rounded-xl border border-border/70 bg-card/60 p-4 shadow-sm">
-            {editorContribLoading ? (
-              <div className="h-[300px] animate-pulse rounded-lg bg-muted/50" />
-            ) : editorContributionRows.length === 0 ? (
-              <div className="flex h-[300px] items-center justify-center rounded-lg border border-border/60 bg-background/40 text-sm text-muted-foreground">
-                No editor contribution data for this range.
-              </div>
-            ) : (
-              <div className="relative h-[300px]">
-                <ReactECharts option={editorRepoBreakdownOption} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} />
-                <ChartWatermark />
-              </div>
-            )}
-          </div>
-
-        </section>
-      )}
-      {activePersona === 'developer' && visibleSections.upgradeWatch && (
-        <DeveloperUpgradeWatchSection
-          sectionTitleClass={sectionTitleClass}
-          sectionSubtitleClass={sectionSubtitleClass}
-          upgradeWatchSlug={upgradeWatchSlug}
-          setUpgradeWatchSlug={setUpgradeWatchSlug}
-          upgradeOptions={upgradeOptions}
-          upgradeTimelineLoading={upgradeTimelineLoading}
-          upgradeTimelineRows={upgradeTimelineRows}
-          upgradeWatchChartOption={upgradeWatchChartOption}
-          latestCounts={{
-            included: latestUpgradeSnapshot?.included.length ?? 0,
-            scheduled: latestUpgradeSnapshot?.scheduled.length ?? 0,
-            considered: latestUpgradeSnapshot?.considered.length ?? 0,
-            proposed: latestUpgradeSnapshot?.proposed.length ?? 0,
-            declined: latestUpgradeSnapshot?.declined.length ?? 0,
-          }}
-          onDownloadMetadata={downloadUpgradeMetadataCSV}
-          downloadMetadataLoading={upgradeMetadataDownloading}
-        />
-      )}
-      {activePersona === 'newcomer' && (
-        <section
-          style={{ order: sectionOrder.learning }}
-          className="mb-6"
-          id="learn"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-emerald-400 shrink-0" />
-                <SectionTitleLink href="/resources" className={sectionTitleClass}>Learning Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="learn" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Start here to understand Ethereum standards without the noise.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {[
-              { title: 'Resource Hub', href: '/resources', desc: 'Beginner-friendly entry point for standards learning.', icon: BookOpen },
-              { title: 'Documentation', href: '/resources/docs', desc: 'Core docs and practical explainers for proposals.', icon: FileText },
-              { title: 'FAQ / Reference', href: '/resources/faq', desc: 'Fast answers to common terminology and workflows.', icon: Info },
-            ].map((item) => {
-              const Icon = item.icon;
-              return (
-                <Link
-                  key={`newcomer-learn-${item.title}`}
-                  href={item.href}
-                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
-                >
-                  <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{item.desc}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-      {(activePersona === 'developer' || activePersona === 'builder') && visibleSections.trending && (
-        <section
-          style={{ order: sectionOrder.trending }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="trending"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Flame className="h-5 w-5 text-rose-500 shrink-0" />
-                <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Most discussed proposals shaping Ethereum today.</p>
-            </div>
-          </div>
-          <TrendingProposals hideHeader />
-        </section>
-      )}
-      
-      {activePersona === 'newcomer' && visibleSections.trending && (
-        <hr className="mb-6 border-border/70" />
-      )}
-      {activePersona === 'newcomer' && visibleSections.trending && (
-        <section
-          style={{ order: sectionOrder.trending }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="trending"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Flame className="h-5 w-5 text-rose-500 shrink-0" />
-                <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-                <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>A simple snapshot of proposals with active discussions.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-            {newcomerTrendingLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={`newcomer-trending-skeleton-${i}`} className="h-24 animate-pulse rounded-lg border border-border bg-muted/40" />
-              ))
-            ) : newcomerTrendingRows.length === 0 ? (
-              <div className="col-span-full rounded-lg border border-border bg-muted/30 px-3 py-8 text-center text-sm text-muted-foreground">
-                No trending proposals available right now.
-              </div>
-            ) : (
-              newcomerTrendingRows.slice(0, 6).map((item) => (
-                <a
-                  key={`newcomer-trending-${item.proposalType}-${item.proposalNumber}`}
-                  href={item.url}
-                  target={item.destination === 'magicians' ? '_blank' : undefined}
-                  rel={item.destination === 'magicians' ? 'noopener noreferrer' : undefined}
-                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
-                >
-                  <div className="mb-1 inline-flex rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold text-primary">
-                    {item.proposalType}-{item.proposalNumber}
-                  </div>
-                  <p className="line-clamp-2 text-sm font-medium text-foreground">{item.title}</p>
-                  <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
-                    <MessageSquare className="h-3 w-3" />
-                    {item.replies} replies
-                  </div>
-                </a>
-              ))
-            )}
-          </div>
-        </section>
-      )}
-      {activePersona === 'newcomer' && visibleSections.upgradeWatch && (
-        <section
-          style={{ order: sectionOrder.upgradeWatch }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="upgrade-watch"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Package className="h-5 w-5 text-sky-400 shrink-0" />
-                <SectionTitleLink href="/upgrade" className={sectionTitleClass}>Upgrade Hub</SectionTitleLink>
-                <CopyLinkButton sectionId="upgrade-watch" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Simplified snapshot of where proposal discussions stand for upgrades.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-            {[
-              { key: 'included', label: 'Included', tone: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
-              { key: 'scheduled', label: 'Scheduled', tone: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300' },
-              { key: 'considered', label: 'Considered', tone: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300' },
-              { key: 'proposed', label: 'Proposed', tone: 'border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300' },
-              { key: 'declined', label: 'Declined', tone: 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300' },
-            ].map((metric) => (
-              <div key={`newcomer-upgrade-${metric.key}`} className={cn('rounded-lg border px-3 py-3 shadow-sm', metric.tone)}>
-                <p className="text-[11px] font-medium uppercase tracking-wide">{metric.label}</p>
-                <p className="mt-1 text-2xl font-semibold text-foreground">
-                  {(latestUpgradeSnapshot?.[metric.key as keyof UpgradeTimelineRow] as string[] | undefined)?.length ?? 0}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">
-            Showing latest snapshot for <span className="font-medium text-foreground">Glamsterdam</span>.
-          </p>
-        </section>
-      )}
-      {activePersona === 'developer' && visibleSections.governanceOverTime && (
-        <section
-          style={{ order: sectionOrder.governanceOverTime }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="over-time"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
-                <SectionTitleLink href="/#over-time" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
-                <CopyLinkButton sectionId="over-time" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
-            </div>
-          </div>
-          <GovernanceOverTime />
-        </section>
-      )}
-      {activePersona === 'builder' && visibleSections.governanceOverTime && (
-        <section
-          style={{ order: sectionOrder.governanceOverTime }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="eip-builder"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Code className="h-5 w-5 text-purple-400 shrink-0" />
-                <SectionTitleLink href="/eip-builder" className={sectionTitleClass}>EIP Builder</SectionTitleLink>
-                <CopyLinkButton sectionId="eip-builder" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Primary workspace to draft, validate, and structure standards.</p>
-            </div>
-          </div>
-          <div className="rounded-xl border border-primary/30 bg-primary/10 p-4 shadow-sm">
-            <div className="mb-3 inline-flex h-8 w-8 items-center justify-center rounded-md bg-primary/15 text-primary">
-              <Code className="h-4 w-4" />
-            </div>
-            <h3 className="text-base font-semibold text-foreground">Build proposals faster with guided drafting</h3>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Start new standards, validate formatting early, and keep contribution quality high before opening PRs.
-            </p>
-          </div>
-        </section>
-      )}
-      {activePersona === 'developer' && visibleSections.board && (
-        <section
-          style={{ order: sectionOrder.board }}
+      <section
           className="mb-6 border-t border-border/70 pt-6"
           id="board"
         >
@@ -2875,137 +2061,23 @@ export default function EIPsHomePage() {
             </div>
           </div>
         </section>
-      )}
-      {activePersona === 'builder' && visibleSections.board && (
-        <section
-          style={{ order: sectionOrder.board }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="tools"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-indigo-400 shrink-0" />
-                <SectionTitleLink href="/tools" className={sectionTitleClass}>Tool Shortcuts</SectionTitleLink>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
-                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Jump directly into core contribution tools.</p>
+
+      <section className="mb-6 border-t border-border/70 pt-6" id="over-time">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
+              <SectionTitleLink href="/#over-time" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
+              <CopyLinkButton sectionId="over-time" tooltipLabel="Copy link" />
             </div>
+            <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { title: 'Editing Board', href: '/officehours/board', blurb: 'Track active PR queues.', icon: GitPullRequest },
-              { title: 'Timeline', href: '/timeline', blurb: 'Proposal lifecycle flow.', icon: GitBranch },
-              { title: 'Dependencies', href: '/dependencies', blurb: 'Inter-proposal links.', icon: Network },
-              { title: 'EIP Builder', href: '/eip-builder', blurb: 'Draft with validation.', icon: Code },
-            ].map((tool) => {
-              const Icon = tool.icon;
-              return (
-                <Link
-                  key={`builder-tool-${tool.title}`}
-                  href={tool.href}
-                  className="group rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
-                >
-                  <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{tool.title}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{tool.blurb}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-      {activePersona === 'newcomer' && visibleSections.board && (
-        <section
-          style={{ order: sectionOrder.board }}
-          className="mb-6 border-t border-border/70 pt-6"
-          id="tools"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Wrench className="h-5 w-5 text-indigo-400 shrink-0" />
-                <SectionTitleLink href="/tools" className={sectionTitleClass}>Beginner-Friendly Tool Shortcuts</SectionTitleLink>
-              </div>
-              <div className="mt-1 flex items-center gap-2">
-                <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
-                <CopyLinkButton sectionId="tools" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Start with the essential tools for exploration and contribution.</p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { title: 'Tools Home', href: '/tools', blurb: 'See all available standards tools.', icon: Wrench },
-              { title: 'Editing Board', href: '/officehours/board', blurb: 'Understand current PR flow.', icon: GitPullRequest },
-              { title: 'Timeline', href: '/timeline', blurb: 'See proposal lifecycle changes.', icon: GitBranch },
-              { title: 'Dependencies', href: '/dependencies', blurb: 'Explore proposal relationships.', icon: Network },
-            ].map((tool) => {
-              const Icon = tool.icon;
-              return (
-                <Link
-                  key={`newcomer-tool-${tool.title}`}
-                  href={tool.href}
-                  className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/40 hover:bg-primary/[0.05]"
-                >
-                  <div className="mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md bg-primary/10 text-primary">
-                    <Icon className="h-3.5 w-3.5" />
-                  </div>
-                  <p className="text-sm font-semibold text-foreground">{tool.title}</p>
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">{tool.blurb}</p>
-                </Link>
-              );
-            })}
-          </div>
-        </section>
-      )}
-      {activePersona === 'editor' && visibleSections.reviewQueue && (
-        <EditorReviewQueueSection
-          sectionTitleClass={sectionTitleClass}
-          sectionSubtitleClass={sectionSubtitleClass}
-          editorRepoFilter={editorRepoFilter}
-          setEditorRepoFilter={setEditorRepoFilter}
-          orderedBoardProcessTypes={orderedBoardProcessTypes}
-          boardProcessStats={boardProcessStats}
-          selectedBoardProcesses={selectedBoardProcesses}
-          setSelectedBoardProcesses={setSelectedBoardProcesses}
-          boardPreviewLoading={boardPreviewLoading}
-          boardPreviewRows={boardPreviewRows}
-          boardPreviewTotal={boardPreviewTotal}
-          editorQueuePage={editorQueuePage}
-          boardPreviewTotalPages={boardPreviewTotalPages}
-          setEditorQueuePage={setEditorQueuePage}
-          boardProcessBadgeMap={BOARD_PROCESS_BADGES}
-          githubRepoFromShort={githubRepoFromShort}
-        />
-      )}
-      {activePersona === 'editor' && visibleSections.categoryBreakdown && (
-        <EditorCategoryBreakdownSection
-          sectionTitleClass={sectionTitleClass}
-          sectionSubtitleClass={sectionSubtitleClass}
-          monthLabelText={monthLabel(currentMonthYear)}
-          currentMonthYear={currentMonthYear}
-          setCurrentMonthYear={setCurrentMonthYear}
-          monthYearOptions={monthYearOptions}
-          editorRepoFilter={editorRepoFilter}
-          setEditorRepoFilter={setEditorRepoFilter}
-          boardPreviewLoading={boardPreviewLoading}
-          categoryBreakdownChartOption={categoryBreakdownChartOption}
-          participantCount={paginatedParticipantRows.length}
-          editorCategoryPage={editorCategoryPage}
-          editorCategoryTotalPages={editorCategoryTotalPages}
-          setEditorCategoryPage={setEditorCategoryPage}
-        />
-      )}
-      {visibleSections.browse && (
+        </div>
+        <GovernanceOverTime />
+      </section>
+
       <div
-        style={activePersona === 'editor' ? undefined : { order: sectionOrder.browse }}
-        className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
+        className="mb-6 border-t border-border/70 pt-6"
         id="browse"
       >
       <div className="mb-4 space-y-3">
@@ -3024,9 +2096,7 @@ export default function EIPsHomePage() {
                 />
               </div>
               <p className={sectionSubtitleClass}>
-                {activePersona === 'builder'
-                  ? 'ERC-focused browse view with quick status/category/repository checks.'
-                  : 'Explore a compact snapshot here, then jump to full explorer tools.'}
+                Explore a compact snapshot here, then jump to full explorer tools.
               </p>
             </div>
           </div>
@@ -3082,7 +2152,7 @@ export default function EIPsHomePage() {
                     <option value="status">Status</option>
                     <option value="category">Category</option>
                     <option value="repo">Repo</option>
-                    {activePersona !== 'builder' && <option value="stages">Stages</option>}
+                    <option value="stages">Stages</option>
                   </select>
                 </span>
               );
@@ -3674,52 +2744,23 @@ export default function EIPsHomePage() {
         )}
       </div>
       </div>
-      )}
-      {visibleSections.reference && (
-        <section
-          className={cn('mb-6', activePersona === 'editor' && 'border-t border-border/70 pt-6')}
-          style={activePersona === 'editor' ? { order: 99 } : { order: sectionOrder.learning }}
-          id="reference"
-        >
-          {activePersona === 'editor' && (
-            <div className="mb-3 flex items-start justify-between gap-2">
-              <div>
-                <div className="inline-flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-cyan-400 shrink-0" />
-                  <SectionTitleLink href="/resources/faq" className={sectionTitleClass}>Reference</SectionTitleLink>
-                  <CopyLinkButton sectionId="reference" tooltipLabel="Copy link" />
-                </div>
-                <p className={sectionSubtitleClass}>Key FAQs and guidance for standards workflow.</p>
-              </div>
-            </div>
-          )}
-          <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
-        </section>
-      )}
-      {visibleSections.monthly && (
-      <div
-        style={activePersona === 'editor' ? undefined : { order: sectionOrder.monthly }}
-        className={cn(activePersona === 'editor' && 'mb-6 border-t border-border/70 pt-6')}
-        id="monthly"
-      >
-      {activePersona !== 'editor' && visibleSections.monthly && <hr className="my-6 border-border" />}
 
-      {activePersona === 'editor' && (
+            <div className="mb-6 border-t border-border/70 pt-6" id="monthly">
         <div className="mb-3 flex items-start justify-between gap-2">
           <div>
             <div className="inline-flex items-center gap-2">
               <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight & Editor Leadership Board</SectionTitleLink>
+              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight &amp; Editor Leadership Board</SectionTitleLink>
               <CopyLinkButton sectionId="monthly" tooltipLabel="Copy link" />
             </div>
             <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
           </div>
           <div className="flex items-center gap-2">
-            <label htmlFor="homepage-month-select-editor" className="text-xs font-medium text-muted-foreground">
+            <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
               Month
             </label>
             <select
-              id="homepage-month-select-editor"
+              id="homepage-month-select"
               value={currentMonthYear}
               onChange={(e) => setCurrentMonthYear(e.target.value)}
               className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
@@ -3732,33 +2773,12 @@ export default function EIPsHomePage() {
             </select>
           </div>
         </div>
-      )}
 
-      {activePersona !== 'editor' && (
-      <div className="mb-3 flex items-center justify-end gap-2">
-        <label htmlFor="homepage-month-select-default" className="text-xs font-medium text-muted-foreground">
-          Month
-        </label>
-        <select
-          id="homepage-month-select-default"
-          value={currentMonthYear}
-          onChange={(e) => setCurrentMonthYear(e.target.value)}
-          className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-        >
-          {monthYearOptions.map((opt) => (
-            <option key={opt.value} value={opt.value}>
-              {opt.label}
-            </option>
-          ))}
-        </select>
-      </div>
-      )}
-
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
         <div
           className={cn(
             'self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
-            activePersona === 'editor' ? 'h-[460px] sm:h-[500px]' : 'h-[560px] sm:h-[620px]',
+            'h-[560px] sm:h-[620px]',
           )}
         >
           <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -3842,7 +2862,7 @@ export default function EIPsHomePage() {
         <div
           className={cn(
             'rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
-            activePersona === 'editor' ? 'h-[460px] sm:h-[500px]' : 'h-[560px] sm:h-[620px]',
+            'h-[560px] sm:h-[620px]',
           )}
         >
           <>
@@ -3958,88 +2978,23 @@ export default function EIPsHomePage() {
           </>
         </div>
       </div>
-
-      {activePersona === 'editor' && (
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <Link
-            href="/insights"
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            Explore Month Analysis
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-          <Link
-            href="/analytics/editors"
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-primary/30 bg-primary/10 px-2.5 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            Explore Editor Leaderboard
-            <ArrowRight className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
-
       </div>
-      )}
-      {visibleSections.governance && (
-      <div
-        style={activePersona === 'editor' ? undefined : { order: sectionOrder.governance }}
-        className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-6')}
-      >
-      {activePersona !== 'editor' && visibleSections.governance && <hr className="my-6 border-border" />}
 
-      {/* No wrapper <section id>: WeeklyRecapSection owns its own #weekly-recap
-          anchor. Wrapping it would put two ids in the scroll spy for one section. */}
-      <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
-
+      <div className="border-t border-border/70 pt-6">
+        <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
       </div>
-      )}
-      {visibleSections.social && activePersona === 'editor' && (
-      <section
-        style={activePersona === 'editor' ? undefined : { order: sectionOrder.social }}
-        className={cn(activePersona === 'editor' && 'border-t border-border/70 pt-6')}
-      >
+
+      <section className="border-t border-border/70 pt-6" id="community">
         <SocialCommunityUpdates
-          showCommunityResources={activePersona !== 'editor'}
+          showCommunityResources={true}
           sectionTitleClass={sectionTitleClass}
           sectionSubtitleClass={sectionSubtitleClass}
         />
       </section>
-      )}
-      {visibleSections.social && activePersona === 'builder' && (
-        <section
-          style={{ order: sectionOrder.social }}
-          className="mb-2 border-t border-border/70 pt-6"
-          id="resources"
-        >
-          <div className="mb-3 flex items-start justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Layers className="h-5 w-5 text-emerald-400 shrink-0" />
-                <SectionTitleLink href="/resources" className={sectionTitleClass}>Practical Resources</SectionTitleLink>
-                <CopyLinkButton sectionId="resources" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>Documentation and references to contribute effectively.</p>
-            </div>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-            {[
-              { title: 'Docs', href: '/resources/docs', desc: 'Standards workflow guides and references.' },
-              { title: 'Resources', href: '/resources', desc: 'Knowledge hub for contributors and builders.' },
-              { title: 'FAQ', href: '/resources/faq', desc: 'Quick answers to common standards questions.' },
-            ].map((item) => (
-              <Link
-                key={`builder-resource-${item.title}`}
-                href={item.href}
-                className="rounded-lg border border-border bg-card/60 px-3 py-3 transition hover:border-primary/35 hover:bg-primary/[0.04]"
-              >
-                <p className="text-sm font-semibold text-foreground">{item.title}</p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">{item.desc}</p>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      </PersonaDashboardComponent>
+
+      <section className="mb-6 border-t border-border/70 pt-6" id="faq">
+        <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
+      </section>
 
       <hr className="my-8 border-border/70" />
       <TestimonialsSection featuredOnly limit={3} showViewAll eyebrow className="mb-4" />

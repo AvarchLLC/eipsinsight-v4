@@ -2,10 +2,9 @@ import { os, ORPCError, type Ctx } from './types'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import * as z from 'zod'
-import { PERSONA_LIST } from '@/lib/persona'
 
-// Schema for persona validation
-const personaSchema = z.enum(['developer', 'editor', 'researcher', 'builder', 'enterprise', 'newcomer'])
+// Schema for persona validation (backwards compatibility)
+const personaSchema = z.string().nullable().optional()
 
 // Schema for default view
 const defaultViewSchema = z.object({
@@ -103,10 +102,10 @@ export const preferencesProcedures = {
         where: { user_id: session.user.id },
         create: {
           user_id: session.user.id,
-          persona: input.persona,
+          persona: input.persona ?? null,
         },
         update: {
-          persona: input.persona,
+          persona: input.persona ?? null,
         },
       })
 

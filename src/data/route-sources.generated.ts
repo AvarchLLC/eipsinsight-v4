@@ -52,7 +52,6 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/resources/news", source: "src/app/resources/news/page.tsx" },
   { pattern: "/admin/editors", source: "src/app/admin/editors/page.tsx" },
   { pattern: "/analytics/prs", source: "src/app/analytics/prs/page.tsx" },
-  { pattern: "/debug/persona", source: "src/app/debug/persona/page.tsx" },
   { pattern: "/explore/roles", source: "src/app/explore/roles/page.tsx" },
   { pattern: "/explore/years", source: "src/app/explore/years/page.tsx" },
   { pattern: "/lucid/history", source: "src/app/lucid/history/page.tsx" },
@@ -95,7 +94,6 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/api-tokens", source: "src/app/api-tokens/page.tsx" },
   { pattern: "/newsletter", source: "src/app/newsletter/page.tsx" },
   { pattern: "/oldupgrade", source: "src/app/oldupgrade/page.tsx" },
-  { pattern: "/p/:persona", source: "src/app/p/[persona]/page.tsx" },
   { pattern: "/analytics", source: "src/app/analytics/page.tsx" },
   { pattern: "/dashboard", source: "src/app/dashboard/page.tsx" },
   { pattern: "/decisions", source: "src/app/decisions/page.tsx" },
@@ -135,7 +133,6 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/team", source: "src/app/team/page.tsx" },
   { pattern: "/aa", source: "src/app/aa/page.tsx" },
   { pattern: "/pq", source: "src/app/pq/page.tsx" },
-  { pattern: "/p", source: "src/app/p/page.tsx" },
   { pattern: "/:repo/:number", source: "src/app/(proposal)/[repo]/[number]/page.tsx" },
   { pattern: "/", source: "src/app/(public)/page.tsx" },
 ];

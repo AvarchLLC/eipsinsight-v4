@@ -1,50 +1,8 @@
 /**
  * Feature flags for safe rollout of new functionality.
- *
- * Set these in your .env.local file:
- * NEXT_PUBLIC_FEATURE_PERSONA_ONBOARDING=true
- * NEXT_PUBLIC_FEATURE_PERSONA_SWITCHER=true
- * NEXT_PUBLIC_FEATURE_PERSONA_NAV_REORDER=true
- * NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY=false  # set to false to disable visibility filtering
  */
 
 export const FEATURES = {
-  /**
-   * Enable the persona onboarding flow at /p
-   * When enabled, new users will be prompted to select their persona
-   */
-  PERSONA_ONBOARDING: false,
-
-  /**
-   * Enable the persona switcher dropdown in the navbar
-   * Allows users to change their persona at any time
-   */
-  PERSONA_SWITCHER:
-    process.env.NEXT_PUBLIC_FEATURE_PERSONA_SWITCHER === "true",
-
-  /**
-   * Enable persona-aware navigation reordering
-   * Sidebar items will be reordered based on the user's persona
-   */
-  PERSONA_NAV_REORDER:
-    process.env.NEXT_PUBLIC_FEATURE_PERSONA_NAV_REORDER === "true",
-
-  /**
-   * Enable persona-aware page context headers
-   * Pages will show persona-specific highlights at the top
-   */
-  PERSONA_CONTEXT_HEADERS:
-    process.env.NEXT_PUBLIC_FEATURE_PERSONA_CONTEXT_HEADERS === "true",
-
-  /**
-   * Enable persona-aware sidebar visibility filtering
-   * Sidebar sections and sub-items are shown/hidden based on the user's persona.
-   * Users can override this with the "Show all sidebar sections" setting.
-   * Defaults ON — set NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY=false to disable.
-   */
-  PERSONA_NAV_VISIBILITY:
-    process.env.NEXT_PUBLIC_FEATURE_PERSONA_NAV_VISIBILITY !== "false",
-
   /**
    * Show the "Ask about this call" AI box on call pages.
    * Defaults OFF while the feature is still being tested — a visible error state
