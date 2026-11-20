@@ -105,7 +105,7 @@ const PERSONA_INTROS: Record<Persona, PersonaIntro> = {
     subheadline:
       "Learn how Ethereum evolves through coordinated network upgrades. Explore the history of forks and understand how the community decides what changes to make.",
     ctaLabel: "Start Learning",
-    ctaLink: "/resources/getting-started",
+    ctaLink: "/resources/docs",
     stats: [
       { label: "What is a Fork?", value: "→", icon: BookOpen },
       { label: "Upgrade History", value: "→", icon: Clock },
