@@ -4,6 +4,26 @@ import * as z from 'zod'
 
 const REPO_TYPE: Record<string, string> = { eips: 'EIPS', ercs: 'ERCS', rips: 'RIPS' };
 
+let hasCiColsCached: boolean | null = null;
+async function getHasCiCols(): Promise<boolean> {
+  if (hasCiColsCached !== null) return hasCiColsCached;
+  try {
+    const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
+      `SELECT EXISTS (
+         SELECT 1 FROM pg_attribute a
+         JOIN pg_class c ON a.attrelid = c.oid
+         WHERE c.relname = 'pr_governance_state'
+           AND a.attname = 'has_failing_required_checks'
+           AND NOT a.attisdropped
+       ) AS has_ci_cols`
+    );
+    hasCiColsCached = Boolean(has_ci_cols);
+    return hasCiColsCached;
+  } catch {
+    return false;
+  }
+}
+
 async function getRepoIds(repo?: string | string[]): Promise<number[] | null> {
   const list = (Array.isArray(repo) ? repo : repo ? [repo] : []).map((r) => REPO_TYPE[r]).filter(Boolean);
   if (list.length === 0) return null; // null = all repos
@@ -386,13 +406,7 @@ const { repo, govState, processType, search, page, pageSize, sortBy, sortDir, ne
 
       // CI columns come from a separate scheduler migration; degrade gracefully
       // (no CI flag) if it hasn't run yet, rather than 500ing the whole board.
-      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
-        `SELECT EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_name = 'pr_governance_state'
-             AND column_name = 'has_failing_required_checks'
-         ) AS has_ci_cols`
-      );
+      const has_ci_cols = await getHasCiCols();
       const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
 
       // Whitelisted so the raw query can never take user-controlled SQL.
@@ -521,105 +535,59 @@ const { repo, repos, govState, search } = input;
 const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
       const govStates = typeof govState === 'string' ? [govState] : (govState ?? []);
 
-      // Process type counts (filtered by govState + search, NOT by processType)
-      const ptResults = await prisma.$queryRawUnsafe<Array<{
-        process_type: string; count: bigint;
-      }>>(`
-        WITH base AS (
-          SELECT
-            p.pr_number, p.title, p.author,
-            COALESCE(
-              gs.subcategory,
-              CASE COALESCE(gs.current_state, 'NO_STATE')
-                WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
-                WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
-                WHEN 'DRAFT' THEN 'AWAITED'
-                ELSE 'Uncategorized'
-              END
-            ) AS gov_state,
-            CASE WHEN COALESCE(gs.category, '') = 'Tooling' THEN 'Content Edit'
-              ELSE COALESCE(gs.category, ${PROCESS_TYPE_SQL})
-            END AS process_type
-          FROM pull_requests p
-          JOIN repositories r ON p.repository_id = r.id
-          LEFT JOIN pr_governance_state gs
-            ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
-          WHERE p.state = 'open'
-            AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
-            -- Match the board list + other facet counts, which drop Tooling PRs
-            -- entirely. Without this, Tooling rows were folded into "Content Edit"
-            -- and inflated its count (e.g. 14) while the list showed 0.
-            AND COALESCE(gs.category, '') != 'Tooling'
-        )
-        SELECT process_type, COUNT(*)::bigint AS count
-        FROM base
-        WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
-          AND ($3::text IS NULL OR (
-            pr_number::text LIKE '%' || $3 || '%'
-            OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
-            OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
-          ))
-        GROUP BY process_type
-        ORDER BY count DESC
-      `, repoArg, govStates.length ? govStates : null, search || null);
-
-      // Governance state counts (NOT filtered by govState—so user sees all state counts)
-      const gsResults = await prisma.$queryRawUnsafe<Array<{
-        state: string; label: string; count: bigint;
-      }>>(`
-        SELECT
-          COALESCE(
-            gs.subcategory,
-            CASE COALESCE(gs.current_state, 'NO_STATE')
-              WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
-              WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
-              WHEN 'DRAFT' THEN 'AWAITED'
-              ELSE 'Uncategorized'
-            END
-          ) AS state,
-          COALESCE(
-            gs.subcategory,
-            CASE COALESCE(gs.current_state, 'NO_STATE')
-              WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
-              WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
-              WHEN 'DRAFT' THEN 'AWAITED'
-              ELSE 'Uncategorized'
-            END
-          ) AS label,
-          COUNT(*)::bigint AS count
-        FROM pull_requests p
-        JOIN repositories r ON p.repository_id = r.id
-        LEFT JOIN pr_governance_state gs
-          ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
-        WHERE p.state = 'open'
-          AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
-          AND ($2::text IS NULL OR (
-            p.pr_number::text LIKE '%' || $2 || '%'
-            OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
-            OR LOWER(COALESCE(p.author, '')) LIKE '%' || LOWER($2) || '%'
-          ))
-          AND COALESCE(gs.category, '') != 'Tooling'
-        GROUP BY state, label
-        ORDER BY count DESC
-      `, repoArg, search || null);
-
       // CI columns come from a separate scheduler migration (degrade gracefully).
-      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
-        `SELECT EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_name = 'pr_governance_state'
-             AND column_name = 'has_failing_required_checks'
-         ) AS has_ci_cols`
-      );
+      const has_ci_cols = await getHasCiCols();
       const ciExpr = has_ci_cols ? 'COALESCE(gs.has_failing_required_checks, false)' : 'false';
 
-      // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
-      const signalResults = await prisma.$queryRawUnsafe<Array<{
-        needs_attention: bigint; has_conflicts: bigint; ci_failing: bigint;
-      }>>(`
-        WITH base AS (
+      // Run facet and signal queries in parallel across the connection pool.
+      const [ptResults, gsResults, signalResults] = await Promise.all([
+        // Process type counts (filtered by govState + search, NOT by processType)
+        prisma.$queryRawUnsafe<Array<{
+          process_type: string; count: bigint;
+        }>>(`
+          WITH base AS (
+            SELECT
+              p.pr_number, p.title, p.author,
+              COALESCE(
+                gs.subcategory,
+                CASE COALESCE(gs.current_state, 'NO_STATE')
+                  WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
+                  WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
+                  WHEN 'DRAFT' THEN 'AWAITED'
+                  ELSE 'Uncategorized'
+                END
+              ) AS gov_state,
+              CASE WHEN COALESCE(gs.category, '') = 'Tooling' THEN 'Content Edit'
+                ELSE COALESCE(gs.category, ${PROCESS_TYPE_SQL})
+              END AS process_type
+            FROM pull_requests p
+            JOIN repositories r ON p.repository_id = r.id
+            LEFT JOIN pr_governance_state gs
+              ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
+            WHERE p.state = 'open'
+              AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
+              -- Match the board list + other facet counts, which drop Tooling PRs
+              -- entirely. Without this, Tooling rows were folded into "Content Edit"
+              -- and inflated its count (e.g. 14) while the list showed 0.
+              AND COALESCE(gs.category, '') != 'Tooling'
+          )
+          SELECT process_type, COUNT(*)::bigint AS count
+          FROM base
+          WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
+            AND ($3::text IS NULL OR (
+              pr_number::text LIKE '%' || $3 || '%'
+              OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
+              OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
+            ))
+          GROUP BY process_type
+          ORDER BY count DESC
+        `, repoArg, govStates.length ? govStates : null, search || null),
+
+        // Governance state counts (NOT filtered by govState—so user sees all state counts)
+        prisma.$queryRawUnsafe<Array<{
+          state: string; label: string; count: bigint;
+        }>>(`
           SELECT
-            p.pr_number, p.title, p.author,
             COALESCE(
               gs.subcategory,
               CASE COALESCE(gs.current_state, 'NO_STATE')
@@ -628,30 +596,73 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
                 WHEN 'DRAFT' THEN 'AWAITED'
                 ELSE 'Uncategorized'
               END
-            ) AS gov_state,
-            COALESCE(gs.needs_editor_attention, false) AS needs_attention,
-            COALESCE(gs.has_merge_conflicts, false) AS has_conflicts,
-            ${ciExpr} AS ci_failing
+            ) AS state,
+            COALESCE(
+              gs.subcategory,
+              CASE COALESCE(gs.current_state, 'NO_STATE')
+                WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
+                WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
+                WHEN 'DRAFT' THEN 'AWAITED'
+                ELSE 'Uncategorized'
+              END
+            ) AS label,
+            COUNT(*)::bigint AS count
           FROM pull_requests p
           JOIN repositories r ON p.repository_id = r.id
           LEFT JOIN pr_governance_state gs
             ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
           WHERE p.state = 'open'
             AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
+            AND ($2::text IS NULL OR (
+              p.pr_number::text LIKE '%' || $2 || '%'
+              OR LOWER(COALESCE(p.title, '')) LIKE '%' || LOWER($2) || '%'
+              OR LOWER(COALESCE(p.author, '')) LIKE '%' || LOWER($2) || '%'
+            ))
             AND COALESCE(gs.category, '') != 'Tooling'
-        )
-        SELECT
-          COUNT(*) FILTER (WHERE needs_attention)::bigint AS needs_attention,
-          COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts,
-          COUNT(*) FILTER (WHERE ci_failing)::bigint AS ci_failing
-        FROM base
-        WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
-          AND ($3::text IS NULL OR (
-            pr_number::text LIKE '%' || $3 || '%'
-            OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
-            OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
-          ))
-      `, repoArg, govStates.length ? govStates : null, search || null);
+          GROUP BY state, label
+          ORDER BY count DESC
+        `, repoArg, search || null),
+
+        // Editorial-signal counts (filtered by repo + govState + search, same as the board list).
+        prisma.$queryRawUnsafe<Array<{
+          needs_attention: bigint; has_conflicts: bigint; ci_failing: bigint;
+        }>>(`
+          WITH base AS (
+            SELECT
+              p.pr_number, p.title, p.author,
+              COALESCE(
+                gs.subcategory,
+                CASE COALESCE(gs.current_state, 'NO_STATE')
+                  WHEN 'WAITING_ON_EDITOR' THEN 'Waiting on Editor'
+                  WHEN 'WAITING_ON_AUTHOR' THEN 'Waiting on Author'
+                  WHEN 'DRAFT' THEN 'AWAITED'
+                  ELSE 'Uncategorized'
+                END
+              ) AS gov_state,
+              COALESCE(gs.needs_editor_attention, false) AS needs_attention,
+              COALESCE(gs.has_merge_conflicts, false) AS has_conflicts,
+              ${ciExpr} AS ci_failing
+            FROM pull_requests p
+            JOIN repositories r ON p.repository_id = r.id
+            LEFT JOIN pr_governance_state gs
+              ON p.pr_number = gs.pr_number AND p.repository_id = gs.repository_id
+            WHERE p.state = 'open'
+              AND ($1::text[] IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = ANY($1::text[]))
+              AND COALESCE(gs.category, '') != 'Tooling'
+          )
+          SELECT
+            COUNT(*) FILTER (WHERE needs_attention)::bigint AS needs_attention,
+            COUNT(*) FILTER (WHERE has_conflicts)::bigint AS has_conflicts,
+            COUNT(*) FILTER (WHERE ci_failing)::bigint AS ci_failing
+          FROM base
+          WHERE ($2::text[] IS NULL OR cardinality($2::text[]) = 0 OR gov_state = ANY($2::text[]))
+            AND ($3::text IS NULL OR (
+              pr_number::text LIKE '%' || $3 || '%'
+              OR LOWER(COALESCE(title, '')) LIKE '%' || LOWER($3) || '%'
+              OR LOWER(COALESCE(author, '')) LIKE '%' || LOWER($3) || '%'
+            ))
+        `, repoArg, govStates.length ? govStates : null, search || null),
+      ]);
 
       return {
         processTypes: ptResults.map(r => ({ type: r.process_type, count: Number(r.count) })),
@@ -786,13 +797,7 @@ const repoArg = repos && repos.length ? repos : repo ? [repo] : null;
       // The CI columns land in a separate scheduler migration, so between
       // deploying this code and running that migration they may not exist yet.
       // Degrade gracefully (no CI flag) instead of 500ing the whole agenda.
-      const [{ has_ci_cols }] = await prisma.$queryRawUnsafe<Array<{ has_ci_cols: boolean }>>(
-        `SELECT EXISTS (
-           SELECT 1 FROM information_schema.columns
-           WHERE table_name = 'pr_governance_state'
-             AND column_name = 'has_failing_required_checks'
-         ) AS has_ci_cols`
-      );
+      const has_ci_cols = await getHasCiCols();
       const ciSelect = has_ci_cols
         ? `COALESCE(g.has_failing_required_checks, false) AS ci_failing, g.ci_state, g.failing_checks`
         : `false AS ci_failing, NULL::text AS ci_state, NULL::text[] AS failing_checks`;

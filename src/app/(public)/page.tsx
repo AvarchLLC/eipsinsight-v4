@@ -49,17 +49,27 @@ import { LastUpdated } from '@/components/analytics/LastUpdated';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { HomeHeroSection } from './_components/home-hero-section';
 import HomeFAQs from './_components/home-faqs';
+import dynamic from 'next/dynamic';
 import SocialCommunityUpdates from './_components/social-community-updates';
 import { TestimonialsSection } from '@/components/testimonials-section';
 import TrendingProposals from '@/app/dashboard/_components/trending-proposals';
 import GovernanceOverTime from '@/app/dashboard/_components/governance-over-time';
-import EditorHomeDashboard from './_components/persona-home/EditorHomeDashboard';
-import DeveloperHomeDashboard from './_components/persona-home/DeveloperHomeDashboard';
-import BuilderHomeDashboard from './_components/persona-home/BuilderHomeDashboard';
-import NewcomerHomeDashboard from './_components/persona-home/NewcomerHomeDashboard';
-import DeveloperUpgradeWatchSection from './_components/persona-home/DeveloperUpgradeWatchSection';
-import EditorReviewQueueSection from './_components/persona-home/EditorReviewQueueSection';
-import EditorCategoryBreakdownSection from './_components/persona-home/EditorCategoryBreakdownSection';
+
+const EditorHomeDashboard = dynamic(() => import('./_components/persona-home/EditorHomeDashboard'), {
+  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading editor workspace…" /></div>,
+});
+const DeveloperHomeDashboard = dynamic(() => import('./_components/persona-home/DeveloperHomeDashboard'), {
+  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading developer workspace…" /></div>,
+});
+const BuilderHomeDashboard = dynamic(() => import('./_components/persona-home/BuilderHomeDashboard'), {
+  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading builder workspace…" /></div>,
+});
+const NewcomerHomeDashboard = dynamic(() => import('./_components/persona-home/NewcomerHomeDashboard'), {
+  loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading newcomer workspace…" /></div>,
+});
+const DeveloperUpgradeWatchSection = dynamic(() => import('./_components/persona-home/DeveloperUpgradeWatchSection'));
+const EditorReviewQueueSection = dynamic(() => import('./_components/persona-home/EditorReviewQueueSection'));
+const EditorCategoryBreakdownSection = dynamic(() => import('./_components/persona-home/EditorCategoryBreakdownSection'));
 import { WeeklyRecapSection } from './_components/WeeklyRecapSection';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';

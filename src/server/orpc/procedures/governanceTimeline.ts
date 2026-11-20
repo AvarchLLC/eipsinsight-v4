@@ -5,6 +5,9 @@ import * as z from 'zod'
 const HOMEPAGE_EXCLUDED_EIP_NUMBERS_SQL = '(2512, 3297, 1047)';
 const EXCLUDE_PLACEHOLDER_RIPS_SQL = 'rip_number <> 0';
 
+let trendingProposalsCache: { data: any[]; timestamp: number } | null = null;
+const TRENDING_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+
 export const governanceTimelineProcedures = {
   getTimelineByCategory: optionalAuthProcedure
     .input(z.object({
@@ -280,7 +283,11 @@ const sql = `
       limit: z.number().optional().default(6)
     }))
     .handler(async ({ input, context }) => {
-try {
+      const now = Date.now();
+      if (trendingProposalsCache && (now - trendingProposalsCache.timestamp < TRENDING_CACHE_TTL_MS)) {
+        return trendingProposalsCache.data.slice(0, input.limit);
+      }
+      try {
         // Fetch latest topics from Ethereum Magicians
         const response = await fetch('https://ethereum-magicians.org/latest.json', {
           headers: {
@@ -461,9 +468,13 @@ try {
           return b.replies - a.replies;
         });
 
+        trendingProposalsCache = { data: processed, timestamp: Date.now() };
         return processed.slice(0, input.limit);
       } catch (error) {
         console.error('Failed to fetch trending proposals:', error);
+        if (trendingProposalsCache?.data?.length) {
+          return trendingProposalsCache.data.slice(0, input.limit);
+        }
         return [];
       }
     }),

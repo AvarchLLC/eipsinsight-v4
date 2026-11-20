@@ -36,9 +36,20 @@ export function ungroundedDateTokens(
   const lower = text.toLowerCase();
   const flagged = new Set<string>();
 
+  const groundedMonths = MONTHS.filter(
+    (m) => new RegExp(`\\b${m}\\b`).test(lower) && transcriptNormalized.includes(m)
+  );
+
   for (const match of lower.matchAll(/\b(20\d{2})\b/g)) {
     const year = match[1];
-    if (!transcriptNormalized.includes(year)) flagged.add(year);
+    // Don't flag the current year if the text already contains a verified month from the transcript
+    // (speakers naturally say "December 14th" without explicitly repeating "twenty twenty-six").
+    const isCurrentYearWithGroundedMonth =
+      year === new Date().getFullYear().toString() && groundedMonths.length > 0;
+
+    if (!transcriptNormalized.includes(year) && !isCurrentYearWithGroundedMonth) {
+      flagged.add(year);
+    }
   }
 
   for (const month of MONTHS) {
