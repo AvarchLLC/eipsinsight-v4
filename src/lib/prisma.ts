@@ -14,9 +14,8 @@ function createPrisma() {
   const adapterConnectionString = normalizeConnectionStringForTls(connectionString);
   const adapter = new PrismaPg({
     connectionString: adapterConnectionString,
-    // Limit connections per serverless instance to avoid exhausting PgBouncer pool.
-    // Default 10 × many Vercel instances = query_wait_timeout. Use 2–3 per instance.
-    max: 3,
+    // Configurable connection pool size: default 10 to prevent connection starvation during parallel oRPC queries.
+    max: process.env.DATABASE_POOL_MAX ? parseInt(process.env.DATABASE_POOL_MAX, 10) : 10,
     ...(shouldAllowSelfSignedTls(connectionString) && {
       ssl: { rejectUnauthorized: false },
     }),

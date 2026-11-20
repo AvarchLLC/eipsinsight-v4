@@ -763,6 +763,7 @@ model contributor_activity {
   @@index([role, occurred_at], map: "idx_contributor_activity_role_occurred")
   @@index([action_type, occurred_at], map: "idx_contributor_activity_action_occurred")
   @@index([pr_number, repository_id], map: "idx_contributor_activity_pr_repo")
+  @@index([repository_id, pr_number, occurred_at(sort: Desc)], map: "idx_contributor_activity_repo_pr_occurred")
 }
 
 model pr_events {
@@ -779,6 +780,8 @@ model pr_events {
   repositories  repositories? @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([repository_id, pr_number], map: "pr_events_repository_id_pr_number_index")
+  @@index([actor_role, created_at(sort: Desc)], map: "idx_pr_events_actor_role_created_at")
+  @@index([created_at(sort: Desc)], map: "idx_pr_events_created_at")
 }
 
 model pr_governance_state {
@@ -802,6 +805,8 @@ model pr_governance_state {
   repositories                 repositories @relation(fields: [repository_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@id([repository_id, pr_number])
+  @@index([current_state, category], map: "idx_pr_governance_state_lookup")
+  @@index([subcategory], map: "idx_pr_governance_state_subcategory")
 }
 
 model upgrade_composition_current {

@@ -1870,7 +1870,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
 
       return getPRMonthlyActivityCached(
         input.repo ?? null,
@@ -1885,7 +1885,7 @@ export const analyticsProcedures = {
     }))
     .handler(async ({ input }) => {
       try {
-        await maybeReconcileOpenPRs(input.repo ?? null);
+        void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
         return await getPROpenStateCached(input.repo ?? null);
       } catch (error) {
         if (isConnectionSaturationError(error)) {
@@ -1905,7 +1905,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
       return getPRGovernanceStatesCached(input.repo ?? null);
     }),
 
@@ -1914,7 +1914,7 @@ export const analyticsProcedures = {
       repo: z.enum(['eips', 'ercs', 'rips']).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
 
       const results = await prisma.$queryRawUnsafe<Array<{
         label: string;
@@ -2102,7 +2102,7 @@ export const analyticsProcedures = {
     .handler(async ({ input }) => {
       const monthStr = `${input.year}-${String(input.month).padStart(2, '0')}`;
       try {
-        await maybeReconcileOpenPRs(input.repo ?? null);
+        void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
         return await getPRMonthHeroKPIsCached(input.repo ?? null, monthStr);
       } catch (error) {
         if (isConnectionSaturationError(error)) {
@@ -2127,7 +2127,7 @@ export const analyticsProcedures = {
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
 
       const results = await prisma.$queryRawUnsafe<Array<{
         category: string;
@@ -2197,7 +2197,7 @@ export const analyticsProcedures = {
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
       const results = await prisma.$queryRawUnsafe<Array<{
         process_type: string;
         gov_state: string;
@@ -2268,7 +2268,7 @@ export const analyticsProcedures = {
       to: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         category: string;
@@ -2330,7 +2330,7 @@ export const analyticsProcedures = {
       to: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
       const results = await prisma.$queryRawUnsafe<Array<{
         month: string;
         state: string;
@@ -2388,7 +2388,7 @@ export const analyticsProcedures = {
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
 
       const results = await prisma.$queryRawUnsafe<Array<{
         state: string;
@@ -2484,7 +2484,7 @@ export const analyticsProcedures = {
       month: z.string().regex(/^\d{4}-\d{2}$/).optional(),
     }))
     .handler(async ({ input }) => {
-      await maybeReconcileOpenPRs(input.repo ?? null);
+      void maybeReconcileOpenPRs(input.repo ?? null).catch(() => {});
 
       const rows = await prisma.$queryRawUnsafe<Array<{
         pr_number: number;
@@ -7044,6 +7044,7 @@ export const analyticsProcedures = {
             SELECT pe.actor FROM pr_events pe
             WHERE pe.repository_id = se.repository_id
               AND (se.pr_number IS NULL OR pe.pr_number = se.pr_number)
+              AND pe.created_at >= se.changed_at - INTERVAL '7 days'
               AND pe.created_at <= se.changed_at + INTERVAL '1 day'
             ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - pe.created_at))) ASC
             LIMIT 1
@@ -7052,6 +7053,7 @@ export const analyticsProcedures = {
             SELECT ca.actor FROM contributor_activity ca
             WHERE ca.repository_id = se.repository_id
               AND (se.pr_number IS NULL OR ca.pr_number = se.pr_number)
+              AND ca.occurred_at >= se.changed_at - INTERVAL '7 days'
               AND ca.occurred_at <= se.changed_at + INTERVAL '1 day'
             ORDER BY ABS(EXTRACT(EPOCH FROM (se.changed_at - ca.occurred_at))) ASC
             LIMIT 1
