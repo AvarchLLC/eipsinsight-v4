@@ -24,7 +24,7 @@ type Counts = {
   declined: number;
 };
 
-type DeveloperUpgradeWatchSectionProps = {
+type UpgradeWatchSectionProps = {
   sectionTitleClass: string;
   sectionSubtitleClass: string;
   upgradeWatchSlug: string;
@@ -45,7 +45,7 @@ type DeveloperUpgradeWatchSectionProps = {
   downloadMetadataLoading: boolean;
 };
 
-export default function DeveloperUpgradeWatchSection({
+export default function UpgradeWatchSection({
   sectionTitleClass,
   sectionSubtitleClass,
   upgradeWatchSlug,
@@ -57,7 +57,7 @@ export default function DeveloperUpgradeWatchSection({
   latestCounts,
   onDownloadMetadata,
   downloadMetadataLoading,
-}: DeveloperUpgradeWatchSectionProps) {
+}: UpgradeWatchSectionProps) {
   const [showTable, setShowTable] = useState(false);
   const [chartView, setChartView] = useState<'compact' | 'composition'>('compact');
 

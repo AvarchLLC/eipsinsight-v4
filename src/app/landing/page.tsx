@@ -14,7 +14,6 @@ import TrendingProposals from './_components/trending-proposals';
 import LatestUpdates from './_components/latest-updates';
 import SocialCommunityUpdates from './_components/social-community-updates';
 import FAQs from './_components/faqs';
-import { PersonaNudgeBanner } from '@/components/persona-nudge-banner';
 
 export default function EIPsInsightHero() {
   return (
@@ -138,16 +137,6 @@ export default function EIPsInsightHero() {
               <span className="rounded-full border border-blue-300/50 bg-blue-500/10 px-3 py-1 text-blue-700 dark:border-blue-300/30 dark:text-blue-200">RIPs</span>
               <span className="rounded-full border border-slate-300/60 bg-slate-500/10 px-3 py-1 text-slate-700 dark:border-slate-300/30 dark:text-slate-200">Governance</span>
             </div>
-          </motion.div>
-
-          {/* Persona Nudge Banner - gentle prompt for new users */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, delay: 0.5 }}
-            className="mt-8"
-          >
-            <PersonaNudgeBanner variant="card" className="mx-auto max-w-md" />
           </motion.div>
           
         </div>

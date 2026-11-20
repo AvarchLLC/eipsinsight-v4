@@ -20,7 +20,6 @@ import {
   ChevronDown,
   Crown,
   Info,
-  ArrowUpRight,
   Flame,
   Video,
   CalendarClock,
@@ -34,9 +33,6 @@ import { useSession } from "@/hooks/useSession";
 import { ProfileAvatar } from "@/components/profile-avatar";
 import { SearchBar } from "@/components/search-bar";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { usePersonaStore } from "@/stores/personaStore";
-import { usePersonaSyncOnChange } from "@/hooks/usePersonaSync";
-import { PERSONAS, PERSONA_LIST, type Persona } from "@/lib/persona";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -168,39 +164,6 @@ const mobileQuickItems = [
   { title: "Resources", href: "/resources", icon: BookOpen },
 ];
 
-const PERSONA_TONE: Record<string, string> = {
-  emerald: "text-emerald-300 border-emerald-400/35 bg-emerald-500/12",
-  baby: "text-sky-300 border-sky-300/35 bg-sky-400/12",
-  orange: "text-orange-300 border-orange-300/35 bg-orange-500/12",
-  purple: "text-purple-300 border-purple-300/35 bg-purple-500/12",
-  violet: "text-violet-300 border-violet-300/35 bg-violet-500/12",
-  sky: "text-cyan-200 border-cyan-200/40 bg-cyan-300/12",
-};
-
-const PERSONA_ICON_TONE: Record<string, string> = {
-  emerald: "bg-emerald-500/15 text-emerald-400 border-emerald-400/30",
-  baby: "bg-sky-400/15 text-sky-300 border-sky-300/30",
-  orange: "bg-orange-500/15 text-orange-300 border-orange-300/30",
-  purple: "bg-purple-500/15 text-purple-300 border-purple-300/30",
-  violet: "bg-violet-500/15 text-violet-300 border-violet-300/30",
-  sky: "bg-cyan-300/15 text-cyan-200 border-cyan-200/35",
-};
-
-const PERSONA_HOVER_TONE: Record<string, string> = {
-  emerald:
-    "hover:bg-emerald-500/12 hover:border-emerald-400/30 hover:text-foreground focus:bg-emerald-500/12 focus:border-emerald-400/30 focus:text-foreground data-[highlighted]:bg-emerald-500/12 data-[highlighted]:border-emerald-400/30 data-[highlighted]:text-foreground",
-  baby:
-    "hover:bg-sky-400/12 hover:border-sky-300/30 hover:text-foreground focus:bg-sky-400/12 focus:border-sky-300/30 focus:text-foreground data-[highlighted]:bg-sky-400/12 data-[highlighted]:border-sky-300/30 data-[highlighted]:text-foreground",
-  orange:
-    "hover:bg-orange-500/12 hover:border-orange-300/30 hover:text-foreground focus:bg-orange-500/12 focus:border-orange-300/30 focus:text-foreground data-[highlighted]:bg-orange-500/12 data-[highlighted]:border-orange-300/30 data-[highlighted]:text-foreground",
-  purple:
-    "hover:bg-purple-500/12 hover:border-purple-300/30 hover:text-foreground focus:bg-purple-500/12 focus:border-purple-300/30 focus:text-foreground data-[highlighted]:bg-purple-500/12 data-[highlighted]:border-purple-300/30 data-[highlighted]:text-foreground",
-  violet:
-    "hover:bg-violet-500/12 hover:border-violet-300/30 hover:text-foreground focus:bg-violet-500/12 focus:border-violet-300/30 focus:text-foreground data-[highlighted]:bg-violet-500/12 data-[highlighted]:border-violet-300/30 data-[highlighted]:text-foreground",
-  sky:
-    "hover:bg-cyan-300/12 hover:border-cyan-200/35 hover:text-foreground focus:bg-cyan-300/12 focus:border-cyan-200/35 focus:text-foreground data-[highlighted]:bg-cyan-300/12 data-[highlighted]:border-cyan-200/35 data-[highlighted]:text-foreground",
-};
-
 export default function Navbar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -209,10 +172,6 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [membershipTier, setMembershipTier] = useState<string>("free");
   const { data: session } = useSession();
-  const { persona, setPersona, isHydrated } = usePersonaStore();
-  const { syncPersonaToServer, isAuthenticated } = usePersonaSyncOnChange();
-  // Persona is being deprecated — the navbar switcher stays wired but hidden.
-  const SHOW_PERSONA_SWITCHER: boolean = false;
 
   const userName = session?.user?.name ?? session?.user?.email;
 
@@ -226,16 +185,6 @@ export default function Navbar() {
     }
   }, [session?.user]);
 
-  // Handle persona change - sync to server then redirect
-  const handlePersonaChange = async (newPersona: Persona) => {
-    // Sync to server first if logged in
-    if (isAuthenticated) {
-      await syncPersonaToServer(newPersona);
-    }
-    // Then update local state and redirect
-    setPersona(newPersona, { redirect: false });
-  };
-
   // Handle scroll for sticky navbar effect
   useEffect(() => {
     const handleScroll = () => {
@@ -245,16 +194,6 @@ export default function Navbar() {
     handleScroll();
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const currentPersona = persona ? PERSONAS[persona] : null;
-  const PersonaIcon = currentPersona?.icon;
-  const hasPersona = persona !== null;
-  const currentPersonaTone = currentPersona ? PERSONA_TONE[currentPersona.color] : "";
-  const showPersonaNudge =
-    !session?.user &&
-    !hasPersona &&
-    typeof window !== "undefined" &&
-    window.localStorage.getItem("eipsinsight_persona_nudge_dismissed") !== "1";
 
   const handleSignOut = async () => {
     try {
@@ -316,91 +255,9 @@ export default function Navbar() {
             </Link>
           </div>
 
-          {/* RIGHT: Theme + Persona + Profile (Desktop) */}
-          <div className="hidden md:flex items-center justify-end gap-1.5 shrink-0 basis-[220px] min-w-[220px]">
+          {/* RIGHT: Theme + Profile (Desktop) */}
+          <div className="hidden md:flex items-center justify-end gap-2 shrink-0">
             <ThemeToggle variant="switch" className="shrink-0" />
-            {/* Compact Persona Switcher */}
-            {/* Persona switcher removed from navbar (persona is being deprecated). */}
-            {SHOW_PERSONA_SWITCHER && isHydrated && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <div className="relative">
-                    {showPersonaNudge && (
-                      <div className="pointer-events-none absolute -right-1 -top-7 z-[999] flex items-center gap-1 rounded-md border border-primary/40 bg-background px-1.5 py-0.5 text-[10px] font-medium text-primary shadow-[0_0_16px_rgb(var(--persona-accent-rgb)/0.24)]">
-                        <ArrowUpRight className="h-3 w-3" />
-                        Persona
-                      </div>
-                    )}
-                    <button
-                      data-tour="persona-switch"
-                      className={cn(
-                        "relative flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-all duration-200",
-                        "hover:scale-[1.02]",
-                        showPersonaNudge && "persona-glow border-primary/55 bg-primary/12 ring-1 ring-primary/35",
-                        hasPersona
-                          ? cn("text-foreground", currentPersonaTone, "hover:border-primary/40")
-                          : "animate-pulse border-primary/40 bg-primary/10 text-primary"
-                      )}
-                    >
-                      {hasPersona && PersonaIcon ? (
-                        <>
-                          <PersonaIcon className="h-3.5 w-3.5 text-primary" />
-                          <span className="text-xs leading-none">{currentPersona?.shortLabel}</span>
-                        </>
-                      ) : (
-                        <span className="text-xs font-medium">Select persona</span>
-                      )}
-                      <ChevronDown className={cn("h-3 w-3", hasPersona ? "text-current/80" : "text-muted-foreground")} />
-                    </button>
-                  </div>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                  align="end"
-                  className="w-64 border-border bg-popover/95 p-1 backdrop-blur-xl"
-                >
-                  {!hasPersona && (
-                    <div className="mb-1 border-b border-border px-2 py-2 text-xs text-muted-foreground">
-                      Choose how you use EIPsInsight
-                    </div>
-                  )}
-                  {PERSONA_LIST.map((personaId) => {
-                    const meta = PERSONAS[personaId];
-                    const Icon = meta.icon;
-                    const isSelected = personaId === persona;
-                    const tone = PERSONA_TONE[meta.color];
-                    const iconTone = PERSONA_ICON_TONE[meta.color];
-                    const hoverTone = PERSONA_HOVER_TONE[meta.color];
-                    return (
-                      <DropdownMenuItem
-                        key={personaId}
-                        onClick={() => {
-                          window.localStorage.setItem("eipsinsight_persona_nudge_dismissed", "1");
-                          void handlePersonaChange(personaId);
-                        }}
-                        className={cn(
-                          "flex cursor-pointer items-center gap-2 rounded-md border border-transparent px-2 py-2.5 transition-all duration-200",
-                          isSelected
-                            ? cn(tone, "shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.18)]")
-                            : cn("bg-transparent text-foreground", hoverTone)
-                        )}
-                      >
-                        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-md border", iconTone)}>
-                          <Icon className="h-4 w-4 shrink-0" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className={cn("text-sm font-medium", isSelected ? "text-foreground" : "text-muted-foreground")}>
-                            {meta.shortLabel}
-                          </span>
-                          <span className="text-[10px] leading-tight text-muted-foreground/90">
-                            {meta.description.slice(0, 50)}...
-                          </span>
-                        </div>
-                      </DropdownMenuItem>
-                    );
-                  })}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
 
             {/* Profile / Auth */}
             {!session?.user ? (
@@ -607,56 +464,8 @@ export default function Navbar() {
               </Link>
             )}
 
-            {/* Mobile Persona + Auth Row */}
-            <div className="flex items-center justify-between gap-2 border-t border-border pt-2">
-              {/* Persona */}
-              {/* Persona switcher removed from navbar (persona is being deprecated). */}
-            {SHOW_PERSONA_SWITCHER && isHydrated && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button 
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-sm",
-                        hasPersona
-                          ? cn("text-foreground", currentPersonaTone)
-                          : "border-primary/40 bg-primary/10 text-primary"
-                      )}
-                    >
-                      {hasPersona && PersonaIcon ? (
-                        <>
-                          <PersonaIcon className="h-3.5 w-3.5 text-primary" />
-                          <span className="text-xs">{currentPersona?.shortLabel}</span>
-                        </>
-                      ) : (
-                        <span className="text-xs font-medium">Select persona</span>
-                      )}
-                      <ChevronDown className={cn("h-3 w-3", hasPersona ? "text-current/80" : "text-muted-foreground")} />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-48 border-border bg-popover/95 backdrop-blur-xl">
-                    {PERSONA_LIST.map((personaId) => {
-                      const meta = PERSONAS[personaId];
-                      const Icon = meta.icon;
-                      const isSelected = personaId === persona;
-                      const tone = PERSONA_TONE[meta.color];
-                      const hoverTone = PERSONA_HOVER_TONE[meta.color];
-                      return (
-                        <DropdownMenuItem
-                          key={personaId}
-                          onClick={() => handlePersonaChange(personaId)}
-                          className={cn(
-                            "flex items-center gap-2 rounded-md border border-transparent px-2 py-2",
-                            isSelected ? tone : hoverTone
-                          )}
-                        >
-                          <Icon className={cn("h-4 w-4", isSelected ? "text-current" : "text-muted-foreground")} />
-                          <span className={cn("text-sm", isSelected ? "text-foreground" : "text-muted-foreground")}>{meta.shortLabel}</span>
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
+            {/* Mobile Auth Row */}
+            <div className="flex items-center justify-end gap-2 border-t border-border pt-2">
 
               {/* Auth */}
               {!session?.user ? (
