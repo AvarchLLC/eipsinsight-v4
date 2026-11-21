@@ -48,13 +48,19 @@ export function EditorActionsExplorer({
   from,
   to,
   actors,
+  selectedActor,
+  onActorChange,
+  hideHeader = false,
 }: {
   repo?: 'eips' | 'ercs' | 'rips';
   from?: string;
   to?: string;
   actors: string[];
+  selectedActor?: string;
+  onActorChange?: (actor: string) => void;
+  hideHeader?: boolean;
 }) {
-  const [actor, setActor] = useState<string>('');
+  const [actor, setActor] = useState<string>(selectedActor ?? '');
   const [actionType, setActionType] = useState<ActionType | ''>('');
   const [category, setCategory] = useState<string>('');
   const [state, setState] = useState<'open' | 'closed' | 'merged' | ''>('');
@@ -64,6 +70,13 @@ export function EditorActionsExplorer({
   const [page, setPage] = useState(1);
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Sync with selectedActor if passed from outside
+  useEffect(() => {
+    if (selectedActor !== undefined) {
+      setActor(selectedActor);
+    }
+  }, [selectedActor]);
 
   // Debounce the free-text search.
   useEffect(() => {
@@ -114,21 +127,31 @@ export function EditorActionsExplorer({
 
   return (
     <section id="editor-actions-explorer" className="space-y-3">
-      <div className="flex flex-col gap-1">
-        <div className="inline-flex items-center gap-2">
-          <SlidersHorizontal className="h-5 w-5 text-primary" />
-          <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">PR &amp; Action Explorer</h2>
+      {!hideHeader && (
+        <div className="flex flex-col gap-1">
+          <div className="inline-flex items-center gap-2">
+            <SlidersHorizontal className="h-5 w-5 text-primary" />
+            <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">PR &amp; Action Explorer</h2>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Query every indexed editor action like a GitHub search — scoped to the date range and repository selected above, with
+            further filters below. Counts both total actions and distinct PRs.
+          </p>
         </div>
-        <p className="text-xs text-muted-foreground">
-          Query every indexed editor action like a GitHub search — scoped to the date range and repository selected above, with
-          further filters below. Counts both total actions and distinct PRs.
-        </p>
-      </div>
+      )}
 
-      <div className="rounded-2xl border border-border/40 bg-gradient-to-br from-card/85 to-card/45 p-4 sm:p-5 backdrop-blur-md shadow-lg">
+      <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm">
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2">
-          <select className={selectCls} value={actor} onChange={(e) => setActor(e.target.value)} aria-label="Editor">
+          <select
+            className={selectCls}
+            value={actor}
+            onChange={(e) => {
+              setActor(e.target.value);
+              onActorChange?.(e.target.value);
+            }}
+            aria-label="Editor"
+          >
             <option value="">All editors</option>
             {actors.map((a) => (
               <option key={a} value={a}>{a}</option>
@@ -176,7 +199,23 @@ export function EditorActionsExplorer({
           <span>
             <strong className="text-foreground tabular-nums">{(data?.distinctPrs ?? 0).toLocaleString()}</strong> distinct PRs
           </span>
-          {hasFilters && <span className="text-primary">filtered</span>}
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={() => {
+                setActor('');
+                setActionType('');
+                setCategory('');
+                setState('');
+                setSearchInput('');
+                setSearch('');
+                onActorChange?.('');
+              }}
+              className="inline-flex items-center text-primary hover:underline cursor-pointer font-medium"
+            >
+              Reset filters
+            </button>
+          )}
           {loading && <span className="animate-pulse">loading…</span>}
         </div>
 

@@ -17,6 +17,7 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/admin/client-priority", source: "src/app/admin/client-priority/page.tsx" },
   { pattern: "/insights/review/:year", source: "src/app/insights/review/[year]/page.tsx" },
   { pattern: "/officehours/analytics", source: "src/app/officehours/analytics/page.tsx" },
+  { pattern: "/officehours/reviewers", source: "src/app/officehours/reviewers/page.tsx" },
   { pattern: "/resources/blogs/:slug", source: "src/app/resources/blogs/[slug]/page.tsx" },
   { pattern: "/research/glamsterdam", source: "src/app/research/glamsterdam/page.tsx" },
   { pattern: "/resources/milestones", source: "src/app/resources/milestones/page.tsx" },
