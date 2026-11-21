@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useMemo, useCallback } from "react";
-import Link from "next/link";
 import ReactECharts from "echarts-for-react";
 import {
   Search,
@@ -10,16 +9,11 @@ import {
   Table as TableIcon,
   BarChart3,
   ExternalLink,
-  SlidersHorizontal,
-  Info,
-  Check,
   ChevronDown,
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
   Layers,
-  GitPullRequest,
-  Activity,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CHART_SERIES } from "@/lib/chart-colors";
@@ -62,11 +56,14 @@ export function EditorsLeaderboardTab({
   const [selectedMetric, setSelectedMetric] = useState<"reviews" | "prs" | "actions" | "latency">("reviews");
   const [sortColumn, setSortColumn] = useState<SortColumn>("reviews");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [viewMode, setViewMode] = useState<"table" | "chart">("chart");
-  const [showMacroBreakdowns, setShowMacroBreakdowns] = useState(true);
+  const [viewMode, setViewMode] = useState<"chart" | "table">("chart");
+  const [showMacroBreakdowns, setShowMacroBreakdowns] = useState(false);
 
   const canonicalHandles = useMemo(() => new Set(CANONICAL_EIP_EDITORS.map((e) => e.toLowerCase())), []);
-  const associateHandles = useMemo(() => new Set((ASSOCIATE_EIP_EDITORS as readonly string[]).map((e) => e.toLowerCase())), []);
+  const associateHandles = useMemo(
+    () => new Set((ASSOCIATE_EIP_EDITORS as readonly string[]).map((e) => e.toLowerCase())),
+    [],
+  );
 
   // Filter editors by search and role
   const filteredRows = useMemo(() => {
@@ -123,15 +120,14 @@ export function EditorsLeaderboardTab({
         const latB = b.medianResponseDays ?? 9999;
         return factor * (latA - latB);
       }
-      // default rank by reviews
       return factor * (a.reviews - b.reviews);
     });
   }, [filteredRows, sortColumn, sortDirection]);
 
-  // ECharts horizontal bar chart for Leaderboard
+  // Clean, crisp ECharts horizontal bar chart (no colliding markPoint overlay!)
   const leaderboardHeroOption = useMemo(() => {
     const palette = CHART_SERIES;
-    const topRows = [...sortedRows].slice(0, 12).reverse();
+    const topRows = [...sortedRows].slice(0, 15).reverse();
     const maxValue = Math.max(
       1,
       ...topRows.map((r) => {
@@ -142,6 +138,15 @@ export function EditorsLeaderboardTab({
       }),
     );
 
+    const metricLabel =
+      selectedMetric === "reviews"
+        ? "PR Reviews"
+        : selectedMetric === "prs"
+          ? "PRs Touched"
+          : selectedMetric === "actions"
+            ? "Total Actions"
+            : "Turnaround";
+
     return {
       backgroundColor: "transparent",
       tooltip: {
@@ -151,8 +156,12 @@ export function EditorsLeaderboardTab({
           const idx = params?.[0]?.dataIndex ?? 0;
           const row = topRows[idx];
           if (!row) return "";
-          return `<div style="padding: 6px; font-size: 12px;">
-            <div style="font-weight: 600; margin-bottom: 4px; font-size: 13px;">${row.actor}</div>
+          const avatar = getGitHubAvatarUrl(row.actor);
+          return `<div style="padding: 6px; font-size: 12px; min-width: 170px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+              <img src="${avatar}" style="width: 22px; height: 22px; border-radius: 9999px; object-fit: cover;" />
+              <strong style="font-size: 13px;">${row.actor}</strong>
+            </div>
             <div style="padding: 1px 0;"><span style="color: var(--muted-foreground);">Reviews:</span> <strong>${row.reviews.toLocaleString()}</strong></div>
             <div style="padding: 1px 0;"><span style="color: var(--muted-foreground);">PRs touched:</span> <strong>${row.prsTouched.toLocaleString()}</strong></div>
             <div style="padding: 1px 0;"><span style="color: var(--muted-foreground);">Total actions:</span> <strong>${row.totalActions.toLocaleString()}</strong></div>
@@ -160,17 +169,21 @@ export function EditorsLeaderboardTab({
           </div>`;
         },
       },
-      grid: { top: 16, left: 110, right: 120, bottom: 20, containLabel: true },
+      grid: { top: 12, left: 110, right: 120, bottom: 20, containLabel: true },
       xAxis: {
         type: "value",
-        max: Math.ceil(maxValue * 1.15),
+        max: Math.ceil(maxValue * 1.18),
         axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
         splitLine: { lineStyle: { color: "rgba(148,163,184,0.12)", type: "dashed" } },
       },
       yAxis: {
         type: "category",
         data: topRows.map((r) => r.actor),
-        axisLabel: { color: "var(--foreground)", fontSize: 11, fontWeight: 500 },
+        axisLabel: {
+          color: "var(--foreground)",
+          fontSize: 12,
+          fontWeight: 600,
+        },
         axisTick: { show: false },
         axisLine: { show: false },
       },
@@ -196,30 +209,13 @@ export function EditorsLeaderboardTab({
             show: true,
             position: "right",
             color: "var(--foreground)",
-            fontWeight: 700,
+            fontWeight: 600,
             fontSize: 12,
-            distance: 38,
+            distance: 8,
             formatter: ({ value }: { value: number }) =>
-              selectedMetric === "latency" ? `${Number(value).toFixed(1)}d` : Number(value).toLocaleString(),
-          },
-          markPoint: {
-            symbolKeepAspect: true,
-            label: { show: false },
-            data: topRows.map((r) => ({
-              coord: [
-                (selectedMetric === "reviews"
-                  ? r.reviews
-                  : selectedMetric === "prs"
-                    ? r.prsTouched
-                    : selectedMetric === "actions"
-                      ? r.totalActions
-                      : r.medianResponseDays ?? 0) +
-                  maxValue * 0.035,
-                r.actor,
-              ],
-              symbol: `image://${getGitHubAvatarUrl(r.actor)}`,
-              symbolSize: 24,
-            })),
+              selectedMetric === "latency"
+                ? `${Number(value).toFixed(1)}d`
+                : `${Number(value).toLocaleString()} ${selectedMetric === "reviews" ? "reviews" : selectedMetric === "prs" ? "PRs" : "actions"}`,
           },
         },
       ],
@@ -332,66 +328,18 @@ export function EditorsLeaderboardTab({
   );
 
   return (
-    <div className="space-y-6">
-      {/* Directory & Ranking Controls Card */}
-      <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm shadow-sm space-y-4">
-        {/* Top Controls Row */}
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          {/* Search + Role Filters */}
-          <div className="flex flex-wrap items-center gap-2">
-            <div className="relative min-w-[200px] flex-1 sm:w-64 sm:flex-none">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search editor handle..."
-                className="h-8 w-full rounded-md border border-border bg-background/60 pl-8 pr-3 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
-              />
-            </div>
-
-            {/* Role Filter Chips */}
-            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setRoleFilter("all")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
-                  roleFilter === "all"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                All ({leaderboard.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleFilter("canonical")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
-                  roleFilter === "canonical"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Canonical ({canonicalCount})
-              </button>
-              <button
-                type="button"
-                onClick={() => setRoleFilter("active")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
-                  roleFilter === "active"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                Active ({activeCount})
-              </button>
-            </div>
+    <div className="space-y-4">
+      {/* ONE Single, Unified Leaderboard Container */}
+      <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+        {/* Top Header Row with Title, Metric Switcher, View Toggle & Export */}
+        <div className="flex flex-col gap-3 p-4 border-b border-border/60 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold text-foreground">Editor Leaderboard</h2>
+            <p className="text-[11px] text-muted-foreground">
+              Ranked by <strong className="text-foreground capitalize">{selectedMetric}</strong> ({leaderboardLabel})
+            </p>
           </div>
 
-          {/* Metric Selector & View Toggle & CSV */}
           <div className="flex flex-wrap items-center gap-2">
             {/* Metric Sorter Chips */}
             <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
@@ -419,7 +367,7 @@ export function EditorsLeaderboardTab({
               ))}
             </div>
 
-            {/* View Mode Toggle */}
+            {/* ONLY ONE View Switcher (inside the box header) */}
             <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
               <button
                 type="button"
@@ -432,7 +380,7 @@ export function EditorsLeaderboardTab({
                 )}
               >
                 <BarChart3 className="h-3.5 w-3.5" />
-                <span>Leaderboard Graph</span>
+                <span>Graph</span>
               </button>
               <button
                 type="button"
@@ -445,7 +393,7 @@ export function EditorsLeaderboardTab({
                 )}
               >
                 <TableIcon className="h-3.5 w-3.5" />
-                <span>Directory Table</span>
+                <span>Table</span>
               </button>
             </div>
 
@@ -457,158 +405,94 @@ export function EditorsLeaderboardTab({
               className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
               {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              <span>Export CSV</span>
+              <span>Export</span>
             </button>
           </div>
         </div>
 
-        {/* Informational Sub-hint */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-3 text-[11px] text-muted-foreground">
-          <div className="flex items-center gap-1.5">
-            <Info className="h-3.5 w-3.5 text-primary shrink-0" />
-            <span>
-              <strong>Reviews</strong> counts distinct PRs where the editor approved, requested changes, or reviewed.
-              Sorted by <strong className="text-foreground">{selectedMetric}</strong> ({sortDirection}).
-            </span>
-          </div>
-          <span className="font-mono text-[10px]">
-            Showing {sortedRows.length} of {leaderboard.length} editors
-          </span>
-        </div>
-      </div>
+        {/* Compact Sub-Toolbar: Search & Role Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 bg-muted/20 border-b border-border/50">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-48 sm:w-56">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Filter by handle..."
+                className="h-7 w-full rounded-md border border-border bg-background/60 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
+              />
+            </div>
 
-      {/* Top 3 Podium Highlights (when in chart view) */}
-      {viewMode === "chart" && sortedRows.length >= 2 && (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          {sortedRows.slice(0, 3).map((editor, idx) => {
-            const isFirst = idx === 0;
-            const isSecond = idx === 1;
-
-            const rankBadge = isFirst
-              ? { label: "1st Place", medal: "🥇", border: "border-amber-500/40 bg-amber-500/10 text-amber-500 dark:text-amber-300" }
-              : isSecond
-                ? { label: "2nd Place", medal: "🥈", border: "border-slate-300/40 bg-slate-300/10 text-slate-700 dark:text-slate-200" }
-                : { label: "3rd Place", medal: "🥉", border: "border-amber-700/40 bg-amber-700/10 text-amber-700 dark:text-amber-400" };
-
-            const metricVal =
-              selectedMetric === "reviews"
-                ? `${editor.reviews.toLocaleString()} Reviews`
-                : selectedMetric === "prs"
-                  ? `${editor.prsTouched.toLocaleString()} PRs Touched`
-                  : selectedMetric === "actions"
-                    ? `${editor.totalActions.toLocaleString()} Actions`
-                    : `${editor.medianResponseDays != null ? `${editor.medianResponseDays.toFixed(1)}d` : "–"} Turnaround`;
-
-            return (
-              <div
-                key={`podium-${editor.actor}`}
+            {/* Role Filter Chips */}
+            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setRoleFilter("all")}
                 className={cn(
-                  "rounded-xl border p-4 backdrop-blur-sm transition-all flex items-center justify-between shadow-sm",
-                  isFirst
-                    ? "border-amber-500/35 bg-gradient-to-br from-amber-500/[0.08] to-card/60"
-                    : "border-border/70 bg-card/60",
+                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
+                  roleFilter === "all"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <div className="flex items-center gap-3 min-w-0">
-                  <a
-                    href={`https://github.com/${editor.actor}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 transition-transform hover:scale-105"
-                  >
-                    <img
-                      src={getGitHubAvatarUrl(editor.actor)}
-                      alt={editor.actor}
-                      className="h-10 w-10 rounded-full border border-border/80 object-cover shrink-0"
-                      loading="lazy"
-                    />
-                  </a>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <a
-                        href={`https://github.com/${editor.actor}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors truncate"
-                      >
-                        {editor.actor}
-                      </a>
-                      <span className={cn("rounded-full border px-1.5 py-0.2 text-[9px] font-bold uppercase", rankBadge.border)}>
-                        {rankBadge.medal} {rankBadge.label}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 text-xs font-bold text-foreground tabular-nums">
-                      {metricVal}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {editor.prsTouched.toLocaleString()} PRs · {editor.totalActions.toLocaleString()} actions
-                    </p>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => onInspectActor(editor.actor)}
-                  title={`Inspect ${editor.actor}'s actions`}
-                  className="p-1.5 rounded-lg border border-border/60 hover:border-primary/40 hover:text-primary transition-colors text-muted-foreground cursor-pointer shrink-0"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+                All ({leaderboard.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("canonical")}
+                className={cn(
+                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
+                  roleFilter === "canonical"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Canonical ({canonicalCount})
+              </button>
+              <button
+                type="button"
+                onClick={() => setRoleFilter("active")}
+                className={cn(
+                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
+                  roleFilter === "active"
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Active ({activeCount})
+              </button>
+            </div>
+          </div>
 
-      {/* Main Content: Table or Chart */}
-      {viewMode === "chart" ? (
-        <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/50">
-            <div>
-              <h3 className="text-sm font-semibold text-foreground">
-                Editor Leaderboard Graph
-              </h3>
-              <p className="text-[11px] text-muted-foreground">
-                Comparative ranking by <strong className="text-foreground">{selectedMetric}</strong> ({leaderboardLabel})
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setViewMode("table")}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer"
-            >
-              <span>View Directory Table</span>
-              <TableIcon className="h-3.5 w-3.5" />
-            </button>
-          </div>
-          <div className="h-[460px] w-full">
-            <ReactECharts
-              option={leaderboardHeroOption}
-              style={{ height: "100%", width: "100%" }}
-              opts={{ renderer: "svg" }}
-              notMerge
-            />
-          </div>
+          <span className="font-mono text-[11px] text-muted-foreground">
+            {sortedRows.length} {sortedRows.length === 1 ? "editor" : "editors"}
+          </span>
         </div>
-      ) : (
-        <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
-          <div className="p-3 border-b border-border/70 flex items-center justify-between bg-muted/20">
-            <div>
-              <h3 className="text-xs font-semibold text-foreground">Editor Directory Table</h3>
-              <p className="text-[10px] text-muted-foreground">Detailed metrics, action mix, and per-editor export</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setViewMode("chart")}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer"
-            >
-              <span>Back to Leaderboard Graph</span>
-              <BarChart3 className="h-3.5 w-3.5" />
-            </button>
+
+        {/* Content Area: Graph OR Table */}
+        {viewMode === "chart" ? (
+          <div className="p-4 sm:p-5">
+            {sortedRows.length === 0 ? (
+              <div className="py-12 text-center text-xs text-muted-foreground">
+                No editors match your search filter.
+              </div>
+            ) : (
+              <div className="h-[400px] w-full">
+                <ReactECharts
+                  option={leaderboardHeroOption}
+                  style={{ height: "100%", width: "100%" }}
+                  opts={{ renderer: "svg" }}
+                  notMerge
+                />
+              </div>
+            )}
           </div>
+        ) : (
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>
-                <tr className="border-b border-border/70 bg-muted/40 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <tr className="border-b border-border/70 bg-muted/30 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                   <th scope="col" className="px-4 py-3 w-16 text-center">
                     #
                   </th>
@@ -745,7 +629,6 @@ export function EditorsLeaderboardTab({
                       editor.totalActions > 0 ? (editor.comments / editor.totalActions) * 100 : 0;
                     const otherPct = Math.max(0, 100 - reviewsPct - commentsPct);
 
-                    // Rank badge
                     let rankBadge: React.ReactNode = (
                       <span className="font-mono text-xs text-muted-foreground">#{idx + 1}</span>
                     );
@@ -770,10 +653,7 @@ export function EditorsLeaderboardTab({
                     }
 
                     return (
-                      <tr
-                        key={editor.actor}
-                        className="transition-colors hover:bg-muted/30 group"
-                      >
+                      <tr key={editor.actor} className="transition-colors hover:bg-muted/30 group">
                         {/* Rank */}
                         <td className="px-4 py-3.5 text-center align-middle whitespace-nowrap">
                           {rankBadge}
@@ -902,9 +782,7 @@ export function EditorsLeaderboardTab({
                               : "text-muted-foreground",
                           )}
                         >
-                          {editor.medianResponseDays != null
-                            ? `${editor.medianResponseDays.toFixed(1)}d`
-                            : "–"}
+                          {editor.medianResponseDays != null ? `${editor.medianResponseDays.toFixed(1)}d` : "–"}
                         </td>
 
                         {/* Action Mix Visual Bar */}
@@ -967,10 +845,10 @@ export function EditorsLeaderboardTab({
               </tbody>
             </table>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* Macro Operational Breakdowns: Repository Distribution & Action Type Mix */}
+      {/* Collapsible Macro Operational Breakdowns: Repository Distribution & Action Type Mix */}
       <div className="space-y-3">
         <button
           type="button"
@@ -979,20 +857,16 @@ export function EditorsLeaderboardTab({
         >
           <Layers className="h-4 w-4 text-primary" />
           <span>Repository &amp; Action Mix Breakdowns</span>
-          <ChevronDown
-            className={cn("h-3.5 w-3.5 transition-transform", showMacroBreakdowns ? "rotate-180" : "")}
-          />
+          <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", showMacroBreakdowns ? "rotate-180" : "")} />
         </button>
 
         {showMacroBreakdowns && (
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Repo Distribution */}
             <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm shadow-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground">Repository Mix by Editor</h4>
-                  <p className="text-[10px] text-muted-foreground">EIPs vs ERCs vs RIPs participation</p>
-                </div>
+              <div>
+                <h4 className="text-xs font-semibold text-foreground">Repository Mix by Editor</h4>
+                <p className="text-[10px] text-muted-foreground">EIPs vs ERCs vs RIPs participation</p>
               </div>
               <div className="h-[280px] w-full">
                 <ReactECharts
@@ -1006,11 +880,9 @@ export function EditorsLeaderboardTab({
 
             {/* Event Mix */}
             <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm shadow-sm space-y-2">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h4 className="text-xs font-semibold text-foreground">Action Type Mix by Editor</h4>
-                  <p className="text-[10px] text-muted-foreground">Reviews vs Comments vs Commits/Other</p>
-                </div>
+              <div>
+                <h4 className="text-xs font-semibold text-foreground">Action Type Mix by Editor</h4>
+                <p className="text-[10px] text-muted-foreground">Reviews vs Comments vs Commits/Other</p>
               </div>
               <div className="h-[280px] w-full">
                 <ReactECharts

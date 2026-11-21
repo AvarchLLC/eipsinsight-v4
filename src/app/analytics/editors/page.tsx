@@ -327,7 +327,7 @@ export default function EditorsAnalyticsPage() {
   const TABS = [
     {
       id: "leaderboard" as const,
-      label: "Leaderboard Graph",
+      label: "Leaderboard",
       icon: BarChart3,
       count: leaderboard.length,
     },
