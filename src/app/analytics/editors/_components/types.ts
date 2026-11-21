@@ -71,6 +71,63 @@ export const categoryColors: Record<string, string> = {
   rip: "#fb923c",
 };
 
+export interface TrackMeta {
+  title: string;
+  tagline: string;
+  color: string;
+}
+
+export const TRACK_META: Record<string, TrackMeta> = {
+  erc: {
+    title: "ERC",
+    tagline: "Application & Token Standards",
+    color: "#60a5fa",
+  },
+  core: {
+    title: "Core",
+    tagline: "Consensus, Execution & EVM",
+    color: "#34d399",
+  },
+  interface: {
+    title: "Interface",
+    tagline: "Client APIs, RPC & ABI Specs",
+    color: "#f472b6",
+  },
+  networking: {
+    title: "Networking",
+    tagline: "DevP2P & Wire Protocols",
+    color: "#a78bfa",
+  },
+  meta: {
+    title: "Meta",
+    tagline: "EIP Process & Hardfork Specs",
+    color: "#fbbf24",
+  },
+  informational: {
+    title: "Informational",
+    tagline: "Design Guidelines & Advice",
+    color: "#94a3b8",
+  },
+  rip: {
+    title: "RIP",
+    tagline: "Rollup Improvement Proposals",
+    color: "#fb923c",
+  },
+  governance: {
+    title: "Governance",
+    tagline: "Editorial & Admin Processes",
+    color: "#ef4444",
+  },
+};
+
+export function formatCategoryName(cat: string): string {
+  const c = cat.trim().toLowerCase();
+  if (TRACK_META[c]) return TRACK_META[c].title;
+  if (c === "erc") return "ERC";
+  if (c === "rip") return "RIP";
+  return cat.charAt(0).toUpperCase() + cat.slice(1).toLowerCase();
+}
+
 export const repoColors: Record<string, string> = {
   "ethereum/EIPs": "#22d3ee",
   "ethereum/ERCs": "#60a5fa",

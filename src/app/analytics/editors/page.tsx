@@ -27,6 +27,7 @@ import {
   DailyActivityStackedRow,
   OFFICIAL_EDITOR_HANDLES,
   getTimeWindow,
+  formatCategoryName,
 } from "./_components/types";
 import { EditorsKpiBar } from "./_components/editors-kpi-bar";
 import { EditorsLeaderboardTab } from "./_components/editors-leaderboard-tab";
@@ -187,7 +188,7 @@ export default function EditorsAnalyticsPage() {
   const categoryData = useMemo(() => {
     return categoryCoverage
       .map((entry) => ({
-        category: entry.category.charAt(0).toUpperCase() + entry.category.slice(1),
+        category: formatCategoryName(entry.category),
         count: entry.actors.length,
         actors: entry.actors,
       }))
@@ -200,7 +201,7 @@ export default function EditorsAnalyticsPage() {
       map[actor] = [];
     });
     categoryCoverage.forEach((entry) => {
-      const catLabel = entry.category.charAt(0).toUpperCase() + entry.category.slice(1);
+      const catLabel = formatCategoryName(entry.category);
       entry.actors.forEach((actor) => {
         if (!map[actor]) map[actor] = [];
         if (!map[actor].includes(catLabel)) {
