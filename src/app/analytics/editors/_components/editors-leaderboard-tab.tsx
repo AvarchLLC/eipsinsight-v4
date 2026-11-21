@@ -62,7 +62,7 @@ export function EditorsLeaderboardTab({
   const [selectedMetric, setSelectedMetric] = useState<"reviews" | "prs" | "actions" | "latency">("reviews");
   const [sortColumn, setSortColumn] = useState<SortColumn>("reviews");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [viewMode, setViewMode] = useState<"table" | "chart">("table");
+  const [viewMode, setViewMode] = useState<"table" | "chart">("chart");
   const [showMacroBreakdowns, setShowMacroBreakdowns] = useState(true);
 
   const canonicalHandles = useMemo(() => new Set(CANONICAL_EIP_EDITORS.map((e) => e.toLowerCase())), []);
@@ -160,7 +160,7 @@ export function EditorsLeaderboardTab({
           </div>`;
         },
       },
-      grid: { top: 12, left: 110, right: 80, bottom: 20, containLabel: true },
+      grid: { top: 16, left: 110, right: 120, bottom: 20, containLabel: true },
       xAxis: {
         type: "value",
         max: Math.ceil(maxValue * 1.15),
@@ -177,7 +177,7 @@ export function EditorsLeaderboardTab({
       series: [
         {
           type: "bar",
-          barWidth: 18,
+          barWidth: 22,
           data: topRows.map((r, index) => ({
             value:
               selectedMetric === "reviews"
@@ -189,15 +189,16 @@ export function EditorsLeaderboardTab({
                     : r.medianResponseDays ?? 0,
             itemStyle: {
               color: palette[(topRows.length - 1 - index) % palette.length],
-              borderRadius: [0, 4, 4, 0],
+              borderRadius: [0, 6, 6, 0],
             },
           })),
           label: {
             show: true,
             position: "right",
             color: "var(--foreground)",
-            fontWeight: 600,
-            fontSize: 11,
+            fontWeight: 700,
+            fontSize: 12,
+            distance: 38,
             formatter: ({ value }: { value: number }) =>
               selectedMetric === "latency" ? `${Number(value).toFixed(1)}d` : Number(value).toLocaleString(),
           },
@@ -213,11 +214,11 @@ export function EditorsLeaderboardTab({
                     : selectedMetric === "actions"
                       ? r.totalActions
                       : r.medianResponseDays ?? 0) +
-                  maxValue * 0.04,
+                  maxValue * 0.035,
                 r.actor,
               ],
               symbol: `image://${getGitHubAvatarUrl(r.actor)}`,
-              symbolSize: 22,
+              symbolSize: 24,
             })),
           },
         },
@@ -422,29 +423,29 @@ export function EditorsLeaderboardTab({
             <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
               <button
                 type="button"
-                onClick={() => setViewMode("table")}
-                title="Table Directory"
+                onClick={() => setViewMode("chart")}
                 className={cn(
-                  "rounded-md p-1.5 transition-all cursor-pointer",
-                  viewMode === "table"
-                    ? "bg-background text-foreground shadow-sm"
+                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold transition-all cursor-pointer",
+                  viewMode === "chart"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <TableIcon className="h-4 w-4" />
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span>Leaderboard Graph</span>
               </button>
               <button
                 type="button"
-                onClick={() => setViewMode("chart")}
-                title="Comparative Bar Chart"
+                onClick={() => setViewMode("table")}
                 className={cn(
-                  "rounded-md p-1.5 transition-all cursor-pointer",
-                  viewMode === "chart"
-                    ? "bg-background text-foreground shadow-sm"
+                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold transition-all cursor-pointer",
+                  viewMode === "table"
+                    ? "bg-primary text-primary-foreground shadow-sm"
                     : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                <BarChart3 className="h-4 w-4" />
+                <TableIcon className="h-3.5 w-3.5" />
+                <span>Directory Table</span>
               </button>
             </div>
 
@@ -476,18 +477,110 @@ export function EditorsLeaderboardTab({
         </div>
       </div>
 
+      {/* Top 3 Podium Highlights (when in chart view) */}
+      {viewMode === "chart" && sortedRows.length >= 2 && (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          {sortedRows.slice(0, 3).map((editor, idx) => {
+            const isFirst = idx === 0;
+            const isSecond = idx === 1;
+
+            const rankBadge = isFirst
+              ? { label: "1st Place", medal: "🥇", border: "border-amber-500/40 bg-amber-500/10 text-amber-500 dark:text-amber-300" }
+              : isSecond
+                ? { label: "2nd Place", medal: "🥈", border: "border-slate-300/40 bg-slate-300/10 text-slate-700 dark:text-slate-200" }
+                : { label: "3rd Place", medal: "🥉", border: "border-amber-700/40 bg-amber-700/10 text-amber-700 dark:text-amber-400" };
+
+            const metricVal =
+              selectedMetric === "reviews"
+                ? `${editor.reviews.toLocaleString()} Reviews`
+                : selectedMetric === "prs"
+                  ? `${editor.prsTouched.toLocaleString()} PRs Touched`
+                  : selectedMetric === "actions"
+                    ? `${editor.totalActions.toLocaleString()} Actions`
+                    : `${editor.medianResponseDays != null ? `${editor.medianResponseDays.toFixed(1)}d` : "–"} Turnaround`;
+
+            return (
+              <div
+                key={`podium-${editor.actor}`}
+                className={cn(
+                  "rounded-xl border p-4 backdrop-blur-sm transition-all flex items-center justify-between shadow-sm",
+                  isFirst
+                    ? "border-amber-500/35 bg-gradient-to-br from-amber-500/[0.08] to-card/60"
+                    : "border-border/70 bg-card/60",
+                )}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <a
+                    href={`https://github.com/${editor.actor}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 transition-transform hover:scale-105"
+                  >
+                    <img
+                      src={getGitHubAvatarUrl(editor.actor)}
+                      alt={editor.actor}
+                      className="h-10 w-10 rounded-full border border-border/80 object-cover shrink-0"
+                      loading="lazy"
+                    />
+                  </a>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <a
+                        href={`https://github.com/${editor.actor}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="font-semibold text-sm text-foreground hover:text-primary hover:underline transition-colors truncate"
+                      >
+                        {editor.actor}
+                      </a>
+                      <span className={cn("rounded-full border px-1.5 py-0.2 text-[9px] font-bold uppercase", rankBadge.border)}>
+                        {rankBadge.medal} {rankBadge.label}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-xs font-bold text-foreground tabular-nums">
+                      {metricVal}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {editor.prsTouched.toLocaleString()} PRs · {editor.totalActions.toLocaleString()} actions
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => onInspectActor(editor.actor)}
+                  title={`Inspect ${editor.actor}'s actions`}
+                  className="p-1.5 rounded-lg border border-border/60 hover:border-primary/40 hover:text-primary transition-colors text-muted-foreground cursor-pointer shrink-0"
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Main Content: Table or Chart */}
       {viewMode === "chart" ? (
-        <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm">
-          <div className="mb-2 flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-foreground">
-              Editor Workload Distribution — Top Contributors
-            </h3>
-            <span className="text-[11px] text-muted-foreground">
-              Sorted by {selectedMetric.toUpperCase()}
-            </span>
+        <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/50">
+            <div>
+              <h3 className="text-sm font-semibold text-foreground">
+                Editor Leaderboard Graph
+              </h3>
+              <p className="text-[11px] text-muted-foreground">
+                Comparative ranking by <strong className="text-foreground">{selectedMetric}</strong> ({leaderboardLabel})
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer"
+            >
+              <span>View Directory Table</span>
+              <TableIcon className="h-3.5 w-3.5" />
+            </button>
           </div>
-          <div className="h-[440px] w-full">
+          <div className="h-[460px] w-full">
             <ReactECharts
               option={leaderboardHeroOption}
               style={{ height: "100%", width: "100%" }}
@@ -498,6 +591,20 @@ export function EditorsLeaderboardTab({
         </div>
       ) : (
         <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+          <div className="p-3 border-b border-border/70 flex items-center justify-between bg-muted/20">
+            <div>
+              <h3 className="text-xs font-semibold text-foreground">Editor Directory Table</h3>
+              <p className="text-[10px] text-muted-foreground">Detailed metrics, action mix, and per-editor export</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setViewMode("chart")}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline cursor-pointer"
+            >
+              <span>Back to Leaderboard Graph</span>
+              <BarChart3 className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-xs">
               <thead>

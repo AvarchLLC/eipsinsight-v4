@@ -5,11 +5,10 @@ import Link from "next/link";
 import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { client } from "@/lib/orpc";
 import { BrandLoader } from "@/components/brand-loader";
-import { AnalyticsHero } from "@/components/analytics/stat-card";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 import {
-  Trophy,
+  BarChart3,
   SlidersHorizontal,
   Grid3x3,
   TrendingUp,
@@ -328,8 +327,8 @@ export default function EditorsAnalyticsPage() {
   const TABS = [
     {
       id: "leaderboard" as const,
-      label: "Rankings & Directory",
-      icon: Trophy,
+      label: "Leaderboard Graph",
+      icon: BarChart3,
       count: leaderboard.length,
     },
     {
@@ -358,23 +357,6 @@ export default function EditorsAnalyticsPage() {
           <span>{error}</span>
         </div>
       )}
-
-      {/* Hero Header */}
-      <AnalyticsHero eyebrow="Editorial Governance" title="The Editors Shaping Ethereum Standards">
-        {OFFICIAL_EDITOR_HANDLES.length} canonical EIP editors have completed{" "}
-        <strong className="text-foreground">{totalActions.toLocaleString()}</strong> indexed actions and{" "}
-        <strong className="text-foreground">{totalReviews.toLocaleString()}</strong> PR reviews in this window (
-        {leaderboardLabel}), with <strong className="text-foreground">{activeEditors}</strong> actively reviewing.
-        {thinCoverageCategories.length > 0 ? (
-          <>
-            {" "}
-            Coverage runs thin in{" "}
-            <span className="font-semibold text-rose-500">{thinCoverageCategories.length} categories</span>.
-          </>
-        ) : (
-          " All major proposal categories maintain active coverage."
-        )}
-      </AnalyticsHero>
 
       {/* Top 5 KPI Stat Cards */}
       <EditorsKpiBar
