@@ -238,21 +238,18 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* CENTER: full search bar when there's room (lg+); a clear search
-              icon-link on medium widths where the sidebar squeezes the header so
-              the field doesn't collapse into an ambiguous, "unresponsive" sliver. */}
-          <div className="hidden md:flex min-w-0 flex-1 justify-center px-2 lg:px-4">
-            <div className="hidden w-full max-w-xl xl:block">
-              <SearchBar />
-            </div>
-            <Link
-              href="/search"
-              aria-label="Search EIPs, ERCs, RIPs"
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-muted/50 px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground xl:hidden"
+          {/* CENTER: Round Pill Search Trigger (Desktop) */}
+          <div className="hidden md:flex min-w-0 flex-1 justify-center px-4 max-w-xl mx-auto">
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+              className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-border bg-muted/50 px-4 text-xs text-muted-foreground transition-all hover:border-foreground/30 hover:bg-muted/80 hover:text-foreground cursor-pointer shadow-2xs"
+              aria-label="Search proposals, people and upgrades (⌘K)"
             >
-              <Search className="h-4 w-4" />
-              <span>Search</span>
-            </Link>
+              <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <span className="flex-1 truncate text-left text-xs font-normal">Search proposals, upgrades, PRs…</span>
+              <kbd className="kbd rounded-full px-2 py-0.5 text-[10px]">⌘K</kbd>
+            </button>
           </div>
 
           {/* RIGHT: Theme + Profile (Desktop) */}
@@ -317,7 +314,7 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* MOBILE: Logo + Menu Toggle */}
+          {/* MOBILE: Logo + Search + Menu Toggle */}
           <div className="flex md:hidden items-center justify-between w-full">
             {/* Mobile Logo */}
             <Link href="/" className="flex items-center gap-2">
@@ -332,18 +329,26 @@ export default function Navbar() {
               </span>
             </Link>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
+                className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-border bg-muted/50 text-muted-foreground hover:border-foreground/30 hover:text-foreground cursor-pointer"
+                aria-label="Open search dialog"
+              >
+                <Search className="h-3.5 w-3.5" />
+              </button>
               <ThemeToggle variant="icon" />
-            <button
-              onClick={() => setMobileOpen(!mobileOpen)}
-              className={cn(
-                "inline-flex items-center justify-center rounded-lg p-2 transition-colors",
-                "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                mobileOpen && "bg-muted/70 text-foreground"
-              )}
-            >
-              {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </button>
+              <button
+                onClick={() => setMobileOpen(!mobileOpen)}
+                className={cn(
+                  "inline-flex items-center justify-center rounded-lg p-1.5 transition-colors cursor-pointer",
+                  "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+                  mobileOpen && "bg-muted/70 text-foreground"
+                )}
+              >
+                {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </div>
           </div>
         </div>
@@ -353,19 +358,19 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="border-t border-border bg-background/98 backdrop-blur-xl md:hidden">
           <div className="space-y-3 px-4 py-4">
-            {/* Mobile Search — links to the full search page (the bare input here
-                had no handlers, so it did nothing when tapped). */}
-            <Link
-              href="/search"
-              onClick={() => setMobileOpen(false)}
-              className={cn(
-                "relative flex h-9 w-full items-center rounded-md border border-border bg-muted/60 px-10 text-sm text-muted-foreground",
-                "transition-colors hover:border-primary/40 hover:text-foreground"
-              )}
+            {/* Mobile Search Button triggers Command Palette */}
+            <button
+              type="button"
+              onClick={() => {
+                setMobileOpen(false);
+                window.dispatchEvent(new Event("open-command-palette"));
+              }}
+              className="relative flex h-9.5 w-full items-center rounded-full border border-border bg-muted/60 px-10 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground cursor-pointer text-left"
             >
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              Search EIPs, ERCs, RIPs, authors…
-            </Link>
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <span>Search EIPs, ERCs, RIPs, authors…</span>
+              <kbd className="kbd rounded-full px-2 py-0.5 text-[10px] ml-auto">⌘K</kbd>
+            </button>
 
             {/* Mobile Navigation (compact + expandable) */}
             <div className="space-y-3">

@@ -29,9 +29,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { client } from '@/lib/orpc';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { CopyLinkButton } from '@/components/header';
+import { SectionHead } from '@/components/ledger/section-head';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { callSeriesShort } from '@/data/call-series';
 import { cn } from '@/lib/utils';
 
@@ -296,74 +295,63 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
   const totalCalls = (data?.recentCalls.length ?? 0) + (data?.devnets.length ?? 0);
 
   return (
-    <section className="mb-8 w-full" id="weekly-recap">
-      {/* Section Header */}
-      <div className="mb-4 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-2">
-            <Flame className="h-5 w-5 text-orange-500 shrink-0" />
+    <section className="mb-10 w-full" id="weekly-recap">
+      <SectionHead
+        index="06"
+        eyebrow="Audit feed & recap"
+        title="Weekly Standards Recap"
+        description="Verifiable, real-time audit feed of new EIP proposals, status transitions, merged PRs, editor reviews, devnets, and ACD call decisions."
+        action={
+          <div className="flex items-center gap-2">
+            <div className="inline-flex items-center gap-1">
+              {[7, 14, 30].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  onClick={() => setDays(d)}
+                  data-active={days === d}
+                  className="chip cursor-pointer"
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
             <Link
               href="/recap"
-              className={cn(
-                sectionTitleClass || 'dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl',
-                'group inline-flex items-center gap-1 transition-colors hover:text-primary'
-              )}
+              className="btn btn-outline h-[1.9rem] px-3 text-xs font-mono"
             >
-              Weekly Standards Recap & Audit Feed
-              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+              Full Feed <ArrowRight className="h-3.5 w-3.5" />
             </Link>
-            <CopyLinkButton sectionId="weekly-recap" tooltipLabel="Copy link" />
           </div>
-          <p className={sectionSubtitleClass || 'mt-1 text-sm text-muted-foreground'}>
-            Verifiable, real-time audit feed of new EIP proposals, status transitions, merged PRs, editor reviews, devnets, and ACD call decisions.
-          </p>
-        </div>
-
-        {/* Timeframe selector in top right corner */}
-        <div className="inline-flex items-center rounded-lg border border-border bg-card/60 p-0.5 shrink-0 self-start sm:self-auto">
-          {[7, 14, 30].map((d) => (
-            <button
-              key={d}
-              type="button"
-              onClick={() => setDays(d)}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-colors ${
-                days === d
-                  ? 'bg-primary/20 text-primary font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
-      </div>
+        }
+      />
 
       {/* Summary Pills Bar */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
-          <span className="font-semibold text-foreground">{totalNew}</span>{' '}
-          <span className="text-muted-foreground">New Proposals</span>
+      <div className="mb-4 flex flex-wrap items-center gap-2 font-mono text-xs">
+        <div className="chip">
+          <span className="font-semibold text-[var(--ink)]">{totalNew}</span>{' '}
+          <span className="text-[var(--ink-faint)]">New Proposals</span>
         </div>
-        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
-          <span className="font-semibold text-foreground">{totalChanges}</span>{' '}
-          <span className="text-muted-foreground">Status Transitions</span>
+        <div className="chip">
+          <span className="font-semibold text-[var(--ink)]">{totalChanges}</span>{' '}
+          <span className="text-[var(--ink-faint)]">Status Transitions</span>
         </div>
-        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
-          <span className="font-semibold text-foreground">{totalPRs}</span>{' '}
-          <span className="text-muted-foreground">Merged PRs</span>
+        <div className="chip">
+          <span className="font-semibold text-[var(--ink)]">{totalPRs}</span>{' '}
+          <span className="text-[var(--ink-faint)]">Merged PRs</span>
         </div>
-        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
-          <span className="font-semibold text-foreground">{totalEditorActions}</span>{' '}
-          <span className="text-muted-foreground">Editor Reviews</span>
+        <div className="chip">
+          <span className="font-semibold text-[var(--ink)]">{totalEditorActions}</span>{' '}
+          <span className="text-[var(--ink-faint)]">Editor Reviews</span>
         </div>
-        <div className="rounded-lg border border-border/80 bg-card/40 px-3 py-1 text-xs">
-          <span className="font-semibold text-foreground">{totalCalls}</span>{' '}
-          <span className="text-muted-foreground">ACD & Devnet Milestones</span>
+        <div className="chip">
+          <span className="font-semibold text-[var(--ink)]">{totalCalls}</span>{' '}
+          <span className="text-[var(--ink-faint)]">ACD & Devnets</span>
         </div>
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-3 flex flex-wrap items-center gap-1.5 border-b border-border/60 pb-3">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5 border-b border-[var(--border)] pb-3">
         {(
           [
             { id: 'all', label: 'All Updates' },
@@ -379,11 +367,8 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
             key={tab.id}
             type="button"
             onClick={() => setFilter(tab.id as RecapFilter)}
-            className={`rounded-md px-3 py-1 text-xs font-medium transition-all ${
-              filter === tab.id
-                ? 'bg-primary/15 border border-primary/40 text-primary font-semibold shadow-xs'
-                : 'border border-transparent text-muted-foreground hover:bg-muted/60 hover:text-foreground'
-            }`}
+            data-active={filter === tab.id}
+            className="chip cursor-pointer"
           >
             {tab.label}
           </button>
@@ -394,12 +379,12 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
       {loading ? (
         <div className="space-y-2 py-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="h-14 animate-pulse rounded-xl bg-card/40 border border-border" />
+            <div key={i} className="h-14 animate-pulse rounded bg-[var(--surface-3)]" />
           ))}
         </div>
       ) : visibleItems.length === 0 ? (
-        <div className="rounded-xl border border-border bg-card/60 px-4 py-8 text-center">
-          <p className="text-sm text-muted-foreground">No standards activity found in the selected timeframe.</p>
+        <div className="card px-4 py-8 text-center">
+          <p className="text-sm text-[var(--ink-muted)]">No standards activity found in the selected timeframe.</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -408,7 +393,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
             return (
               <div
                 key={item.id}
-                className="overflow-hidden rounded-xl border border-border/70 bg-card/60 backdrop-blur-xs transition-all hover:border-primary/30"
+                className="tile overflow-hidden"
               >
                 <div className="flex items-center justify-between px-4 py-3 gap-3">
                   <div
@@ -416,40 +401,36 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
                     className="flex flex-1 items-center gap-3 cursor-pointer min-w-0"
                   >
                     {item.actor ? (
-                      <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-border" title={`@${item.actor}`}>
+                      <div className="h-7 w-7 flex-shrink-0 overflow-hidden rounded-full ring-1 ring-[var(--border)]" title={`@${item.actor}`}>
                         <img src={getAvatarUrl(item.actor)} alt={item.actor} className="h-full w-full object-cover" />
                       </div>
                     ) : (
-                      <Badge variant="outline" className="shrink-0 text-[10px] bg-background/80 font-medium">
-                        {item.badgeText}
-                      </Badge>
+                      <LedgerBadge token={item.badgeText} />
                     )}
 
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         {item.actor && (
-                          <Badge variant="outline" className="shrink-0 text-[10px] bg-background/80 font-medium">
-                            {item.badgeText}
-                          </Badge>
+                          <LedgerBadge token={item.badgeText} />
                         )}
-                        <p className="truncate text-sm font-semibold text-foreground">{item.title}</p>
+                        <p className="truncate text-sm font-semibold text-[var(--ink)]">{item.title}</p>
                       </div>
                       {item.subtitle && (
-                        <p className="truncate text-xs text-muted-foreground mt-0.5">{item.subtitle}</p>
+                        <p className="truncate text-xs text-[var(--ink-muted)] mt-0.5">{item.subtitle}</p>
                       )}
                     </div>
                   </div>
 
                   <div className="flex items-center gap-3 shrink-0">
                     {item.dateIso && (
-                      <span className="text-xs text-muted-foreground hidden sm:inline tabular-nums">
+                      <span className="text-xs text-[var(--ink-faint)] font-mono hidden sm:inline tabular-nums">
                         {formatDate(item.dateIso)} ({timeAgo(item.dateIso)})
                       </span>
                     )}
 
                     <Link
                       href={item.href}
-                      className="text-xs font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                      className="text-xs font-mono font-semibold text-[var(--brand-strong)] hover:underline inline-flex items-center gap-1"
                     >
                       [Check]
                     </Link>
@@ -457,7 +438,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
                     <button
                       type="button"
                       onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                      className="text-muted-foreground hover:text-foreground"
+                      className="text-[var(--ink-faint)] hover:text-[var(--ink)] cursor-pointer"
                     >
                       {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </button>
@@ -472,17 +453,17 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
                       animate={{ height: 'auto', opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.2 }}
-                      className="border-t border-border/60 bg-muted/20 px-4 py-3"
+                      className="border-t border-[var(--border)] bg-[var(--surface-2)] px-4 py-3"
                     >
-                      <div className="space-y-2 text-xs text-muted-foreground">
-                        <p className="text-foreground font-medium">{item.title}</p>
+                      <div className="space-y-2 text-xs text-[var(--ink-muted)]">
+                        <p className="text-[var(--ink)] font-medium">{item.title}</p>
                         {item.subtitle && <p>{item.subtitle}</p>}
                         {item.details}
 
                         <div className="flex items-center gap-3 pt-2">
                           <Link
                             href={item.href}
-                            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+                            className="btn btn-outline h-7 px-2.5 text-xs font-mono"
                           >
                             View Observability Details
                             <ArrowRight className="h-3 w-3" />
@@ -492,7 +473,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
                               href={item.externalHref}
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2.5 py-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                              className="btn btn-outline h-7 px-2.5 text-xs font-mono"
                             >
                               Verify on GitHub
                               <ExternalLink className="h-3 w-3" />
@@ -512,11 +493,10 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
       {/* Show More Button */}
       {hasMore && (
         <div className="mt-4 flex justify-center">
-          <Button
+          <button
             type="button"
-            variant="outline"
             onClick={() => setShowAll(!showAll)}
-            className="border-border bg-card/60 hover:bg-muted text-xs gap-1.5 font-medium px-6"
+            className="btn btn-outline h-8 px-6 text-xs font-mono"
           >
             {showAll ? (
               <>
@@ -527,7 +507,7 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
                 <ChevronDown className="h-4 w-4" /> Show {filteredItems.length - INITIAL_LIMIT} More Updates
               </>
             )}
-          </Button>
+          </button>
         </div>
       )}
     </section>

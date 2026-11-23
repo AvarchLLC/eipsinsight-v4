@@ -32,18 +32,18 @@ type Article = {
 const ARTICLES: Article[] = [
   {
     slug: "glamsterdam",
-    title: "What Glamsterdam breaks",
-    dek: "EIP-8037/8038 reprice on-chain storage. A differential replay of real mainnet transactions finds ERC-4337 account abstraction hard-breaks at verificationGasLimit, the class the professional audits missed.",
-    tags: ["Glamsterdam", "EIP-8037/8038", "Account Abstraction"],
+    title: "What Glamsterdam reprices",
+    dek: "EIP-8037/8038 reprice on-chain storage gas. On our own archive node, ~99,000 plain ETH transfers a day go to new accounts that would fail under the new rules. A scan of the 300 busiest contracts flags 115 more candidates to re-check.",
+    tags: ["Glamsterdam", "EIP-8037/8038", "Gas repricing"],
     date: "November 2026",
     metric: {
-      eyebrow: "Hard-break rate",
-      unit: "%",
-      max: 55,
+      eyebrow: "Flagged by invariant",
+      unit: "",
+      max: 115,
       bars: [
-        { label: "4337 module", value: 50 },
-        { label: "EntryPoint v0.7", value: 34 },
-        { label: "EntryPoint v0.6", value: 26 },
+        { label: "INV-1 failed call", value: 96 },
+        { label: "INV-3 gas returned", value: 73 },
+        { label: "INV-7 fixed reserves", value: 32 },
       ],
     },
   },
@@ -70,7 +70,7 @@ export default function ResearchIndexPage() {
             index="01"
             eyebrow="Published"
             title="On-chain impact"
-            description="What upcoming protocol changes actually do, replayed against real mainnet transactions."
+            description="How upcoming protocol changes land on real contracts, scanned and measured against mainnet."
           />
 
           <div className="space-y-5">
@@ -83,7 +83,7 @@ export default function ResearchIndexPage() {
                 <div className="flex w-full shrink-0 flex-col justify-center gap-4 border-b border-[var(--border)] bg-[var(--surface-2)] p-6 sm:w-[300px] sm:border-b-0 sm:border-r lg:w-[380px]">
                   <div className="flex items-baseline justify-between">
                     <span className="eyebrow">{a.metric.eyebrow}</span>
-                    <span className="eyebrow text-[var(--c-withdrawn)]">replay</span>
+                    <span className="eyebrow text-[var(--brand-strong)]">scan</span>
                   </div>
                   <div className="space-y-2.5">
                     {a.metric.bars.map((b) => (
@@ -93,7 +93,7 @@ export default function ResearchIndexPage() {
                         </span>
                         <span className="h-[0.9rem] flex-1 overflow-hidden rounded-[2px] bg-[var(--surface-3)]">
                           <span
-                            className="block h-full rounded-[2px] bg-[var(--c-withdrawn)]"
+                            className="block h-full rounded-[2px] bg-[var(--brand)]"
                             style={{ width: `${(b.value / a.metric.max) * 100}%` }}
                           />
                         </span>

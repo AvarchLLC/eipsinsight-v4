@@ -2,16 +2,23 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
   Zap,
   ArrowRight,
+  ArrowUpRight,
   X,
   AlertCircle,
   CheckCircle2,
   CornerDownLeft,
   Loader2,
+  FileText,
+  Package,
+  Video,
+  GitPullRequest,
+  Users,
   Info,
   Layers,
   BarChart3,
@@ -19,6 +26,8 @@ import {
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
+import { LedgerBadge } from '@/components/ledger/badge';
+import { CountUp } from '@/components/ledger/count-up';
 
 interface ProposalSearchResult {
   kind: 'proposal';
@@ -66,36 +75,50 @@ const KNOWN_STANDARDS: Record<number, KnownStandardInfo> = {
   7212: { repo: 'rip', name: 'RIP-7212', title: 'secp256r1 Curve Support', status: 'Final' },
 };
 
-const STATUS_BADGE_STYLES: Record<string, string> = {
-  Final: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-  Draft: 'bg-slate-500/15 text-slate-600 dark:text-slate-400 border-slate-500/30',
-  Review: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-  'Last Call': 'bg-orange-500/15 text-orange-600 dark:text-orange-400 border-orange-500/30',
-  Living: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border-cyan-500/30',
-  Stagnant: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30',
-  Withdrawn: 'bg-red-500/15 text-red-600 dark:text-red-400 border-red-500/30',
-};
+const EXAMPLES = ['1559', '4844', '7702', 'ERC-20', 'blob', 'Pectra', 'account abstraction', 'ERC-4337'];
 
-const REPO_BADGE_STYLES: Record<string, { label: string; style: string }> = {
-  eip: { label: 'EIP', style: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300 border-cyan-500/30' },
-  erc: { label: 'ERC', style: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/30' },
-  rip: { label: 'RIP', style: 'bg-violet-500/15 text-violet-600 dark:text-violet-300 border-violet-500/30' },
-};
+const POPULAR_SEARCHES = ['1559', '4844', '7702', 'ERC-20', 'ERC-4337', 'ERC-721', 'RIP-7560', 'blobs'];
 
-function Kbd({ children }: { children: React.ReactNode }) {
-  return (
-    <kbd className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded border border-border/80 bg-muted/70 px-1 font-mono text-[10px] font-semibold text-muted-foreground shadow-[0_1px_0_0_var(--border)]">
-      {children}
-    </kbd>
-  );
-}
+const QUICK_JUMPS = [
+  { href: '/standards', label: 'Browse all standards', icon: FileText },
+  { href: '/upgrade', label: 'Network upgrades', icon: Package },
+  { href: '/calls', label: 'Protocol calls & meetings', icon: Video },
+  { href: '/officehours/prs', label: 'Editorial PR queue', icon: GitPullRequest },
+  { href: '/analytics/contributors', label: 'Contributors & editors', icon: Users },
+];
+
+const POPULAR_STANDARDS = [
+  { label: 'EIP-1559', path: '/eip/1559', tag: 'Fee Market' },
+  { label: 'ERC-20', path: '/erc/20', tag: 'Tokens' },
+  { label: 'ERC-721', path: '/erc/721', tag: 'NFTs' },
+  { label: 'ERC-4337', path: '/erc/4337', tag: 'AA' },
+  { label: 'EIP-4844', path: '/eip/4844', tag: 'Blobs' },
+  { label: 'EIP-7702', path: '/eip/7702', tag: 'EOA Code' },
+  { label: 'RIP-7560', path: '/rip/7560', tag: 'Native AA' },
+];
+
+const INFO_ITEMS = [
+  {
+    icon: Layers,
+    title: 'Proposal Types',
+    description: 'Browse EIPs, ERCs, and RIPs by category, repository, or lifecycle status',
+  },
+  {
+    icon: BarChart3,
+    title: 'Analytics & Insights',
+    description: 'Track governance velocity, editorial review workload, and active participants',
+  },
+  {
+    icon: GitBranch,
+    title: 'Network Governance',
+    description: 'Explore upcoming hard forks, upgrade schedules, devnet progression, and call recordings',
+  },
+];
 
 export function HomeHeroSection() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-  // Per-query result cache + stale-response guard so fast typing / backspacing
-  // is instant and never shows out-of-order results.
+  const searchboxRef = useRef<HTMLDivElement>(null);
   const cacheRef = useRef<Map<string, ProposalSearchResult[]>>(new Map());
   const reqIdRef = useRef(0);
 
@@ -104,25 +127,78 @@ export function HomeHeroSection() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ProposalSearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [example, setExample] = useState(EXAMPLES[0]);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
 
-  const infoItems = [
-    {
-      icon: Layers,
-      title: 'Proposal Types',
-      description: 'Browse EIPs, ERCs, and RIPs by category or lifecycle status',
-    },
-    {
-      icon: BarChart3,
-      title: 'Analytics',
-      description: 'Track governance metrics, editorial workload, and decision velocity',
-    },
-    {
-      icon: GitBranch,
-      title: 'Governance',
-      description: 'Explore upgrade impact, recent changes, and repository distribution',
-    },
-  ];
+  // Prefetch popular standards
+  useEffect(() => {
+    POPULAR_STANDARDS.forEach((p) => router.prefetch(p.path));
+  }, [router]);
+
+  // Live platform counts for the plate base
+  const [statFigures, setStatFigures] = useState({
+    proposals: 1263,
+    openPrs: 932,
+    upgrades: 21,
+    contributors: 7455,
+  });
+
+  // Fetch live headline platform stats directly from DB
+  useEffect(() => {
+    let active = true;
+    client.explore.getPlatformHeadlineStats({})
+      .then((stats) => {
+        if (!active || !stats) return;
+        setStatFigures({
+          proposals: stats.proposals,
+          openPrs: stats.openPrs,
+          upgrades: stats.upgrades,
+          contributors: stats.contributors,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // While idle, auto-cycle placeholder examples
+  useEffect(() => {
+    if (query || isOpen) return;
+    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    let wordIdx = 0;
+    let chars = EXAMPLES[0].length;
+    let deleting = true;
+    let timer: ReturnType<typeof setTimeout>;
+
+    const tick = () => {
+      const w = EXAMPLES[wordIdx];
+      if (deleting) {
+        chars -= 1;
+        setExample(w.slice(0, chars));
+        if (chars === 0) {
+          deleting = false;
+          wordIdx = (wordIdx + 1) % EXAMPLES.length;
+          timer = setTimeout(tick, 300);
+          return;
+        }
+        timer = setTimeout(tick, 30);
+      } else {
+        chars += 1;
+        setExample(EXAMPLES[wordIdx].slice(0, chars));
+        if (chars === EXAMPLES[wordIdx].length) {
+          deleting = true;
+          timer = setTimeout(tick, 1800);
+          return;
+        }
+        timer = setTimeout(tick, 75);
+      }
+    };
+
+    timer = setTimeout(tick, 2200);
+    return () => clearTimeout(timer);
+  }, [query, isOpen]);
 
   // Parse typed input into standard components (repo prefix, standard number, keywords)
   const parsedInput = React.useMemo(() => {
@@ -170,8 +246,6 @@ export function HomeHeroSection() {
     if (num && KNOWN_STANDARDS[num]) {
       const known = KNOWN_STANDARDS[num];
       const targetPath = `/${known.repo}/${num}`;
-      // The dict is for instant 0ms feedback but can go stale; once the live
-      // result for this exact standard loads, prefer its status/title.
       const live = results.find((r) => r.number === num && r.repo === known.repo);
       const liveStatus = live?.status ?? known.status;
       const liveTitle = live?.title || known.title;
@@ -255,12 +329,10 @@ export function HomeHeroSection() {
     const key = trimmed.toLowerCase();
     if (!trimmed) {
       setResults([]);
-      setIsOpen(false);
       setLoading(false);
       return;
     }
 
-    setIsOpen(true);
     setSelectedIndex(-1);
 
     // Instant cache hit — no spinner, no network.
@@ -278,7 +350,7 @@ export function HomeHeroSection() {
       try {
         const res = (await client.search.searchProposals({ query: trimmed, limit: 8 })) as ProposalSearchResult[];
         cacheRef.current.set(key, res);
-        if (myId !== reqIdRef.current) return; // a newer keystroke won
+        if (myId !== reqIdRef.current) return;
         setResults(res);
       } catch (err) {
         if (myId === reqIdRef.current) console.error('Failed to search proposals:', err);
@@ -291,7 +363,7 @@ export function HomeHeroSection() {
   }, [query]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
-  // Prefetch likely destinations so the jump feels instant.
+  // Prefetch likely destinations
   useEffect(() => {
     results.slice(0, 5).forEach((r) => router.prefetch(`/${r.repo}/${r.number}`));
     if (sanityCheck) router.prefetch(sanityCheck.targetPath);
@@ -299,33 +371,16 @@ export function HomeHeroSection() {
 
   // Close dropdown on outside click
   useEffect(() => {
+    if (!isOpen) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(e.target as Node) &&
-        inputRef.current &&
-        !inputRef.current.contains(e.target as Node)
-      ) {
+      if (searchboxRef.current && !searchboxRef.current.contains(e.target as Node)) {
         setIsOpen(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
 
-  // Press "/" anywhere to jump into the search.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/' || e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = e.target as HTMLElement | null;
-      const tag = el?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || el?.isContentEditable) return;
-      e.preventDefault();
-      inputRef.current?.focus();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   // Swoop action handler
   const handleSwoop = useCallback(
@@ -361,10 +416,11 @@ export function HomeHeroSection() {
     [router, sanityCheck, parsedInput, query]
   );
 
-  // Keyboard navigation
+  // Keyboard navigation inside search dropdown
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
+      setIsOpen(true);
       setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
@@ -386,355 +442,391 @@ export function HomeHeroSection() {
   const clearQuery = () => {
     setQuery('');
     setResults([]);
-    setIsOpen(false);
     inputRef.current?.focus();
   };
 
-  const quickPills = [
-    { label: 'EIP-1559', path: '/eip/1559', tag: 'Fee Market' },
-    { label: 'ERC-20', path: '/erc/20', tag: 'Tokens' },
-    { label: 'ERC-721', path: '/erc/721', tag: 'NFTs' },
-    { label: 'ERC-4337', path: '/erc/4337', tag: 'AA' },
-    { label: 'EIP-4844', path: '/eip/4844', tag: 'Blobs' },
-    { label: 'EIP-7702', path: '/eip/7702', tag: 'EOA Code' },
-    { label: 'RIP-7560', path: '/rip/7560', tag: 'Native AA' },
+  const figures = [
+    { label: 'Proposals', value: statFigures.proposals, note: 'EIPs, ERCs and RIPs', href: '/standards' },
+    { label: 'Editorial queue', value: statFigures.openPrs, note: 'open PRs awaiting review', href: '/officehours/prs' },
+    { label: 'Network upgrades', value: statFigures.upgrades, note: 'shipped and planned', href: '/upgrade' },
+    { label: 'Contributors', value: statFigures.contributors, note: 'authors, editors, reviewers', href: '/analytics/contributors' },
   ];
 
-  // Prefetch popular destinations up front.
-  useEffect(() => {
-    quickPills.forEach((p) => router.prefetch(p.path));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const showDropdown = isOpen && query.trim().length > 0;
-
   return (
-    <section className="relative w-full py-4 sm:py-6 md:py-8">
-      {/* Soft Ambient Background Glow on Page Canvas */}
-      <div className="pointer-events-none absolute -top-12 left-1/2 -z-10 h-80 w-full max-w-5xl -translate-x-1/2 rounded-full bg-primary/10 blur-3xl opacity-60" />
+    <section className="relative w-full border-b border-[var(--border)]">
+      <div className="wrap">
+        <div className="relative">
+          {/* Main Hero Inner Body */}
+          <div className="pb-10 pt-10 text-center px-3 sm:px-5 sm:pb-14 sm:pt-16 lg:px-6 lg:pb-16 lg:pt-18">
+            {/* Top Pill Badge & Info Button */}
+            <div className="flex items-center justify-center gap-2">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3.5 py-1 text-[11px] font-mono uppercase tracking-[0.12em] text-[var(--ink)] shadow-xs">
+                <span className="size-2 rounded-full bg-[var(--brand-strong)] shadow-[0_0_8px_var(--brand)]" />
+                <span>Ethereum Standards Observability</span>
+              </div>
 
-      <div className="relative z-10 flex flex-col items-center text-center">
-        {/* Top Pill Badge & Info Button */}
-        <div className="mb-4 flex items-center justify-center gap-2">
-          <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3.5 py-1 text-xs font-semibold uppercase tracking-wider text-primary shadow-xs">
-            <Zap className="h-3.5 w-3.5 fill-primary text-primary" />
-            <span>Ethereum Standards Observability</span>
-          </div>
-
-          <button
-            onClick={() => setShowInfoDrawer(!showInfoDrawer)}
-            className={cn(
-              'inline-flex h-7 w-7 items-center justify-center rounded-full border border-border/80 bg-background/80 text-muted-foreground backdrop-blur-md transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary',
-              showInfoDrawer && 'border-primary/40 bg-primary/10 text-primary'
-            )}
-            title={showInfoDrawer ? 'Hide info' : 'Platform info'}
-          >
-            <Info className="h-3.5 w-3.5" />
-          </button>
-        </div>
-
-        {/* Main Title */}
-        <motion.h1
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="dec-title persona-title text-balance max-w-4xl text-3xl font-bold tracking-tight text-foreground sm:text-5xl md:text-6xl leading-[1.1]"
-        >
-          Track Ethereum Proposals & Governance
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.05 }}
-          className="mt-3.5 max-w-2xl text-balance text-sm leading-relaxed text-muted-foreground sm:text-base md:text-lg"
-        >
-          Real-time view of proposal lifecycles, upgrade timelines, and editorial activity across EIPs, ERCs, and RIPs. Type any number to swoop directly.
-        </motion.p>
-
-        {/* Centralized Search Box */}
-        <div className="relative mt-8 w-full max-w-2xl">
-          <div
-            className={cn(
-              'group relative flex w-full items-center rounded-2xl border bg-background/95 p-1.5 shadow-md backdrop-blur-md transition-all sm:p-2',
-              showDropdown || isOpen
-                ? 'border-primary shadow-lg ring-4 ring-primary/15'
-                : 'border-border/80 hover:border-primary/50'
-            )}
-          >
-            <div className="flex shrink-0 items-center pl-3.5 text-muted-foreground group-focus-within:text-primary sm:pl-4">
-              {loading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : <Search className="h-5 w-5" />}
-            </div>
-
-            <input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={() => query.trim() && setIsOpen(true)}
-              onKeyDown={handleKeyDown}
-              placeholder="Search a number or title — e.g. 1559, ERC-20, blobs…"
-              className="w-full bg-transparent px-3 py-2 text-sm font-medium text-foreground outline-none placeholder:text-muted-foreground/60 sm:px-4 sm:py-2.5 sm:text-base"
-              aria-label="Search EIPs, ERCs, and RIPs"
-            />
-
-            {query ? (
               <button
                 type="button"
-                onClick={clearQuery}
-                className="mr-1.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                aria-label="Clear search"
+                onClick={() => setShowInfoDrawer(!showInfoDrawer)}
+                className={cn(
+                  'inline-flex h-6.5 w-6.5 items-center justify-center rounded-full border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] cursor-pointer',
+                  showInfoDrawer && 'border-[var(--brand-strong)] bg-[var(--surface-2)] text-[var(--brand-strong)]'
+                )}
+                title={showInfoDrawer ? 'Hide platform info' : 'Platform info'}
+                aria-label="Toggle platform information drawer"
               >
-                <X className="h-4 w-4" />
+                <Info className="h-3.5 w-3.5" />
               </button>
-            ) : (
-              <div className="mr-2 hidden shrink-0 items-center sm:flex" aria-hidden>
-                <Kbd>/</Kbd>
-              </div>
-            )}
+            </div>
 
-            <button
-              type="button"
-              onClick={() => handleSwoop()}
-              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-bold text-primary-foreground shadow-md transition-all hover:bg-primary/90 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-primary/40 active:scale-[0.98] sm:px-6 sm:py-3 sm:text-sm"
-            >
-              <span>Swoop</span>
-              <Zap className="h-4 w-4 fill-primary-foreground" />
-            </button>
-          </div>
-
-          {/* Dynamic Sanity Check — the "best match, jump straight there" row */}
-          <AnimatePresence>
-            {sanityCheck && (
-              <motion.div
-                initial={{ opacity: 0, y: -6, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -6, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="mt-3 overflow-hidden"
-              >
-                <button
-                  type="button"
-                  onClick={() => handleSwoop(sanityCheck.targetPath)}
-                  className={cn(
-                    'group flex w-full cursor-pointer items-center justify-between gap-3 rounded-2xl border p-3.5 text-left shadow-sm transition-all hover:shadow-md',
-                    sanityCheck.type === 'moved'
-                      ? 'border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/15'
-                      : 'border-primary/40 bg-primary/10 hover:bg-primary/15'
-                  )}
+            {/* Expandable Platform Info Drawer */}
+            <AnimatePresence>
+              {showInfoDrawer && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className="mx-auto mt-4 w-full max-w-3xl overflow-hidden text-left"
                 >
-                  <div className="flex min-w-0 items-center gap-3">
-                    {sanityCheck.type === 'moved' ? (
-                      <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
-                    ) : (
-                      <CheckCircle2 className="h-5 w-5 shrink-0 text-primary" />
-                    )}
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={cn(
-                            'rounded-md border px-2 py-0.5 text-[11px] font-bold',
-                            REPO_BADGE_STYLES[sanityCheck.repo]?.style
-                          )}
-                        >
-                          {sanityCheck.name}
-                        </span>
-                        {sanityCheck.status && (
-                          <span
-                            className={cn(
-                              'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                              STATUS_BADGE_STYLES[sanityCheck.status] || 'bg-muted text-muted-foreground'
-                            )}
+                  <div className="rounded-[var(--l-radius-card)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      {INFO_ITEMS.map((item, idx) => {
+                        const Icon = item.icon;
+                        return (
+                          <motion.div
+                            key={item.title}
+                            initial={{ opacity: 0, y: 6 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.2, delay: idx * 0.05 }}
+                            className="flex items-start gap-3"
                           >
-                            {sanityCheck.status}
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 truncate text-xs text-muted-foreground sm:text-sm">
-                        {sanityCheck.specTitle || sanityCheck.message}
-                      </p>
+                            <div className="shrink-0 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-2 text-[var(--brand-strong)]">
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <h3 className="mb-0.5 text-xs font-semibold text-[var(--ink)]">
+                                {item.title}
+                              </h3>
+                              <p className="text-[11px] leading-relaxed text-[var(--ink-muted)]">
+                                {item.description}
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
                     </div>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-                  <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-primary transition-transform group-hover:translate-x-0.5">
-                    <span className="hidden sm:inline">Open</span>
-                    <ArrowRight className="h-4 w-4" />
-                  </div>
-                </button>
-              </motion.div>
-            )}
-          </AnimatePresence>
+            {/* Display Headline */}
+            <motion.h1
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className="t-display mx-auto mt-6 max-w-5xl text-center leading-[1.04]"
+            >
+              Track Ethereum Proposals &amp; <span className="accent">Governance.</span>
+            </motion.h1>
 
-          {/* Live Autocomplete Suggestions Dropdown */}
-          <AnimatePresence>
-            {showDropdown && (
-              <motion.div
-                ref={dropdownRef}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 4 }}
-                transition={{ duration: 0.15 }}
-                className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-border/80 bg-popover/95 text-left shadow-2xl backdrop-blur-xl"
-              >
-                {/* Loading skeleton (first fetch only — cache hits are instant) */}
-                {loading && results.length === 0 && (
-                  <div className="space-y-1.5 p-2">
-                    {[0, 1, 2].map((i) => (
-                      <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2.5">
-                        <div className="h-6 w-16 shrink-0 animate-pulse rounded-lg bg-muted" />
-                        <div className="h-3.5 flex-1 animate-pulse rounded bg-muted" style={{ maxWidth: `${70 - i * 12}%` }} />
-                        <div className="h-4 w-14 shrink-0 animate-pulse rounded-full bg-muted" />
-                      </div>
-                    ))}
+            {/* Subtitle */}
+            <motion.p
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, delay: 0.05 }}
+              className="t-lead text-balance mx-auto mt-3 max-w-2xl text-center text-xs sm:text-sm md:text-base text-[var(--ink-muted)] leading-relaxed"
+            >
+              Real-time view of proposal lifecycles, upgrade timelines, and editorial activity across EIPs, ERCs, and RIPs. Type any number to swoop directly.
+            </motion.p>
+
+            {/* Centralized Search Box (Ledger CommandBar) */}
+            <div ref={searchboxRef} className="searchbox relative z-30 mx-auto mt-8 sm:mt-10 w-full max-w-2xl" data-open={isOpen}>
+              <div className="searchbox-field">
+                <div className="flex shrink-0 items-center text-[var(--ink-faint)]">
+                  {loading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-[var(--brand-strong)]" />
+                  ) : (
+                    <Search className="h-5 w-5" />
+                  )}
+                </div>
+
+                <input
+                  id="hero-search-input"
+                  ref={inputRef}
+                  type="text"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.target.value);
+                    setIsOpen(true);
+                  }}
+                  onFocus={() => setIsOpen(true)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={isOpen ? 'Search proposals, people, upgrades…' : 'Search number or keyword — e.g. 1559, ERC-20, blob'}
+                  className="w-full min-w-0 flex-1 bg-transparent px-2.5 py-2 text-sm font-medium text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)] sm:px-3 sm:py-2.5"
+                  aria-label="Search EIPs, ERCs, and RIPs"
+                  autoComplete="off"
+                  spellCheck={false}
+                />
+
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={clearQuery}
+                    className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)] cursor-pointer"
+                    aria-label="Clear search"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                ) : (
+                  <div className="mr-1 hidden shrink-0 items-center sm:flex" aria-hidden>
+                    <kbd className="kbd">/</kbd>
                   </div>
                 )}
 
-                {/* Results */}
-                {results.length > 0 && (
-                  <div className="max-h-80 overflow-y-auto p-1.5">
-                    <div className="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Matching Proposals · {results.length}
-                    </div>
-                    {results.map((item, index) => {
-                      const repoKey = item.repo;
-                      const targetPath = `/${repoKey}/${item.number}`;
-                      const repoBadge = REPO_BADGE_STYLES[repoKey] || REPO_BADGE_STYLES.eip;
-                      const isSelected = index === selectedIndex;
-                      const meta = [item.category, item.type].filter(Boolean).join(' · ');
+                <button
+                  type="button"
+                  onClick={() => handleSwoop()}
+                  className="btn btn-primary h-9.5 px-4 text-xs font-semibold cursor-pointer sm:px-5 sm:text-sm shrink-0 gap-1.5"
+                >
+                  <span>Swoop</span>
+                  <Zap className="h-3.5 w-3.5 fill-current" />
+                </button>
+              </div>
 
-                      return (
-                        <div
-                          key={`${item.repo}-${item.number}`}
-                          onClick={() => handleSwoop(targetPath)}
-                          onMouseEnter={() => setSelectedIndex(index)}
-                          className={cn(
-                            'flex cursor-pointer items-center justify-between gap-2 rounded-xl px-3 py-2.5 transition-colors',
-                            isSelected ? 'bg-primary/10' : 'hover:bg-muted/70'
-                          )}
-                        >
-                          <div className="flex min-w-0 items-center gap-3">
-                            <span className={cn('shrink-0 rounded-lg border px-2.5 py-1 text-xs font-bold', repoBadge.style)}>
-                              {repoBadge.label}-{item.number}
-                            </span>
-                            <div className="min-w-0">
-                              <p className={cn('truncate text-xs font-semibold sm:text-sm', isSelected ? 'text-primary' : 'text-foreground')}>
-                                {item.title || `${repoBadge.label}-${item.number}`}
-                              </p>
-                              <p className="truncate text-[11px] text-muted-foreground">
-                                {meta || (item.author ? `by ${item.author}` : 'Ethereum proposal')}
-                                {meta && item.author ? ` · ${item.author}` : ''}
-                              </p>
+              {/* Suggestions / Results Dropdown Panel */}
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ duration: 0.15 }}
+                    className="searchbox-panel text-left"
+                  >
+                    {/* State A: Idle (nothing typed yet) — Popular searches + Jump destinations */}
+                    {!query.trim() && (
+                      <div className="p-4 sm:p-5">
+                        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                          <div>
+                            <p className="eyebrow text-[11px]">Popular Searches</p>
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {POPULAR_SEARCHES.map((p) => (
+                                <button
+                                  key={p}
+                                  type="button"
+                                  onClick={() => {
+                                    setQuery(p);
+                                    inputRef.current?.focus();
+                                  }}
+                                  className="chip cursor-pointer text-xs"
+                                >
+                                  {p}
+                                </button>
+                              ))}
                             </div>
                           </div>
 
-                          <div className="flex shrink-0 items-center gap-2 pl-2">
-                            <span
-                              className={cn(
-                                'rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                                STATUS_BADGE_STYLES[item.status] || 'bg-muted text-muted-foreground'
-                              )}
-                            >
-                              {item.status}
-                            </span>
-                            <CornerDownLeft
-                              className={cn('h-3.5 w-3.5 transition-opacity', isSelected ? 'text-primary opacity-100' : 'opacity-0')}
-                            />
+                          <div>
+                            <p className="eyebrow text-[11px]">Jump to</p>
+                            <ul className="mt-2 space-y-1">
+                              {QUICK_JUMPS.map((item) => (
+                                <li key={item.href}>
+                                  <Link
+                                    href={item.href}
+                                    onClick={() => setIsOpen(false)}
+                                    className="group flex items-center gap-2.5 rounded-[var(--l-radius-control)] px-2.5 py-1.5 text-xs sm:text-sm text-[var(--ink)] transition-colors hover:bg-[var(--surface-2)]"
+                                  >
+                                    <item.icon className="size-3.5 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)]" />
+                                    <span>{item.label}</span>
+                                    <ArrowRight className="ml-auto size-3 text-[var(--ink-faint)] opacity-0 transition-opacity group-hover:opacity-100" />
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
+                    )}
 
-                {/* Empty state */}
-                {!loading && results.length === 0 && !sanityCheck && (
-                  <div className="px-4 py-6 text-center">
-                    <p className="text-sm font-medium text-foreground">No proposals match “{query.trim()}”</p>
-                    <p className="mt-1 text-xs text-muted-foreground">Try a number (1559), a repo tag (ERC-20), or a keyword.</p>
-                  </div>
-                )}
+                    {/* State B: Active Query — Sanity Check card + Live Results */}
+                    {query.trim().length > 0 && (
+                      <div>
+                        {/* Dynamic Sanity Check — high priority instant match */}
+                        {sanityCheck && (
+                          <div className="border-b border-[var(--border)] p-2">
+                            <button
+                              type="button"
+                              onClick={() => handleSwoop(sanityCheck.targetPath)}
+                              className={cn(
+                                'group flex w-full cursor-pointer items-center justify-between gap-3 rounded-[var(--l-radius-control)] p-3 text-left transition-colors',
+                                sanityCheck.type === 'moved'
+                                  ? 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)]'
+                                  : 'bg-[var(--surface-2)] hover:bg-[var(--surface-3)]'
+                              )}
+                            >
+                              <div className="flex min-w-0 items-center gap-3">
+                                {sanityCheck.type === 'moved' ? (
+                                  <AlertCircle className="h-5 w-5 shrink-0 text-[var(--c-review)]" />
+                                ) : (
+                                  <CheckCircle2 className="h-5 w-5 shrink-0 text-[var(--brand-strong)]" />
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <LedgerBadge token={sanityCheck.repo} label={sanityCheck.name} />
+                                    {sanityCheck.status && (
+                                      <LedgerBadge token={sanityCheck.status} />
+                                    )}
+                                  </div>
+                                  <p className="mt-1 truncate text-xs text-[var(--ink-muted)] sm:text-sm">
+                                    {sanityCheck.specTitle || sanityCheck.message}
+                                  </p>
+                                </div>
+                              </div>
 
-                {/* Footer: keyboard hints + full search */}
-                {(results.length > 0 || (!loading && results.length === 0)) && (
-                  <div className="flex items-center justify-between gap-2 border-t border-border/60 bg-muted/30 px-3 py-2">
-                    <div className="hidden items-center gap-3 text-[11px] text-muted-foreground sm:flex">
-                      <span className="flex items-center gap-1"><Kbd>↑</Kbd><Kbd>↓</Kbd> navigate</span>
-                      <span className="flex items-center gap-1"><Kbd>↵</Kbd> open</span>
-                      <span className="flex items-center gap-1"><Kbd>esc</Kbd> close</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleSwoop()}
-                      className="ml-auto inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-semibold text-primary transition-colors hover:bg-primary/10"
-                    >
-                      All results for “{query.trim()}”
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+                              <div className="flex shrink-0 items-center gap-1.5 text-xs font-semibold text-[var(--brand-strong)] transition-transform group-hover:translate-x-0.5">
+                                <span className="hidden sm:inline">Open</span>
+                                <ArrowRight className="h-4 w-4" />
+                              </div>
+                            </button>
+                          </div>
+                        )}
 
-        {/* Quick Jump Spec Chips */}
-        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-          <span className="text-xs font-medium text-muted-foreground">Popular:</span>
-          {quickPills.map((pill) => (
-            <button
-              key={pill.label}
-              onClick={() => handleSwoop(pill.path)}
-              onMouseEnter={() => router.prefetch(pill.path)}
-              className="group inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-background/60 px-3 py-1 text-xs font-medium text-foreground transition-all hover:border-primary/50 hover:bg-primary/10 hover:text-primary"
-            >
-              <span className="font-semibold">{pill.label}</span>
-              <span className="text-[10px] text-muted-foreground group-hover:text-primary/80">{pill.tag}</span>
-            </button>
-          ))}
-        </div>
+                        {/* Loading skeleton */}
+                        {loading && results.length === 0 && (
+                          <div className="space-y-1.5 p-3">
+                            {[0, 1, 2].map((i) => (
+                              <div key={i} className="flex items-center gap-3 rounded-md px-3 py-2">
+                                <div className="h-5 w-16 shrink-0 animate-pulse rounded bg-[var(--surface-3)]" />
+                                <div className="h-3.5 flex-1 animate-pulse rounded bg-[var(--surface-3)]" style={{ maxWidth: `${70 - i * 12}%` }} />
+                                <div className="h-4 w-14 shrink-0 animate-pulse rounded-full bg-[var(--surface-3)]" />
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
-        {/* Expandable Platform Info Drawer */}
-        <AnimatePresence>
-          {showInfoDrawer && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              transition={{ duration: 0.3 }}
-              className="mt-6 w-full max-w-4xl overflow-hidden text-left"
-            >
-              <div className="rounded-2xl border border-border/70 bg-card/70 p-4 sm:p-6 backdrop-blur-md">
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  {infoItems.map((item, index) => {
-                    const Icon = item.icon;
-                    return (
-                      <motion.div
-                        key={item.title}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3, delay: index * 0.08 }}
-                        className="flex items-start gap-3"
-                      >
-                        <div className="shrink-0 rounded-xl border border-primary/20 bg-primary/10 p-2 text-primary">
-                          <Icon className="h-4 w-4" />
+                        {/* Matching Proposals */}
+                        {results.length > 0 && (
+                          <div className="max-h-80 overflow-y-auto p-1.5">
+                            <div className="px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-[var(--ink-faint)]">
+                              Matching Proposals · {results.length}
+                            </div>
+                            {results.map((item, index) => {
+                              const repoKey = item.repo;
+                              const targetPath = `/${repoKey}/${item.number}`;
+                              const isSelected = index === selectedIndex;
+                              const meta = [item.category, item.type].filter(Boolean).join(' · ');
+
+                              return (
+                                <div
+                                  key={`${item.repo}-${item.number}`}
+                                  onClick={() => handleSwoop(targetPath)}
+                                  onMouseEnter={() => setSelectedIndex(index)}
+                                  className={cn(
+                                    'flex cursor-pointer items-center justify-between gap-2 rounded-[var(--l-radius-control)] px-3 py-2.5 transition-colors',
+                                    isSelected ? 'bg-[var(--surface-2)] text-[var(--ink)]' : 'hover:bg-[var(--surface-2)]'
+                                  )}
+                                >
+                                  <div className="flex min-w-0 items-center gap-3">
+                                    <LedgerBadge token={repoKey} label={`${repoKey.toUpperCase()}-${item.number}`} />
+                                    <div className="min-w-0">
+                                      <p className="truncate text-xs font-semibold sm:text-sm text-[var(--ink)]">
+                                        {item.title || `${repoKey.toUpperCase()}-${item.number}`}
+                                      </p>
+                                      <p className="truncate text-[11px] text-[var(--ink-faint)] font-mono">
+                                        {meta || (item.author ? `by ${item.author}` : 'Ethereum proposal')}
+                                        {meta && item.author ? ` · ${item.author}` : ''}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex shrink-0 items-center gap-2 pl-2">
+                                    <LedgerBadge token={item.status} />
+                                    <CornerDownLeft
+                                      className={cn('h-3.5 w-3.5 transition-opacity', isSelected ? 'text-[var(--brand-strong)] opacity-100' : 'opacity-0')}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* Empty state */}
+                        {!loading && results.length === 0 && !sanityCheck && (
+                          <div className="px-4 py-6 text-center">
+                            <p className="text-sm font-medium text-[var(--ink)]">No proposals match “{query.trim()}”</p>
+                            <p className="mt-1 text-xs text-[var(--ink-muted)]">Try a number (1559), a repo tag (ERC-20), or a keyword.</p>
+                          </div>
+                        )}
+
+                        {/* Footer: keyboard hints + full search link */}
+                        <div className="flex items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2">
+                          <div className="hidden items-center gap-3 text-[11px] text-[var(--ink-faint)] sm:flex">
+                            <span className="flex items-center gap-1"><kbd className="kbd">↑</kbd><kbd className="kbd">↓</kbd> navigate</span>
+                            <span className="flex items-center gap-1"><kbd className="kbd">↵</kbd> open</span>
+                            <span className="flex items-center gap-1"><kbd className="kbd">esc</kbd> close</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleSwoop()}
+                            className="ml-auto inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] px-2 py-1 text-xs font-semibold text-[var(--brand-strong)] transition-colors hover:bg-[var(--surface-3)] cursor-pointer"
+                          >
+                            All results for “{query.trim()}”
+                            <ArrowRight className="h-3.5 w-3.5" />
+                          </button>
                         </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="mb-1 text-sm font-semibold text-foreground">
-                            {item.title}
-                          </h3>
-                          <p className="text-xs leading-relaxed text-muted-foreground sm:text-sm">
-                            {item.description}
-                          </p>
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* Popular Standards Row */}
+            <div className="mt-5 mx-auto flex max-w-5xl flex-wrap items-center justify-center gap-1 sm:gap-1.5">
+              <span className="font-mono text-[11px] sm:text-xs text-[var(--ink-faint)] mr-0.5">Popular:</span>
+              {POPULAR_STANDARDS.map((pill) => (
+                <button
+                  key={pill.label}
+                  type="button"
+                  onClick={() => handleSwoop(pill.path)}
+                  onMouseEnter={() => router.prefetch(pill.path)}
+                  className="group inline-flex items-center gap-1 sm:gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[11px] sm:text-xs font-mono transition-colors hover:border-[var(--ink)] hover:bg-[var(--surface-2)] cursor-pointer"
+                >
+                  <span className="font-semibold text-[var(--ink)]">{pill.label}</span>
+                  <span className="text-[9.5px] sm:text-[10px] text-[var(--ink-faint)] group-hover:text-[var(--ink-muted)]">{pill.tag}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Plate Base: 4-Column Key Figures Grid (from v5) ── */}
+          <div className="grid grid-cols-2 border-t border-[var(--border)] lg:grid-cols-4">
+            {figures.map((f, i) => (
+              <Link
+                key={f.label}
+                href={f.href}
+                className={cn(
+                  'group block py-6 px-4 sm:px-6 lg:py-7 transition-colors hover:bg-[var(--surface-2)]',
+                  i % 2 === 1 && 'border-l border-[var(--border)]',
+                  i >= 2 && 'border-t border-[var(--border)] lg:border-t-0',
+                  i === 2 && 'lg:border-l'
+                )}
+              >
+                <p className="eyebrow flex items-center justify-between gap-2">
+                  {f.label}
+                  <ArrowUpRight className="size-3.5 text-[var(--ink-faint)] transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--brand-strong)]" />
+                </p>
+                <p className="t-figure mt-3 text-[var(--ink)]">
+                  <CountUp to={f.value} />
+                </p>
+                <p className="mt-1.5 text-xs text-[var(--ink-faint)]">{f.note}</p>
+              </Link>
+            ))}
+          </div>
+        </div>
       </div>
     </section>
   );

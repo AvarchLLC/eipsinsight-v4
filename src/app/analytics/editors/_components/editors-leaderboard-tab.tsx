@@ -201,16 +201,17 @@ export function EditorsLeaderboardTab({
                     ? r.totalActions
                     : r.medianResponseDays ?? 0,
             itemStyle: {
-              color: palette[(topRows.length - 1 - index) % palette.length],
-              borderRadius: [0, 6, 6, 0],
+              color: index === topRows.length - 1 ? "var(--brand)" : "var(--brand-strong)",
+              borderRadius: [0, 4, 4, 0],
             },
           })),
           label: {
             show: true,
             position: "right",
-            color: "var(--foreground)",
+            color: "var(--ink)",
             fontWeight: 600,
             fontSize: 12,
+            fontFamily: "var(--font-geist-mono), monospace",
             distance: 8,
             formatter: ({ value }: { value: number }) =>
               selectedMetric === "latency"
@@ -330,19 +331,19 @@ export function EditorsLeaderboardTab({
   return (
     <div className="space-y-4">
       {/* ONE Single, Unified Leaderboard Container */}
-      <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
+      <div className="card overflow-hidden">
         {/* Top Header Row with Title, Metric Switcher, View Toggle & Export */}
-        <div className="flex flex-col gap-3 p-4 border-b border-border/60 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 p-4 border-b border-[var(--border)] lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-sm font-semibold text-foreground">Editor Leaderboard</h2>
-            <p className="text-[11px] text-muted-foreground">
-              Ranked by <strong className="text-foreground capitalize">{selectedMetric}</strong> ({leaderboardLabel})
+            <h2 className="text-sm font-semibold text-[var(--ink)]">Editor Leaderboard</h2>
+            <p className="text-[11px] text-[var(--ink-muted)]">
+              Ranked by <strong className="text-[var(--ink)] capitalize">{selectedMetric}</strong> ({leaderboardLabel})
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             {/* Metric Sorter Chips */}
-            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
+            <div className="inline-flex items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
               {(
                 [
                   ["reviews", "Reviews"],
@@ -355,12 +356,8 @@ export function EditorsLeaderboardTab({
                   key={key}
                   type="button"
                   onClick={() => handleSort(key)}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 font-medium transition-all cursor-pointer",
-                    selectedMetric === key
-                      ? "bg-primary text-primary-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
-                  )}
+                  data-active={selectedMetric === key ? "true" : undefined}
+                  className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer"
                 >
                   {label}
                 </button>
@@ -368,16 +365,12 @@ export function EditorsLeaderboardTab({
             </div>
 
             {/* ONLY ONE View Switcher (inside the box header) */}
-            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
+            <div className="inline-flex items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
               <button
                 type="button"
                 onClick={() => setViewMode("chart")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold transition-all cursor-pointer",
-                  viewMode === "chart"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={viewMode === "chart" ? "true" : undefined}
+                className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer"
               >
                 <BarChart3 className="h-3.5 w-3.5" />
                 <span>Graph</span>
@@ -385,12 +378,8 @@ export function EditorsLeaderboardTab({
               <button
                 type="button"
                 onClick={() => setViewMode("table")}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 font-semibold transition-all cursor-pointer",
-                  viewMode === "table"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={viewMode === "table" ? "true" : undefined}
+                className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer"
               >
                 <TableIcon className="h-3.5 w-3.5" />
                 <span>Table</span>
@@ -402,7 +391,7 @@ export function EditorsLeaderboardTab({
               type="button"
               onClick={onExportCSV}
               disabled={exporting || sortedRows.length === 0}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-3 text-xs font-semibold text-primary transition-colors hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+              className="btn btn-outline h-7 px-2.5 text-xs text-[var(--ink)] border-[var(--border)] hover:border-[var(--ink)] disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
               {exporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
               <span>Export</span>
@@ -411,61 +400,49 @@ export function EditorsLeaderboardTab({
         </div>
 
         {/* Compact Sub-Toolbar: Search & Role Filters */}
-        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5 bg-muted/20 border-b border-border/50">
+        <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2 bg-[var(--surface-2)] border-b border-[var(--border)]">
           <div className="flex flex-wrap items-center gap-2">
             <div className="relative w-48 sm:w-56">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ink-faint)]" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Filter by handle..."
-                className="h-7 w-full rounded-md border border-border bg-background/60 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
+                className="h-7 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-2.5 text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--ink)]"
               />
             </div>
 
             {/* Role Filter Chips */}
-            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-[11px]">
+            <div className="inline-flex items-center gap-1">
               <button
                 type="button"
                 onClick={() => setRoleFilter("all")}
-                className={cn(
-                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
-                  roleFilter === "all"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={roleFilter === "all" ? "true" : undefined}
+                className="chip h-7 px-2 text-[11px] cursor-pointer"
               >
                 All ({leaderboard.length})
               </button>
               <button
                 type="button"
                 onClick={() => setRoleFilter("canonical")}
-                className={cn(
-                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
-                  roleFilter === "canonical"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={roleFilter === "canonical" ? "true" : undefined}
+                className="chip h-7 px-2 text-[11px] cursor-pointer"
               >
                 Canonical ({canonicalCount})
               </button>
               <button
                 type="button"
                 onClick={() => setRoleFilter("active")}
-                className={cn(
-                  "rounded px-2 py-0.5 font-medium transition-all cursor-pointer",
-                  roleFilter === "active"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={roleFilter === "active" ? "true" : undefined}
+                className="chip h-7 px-2 text-[11px] cursor-pointer"
               >
                 Active ({activeCount})
               </button>
             </div>
           </div>
 
-          <span className="font-mono text-[11px] text-muted-foreground">
+          <span className="font-mono text-[11px] text-[var(--ink-muted)]">
             {sortedRows.length} {sortedRows.length === 1 ? "editor" : "editors"}
           </span>
         </div>

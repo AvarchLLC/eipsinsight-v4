@@ -371,11 +371,11 @@ export default function EditorsAnalyticsPage() {
       />
 
       {/* Segmented Tab Navigation Bar */}
-      <div className="border-b border-border/70 pb-2">
+      <div className="border-b border-[var(--border)] pb-2">
         <div
           role="tablist"
           aria-label="Editor analytics views"
-          className="flex items-center gap-1.5 overflow-x-auto scrollbar-none"
+          className="flex items-center gap-2 overflow-x-auto scrollbar-none"
         >
           {TABS.map((tab) => {
             const active = activeTab === tab.id;
@@ -386,24 +386,13 @@ export default function EditorsAnalyticsPage() {
                 role="tab"
                 aria-selected={active}
                 onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-xs font-semibold transition-all whitespace-nowrap cursor-pointer",
-                  active
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
-                )}
+                data-active={active ? "true" : undefined}
+                className="chip cursor-pointer"
               >
-                <tab.icon className="h-4 w-4" />
+                <tab.icon className="h-3.5 w-3.5" />
                 <span>{tab.label}</span>
                 {"count" in tab && tab.count !== undefined && (
-                  <span
-                    className={cn(
-                      "rounded-full px-1.5 py-0.2 text-[10px] font-mono",
-                      active
-                        ? "bg-primary-foreground/20 text-primary-foreground"
-                        : "bg-muted text-muted-foreground",
-                    )}
-                  >
+                  <span className="font-mono text-[10px] opacity-75">
                     {tab.count}
                   </span>
                 )}

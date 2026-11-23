@@ -1,4 +1,5 @@
 import React from 'react';
+import { ThemedLogoGif } from '@/components/themed-logo-gif';
 
 function formatFooterDate(value: Date | null): string {
   if (!value) return '—';
@@ -17,9 +18,14 @@ export function ChartFooter({ nextUpdateAt }: { nextUpdateAt?: Date | null }) {
   return (
     <div className="mt-3 border-t border-border/70 pt-2.5">
       <div className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground/90">EIPsInsight.com</span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
+        <div className="flex items-center gap-1.5">
+          <ThemedLogoGif alt="EIPsInsight" width={16} height={16} unoptimized />
+          <span className="font-serif text-xs font-semibold tracking-tight text-foreground/90">
+            EIPsInsight<span className="text-primary/70">.com</span>
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1.5 font-mono text-[11px]">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary/70 animate-pulse" />
           Next Update: {formatFooterDate(effectiveNextUpdate)}
         </span>
       </div>
