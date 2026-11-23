@@ -1,5 +1,13 @@
 import type { Metadata } from "next";
-import { Libre_Baskerville as LibreBaskervilleFont, Inter as InterFont } from "next/font/google";
+import {
+  Libre_Baskerville as LibreBaskervilleFont,
+  Inter as InterFont,
+  Fraunces as FrauncesFont,
+  Instrument_Serif as InstrumentSerifFont,
+  Plus_Jakarta_Sans as PlusJakartaSansFont,
+  Geist as GeistFont,
+  Geist_Mono as GeistMonoFont,
+} from "next/font/google";
 import "katex/dist/katex.min.css";
 import "./globals.css";
 import "@/lib/orpc.server";
@@ -21,6 +29,38 @@ const Libre_Baskerville = LibreBaskervilleFont({
 // Body font: Inter — high legibility for UI/body text at small sizes.
 const Inter = InterFont({
   variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+// ── Ledger design system fonts (docs/DESIGN.md) ──
+// Fraunces: titles, figures, the logo wordmark (optical-size axis + italic).
+const Fraunces = FrauncesFont({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  axes: ["opsz"],
+  style: ["normal", "italic"],
+});
+// Instrument Serif: high-contrast display serif (single 400 weight) — trying as
+// the Ledger title face.
+const Instrument_Serif = InstrumentSerifFont({
+  variable: "--font-instrument-serif",
+  subsets: ["latin"],
+  weight: "400",
+  style: ["normal", "italic"],
+});
+// Geist: body and interface text.
+const Geist = GeistFont({
+  variable: "--font-geist",
+  subsets: ["latin"],
+});
+// Plus Jakarta Sans: trying as the Ledger body/interface face.
+const Plus_Jakarta_Sans = PlusJakartaSansFont({
+  variable: "--font-plus-jakarta",
+  subsets: ["latin"],
+});
+// Geist Mono: identifiers, dates, counts, eyebrows, keyboard hints.
+const Geist_Mono = GeistMonoFont({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
@@ -84,7 +124,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${Libre_Baskerville.variable} ${Inter.variable} antialiased`}
+        className={`${Libre_Baskerville.variable} ${Inter.variable} ${Fraunces.variable} ${Instrument_Serif.variable} ${Plus_Jakarta_Sans.variable} ${Geist.variable} ${Geist_Mono.variable} antialiased`}
       >
         <Providers>
           <ShellSwitcher>{children}</ShellSwitcher>

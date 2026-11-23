@@ -16,7 +16,6 @@ import {
 import {
   ShieldAlert,
   Wrench,
-  FlaskConical,
   ExternalLink,
   Trash2,
   ChevronDown,
@@ -27,6 +26,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { PageHead } from '@/components/ledger/page-head';
 import {
   META,
   SNAPSHOT,
@@ -50,24 +50,24 @@ const addrUrl = (a: string) => `https://etherscan.io/address/${a}`;
 const short = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 
 const OUTCOME: Record<string, { label: string; color: string }> = {
-  'hard-break': { label: 'hard-break', color: 'var(--chart-7)' },
-  'out-of-gas': { label: 'out-of-gas', color: 'var(--chart-4)' },
-  fixable: { label: 'fixable', color: 'var(--chart-2)' },
+  'hard-break': { label: 'hard-break', color: 'var(--c-withdrawn)' },
+  'out-of-gas': { label: 'out-of-gas', color: 'var(--c-review)' },
+  fixable: { label: 'fixable', color: 'var(--c-final)' },
 };
 
 const TT = {
-  background: 'var(--popover)',
+  background: 'var(--overlay)',
   border: '1px solid var(--border)',
   borderRadius: 8,
   fontSize: 12,
   padding: '8px 12px',
-  color: 'var(--popover-foreground)',
+  color: 'var(--ink)',
   boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
 } as const;
 // Recharts colours the label and items itself, which is invisible on a dark card.
 // Force readable theme colours.
-const TT_LABEL = { color: 'var(--popover-foreground)', fontWeight: 600, marginBottom: 2 } as const;
-const TT_ITEM = { color: 'var(--popover-foreground)' } as const;
+const TT_LABEL = { color: 'var(--ink)', fontWeight: 600, marginBottom: 2 } as const;
+const TT_ITEM = { color: 'var(--ink)' } as const;
 
 /* Reveal-on-scroll. Honours reduced-motion by rendering static. */
 function Reveal({ children, className, delay = 0 }: { children: React.ReactNode; className?: string; delay?: number }) {
@@ -89,12 +89,16 @@ function Reveal({ children, className, delay = 0 }: { children: React.ReactNode;
 /* Section header: number + serif title + optional subtitle, hairline rule only. */
 function SectionHead({ n, title, sub }: { n: string; title: string; sub?: string }) {
   return (
-    <div className="mb-5 border-b border-border/50 pb-2.5">
-      <div className="flex items-baseline gap-3">
-        <span className="font-mono text-sm font-semibold text-primary">{n}</span>
-        <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">{title}</h2>
+    <div className="mb-6">
+      <div className="mb-3 flex items-center">
+        <span className="h-px w-10 bg-[var(--brand)]" />
+        <span className="h-px flex-1 bg-[var(--ink)]" />
       </div>
-      {sub && <p className="mt-1 pl-7 text-sm text-muted-foreground">{sub}</p>}
+      <div className="flex items-baseline gap-3">
+        <span className="mono text-sm font-semibold text-[var(--brand-strong)]">{n}</span>
+        <h2 className="t-h2">{title}</h2>
+      </div>
+      {sub && <p className="mt-2 pl-8 text-[1.02rem] leading-relaxed text-[var(--ink-muted)]">{sub}</p>}
     </div>
   );
 }
@@ -108,13 +112,13 @@ function More({ label = 'Technical detail', children }: { label?: string; childr
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-primary/80 hover:text-primary"
+        className="inline-flex items-center gap-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)]/80 hover:text-[var(--brand-strong)]"
       >
         <Plus className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-45')} />
         {label}
       </button>
       {open && (
-        <p className="mt-2 border-l-2 border-primary/30 pl-3 text-[13.5px] leading-relaxed text-muted-foreground">{children}</p>
+        <p className="mt-2 border-l-2 border-[var(--brand)]/30 pl-3 text-[14.5px] leading-relaxed text-[var(--ink-muted)]">{children}</p>
       )}
     </div>
   );
@@ -122,54 +126,53 @@ function More({ label = 'Technical detail', children }: { label?: string; childr
 
 export function GlamsterdamResearch() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      {/* ── Masthead ── */}
-      <Reveal>
-        <span className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-primary">
-          <FlaskConical className="h-3.5 w-3.5" /> EIPsInsight Research · Gas-Audit
-        </span>
-        <h1 className="dec-title mt-3 text-4xl font-bold leading-[1.05] tracking-tight text-foreground sm:text-[3rem]">
-          What Glamsterdam breaks
-        </h1>
-        <p className="mt-4 text-lg leading-relaxed text-muted-foreground">
-          Ethereum&apos;s next upgrade reprices on-chain storage. We replayed real mainnet transactions under both
-          today&apos;s rules and the new rules. Most apps just need to send a bit more gas. But smart-contract wallets,
-          the ones built on account abstraction, <span className="font-medium text-foreground">genuinely break</span>, in
-          a way the professional audits didn&apos;t cover.
-        </p>
-        <div className="mt-5 flex flex-wrap gap-x-6 gap-y-1 border-y border-border/50 py-2.5 font-mono text-xs text-muted-foreground">
-          <span>Fork · <span className="text-foreground">{META.fork}</span></span>
-          <span>{META.eips}</span>
-          <span>Published · <span className="text-foreground">{META.published}</span></span>
-        </div>
-      </Reveal>
+    <div data-ledger className="min-h-screen pb-16">
+      <PageHead
+        eyebrow="EIPsInsight research · Gas-audit"
+        title="What Glamsterdam breaks"
+        lead={
+          <>
+            Ethereum&apos;s next upgrade reprices on-chain storage. We replayed real mainnet transactions under both
+            today&apos;s rules and the new rules. Most apps just need to send a bit more gas. But smart-contract wallets,
+            the ones built on account abstraction, <span className="font-medium text-[var(--ink)]">genuinely break</span>,
+            in a way the professional audits didn&apos;t cover.
+          </>
+        }
+      >
+        <span className="mono text-xs">Fork · <span className="text-[var(--ink)]">{META.fork}</span></span>
+        <span className="text-[var(--border-strong)]">·</span>
+        <span className="mono text-xs">{META.eips}</span>
+        <span className="text-[var(--border-strong)]">·</span>
+        <span className="mono text-xs">Published · <span className="text-[var(--ink)]">{META.published}</span></span>
+      </PageHead>
 
+      <div className="wrap py-8 sm:py-12">
       {/* ── What's changing (intro block, no card) ── */}
       <Reveal>
-        <div className="mt-10 border-l-2 border-primary/50 pl-5">
-          <p className="text-base font-semibold text-foreground">{WHATS_CHANGING.title}</p>
-          <p className="mt-1.5 text-[15px] leading-relaxed text-muted-foreground">{WHATS_CHANGING.body}</p>
+        <div className="mt-10 border-l-2 border-[var(--brand)]/50 pl-5">
+          <p className="text-base font-semibold text-[var(--ink)]">{WHATS_CHANGING.title}</p>
+          <p className="mt-1.5 text-[16px] leading-relaxed text-[var(--ink-muted)]">{WHATS_CHANGING.body}</p>
         </div>
       </Reveal>
 
       {/* ── Summary + explained numbers ── */}
       <Reveal>
         <div className="mt-8">
-          <p className="text-[17px] leading-relaxed text-foreground">
+          <p className="text-[17px] leading-relaxed text-[var(--ink)]">
             We scanned the {META.scanned} busiest contracts, flagged {META.flagged}, and replayed their real transactions
             under old vs new rules against our own archive node. The hard-breaks concentrate in{' '}
             <span className="font-semibold">ERC-4337 EntryPoints</span>: a large share of real user operations fail where
             they succeed today, reverting with{' '}
-            <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-[13px]">AA26 / AA40 over verificationGasLimit</code>.
+            <code className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 mono text-[14px]">AA26 / AA40 over verificationGasLimit</code>.
             Raising gas doesn&apos;t help, because the limit is signed into the user operation.
           </p>
           <div className="mt-7 grid grid-cols-1 gap-x-10 gap-y-5 sm:grid-cols-2">
             {SNAPSHOT.map((s) => (
               <div key={s.k} className="flex gap-4">
-                <div className={cn('shrink-0 font-mono text-[2rem] font-bold leading-none tabular-nums', s.danger ? 'text-[var(--chart-7)]' : 'text-foreground')}>{s.v}</div>
+                <div className={cn('shrink-0 mono text-[2rem] font-bold leading-none tabular-nums', s.danger ? 'text-[var(--c-withdrawn)]' : 'text-[var(--ink)]')}>{s.v}</div>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold capitalize text-foreground">{s.k}</div>
-                  <div className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{s.note}</div>
+                  <div className="text-sm font-semibold capitalize text-[var(--ink)]">{s.k}</div>
+                  <div className="mt-0.5 text-[14px] leading-snug text-[var(--ink-muted)]">{s.note}</div>
                 </div>
               </div>
             ))}
@@ -178,7 +181,7 @@ export function GlamsterdamResearch() {
       </Reveal>
 
       {/* ── 01 AA primer ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="01" title="First, what counts as account abstraction" sub="Three different things share the name. Only one is live and carrying real traffic." /></Reveal>
         <Reveal>
           <div className="grid gap-x-8 gap-y-6 sm:grid-cols-3">
@@ -187,23 +190,23 @@ export function GlamsterdamResearch() {
               { icon: GitBranch, t: 'EIP-7702', tag: 'live · Pectra', d: 'A set-code transaction type that points a normal account at contract code, giving it smart-account powers with the same address. Live since Pectra (2025). It is the INV-8 surface below.', accent: false },
               { icon: BookOpen, t: 'Native AA · EIP-7560', tag: 'not shipped', d: 'Account abstraction enshrined in the protocol itself, building on the stalled EIP-2938. Not deployed, so there is nothing on-chain to replay.', accent: false },
             ].map((c) => (
-              <div key={c.t} className={cn('border-l-2 pl-4', c.accent ? 'border-primary' : 'border-border')}>
-                <c.icon className={cn('h-5 w-5', c.accent ? 'text-primary' : 'text-muted-foreground')} />
-                <p className="mt-2 text-[15px] font-semibold text-foreground">{c.t}</p>
-                <p className={cn('font-mono text-[10px] uppercase tracking-wider', c.accent ? 'text-primary' : 'text-muted-foreground')}>{c.tag}</p>
-                <p className="mt-2 text-[13.5px] leading-relaxed text-muted-foreground">{c.d}</p>
+              <div key={c.t} className={cn('border-l-2 pl-4', c.accent ? 'border-[var(--brand)]' : 'border-[var(--border)]')}>
+                <c.icon className={cn('h-5 w-5', c.accent ? 'text-[var(--brand-strong)]' : 'text-[var(--ink-muted)]')} />
+                <p className="mt-2 text-[16px] font-semibold text-[var(--ink)]">{c.t}</p>
+                <p className={cn('mono text-[10px] uppercase tracking-wider', c.accent ? 'text-[var(--brand-strong)]' : 'text-[var(--ink-muted)]')}>{c.tag}</p>
+                <p className="mt-2 text-[14.5px] leading-relaxed text-[var(--ink-muted)]">{c.d}</p>
               </div>
             ))}
           </div>
-          <p className="mt-6 text-[15px] text-muted-foreground">
-            So when we say account abstraction breaks, we mean <span className="font-medium text-foreground">ERC-4337</span>,
+          <p className="mt-6 text-[16px] text-[var(--ink-muted)]">
+            So when we say account abstraction breaks, we mean <span className="font-medium text-[var(--ink)]">ERC-4337</span>,
             the deployed application-layer form. That is exactly why this is a live problem and not a theoretical one.
           </p>
         </Reveal>
       </section>
 
       {/* ── 02 How we checked ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="02" title="How we checked" sub="A static scan narrows the field; a differential replay proves the breaks." /></Reveal>
 
         {/* Funnel: label + count + what-it-means on one line, thin proportional bar below. */}
@@ -212,17 +215,17 @@ export function GlamsterdamResearch() {
             {FUNNEL.map((s, i) => (
               <div key={s.label}>
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-                  <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{s.label}</span>
-                  <span className={cn('font-mono text-base font-bold tabular-nums', s.tone === 'break' ? 'text-[var(--chart-7)]' : 'text-foreground')}>{s.value}</span>
-                  <span className="text-[13px] leading-snug text-muted-foreground">{s.desc}</span>
+                  <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">{s.label}</span>
+                  <span className={cn('mono text-base font-bold tabular-nums', s.tone === 'break' ? 'text-[var(--c-withdrawn)]' : 'text-[var(--ink)]')}>{s.value}</span>
+                  <span className="text-[14px] leading-snug text-[var(--ink-muted)]">{s.desc}</span>
                 </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted/30">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-2)]/30">
                   <motion.div
                     initial={{ width: 0 }}
                     whileInView={{ width: `${s.width}%` }}
                     viewport={{ once: true }}
                     transition={{ duration: 0.7, delay: i * 0.1, ease: [0.19, 1, 0.22, 1] }}
-                    className={cn('h-full rounded-full', s.tone === 'break' ? 'bg-[var(--chart-7)]' : s.tone === 'warn' ? 'bg-[var(--chart-4)]' : 'bg-[var(--chart-1)]')}
+                    className={cn('h-full rounded-full', s.tone === 'break' ? 'bg-[var(--c-withdrawn)]' : s.tone === 'warn' ? 'bg-[var(--c-review)]' : 'bg-[var(--ink-muted)]')}
                   />
                 </div>
               </div>
@@ -237,10 +240,10 @@ export function GlamsterdamResearch() {
           <ol className="divide-y divide-border/50">
             {STEPS.map((s, i) => (
               <li key={s.title} className="flex gap-4 py-4">
-                <span className="mt-0.5 font-mono text-sm font-bold text-primary">0{i + 1}</span>
+                <span className="mt-0.5 mono text-sm font-bold text-[var(--brand-strong)]">0{i + 1}</span>
                 <div className="min-w-0">
-                  <p className="text-[15px] font-semibold text-foreground">{s.title}</p>
-                  <p className="mt-0.5 text-sm leading-relaxed text-muted-foreground">{s.plain}</p>
+                  <p className="text-[16px] font-semibold text-[var(--ink)]">{s.title}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-[var(--ink-muted)]">{s.plain}</p>
                   <More>{s.tech}</More>
                 </div>
               </li>
@@ -250,18 +253,18 @@ export function GlamsterdamResearch() {
       </section>
 
       {/* ── 03 The finding ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="03" title="The finding: Account Abstraction hard-breaks" sub="Real user operations revert, and more gas won't save them." /></Reveal>
 
         <Reveal>
           <ChartFrame title="Hard-break rate by contract" sub="% of 50 recent txs that fail under Glamsterdam (all succeed today)">
             <ResponsiveContainer width="100%" height={200}>
               <BarChart layout="vertical" data={[...AA_HARD_BREAKS].sort((a, b) => b.pct - a.pct).map((b) => ({ name: b.name.replace('ERC-4337 ', ''), pct: b.pct }))} margin={{ left: 0, right: 40, top: 4, bottom: 4 }}>
-                <XAxis type="number" domain={[0, 55]} tickFormatter={(v) => `${v}%`} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={128} tick={{ fill: 'var(--foreground)', fontSize: 12.5 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v}%`, 'hard-break']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
-                <Bar dataKey="pct" isAnimationActive={false} radius={[0, 5, 5, 0]} barSize={22} fill="var(--chart-7)">
-                  <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="var(--foreground)" fontSize={12} fontFamily="var(--font-mono)" fontWeight={700} />
+                <XAxis type="number" domain={[0, 55]} tickFormatter={(v) => `${v}%`} tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={128} tick={{ fill: 'var(--ink)', fontSize: 12.5 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v}%`, 'hard-break']} cursor={{ fill: 'var(--surface-2)', opacity: 0.25 }} />
+                <Bar dataKey="pct" isAnimationActive={false} radius={[0, 5, 5, 0]} barSize={22} fill="var(--c-withdrawn)">
+                  <LabelList dataKey="pct" position="right" formatter={(v: number) => `${v}%`} fill="var(--ink)" fontSize={12} fontFamily="var(--font-geist-mono)" fontWeight={700} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -269,31 +272,31 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <p className="mt-6 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-6 text-[16px] leading-relaxed text-[var(--ink-muted)]">
             These are the live ERC-4337 contracts that real smart-wallets depend on. The rate is how many of 50 sampled
-            recent transactions <span className="text-foreground">revert under Glamsterdam but succeed today</span>. Open a
+            recent transactions <span className="text-[var(--ink)]">revert under Glamsterdam but succeed today</span>. Open a
             row for the exact revert and the on-chain proof.
           </p>
-          <div className="mt-4 divide-y divide-border/50 border-y border-border/50">
+          <div className="mt-4 divide-y divide-border/50 border-y border-[var(--border)]/50">
             {AA_HARD_BREAKS.map((b) => <BreakRow key={b.addr} b={b} />)}
           </div>
         </Reveal>
 
         <Reveal>
-          <div className="mt-8 border-l-2 border-[var(--chart-7)]/50 pl-5">
-            <p className="text-[15px] font-semibold text-foreground">Why AA specifically breaks</p>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-              In ERC-4337 the user operation carries a <span className="font-medium text-foreground">signed</span>{' '}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-[13px]">verificationGasLimit</code>. The EntryPoint
+          <div className="mt-8 border-l-2 border-[var(--c-withdrawn)]/50 pl-5">
+            <p className="text-[16px] font-semibold text-[var(--ink)]">Why AA specifically breaks</p>
+            <p className="mt-2 text-[16px] leading-relaxed text-[var(--ink-muted)]">
+              In ERC-4337 the user operation carries a <span className="font-medium text-[var(--ink)]">signed</span>{' '}
+              <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 mono text-[14px]">verificationGasLimit</code>. The EntryPoint
               calls the account&apos;s validation with exactly that much gas. Validation reads and writes storage (nonce,
               deposit, account state), which EIP-8037/8038 reprice upward. Validation now needs more gas than the fixed,
               signed limit, so the EntryPoint aborts the whole bundle. Because the limit is signed, it cannot be raised
               without re-signing.
             </p>
             <More label="Mechanism (exact)">
-              The EntryPoint calls <code className="font-mono">account.validateUserOp&#123;gas: verificationGasLimit&#125;(…)</code>. The
+              The EntryPoint calls <code className="mono">account.validateUserOp&#123;gas: verificationGasLimit&#125;(…)</code>. The
               repriced state access (INV-4 hard-coded gas plus INV-7 fixed reserves) pushes validation over budget, and the
-              EntryPoint reverts with <code className="font-mono text-foreground">FailedOp(…, &quot;AA26/AA40 over verificationGasLimit&quot;)</code>.
+              EntryPoint reverts with <code className="mono text-[var(--ink)]">FailedOp(…, &quot;AA26/AA40 over verificationGasLimit&quot;)</code>.
               In-flight and pre-signed userOps fail outright; bundler estimators computing the limit with pre-Glamsterdam
               assumptions will under-estimate and brick bundles. Both EntryPoint v0.6 and v0.7 are affected.
             </More>
@@ -301,21 +304,21 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <p className="mt-8 mb-1 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mt-8 mb-1 text-[16px] leading-relaxed text-[var(--ink-muted)]">
             It is not a near miss. At worst, validation needs hundreds of thousands of gas more than the signed limit
             allows, so no realistic estimate would have covered it.
           </p>
           <ChartFrame title="Worst-case extra gas" sub="how far over budget each break runs">
             <ResponsiveContainer width="100%" height={180}>
               <BarChart layout="vertical" data={[...GAS_DELTA].sort((a, b) => b.delta - a.delta)} margin={{ left: 0, right: 52, top: 4, bottom: 4 }}>
-                <XAxis type="number" tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={150} tick={{ fill: 'var(--foreground)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`+${v.toLocaleString()} gas`, 'over budget']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
+                <XAxis type="number" tickFormatter={(v) => `${Math.round(v / 1000)}k`} tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={150} tick={{ fill: 'var(--ink)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`+${v.toLocaleString()} gas`, 'over budget']} cursor={{ fill: 'var(--surface-2)', opacity: 0.25 }} />
                 <Bar dataKey="delta" isAnimationActive={false} radius={[0, 5, 5, 0]} barSize={20}>
                   {[...GAS_DELTA].sort((a, b) => b.delta - a.delta).map((d) => (
-                    <Cell key={d.name} fill={d.kind === 'aa' ? 'var(--chart-7)' : 'var(--chart-4)'} />
+                    <Cell key={d.name} fill={d.kind === 'aa' ? 'var(--c-withdrawn)' : 'var(--c-review)'} />
                   ))}
-                  <LabelList dataKey="delta" position="right" formatter={(v: number) => `+${Math.round(v / 1000)}k`} fill="var(--foreground)" fontSize={12} fontFamily="var(--font-mono)" fontWeight={700} />
+                  <LabelList dataKey="delta" position="right" formatter={(v: number) => `+${Math.round(v / 1000)}k`} fill="var(--ink)" fontSize={12} fontFamily="var(--font-geist-mono)" fontWeight={700} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -323,50 +326,50 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <p className="mb-1 mt-10 text-[15px] leading-relaxed text-muted-foreground">
+          <p className="mb-1 mt-10 text-[16px] leading-relaxed text-[var(--ink-muted)]">
             And it is not a rare path. Over the last 24 hours, these two EntryPoints processed{' '}
-            <span className="font-semibold text-foreground">{BLAST.totalPerDay.toLocaleString()} real user operations</span> on
+            <span className="font-semibold text-[var(--ink)]">{BLAST.totalPerDay.toLocaleString()} real user operations</span> on
             mainnet (counted on our own archive node). At the break rates we measured, roughly{' '}
-            <span className="font-semibold text-[var(--chart-7)]">{BLAST.totalAtRisk.toLocaleString()} of them a day</span>{' '}
+            <span className="font-semibold text-[var(--c-withdrawn)]">{BLAST.totalAtRisk.toLocaleString()} of them a day</span>{' '}
             would fail under Glamsterdam.
           </p>
           <div className="mb-4 mt-4 flex flex-wrap gap-x-12 gap-y-4">
             <div>
-              <div className="font-mono text-[2rem] font-bold leading-none tabular-nums text-foreground">~{Math.round(BLAST.totalPerDay / 1000)}k</div>
-              <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">userOps / day</div>
+              <div className="mono text-[2rem] font-bold leading-none tabular-nums text-[var(--ink)]">~{Math.round(BLAST.totalPerDay / 1000)}k</div>
+              <div className="mt-1 mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">userOps / day</div>
             </div>
             <div>
-              <div className="font-mono text-[2rem] font-bold leading-none tabular-nums text-[var(--chart-7)]">~{(BLAST.totalAtRisk / 1000).toFixed(1)}k</div>
-              <div className="mt-1 font-mono text-[11px] uppercase tracking-wider text-muted-foreground">would fail / day</div>
+              <div className="mono text-[2rem] font-bold leading-none tabular-nums text-[var(--c-withdrawn)]">~{(BLAST.totalAtRisk / 1000).toFixed(1)}k</div>
+              <div className="mt-1 mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">would fail / day</div>
             </div>
           </div>
           <ChartFrame title="Blast radius: userOps per day" sub="last 24h on mainnet · red = would fail under Glamsterdam">
             <ResponsiveContainer width="100%" height={150}>
               <BarChart layout="vertical" data={BLAST.entryPoints.map((e) => ({ name: e.name, atRisk: e.atRisk, rest: e.perDay - e.atRisk, total: e.perDay }))} margin={{ left: 0, right: 56, top: 4, bottom: 4 }} barCategoryGap={18}>
-                <XAxis type="number" tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'var(--foreground)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [`${v.toLocaleString()} userOps`, n === 'atRisk' ? 'would fail under Glamsterdam' : 'rest of daily traffic']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
-                <Bar dataKey="atRisk" stackId="a" isAnimationActive={false} barSize={22} fill="var(--chart-7)" />
-                <Bar dataKey="rest" stackId="a" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={22} fill="var(--chart-8)">
-                  <LabelList dataKey="total" position="right" formatter={(v: number) => v.toLocaleString()} fill="var(--foreground)" fontSize={11.5} fontFamily="var(--font-mono)" fontWeight={700} />
+                <XAxis type="number" tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={140} tick={{ fill: 'var(--ink)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [`${v.toLocaleString()} userOps`, n === 'atRisk' ? 'would fail under Glamsterdam' : 'rest of daily traffic']} cursor={{ fill: 'var(--surface-2)', opacity: 0.25 }} />
+                <Bar dataKey="atRisk" stackId="a" isAnimationActive={false} barSize={22} fill="var(--c-withdrawn)" />
+                <Bar dataKey="rest" stackId="a" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={22} fill="var(--border-strong)">
+                  <LabelList dataKey="total" position="right" formatter={(v: number) => v.toLocaleString()} fill="var(--ink)" fontSize={11.5} fontFamily="var(--font-geist-mono)" fontWeight={700} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-7)' }} />would fail under Glamsterdam</span>
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-8)' }} />rest of daily userOps</span>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-[var(--ink-muted)]">
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--c-withdrawn)' }} />would fail under Glamsterdam</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--border-strong)' }} />rest of daily userOps</span>
             </div>
           </ChartFrame>
         </Reveal>
       </section>
 
       {/* ── 04 The 8 invariants ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="04" title="Which assumptions break" sub="The hidden rules Glamsterdam can turn false, and how widely each is relied on." /></Reveal>
 
         <Reveal>
-          <p className="mb-6 text-[15px] leading-relaxed text-muted-foreground">
-            An <span className="font-medium text-foreground">invariant</span> is an assumption a contract quietly depends
+          <p className="mb-6 text-[16px] leading-relaxed text-[var(--ink-muted)]">
+            An <span className="font-medium text-[var(--ink)]">invariant</span> is an assumption a contract quietly depends
             on, for example &quot;a hard-coded gas amount will always be enough.&quot; The repricing can make some of these
             false. The chart counts how many of the 115 flagged contracts lean on each of the 8 invariants; the two in red
             (INV-4 and INV-7) are the assumptions behind the confirmed account-abstraction breaks.
@@ -374,14 +377,14 @@ export function GlamsterdamResearch() {
           <ChartFrame title="Invariants relied on" sub="number of flagged contracts · red = behind the confirmed breaks">
             <ResponsiveContainer width="100%" height={270}>
               <BarChart layout="vertical" data={[...INVARIANTS].sort((a, b) => b.count - a.count)} margin={{ left: 0, right: 30, top: 4, bottom: 4 }}>
-                <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="id" width={48} tick={{ fill: 'var(--foreground)', fontSize: 12.5, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v} contracts`, 'rely on this']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="id" width={48} tick={{ fill: 'var(--ink)', fontSize: 12.5, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v} contracts`, 'rely on this']} cursor={{ fill: 'var(--surface-2)', opacity: 0.25 }} />
                 <Bar dataKey="count" isAnimationActive={false} radius={[0, 5, 5, 0]} barSize={17}>
                   {[...INVARIANTS].sort((a, b) => b.count - a.count).map((iv) => (
-                    <Cell key={iv.id} fill={iv.confirmed ? 'var(--chart-7)' : 'var(--chart-1)'} />
+                    <Cell key={iv.id} fill={iv.confirmed ? 'var(--c-withdrawn)' : 'var(--ink-muted)'} />
                   ))}
-                  <LabelList dataKey="count" position="right" fill="var(--foreground)" fontSize={12} fontFamily="var(--font-mono)" fontWeight={600} />
+                  <LabelList dataKey="count" position="right" fill="var(--ink)" fontSize={12} fontFamily="var(--font-geist-mono)" fontWeight={600} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
@@ -389,15 +392,15 @@ export function GlamsterdamResearch() {
         </Reveal>
 
         <Reveal>
-          <div className="mt-6 divide-y divide-border/50 border-t border-border/50">
+          <div className="mt-6 divide-y divide-border/50 border-t border-[var(--border)]/50">
             {INVARIANTS.map((iv) => (
               <div key={iv.id} className="py-4">
                 <div className="flex items-center gap-2.5">
-                  <span className={cn('font-mono text-sm font-bold', iv.confirmed ? 'text-[var(--chart-7)]' : 'text-primary')}>{iv.id}</span>
-                  {iv.confirmed && <span className="rounded-full bg-[var(--chart-7)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--chart-7)]">confirmed break</span>}
-                  <span className="ml-auto font-mono text-[11px] text-muted-foreground">{iv.count} / 115</span>
+                  <span className={cn('mono text-sm font-bold', iv.confirmed ? 'text-[var(--c-withdrawn)]' : 'text-[var(--brand-strong)]')}>{iv.id}</span>
+                  {iv.confirmed && <span className="rounded-full bg-[var(--c-withdrawn)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--c-withdrawn)]">confirmed break</span>}
+                  <span className="ml-auto mono text-[11px] text-[var(--ink-muted)]">{iv.count} / 115</span>
                 </div>
-                <p className="mt-1.5 text-[15px] font-medium text-foreground">{iv.plain}</p>
+                <p className="mt-1.5 text-[16px] font-medium text-[var(--ink)]">{iv.plain}</p>
                 <More>{iv.tech}</More>
               </div>
             ))}
@@ -406,61 +409,61 @@ export function GlamsterdamResearch() {
       </section>
 
       {/* ── 05 Secondary ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="05" title="Break vs fixable, and what else moved" sub="Most flagged contracts just need more gas. Only account abstraction truly breaks." /></Reveal>
 
         <Reveal>
-          <div className="mb-4 rounded-lg border-l-2 border-primary bg-primary/5 py-2.5 pl-4 pr-3 text-[13.5px] leading-relaxed text-muted-foreground">
-            <span className="font-semibold text-foreground">First, to be clear:</span> every transaction below already
-            ran on mainnet and <span className="font-semibold text-foreground">succeeded</span>. Under today&apos;s rules
-            our replay reproduces that success (0% fail). The bars are failures <span className="font-semibold text-foreground">under Glamsterdam&apos;s rules only</span>.
+          <div className="mb-4 rounded-lg border-l-2 border-[var(--brand)] bg-[var(--brand)]/5 py-2.5 pl-4 pr-3 text-[14.5px] leading-relaxed text-[var(--ink-muted)]">
+            <span className="font-semibold text-[var(--ink)]">First, to be clear:</span> every transaction below already
+            ran on mainnet and <span className="font-semibold text-[var(--ink)]">succeeded</span>. Under today&apos;s rules
+            our replay reproduces that success (0% fail). The bars are failures <span className="font-semibold text-[var(--ink)]">under Glamsterdam&apos;s rules only</span>.
           </div>
-          <p className="mb-1 text-[15px] leading-relaxed text-muted-foreground">
-            Read this one as <span className="text-foreground">before and after</span>. The blue bar is how many fail{' '}
-            <span className="text-foreground">under Glamsterdam with the gas the transaction originally carried</span>.
+          <p className="mb-1 text-[16px] leading-relaxed text-[var(--ink-muted)]">
+            Read this one as <span className="text-[var(--ink)]">before and after</span>. The blue bar is how many fail{' '}
+            <span className="text-[var(--ink)]">under Glamsterdam with the gas the transaction originally carried</span>.
             The red bar is after we re-run each with triple the gas: the{' '}
-            <span className="text-foreground">routers drop to zero</span> (they only needed more room), while{' '}
-            <span className="text-foreground">account abstraction stays exactly where it was</span>. Its limit is signed
+            <span className="text-[var(--ink)]">routers drop to zero</span> (they only needed more room), while{' '}
+            <span className="text-[var(--ink)]">account abstraction stays exactly where it was</span>. Its limit is signed
             into the request, so adding gas does nothing. That is what makes it a true break, not a fixable one.
           </p>
           <ChartFrame title="Does more gas fix it?" sub="share that fail under Glamsterdam · all succeed on mainnet today">
             <ResponsiveContainer width="100%" height={250}>
               <BarChart layout="vertical" data={GAS_SWEEP} margin={{ left: 0, right: 56, top: 4, bottom: 4 }} barGap={3} barCategoryGap={16}>
-                <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fill: 'var(--muted-foreground)', fontSize: 11, fontFamily: 'var(--font-mono)' }} axisLine={false} tickLine={false} />
-                <YAxis type="category" dataKey="name" width={160} tick={{ fill: 'var(--foreground)', fontSize: 12 }} axisLine={false} tickLine={false} />
-                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [`${v}% fail under Glamsterdam`, n === 'normal' ? 'with its original gas' : 'with 3× gas']} cursor={{ fill: 'var(--muted)', opacity: 0.25 }} />
-                <Bar dataKey="normal" name="normal" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={9} fill="var(--chart-1)">
-                  <LabelList dataKey="normal" position="right" formatter={(v: number) => `${v}%`} fill="var(--muted-foreground)" fontSize={10.5} fontFamily="var(--font-mono)" />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={(v) => `${v}%`} tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: 'var(--font-geist-mono)' }} axisLine={false} tickLine={false} />
+                <YAxis type="category" dataKey="name" width={160} tick={{ fill: 'var(--ink)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, n: string) => [`${v}% fail under Glamsterdam`, n === 'normal' ? 'with its original gas' : 'with 3× gas']} cursor={{ fill: 'var(--surface-2)', opacity: 0.25 }} />
+                <Bar dataKey="normal" name="normal" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={9} fill="var(--ink-muted)">
+                  <LabelList dataKey="normal" position="right" formatter={(v: number) => `${v}%`} fill="var(--ink-muted)" fontSize={10.5} fontFamily="var(--font-geist-mono)" />
                 </Bar>
-                <Bar dataKey="tripled" name="tripled" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={9} fill="var(--chart-7)">
-                  <LabelList dataKey="tripled" position="right" formatter={(v: number) => (v === 0 ? '✓ fixed' : `${v}%`)} fill="var(--muted-foreground)" fontSize={10.5} fontFamily="var(--font-mono)" />
+                <Bar dataKey="tripled" name="tripled" isAnimationActive={false} radius={[0, 4, 4, 0]} barSize={9} fill="var(--c-withdrawn)">
+                  <LabelList dataKey="tripled" position="right" formatter={(v: number) => (v === 0 ? '✓ fixed' : `${v}%`)} fill="var(--ink-muted)" fontSize={10.5} fontFamily="var(--font-geist-mono)" />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-muted-foreground">
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-1)' }} />under Glamsterdam, original gas</span>
-              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--chart-7)' }} />under Glamsterdam, 3× gas</span>
+            <div className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[12px] text-[var(--ink-muted)]">
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--ink-muted)' }} />under Glamsterdam, original gas</span>
+              <span className="inline-flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 rounded-sm" style={{ background: 'var(--c-withdrawn)' }} />under Glamsterdam, 3× gas</span>
             </div>
           </ChartFrame>
         </Reveal>
 
         <Reveal>
-          <div className="mt-8 border-l-2 border-[var(--chart-4)]/60 pl-5">
+          <div className="mt-8 border-l-2 border-[var(--c-review)]/60 pl-5">
             <div className="flex items-center gap-2">
-              <Trash2 className="h-5 w-5 text-[var(--chart-4)]" />
-              <p className="text-[15px] font-semibold text-foreground">Create-and-throw-away contracts</p>
-              <span className="ml-auto font-mono text-sm font-bold text-[var(--chart-4)]">~{(CREATE_SELFDESTRUCT.perDay / 1000).toFixed(1)}k/day</span>
+              <Trash2 className="h-5 w-5 text-[var(--c-review)]" />
+              <p className="text-[16px] font-semibold text-[var(--ink)]">Create-and-throw-away contracts</p>
+              <span className="ml-auto mono text-sm font-bold text-[var(--c-review)]">~{(CREATE_SELFDESTRUCT.perDay / 1000).toFixed(1)}k/day</span>
             </div>
-            <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-2 text-[16px] leading-relaxed text-[var(--ink-muted)]">
               Many flows, like payment processors and bridge aggregators, spin up a throwaway contract (a one-time deposit
               address), sweep the funds, and destroy it in the same transaction. Today that is cheap. Under Glamsterdam it
               is charged the full {CREATE_SELFDESTRUCT.stateGas.toLocaleString()} gas for creating an account even though
-              nothing is left behind, so the cost rises up to <span className="font-semibold text-foreground">{CREATE_SELFDESTRUCT.costUpTo}</span>.
-              We measured <span className="font-semibold text-foreground">~{CREATE_SELFDESTRUCT.perDay.toLocaleString()} per day</span> on
+              nothing is left behind, so the cost rises up to <span className="font-semibold text-[var(--ink)]">{CREATE_SELFDESTRUCT.costUpTo}</span>.
+              We measured <span className="font-semibold text-[var(--ink)]">~{CREATE_SELFDESTRUCT.perDay.toLocaleString()} per day</span> on
               mainnet, in line with the ~{CREATE_SELFDESTRUCT.reportedByEf.toLocaleString()}/day an EF commenter reported.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              <span className="font-mono text-[11px] text-muted-foreground">verify on-chain:</span>
+              <span className="mono text-[11px] text-[var(--ink-muted)]">verify on-chain:</span>
               {CREATE_SELFDESTRUCT.repro.map((h) => <TxChip key={h} h={h} />)}
             </div>
           </div>
@@ -468,29 +471,29 @@ export function GlamsterdamResearch() {
 
         <Reveal>
           <div className="mt-8 grid gap-x-10 gap-y-6 sm:grid-cols-2">
-            <div className="border-l-2 border-border pl-4">
-              <div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-[var(--chart-4)]" /><p className="text-sm font-semibold text-foreground">Out-of-gas (non-AA)</p></div>
-              <p className="mb-1 mt-1 text-[12.5px] text-muted-foreground">A smaller, different failure: these simply run out of gas on storage-heavy paths.</p>
-              <ul className="divide-y divide-border/40 text-[13px] text-muted-foreground">
+            <div className="border-l-2 border-[var(--border)] pl-4">
+              <div className="flex items-center gap-2"><ShieldAlert className="h-4 w-4 text-[var(--c-review)]" /><p className="text-sm font-semibold text-[var(--ink)]">Out-of-gas (non-AA)</p></div>
+              <p className="mb-1 mt-1 text-[13.5px] text-[var(--ink-muted)]">A smaller, different failure: these simply run out of gas on storage-heavy paths.</p>
+              <ul className="divide-y divide-border/40 text-[14px] text-[var(--ink-muted)]">
                 {OOG_BREAKS.map((o) => (
                   <li key={o.name} className="flex items-center justify-between gap-2 py-1.5">
                     <span className="min-w-0">
-                      {o.unverified ? <span className="font-mono text-foreground">{o.name}</span> : <span>{o.name}</span>}
-                      {o.unverified && <span className="ml-1.5 rounded bg-muted px-1 py-0.5 font-mono text-[9px] uppercase tracking-wide text-muted-foreground">unverified</span>}
-                      <span className="block text-[11.5px] text-muted-foreground">{o.note}</span>
+                      {o.unverified ? <span className="mono text-[var(--ink)]">{o.name}</span> : <span>{o.name}</span>}
+                      {o.unverified && <span className="ml-1.5 rounded bg-[var(--surface-2)] px-1 py-0.5 mono text-[9px] uppercase tracking-wide text-[var(--ink-muted)]">unverified</span>}
+                      <span className="block text-[11.5px] text-[var(--ink-muted)]">{o.note}</span>
                     </span>
-                    <span className="shrink-0 font-mono text-foreground">{o.rate}</span>
+                    <span className="shrink-0 mono text-[var(--ink)]">{o.rate}</span>
                   </li>
                 ))}
               </ul>
-              <p className="mt-2 text-[11.5px] leading-snug text-muted-foreground">&quot;Unverified&quot; contracts have no public source on Etherscan, so we can only identify them by address.</p>
+              <p className="mt-2 text-[11.5px] leading-snug text-[var(--ink-muted)]">&quot;Unverified&quot; contracts have no public source on Etherscan, so we can only identify them by address.</p>
             </div>
-            <div className="border-l-2 border-border pl-4">
-              <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-[var(--chart-2)]" /><p className="text-sm font-semibold text-foreground">Just needs more gas</p></div>
-              <p className="mb-1 mt-1 text-[12.5px] text-muted-foreground">Routers and aggregators flip only because the tx gas limit is now too low. Not a contract bug.</p>
-              <ul className="divide-y divide-border/40 text-[13px] text-muted-foreground">
+            <div className="border-l-2 border-[var(--border)] pl-4">
+              <div className="flex items-center gap-2"><Wrench className="h-4 w-4 text-[var(--c-final)]" /><p className="text-sm font-semibold text-[var(--ink)]">Just needs more gas</p></div>
+              <p className="mb-1 mt-1 text-[13.5px] text-[var(--ink-muted)]">Routers and aggregators flip only because the tx gas limit is now too low. Not a contract bug.</p>
+              <ul className="divide-y divide-border/40 text-[14px] text-[var(--ink-muted)]">
                 {FIXED_GAS.map((f) => (
-                  <li key={f.name} className="flex items-center justify-between gap-2 py-1.5"><span>{f.name}</span><span className="font-mono text-foreground">{f.flips}</span></li>
+                  <li key={f.name} className="flex items-center justify-between gap-2 py-1.5"><span>{f.name}</span><span className="mono text-[var(--ink)]">{f.flips}</span></li>
                 ))}
               </ul>
             </div>
@@ -499,28 +502,29 @@ export function GlamsterdamResearch() {
       </section>
 
       {/* ── 06 Caveats ── */}
-      <section className="mt-11">
+      <section className="mt-16">
         <Reveal><SectionHead n="06" title="Caveats" sub="Read before citing." /></Reveal>
         <Reveal>
-          <p className="border-l-2 border-primary/50 pl-5 text-sm leading-relaxed text-muted-foreground">
+          <p className="border-l-2 border-[var(--brand)]/50 pl-5 text-sm leading-relaxed text-[var(--ink-muted)]">
             Replay forks state at the parent block and runs the tx first-in-block, so exact gas margins can differ slightly;
             the osaka-success / amsterdam-fail flip controls for replay error. 50 txs per contract is a strong signal, not a
             population rate, so the blast-radius figure (daily userOp volume × that rate) is an order-of-magnitude
             projection rather than a guaranteed count. The daily volumes themselves are exact, counted on our archive node. The per-invariant counts are from the static scan (contracts relying on each assumption), not all
             confirmed by replay; only INV-4 and INV-7 are confirmed here. EIP-8037/8038 are still in flux (rival fixes exist);
-            numbers use the pinned <code className="rounded bg-muted px-1 py-0.5 font-mono text-[13px]">glamsterdam-devnet-8</code> schedule
+            numbers use the pinned <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 mono text-[14px]">glamsterdam-devnet-8</code> schedule
             and should be re-measured if the spec moves. Affected teams were disclosed to privately before this write-up.
           </p>
         </Reveal>
         <Reveal>
-          <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-border/50 pt-4 font-mono text-xs text-muted-foreground">
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)]/50 pt-4 mono text-xs text-[var(--ink-muted)]">
             <span>EIPsInsight gas-audit · scanner → differential replay → confirmed breaks</span>
-            <Link href="https://github.com/ethereum/glamsterdam-gas-invariants" target="_blank" className="inline-flex items-center gap-1 text-primary hover:underline">
+            <Link href="https://github.com/ethereum/glamsterdam-gas-invariants" target="_blank" className="inline-flex items-center gap-1 text-[var(--brand-strong)] hover:underline">
               glamsterdam-gas-invariants <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
         </Reveal>
       </section>
+      </div>
     </div>
   );
 }
@@ -535,22 +539,22 @@ function ReplayedTable() {
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-primary/80 hover:text-primary"
+        className="inline-flex items-center gap-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)]/80 hover:text-[var(--brand-strong)]"
       >
         <Plus className={cn('h-3.5 w-3.5 transition-transform', open && 'rotate-45')} />
         {open ? 'Hide the replayed contracts' : 'See the replayed contracts'}
       </button>
       {open && (
         <div className="mt-3">
-          <p className="mb-3 text-[13.5px] leading-relaxed text-muted-foreground">
+          <p className="mb-3 text-[14.5px] leading-relaxed text-[var(--ink-muted)]">
             The replayed set was the 25 most active flagged contracts. Twelve are individually notable and listed here; the
             rest were high-volume contracts whose transactions passed unchanged or only needed more gas. Each name links to
             Etherscan. &quot;Affected txs&quot; is how many of the 50 sampled transactions the outcome applies to.
           </p>
-          <div className="overflow-x-auto rounded-lg border border-border/60">
-            <table className="w-full min-w-[440px] text-[13px]">
+          <div className="overflow-x-auto rounded-lg border border-[var(--border)]/60">
+            <table className="w-full min-w-[440px] text-[14px]">
               <thead>
-                <tr className="bg-muted/30 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                <tr className="bg-[var(--surface-2)]/30 text-left mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">
                   <th className="px-3 py-2 font-semibold">Contract</th>
                   <th className="px-3 py-2 font-semibold">Outcome</th>
                   <th className="px-3 py-2 text-right font-semibold">Affected txs</th>
@@ -560,17 +564,17 @@ function ReplayedTable() {
                 {REPLAYED.map((c) => {
                   const o = OUTCOME[c.outcome];
                   return (
-                    <tr key={c.addr} className="border-t border-border/50">
+                    <tr key={c.addr} className="border-t border-[var(--border)]/50">
                       <td className="px-3 py-2">
-                        <a href={addrUrl(c.addr)} target="_blank" rel="noopener noreferrer" className="font-medium text-foreground hover:text-primary">{c.name}</a>
-                        <span className="ml-2 font-mono text-[11px] text-muted-foreground">{short(c.addr)}</span>
+                        <a href={addrUrl(c.addr)} target="_blank" rel="noopener noreferrer" className="font-medium text-[var(--ink)] hover:text-[var(--brand-strong)]">{c.name}</a>
+                        <span className="ml-2 mono text-[11px] text-[var(--ink-muted)]">{short(c.addr)}</span>
                       </td>
                       <td className="px-3 py-2">
                         <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-medium" style={{ color: o.color, background: `color-mix(in srgb, ${o.color} 13%, transparent)` }}>
                           <span className="h-1.5 w-1.5 rounded-full" style={{ background: o.color }} />{o.label}
                         </span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-muted-foreground">{c.rate}</td>
+                      <td className="px-3 py-2 text-right mono text-[var(--ink-muted)]">{c.rate}</td>
                     </tr>
                   );
                 })}
@@ -587,8 +591,8 @@ function ChartFrame({ title, sub, children }: { title: string; sub: string; chil
   return (
     <figure className="mt-1">
       <figcaption className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <span className="dec-title text-[15px] font-semibold text-foreground">{title}</span>
-        <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">{sub}</span>
+        <span className="text-[1.1rem] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">{title}</span>
+        <span className="mono text-[11px] uppercase tracking-wide text-[var(--ink-muted)]">{sub}</span>
       </figcaption>
       <div className="w-full">{children}</div>
     </figure>
@@ -598,7 +602,7 @@ function ChartFrame({ title, sub, children }: { title: string; sub: string; chil
 function TxChip({ h }: { h: string }) {
   return (
     <a href={txUrl(h)} target="_blank" rel="noopener noreferrer"
-       className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/20 px-2 py-0.5 font-mono text-[11px] text-primary hover:border-primary/40">
+       className="inline-flex items-center gap-1 rounded-md border border-[var(--border)] bg-[var(--surface-2)]/20 px-2 py-0.5 mono text-[11px] text-[var(--brand-strong)] hover:border-[var(--brand)]/40">
       {short(h)}<ExternalLink className="h-2.5 w-2.5" />
     </a>
   );
@@ -611,20 +615,20 @@ function BreakRow({ b }: { b: HardBreak }) {
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
         className="flex w-full items-start justify-between gap-4 text-left">
         <span className="min-w-0">
-          <span className="block text-[15px] font-semibold text-foreground">{b.name}</span>
-          <span className="font-mono text-[11px] text-muted-foreground">{short(b.addr)}</span>
-          <span className="mt-1.5 block text-[13.5px] leading-relaxed text-muted-foreground">{b.what}</span>
+          <span className="block text-[16px] font-semibold text-[var(--ink)]">{b.name}</span>
+          <span className="mono text-[11px] text-[var(--ink-muted)]">{short(b.addr)}</span>
+          <span className="mt-1.5 block text-[14.5px] leading-relaxed text-[var(--ink-muted)]">{b.what}</span>
         </span>
         <span className="flex shrink-0 flex-col items-end leading-none">
-          <span className="font-mono text-base font-bold text-[var(--chart-7)]">{b.rate}</span>
-          <span className="mt-1 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">txs fail</span>
-          <ChevronDown className={cn('mt-2 h-4 w-4 text-muted-foreground transition-transform', open && 'rotate-180')} />
+          <span className="mono text-base font-bold text-[var(--c-withdrawn)]">{b.rate}</span>
+          <span className="mt-1 mono text-[10px] uppercase tracking-wide text-[var(--ink-muted)]">txs fail</span>
+          <ChevronDown className={cn('mt-2 h-4 w-4 text-[var(--ink-muted)] transition-transform', open && 'rotate-180')} />
         </span>
       </button>
       {open && (
-        <div className="mt-3 space-y-2 border-l-2 border-[var(--chart-7)]/30 pl-3 text-[13px] text-muted-foreground">
-          <p>Reverts with <code className="rounded bg-muted px-1 py-0.5 font-mono text-[12.5px] text-foreground">{b.mechanism}</code>. At worst, validation needs <span className="font-semibold text-foreground">+{b.maxDelta.toLocaleString()} gas</span> more than the signed limit allows.</p>
-          <p className="flex flex-wrap items-center gap-2"><span className="font-mono text-[11px]">verify on-chain:</span>{b.repro.map((h) => <TxChip key={h} h={h} />)}</p>
+        <div className="mt-3 space-y-2 border-l-2 border-[var(--c-withdrawn)]/30 pl-3 text-[14px] text-[var(--ink-muted)]">
+          <p>Reverts with <code className="rounded bg-[var(--surface-2)] px-1 py-0.5 mono text-[13.5px] text-[var(--ink)]">{b.mechanism}</code>. At worst, validation needs <span className="font-semibold text-[var(--ink)]">+{b.maxDelta.toLocaleString()} gas</span> more than the signed limit allows.</p>
+          <p className="flex flex-wrap items-center gap-2"><span className="mono text-[11px]">verify on-chain:</span>{b.repro.map((h) => <TxChip key={h} h={h} />)}</p>
         </div>
       )}
     </div>
