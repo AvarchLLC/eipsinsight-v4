@@ -15,6 +15,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LedgerBadge } from "@/components/ledger/badge";
 import {
   CategoryCoverage,
   categoryColors,
@@ -485,10 +486,8 @@ export function EditorsCoverageTab({
               <div
                 key={track.key}
                 className={cn(
-                  "group rounded-xl border p-4.5 backdrop-blur-sm transition-all duration-200 flex flex-col justify-between shadow-sm",
-                  track.isThin
-                    ? "border-rose-500/30 bg-rose-500/[0.03] hover:border-rose-500/50"
-                    : "border-border/70 bg-card/60 hover:border-primary/40 hover:shadow-md",
+                  "card p-4.5 flex flex-col justify-between transition-colors hover:border-[var(--ink)]",
+                  track.isThin && "border-[var(--c-withdrawn)]/40 bg-[var(--surface-2)]",
                 )}
               >
                 <div>
@@ -497,46 +496,40 @@ export function EditorsCoverageTab({
                     <div className="space-y-0.5 min-w-0">
                       <div className="flex items-center gap-2">
                         <span
-                          className="h-2.5 w-2.5 rounded-full shrink-0 shadow-sm"
-                          style={{ backgroundColor: track.color }}
+                          className="h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ backgroundColor: `var(--c-${track.key}, ${track.color})` }}
                         />
-                        <h4 className="text-sm font-bold text-foreground tracking-tight truncate">
+                        <h4 className="text-sm font-semibold text-[var(--ink)] tracking-tight truncate">
                           {track.name}
                         </h4>
                       </div>
-                      <p className="text-[11px] text-muted-foreground truncate">{track.tagline}</p>
+                      <p className="text-[11px] text-[var(--ink-muted)] truncate">{track.tagline}</p>
                     </div>
 
                     {track.isThin ? (
-                      <span className="shrink-0 inline-flex items-center gap-1 rounded bg-rose-500/15 px-2 py-0.5 text-[10px] font-bold text-rose-600 dark:text-rose-400">
-                        <ShieldAlert className="h-3 w-3" />
-                        Thin
-                      </span>
+                      <LedgerBadge token="withdrawn" label="Thin" />
                     ) : (
-                      <span className="shrink-0 inline-flex items-center gap-1 rounded bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
-                        <ShieldCheck className="h-3 w-3" />
-                        Healthy
-                      </span>
+                      <LedgerBadge token="final" label="Healthy" />
                     )}
                   </div>
 
                   {/* Volume Counters */}
-                  <div className="grid grid-cols-2 gap-2 py-2 px-3 rounded-lg bg-muted/30 border border-border/40">
+                  <div className="grid grid-cols-2 gap-2 py-2 px-3 rounded-[var(--l-radius-control)] bg-[var(--surface-2)] border border-[var(--border)]">
                     <div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Activity className="h-3 w-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--ink-muted)]">
+                        <Activity className="h-3 w-3 text-[var(--ink-muted)]" />
                         <span>All Actions</span>
                       </div>
-                      <p className="text-base font-bold text-foreground tabular-nums">
+                      <p className="text-base font-semibold font-mono text-[var(--ink)] tabular-nums">
                         {track.totalActions.toLocaleString()}
                       </p>
                     </div>
                     <div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <GitPullRequest className="h-3 w-3 text-muted-foreground" />
+                      <div className="flex items-center gap-1 text-[10px] text-[var(--ink-muted)]">
+                        <GitPullRequest className="h-3 w-3 text-[var(--ink-muted)]" />
                         <span>PR Reviews</span>
                       </div>
-                      <p className="text-base font-bold text-foreground tabular-nums">
+                      <p className="text-base font-semibold font-mono text-[var(--ink)] tabular-nums">
                         {track.totalReviews.toLocaleString()}
                       </p>
                     </div>
@@ -642,14 +635,14 @@ export function EditorsCoverageTab({
       </div>
 
       {/* Flagship Unified Visualization Card */}
-      <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm space-y-4">
+      <div className="card p-4 sm:p-5 space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <BarChart2 className="h-4 w-4 text-primary" />
+            <h4 className="text-sm font-semibold text-[var(--ink)] flex items-center gap-2">
+              <BarChart2 className="h-4 w-4 text-[var(--brand-strong)]" />
               Category Workload & Specialization Explorer
             </h4>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-[11px] text-[var(--ink-muted)]">
               {chartMode === "share" &&
                 "Proportion of activity each editor contributes to each standards track (100% Normalized)"}
               {chartMode === "reviews" &&
@@ -661,16 +654,12 @@ export function EditorsCoverageTab({
 
           {/* Controls: Mode Switcher & Filter Pills */}
           <div className="flex flex-wrap items-center gap-2">
-            <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
+            <div className="inline-flex items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
               <button
                 type="button"
                 onClick={() => setChartMode("share")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                  chartMode === "share"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={chartMode === "share" ? "true" : undefined}
+                className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer flex items-center gap-1.5"
               >
                 <PieChart className="h-3.5 w-3.5" />
                 <span>Share (%)</span>
@@ -678,12 +667,8 @@ export function EditorsCoverageTab({
               <button
                 type="button"
                 onClick={() => setChartMode("reviews")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                  chartMode === "reviews"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={chartMode === "reviews" ? "true" : undefined}
+                className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer flex items-center gap-1.5"
               >
                 <GitPullRequest className="h-3.5 w-3.5" />
                 <span>PR Reviews</span>
@@ -691,12 +676,8 @@ export function EditorsCoverageTab({
               <button
                 type="button"
                 onClick={() => setChartMode("actions")}
-                className={cn(
-                  "rounded-md px-2.5 py-1 text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5",
-                  chartMode === "actions"
-                    ? "bg-primary text-primary-foreground shadow-sm"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
+                data-active={chartMode === "actions" ? "true" : undefined}
+                className="chip h-7 px-2.5 text-xs border-transparent bg-transparent hover:border-transparent cursor-pointer flex items-center gap-1.5"
               >
                 <Activity className="h-3.5 w-3.5" />
                 <span>All Actions</span>
@@ -705,7 +686,7 @@ export function EditorsCoverageTab({
 
             {/* Action Type Sub-Filter (only visible in actions mode) */}
             {chartMode === "actions" && (
-              <div className="inline-flex items-center rounded-lg border border-border/70 bg-muted/40 p-0.5 text-xs">
+              <div className="inline-flex items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
                 {(
                   [
                     ["all", "All"],
@@ -718,12 +699,8 @@ export function EditorsCoverageTab({
                     key={val}
                     type="button"
                     onClick={() => setActionFilter(val)}
-                    className={cn(
-                      "rounded-md px-2 py-0.5 text-[11px] font-medium transition-all cursor-pointer",
-                      actionFilter === val
-                        ? "bg-foreground text-background font-semibold shadow-sm"
-                        : "text-muted-foreground hover:text-foreground",
-                    )}
+                    data-active={actionFilter === val ? "true" : undefined}
+                    className="chip h-7 px-2 text-[11px] border-transparent bg-transparent hover:border-transparent cursor-pointer"
                   >
                     {label}
                   </button>
@@ -745,15 +722,15 @@ export function EditorsCoverageTab({
       </div>
 
       {/* Structured Category Directory Matrix Table */}
-      <div className="rounded-xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-border/60 flex items-center justify-between">
+      <div className="card overflow-hidden">
+        <div className="p-4 border-b border-[var(--border)] flex items-center justify-between">
           <div>
-            <h4 className="text-xs font-semibold text-foreground">Category Coverage Directory</h4>
-            <p className="text-[10px] text-muted-foreground">
+            <h4 className="text-xs font-semibold text-[var(--ink)]">Category Coverage Directory</h4>
+            <p className="text-[10px] text-[var(--ink-muted)]">
               Tabular view of staffing depth, leading contributors, and action totals by track
             </p>
           </div>
-          <span className="text-[10px] text-muted-foreground font-mono">
+          <span className="text-[10px] text-[var(--ink-muted)] font-mono">
             {tracksData.tracks.length} active tracks
           </span>
         </div>

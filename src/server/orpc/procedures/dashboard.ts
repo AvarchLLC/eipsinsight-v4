@@ -457,6 +457,7 @@ export const dashboardProcedures = {
                 WHEN s.type = 'Meta' THEN 'Meta' WHEN s.type = 'Informational' THEN 'Informational' ELSE 'Core' END as dimension
             FROM eips e JOIN eip_snapshots s ON e.id = s.eip_id
             WHERE COALESCE(e.created_at, (SELECT MIN(se.changed_at) FROM eip_status_events se WHERE se.eip_id = e.id)) IS NOT NULL
+              AND e.eip_number NOT IN (2512, 3297, 1047)
             UNION ALL
             SELECT EXTRACT(YEAR FROM created_at)::int as year, 'RIP' as dimension FROM rips WHERE created_at IS NOT NULL ${!includeRIPs ? 'AND 1=0' : ''}
           )
@@ -468,6 +469,7 @@ export const dashboardProcedures = {
               s.status as dimension
             FROM eips e JOIN eip_snapshots s ON e.id = s.eip_id
             WHERE COALESCE(e.created_at, (SELECT MIN(se.changed_at) FROM eip_status_events se WHERE se.eip_id = e.id)) IS NOT NULL
+              AND e.eip_number NOT IN (2512, 3297, 1047)
             UNION ALL
             SELECT EXTRACT(YEAR FROM created_at)::int as year, status as dimension FROM rips WHERE created_at IS NOT NULL ${!includeRIPs ? 'AND 1=0' : ''}
           )

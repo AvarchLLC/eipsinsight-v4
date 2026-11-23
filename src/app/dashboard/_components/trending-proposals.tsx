@@ -9,6 +9,7 @@ import { CopyLinkButton } from '@/components/header';
 import { InfiniteSlider } from '@/components/ui/infinite-slider';
 import { ProgressiveBlur } from '@/components/ui/progressive-blur';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { LedgerBadge } from '@/components/ledger/badge';
 
 type TrendingProposal = {
   proposalNumber: number;
@@ -74,28 +75,19 @@ function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.4, ease: 'easeOut' }}
-      className="group relative flex h-[220px] w-[300px] shrink-0 flex-col rounded-lg border border-border/70 bg-card/60 p-3 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/40 hover:bg-primary/[0.05]"
+      className="group relative flex h-[220px] w-[300px] shrink-0 flex-col rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-3.5 text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
     >
       {/* Header: Badge + Status */}
       <div className="mb-2 flex items-center gap-2">
-        <span
-          className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold uppercase tracking-wider ${typeColors[proposal.proposalType]}`}
-        >
-          {proposal.proposalType}-{proposal.proposalNumber}
-        </span>
-        {proposal.status && (
-          <span
-            className={`inline-flex items-center rounded border px-2 py-1 text-[10px] font-medium ${
-              statusColors[proposal.status] ?? statusColors['Draft']
-            }`}
-          >
-            {proposal.status}
-          </span>
-        )}
+        <LedgerBadge
+          token={proposal.proposalType}
+          label={`${proposal.proposalType}-${proposal.proposalNumber}`}
+        />
+        {proposal.status && <LedgerBadge token={proposal.status} />}
       </div>
 
       {/* Title */}
-      <h3 className="mb-2 line-clamp-3 min-h-[2.8rem] text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
+      <h3 className="mb-2 line-clamp-3 min-h-[2.8rem] text-sm font-semibold text-[var(--ink)] transition-colors group-hover:text-[var(--brand-strong)]">
         {proposal.title}
       </h3>
 
@@ -110,7 +102,7 @@ function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
               return (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-0.5 rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground"
+                  className="inline-flex items-center gap-0.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--ink-muted)]"
                 >
                   <Tag className="h-2 w-2" />
                   {label}
@@ -120,50 +112,50 @@ function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
           </div>
         )}
         {proposal.category && (
-          <span className="rounded bg-muted/70 px-1.5 py-0.5 text-[9px] font-medium text-muted-foreground">
+          <span className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-1.5 py-0.5 text-[9px] font-mono text-[var(--ink-muted)]">
             {proposal.category}
           </span>
         )}
       </div>
 
       {/* Stats */}
-      <div className="mb-2 flex items-center gap-2.5 text-[10px] text-muted-foreground">
+      <div className="mb-2 flex items-center gap-2.5 text-[10px] text-[var(--ink-muted)]">
         {proposal.views !== undefined && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 font-mono">
             <Eye className="h-2.5 w-2.5" />
             <span className="font-medium">{proposal.views}</span>
           </div>
         )}
         {proposal.likes !== undefined && proposal.likes > 0 && (
-          <div className="flex items-center gap-1 text-rose-400">
-            <Heart className="h-2.5 w-2.5 fill-rose-400/30" />
+          <div className="flex items-center gap-1 font-mono text-[var(--c-withdrawn)]">
+            <Heart className="h-2.5 w-2.5 fill-current opacity-70" />
             <span className="font-medium">{proposal.likes}</span>
           </div>
         )}
-        <div className="flex items-center gap-1 text-primary">
+        <div className="flex items-center gap-1 font-mono text-[var(--brand-strong)]">
           <MessageSquare className="h-2.5 w-2.5" />
           <span className="font-medium">{proposal.replies}</span>
         </div>
       </div>
 
       {/* Author + Time + CTA */}
-      <div className="mt-auto flex items-center justify-between border-t border-border/70 pt-3">
+      <div className="mt-auto flex items-center justify-between border-t border-[var(--border)] pt-2.5">
         <div className="flex min-w-0 items-center gap-2">
-          <Avatar className="h-8 w-8 shrink-0 border border-border/70">
+          <Avatar className="h-7 w-7 shrink-0 border border-[var(--border)]">
             <AvatarImage src={proposal.authorAvatar} alt={authorName} />
-            <AvatarFallback className="bg-primary/10 text-xs font-semibold text-primary">
+            <AvatarFallback className="bg-[var(--surface-2)] text-[10px] font-semibold text-[var(--ink)]">
               {authorInitials}
             </AvatarFallback>
           </Avatar>
           <div className="flex min-w-0 flex-col">
-            <span className="truncate text-[11px] font-semibold text-foreground">{authorName}</span>
-            <div className="flex items-center gap-1 text-[9px] text-muted-foreground">
+            <span className="truncate text-[11px] font-medium text-[var(--ink)]">{authorName}</span>
+            <div className="flex items-center gap-1 text-[9px] text-[var(--ink-muted)]">
               <Clock className="h-2 w-2 shrink-0" />
               <span>{formatTimeAgo(proposal.lastActivityAt)}</span>
             </div>
           </div>
         </div>
-        <div className="ml-2 flex shrink-0 items-center gap-1 rounded bg-primary/10 px-2 py-1 text-[10px] font-semibold text-primary transition-colors group-hover:bg-primary/20">
+        <div className="ml-2 flex shrink-0 items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-1 text-[var(--ink-muted)] transition-colors group-hover:border-[var(--ink)] group-hover:text-[var(--ink)]">
           {proposal.destination === 'internal' ? (
             <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
           ) : (
@@ -171,9 +163,6 @@ function ProposalCard({ proposal }: { proposal: TrendingProposal }) {
           )}
         </div>
       </div>
-
-      {/* Hover glow */}
-      <div className="absolute inset-0 -z-10 rounded-lg bg-primary/0 opacity-0 blur-xl transition-opacity duration-300 group-hover:opacity-10" />
     </motion.a>
   );
 }

@@ -417,48 +417,48 @@ function AnalyticsLayoutInner({
   }, [pageTitle]);
 
   const controls = (
-    <div className="flex flex-wrap items-center gap-3">
+    <div className="flex flex-wrap items-center gap-2.5">
       {/* Time Range */}
-      <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
-        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="relative flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 transition-colors hover:border-[var(--ink)]">
+        <Calendar className="h-3.5 w-3.5 text-[var(--ink-muted)] shrink-0" />
         <select
           value={timeRange}
           onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-          className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
+          className="bg-transparent text-xs font-medium text-[var(--ink)] pl-1.5 pr-5 outline-none cursor-pointer appearance-none"
         >
           {timeRangeOptions.map((opt) => (
-            <option key={opt.value} value={opt.value} className="bg-card text-foreground">
+            <option key={opt.value} value={opt.value} className="bg-[var(--surface)] text-[var(--ink)]">
               {opt.label}
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+        <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-[var(--ink-muted)]" />
       </div>
 
       {timeRange === "custom" && (
-        <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-card p-1.5 shadow-sm">
-          <span className="px-1 text-[11px] font-semibold text-muted-foreground">From:</span>
+        <div className="flex flex-wrap items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] p-1">
+          <span className="px-1 text-[11px] font-medium text-[var(--ink-muted)]">From:</span>
           <input
             type="month"
             value={localFromMonth}
             max={localToMonth || undefined}
             onChange={(e) => setLocalFromMonth(e.target.value)}
-            className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
+            className="h-7 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-[var(--ink)] outline-none"
             aria-label="Custom range start month"
           />
-          <span className="px-1 text-[11px] font-semibold text-muted-foreground">To:</span>
+          <span className="px-1 text-[11px] font-medium text-[var(--ink-muted)]">To:</span>
           <input
             type="month"
             value={localToMonth}
             min={localFromMonth || undefined}
             onChange={(e) => setLocalToMonth(e.target.value)}
-            className="h-7 rounded-md border border-border/70 bg-background/60 px-2 text-xs text-foreground outline-none focus:border-primary/45 focus:ring-1 focus:ring-primary/20"
+            className="h-7 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 text-xs text-[var(--ink)] outline-none"
             aria-label="Custom range end month"
           />
           <button
             type="button"
             onClick={handleApplyCustomRange}
-            className="inline-flex h-7 items-center justify-center rounded-md bg-primary px-3 text-xs font-semibold text-primary-foreground transition-all hover:bg-primary/90 focus:outline-none focus:ring-1 focus:ring-primary/30"
+            className="inline-flex h-7 items-center justify-center rounded-[var(--l-radius-control)] bg-[var(--ink)] px-2.5 text-xs font-medium text-[var(--paper)] transition-all hover:opacity-90"
           >
             Apply
           </button>
@@ -467,20 +467,20 @@ function AnalyticsLayoutInner({
 
       {/* Repo Filter — hidden on the PR page, which owns a multi-select */}
       {!hideRepo && (
-        <div className="relative flex items-center rounded-lg border border-border bg-muted/65 px-2.5 py-1.5 shadow-sm transition-all hover:border-primary/40 focus-within:border-primary/40 focus-within:ring-1 focus-within:ring-primary/20">
-          <Database className="h-4 w-4 text-muted-foreground shrink-0" />
+        <div className="relative flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 transition-colors hover:border-[var(--ink)]">
+          <Database className="h-3.5 w-3.5 text-[var(--ink-muted)] shrink-0" />
           <select
             value={repoFilter}
             onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-            className="bg-transparent text-sm font-semibold text-foreground/90 pl-1.5 pr-6 outline-none cursor-pointer appearance-none"
+            className="bg-transparent text-xs font-medium text-[var(--ink)] pl-1.5 pr-5 outline-none cursor-pointer appearance-none"
           >
             {repoOptions.map((opt) => (
-              <option key={opt.value} value={opt.value} className="bg-card text-foreground">
+              <option key={opt.value} value={opt.value} className="bg-[var(--surface)] text-[var(--ink)]">
                 {opt.label}
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground" />
+          <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-[var(--ink-muted)]" />
         </div>
       )}
     </div>
@@ -496,12 +496,12 @@ function AnalyticsLayoutInner({
   if (embedded) {
     return (
       <AnalyticsContext.Provider value={contextValue}>
-        <div className="space-y-3">
-          <div className="flex flex-col gap-3 rounded-xl border border-border bg-card/60 p-3 sm:flex-row sm:items-center sm:justify-between">
+        <div data-ledger className="space-y-4 text-[var(--ink)]">
+          <div className="flex flex-col gap-3 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-3.5 sm:flex-row sm:items-center sm:justify-between">
             {(embeddedTitle || embeddedSubtitle) && (
               <div className="min-w-0">
-                {embeddedTitle && <p className="text-sm font-semibold text-foreground">{embeddedTitle}</p>}
-                {embeddedSubtitle && <p className="text-[11px] text-muted-foreground">{embeddedSubtitle}</p>}
+                {embeddedTitle && <p className="text-sm font-semibold text-[var(--ink)]">{embeddedTitle}</p>}
+                {embeddedSubtitle && <p className="text-[11px] text-[var(--ink-muted)]">{embeddedSubtitle}</p>}
               </div>
             )}
             <div className="sm:ml-auto">{controls}</div>
@@ -514,9 +514,9 @@ function AnalyticsLayoutInner({
 
   return (
     <AnalyticsContext.Provider value={contextValue}>
-      <div className="min-h-screen bg-background">
+      <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
         {/* Single merged header — not sticky */}
-        <div className="border-b border-border bg-card/80">
+        <div className="border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="mx-auto w-full px-3 py-5 sm:px-4 lg:px-5 xl:px-6">
             {/* Full header (title + controls) only on Activity views. Insights
                 pages render their own bespoke headers, so the shell shows just
@@ -525,7 +525,7 @@ function AnalyticsLayoutInner({
             <div className="flex flex-col gap-2.5">
               <div className="flex flex-wrap items-center justify-between gap-4">
                 {/* Title */}
-                <h1 className="dec-title persona-title text-balance text-2xl font-semibold tracking-tight leading-[1.1] sm:text-3xl">
+                <h1 className="font-serif text-2xl font-normal tracking-tight text-[var(--ink)] sm:text-3xl">
                   {pageTitle}
                 </h1>
 

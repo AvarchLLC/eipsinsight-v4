@@ -1,15 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import ReactECharts from 'echarts-for-react';
-import { ArrowUpRight, Download, Package } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/button';
-import { CopyLinkButton } from '@/components/header';
+import { ArrowUpRight, Download } from 'lucide-react';
+import { SectionHead } from '@/components/ledger/section-head';
 import { ChartFooter } from '@/components/chart-footer';
 import { ChartWatermark } from '@/components/chart-watermark';
-import { UpgradeTimelineChart } from '@/components/upgrade/upgrade-timeline-chart';
 
 type UpgradeOption = {
   slug: string;
@@ -25,13 +22,13 @@ type Counts = {
 };
 
 type UpgradeWatchSectionProps = {
-  sectionTitleClass: string;
-  sectionSubtitleClass: string;
+  sectionTitleClass?: string;
+  sectionSubtitleClass?: string;
   upgradeWatchSlug: string;
   setUpgradeWatchSlug: (value: string) => void;
   upgradeOptions: UpgradeOption[];
   upgradeTimelineLoading: boolean;
-  upgradeTimelineRows: Array<{
+  upgradeTimelineRows?: Array<{
     date: string;
     included: string[];
     scheduled: string[];
@@ -40,173 +37,85 @@ type UpgradeWatchSectionProps = {
     declined: string[];
   }>;
   upgradeWatchChartOption: unknown;
-  latestCounts: Counts;
+  latestCounts?: Counts;
   onDownloadMetadata: () => void;
   downloadMetadataLoading: boolean;
 };
 
 export default function UpgradeWatchSection({
-  sectionTitleClass,
-  sectionSubtitleClass,
   upgradeWatchSlug,
   setUpgradeWatchSlug,
   upgradeOptions,
   upgradeTimelineLoading,
-  upgradeTimelineRows,
   upgradeWatchChartOption,
-  latestCounts,
   onDownloadMetadata,
   downloadMetadataLoading,
 }: UpgradeWatchSectionProps) {
-  const [showTable, setShowTable] = useState(false);
-  const [chartView, setChartView] = useState<'compact' | 'composition'>('compact');
-
-  const upgradeName = upgradeOptions.find((opt) => opt.slug === upgradeWatchSlug)?.label ?? upgradeWatchSlug;
-
-  const renderEipList = (values: string[]) => {
-    if (!values.length) return <span className="text-muted-foreground">-</span>;
-    return (
-      <div className="flex flex-wrap gap-1">
-        {values.map((value) => (
-          <span key={value} className="rounded border border-border/70 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-foreground">
-            EIP-{value}
-          </span>
-        ))}
-      </div>
-    );
-  };
-
   return (
-    <section className="mb-6 border-t border-border/70 pt-6" id="upgrade-watch">
-      <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="inline-flex items-center gap-2">
-            <Package className="h-5 w-5 text-primary shrink-0" />
-            {/* Title links straight to the hub. */}
-            <Link href="/upgrade" className={cn(sectionTitleClass, 'group inline-flex items-center gap-1 transition-colors hover:text-primary')}>
-              Upgrade Hub
-              <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+    <section className="mb-10 pt-2" id="upgrade-watch">
+      <SectionHead
+        index="01"
+        eyebrow="Network hard forks"
+        title="Upgrade Watch"
+        description="EIP composition timeline by network upgrade — tracking proposed through included standards."
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Directory link to the upgrades portal */}
+            <Link
+              href="/upgrade"
+              className="btn btn-outline h-8 px-3 text-xs font-sans font-medium gap-1.5 hover:border-[var(--ink)]"
+            >
+              <span>Directory</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
             </Link>
-            <CopyLinkButton sectionId="upgrade-watch" className="h-8 w-8 rounded-md" />
-          </div>
-          <p className={sectionSubtitleClass}>EIP composition timeline by upgrade - proposed through included.</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link href="/upgrade/eips">
-            <Button variant="outline" size="sm" className="h-8 border-border bg-card/60 hover:bg-muted text-xs gap-1">
-              EIP Upgrade Directory <ArrowUpRight className="h-3.5 w-3.5 text-primary" />
-            </Button>
-          </Link>
-          {/* View toggle: compact bar vs the full hub composition chart. */}
-          <div className="inline-flex rounded-md border border-border bg-muted/40 p-0.5">
-            {(['compact', 'composition'] as const).map((view) => (
-              <button
-                key={view}
-                type="button"
-                onClick={() => setChartView(view)}
-                aria-pressed={chartView === view}
-                className={cn(
-                  'rounded px-2.5 py-1 text-xs font-medium capitalize transition-colors',
-                  chartView === view ? 'bg-background text-primary shadow-sm ring-1 ring-border/60' : 'text-muted-foreground hover:text-foreground',
-                )}
-              >
-                {view}
-              </button>
-            ))}
-          </div>
-          <select
-            value={upgradeWatchSlug}
-            onChange={(e) => setUpgradeWatchSlug(e.target.value)}
-            className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-          >
-            {upgradeOptions.map((opt) => (
-              <option key={opt.slug} value={opt.slug}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={() => setShowTable((prev) => !prev)}
-            disabled={upgradeTimelineLoading || !upgradeTimelineRows.length}
-            className="inline-flex h-8 items-center justify-center whitespace-nowrap rounded-md border border-border bg-muted/40 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {showTable ? 'Hide Table' : 'Show Table'}
-          </button>
-          <button
-            type="button"
-            onClick={onDownloadMetadata}
-            disabled={downloadMetadataLoading || upgradeTimelineLoading || !upgradeWatchChartOption}
-            className="inline-flex h-8 items-center justify-center gap-1 whitespace-nowrap rounded-md border border-border bg-muted/40 px-2.5 text-xs font-medium text-foreground transition-colors hover:bg-muted/60 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <Download className="h-3 w-3" />
-            {downloadMetadataLoading ? 'Downloading...' : 'Download CSV'}
-          </button>
-        </div>
-      </div>
 
-      <div className="rounded-xl border border-border bg-card/60 p-3">
-        {upgradeTimelineLoading ? (
-          <div className="h-[280px] animate-pulse rounded-lg bg-muted" />
-        ) : !upgradeWatchChartOption ? (
-          <div className="flex h-[280px] items-center justify-center rounded-lg border border-border/70 bg-muted/30 text-sm text-muted-foreground">
-            No timeline data available for this upgrade.
+            {/* Upgrade dropdown selector */}
+            <select
+              value={upgradeWatchSlug}
+              onChange={(e) => setUpgradeWatchSlug(e.target.value)}
+              className="h-8 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-3 pr-8 text-xs font-sans font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink-muted)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand)] cursor-pointer"
+            >
+              {upgradeOptions.map((opt) => (
+                <option key={opt.slug} value={opt.slug}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
+            {/* Small icon download / export button */}
+            <button
+              type="button"
+              onClick={onDownloadMetadata}
+              disabled={downloadMetadataLoading || upgradeTimelineLoading || !upgradeWatchChartOption}
+              title={downloadMetadataLoading ? "Exporting CSV…" : "Export CSV Report"}
+              aria-label="Export CSV report"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] transition-colors disabled:opacity-50 cursor-pointer"
+            >
+              <Download className="h-3.5 w-3.5" />
+            </button>
           </div>
-        ) : chartView === 'composition' ? (
-          <div className="relative">
-            <UpgradeTimelineChart data={upgradeTimelineRows} upgradeName={upgradeName} />
-            <ChartWatermark position="center" />
+        }
+      />
+
+      <div className="card p-4">
+        {upgradeTimelineLoading ? (
+          <div className="h-[280px] animate-pulse rounded bg-[var(--surface-3)]" />
+        ) : !upgradeWatchChartOption ? (
+          <div className="flex h-[280px] items-center justify-center rounded border border-[var(--border)] bg-[var(--surface-2)] text-sm text-[var(--ink-muted)]">
+            No timeline data available for this upgrade.
           </div>
         ) : (
           <div className="relative">
-            <ReactECharts option={upgradeWatchChartOption as object} style={{ height: '280px', width: '100%' }} opts={{ renderer: 'svg' }} />
+            <ReactECharts
+              option={upgradeWatchChartOption as object}
+              style={{ height: '280px', width: '100%' }}
+              opts={{ renderer: 'svg' }}
+            />
             <ChartWatermark position="center" />
           </div>
         )}
-        {chartView === 'compact' && (
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 border-t border-border/70 pt-2">
-          {[
-            { key: 'included', label: 'Included', tone: 'border-emerald-500/35 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', count: latestCounts.included },
-            { key: 'scheduled', label: 'SFI', tone: 'border-cyan-500/35 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300', count: latestCounts.scheduled },
-            { key: 'considered', label: 'CFI', tone: 'border-amber-500/35 bg-amber-500/10 text-amber-700 dark:text-amber-300', count: latestCounts.considered },
-            { key: 'proposed', label: 'PFI', tone: 'border-blue-500/35 bg-blue-500/10 text-blue-700 dark:text-blue-300', count: latestCounts.proposed },
-            { key: 'declined', label: 'DFI', tone: 'border-red-500/35 bg-red-500/10 text-red-700 dark:text-red-300', count: latestCounts.declined },
-          ].map((chip) => (
-            <span key={`upgrade-chip-${chip.key}`} className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold', chip.tone)}>
-              {chip.label}: {chip.count}
-            </span>
-          ))}
-        </div>
-        )}
+
         <ChartFooter />
-        {showTable && (
-          <div className="mt-3 overflow-x-auto rounded-lg border border-border/70">
-            <table className="min-w-full text-xs">
-              <thead>
-                <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  <th className="px-2.5 py-2">Date</th>
-                  <th className="px-2.5 py-2">Included</th>
-                  <th className="px-2.5 py-2">SFI</th>
-                  <th className="px-2.5 py-2">CFI</th>
-                  <th className="px-2.5 py-2">PFI</th>
-                  <th className="px-2.5 py-2">DFI</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...upgradeTimelineRows].reverse().map((row) => (
-                  <tr key={`upgrade-watch-row-${row.date}`} className="border-b border-border/60 align-top">
-                    <td className="whitespace-nowrap px-2.5 py-2 font-medium text-foreground">{row.date}</td>
-                    <td className="px-2.5 py-2">{renderEipList(row.included)}</td>
-                    <td className="px-2.5 py-2">{renderEipList(row.scheduled)}</td>
-                    <td className="px-2.5 py-2">{renderEipList(row.considered)}</td>
-                    <td className="px-2.5 py-2">{renderEipList(row.proposed)}</td>
-                    <td className="px-2.5 py-2">{renderEipList(row.declined)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </section>
   );

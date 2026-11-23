@@ -25,17 +25,16 @@ export function StatCard({
   value: string;
   sub?: string;
 }) {
-  const a = STAT_ACCENT[accent] ?? STAT_ACCENT.emerald;
   return (
-    <div className="rounded-xl border border-border/70 bg-card/60 p-4 backdrop-blur-sm transition-colors hover:border-primary/40">
+    <div className="card p-4 transition-colors hover:border-[var(--ink)]">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <span className={`flex h-7 w-7 items-center justify-center rounded-lg ${a.chip}`}>
-          <Icon className={`h-4 w-4 ${a.icon}`} />
+        <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">{label}</p>
+        <span className="flex h-7 w-7 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink)]">
+          <Icon className="h-3.5 w-3.5" />
         </span>
       </div>
-      <p className="mt-2 text-2xl font-bold tabular-nums tracking-tight text-foreground sm:text-3xl">{value}</p>
-      {sub && <p className="mt-0.5 text-[11px] text-muted-foreground">{sub}</p>}
+      <p className="mt-2 font-serif text-2xl font-normal tabular-nums tracking-tight text-[var(--ink)] sm:text-3xl">{value}</p>
+      {sub && <p className="mt-0.5 text-[11px] text-[var(--ink-muted)]">{sub}</p>}
     </div>
   );
 }

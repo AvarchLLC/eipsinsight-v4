@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import { GlamsterdamResearch } from './_client';
 
 export const metadata: Metadata = {
-  title: 'What Glamsterdam Breaks | EIPsInsight Research',
+  title: 'What Glamsterdam Reprices | EIPsInsight Research',
   description:
-    'EIP-8037/8038 repricing impact: a differential replay of real mainnet transactions under Osaka vs Glamsterdam. ERC-4337 Account Abstraction hard-breaks at verificationGasLimit, the class the professional audits missed.',
+    "Glamsterdam's EIP-8037/8038 reprice on-chain storage gas. A static scan of the busiest mainnet contracts against the repricing's invariant framework surfaces the ones worth re-checking.",
   openGraph: {
-    title: 'What Glamsterdam Breaks',
+    title: 'What Glamsterdam Reprices',
     description:
-      "A differential replay of real transactions under Glamsterdam's EIP-8037/8038 repricing. ERC-4337 account abstraction hard-breaks where more gas can't help.",
+      "EIP-8037/8038 reprice on-chain storage gas. We scanned the busiest mainnet contracts against the invariant framework to flag candidates for review.",
   },
 };
 

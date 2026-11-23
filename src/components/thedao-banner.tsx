@@ -57,9 +57,9 @@ export function TheDaoBanner({ className }: { className?: string }) {
     <aside
       aria-label="TheDAO Security Fund Initiative Announcement"
       className={cn(
-        "relative flex w-full items-center justify-between border-b border-border/70",
-        "bg-gradient-to-r from-[#FF3C38]/10 via-primary/5 to-[#2c5e86]/15",
-        "px-3 py-2 sm:px-6 text-foreground text-xs sm:text-sm transition-all duration-200",
+        "relative flex w-full items-center justify-between border-b border-[var(--border)]",
+        "bg-[var(--surface)]",
+        "px-3 py-1.5 sm:px-6 text-[var(--ink)] text-xs transition-colors",
         className
       )}
     >
@@ -70,22 +70,22 @@ export function TheDaoBanner({ className }: { className?: string }) {
         className="group flex flex-1 items-center justify-center gap-2 sm:gap-3 pr-6 text-center leading-tight hover:opacity-95 transition-opacity"
       >
         {/* TheDAO Security Fund Brand Tag */}
-        <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-[#FF3C38]/15 px-2 py-0.5 text-[11px] font-semibold text-[#FF3C38] dark:text-[#ff6b67] border border-[#FF3C38]/30">
-          <TheDaoLogo className="h-3.5 w-3.5 shrink-0" />
+        <span className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-[var(--paper)] px-2 py-0.5 text-[11px] font-medium text-[var(--ink)] border border-[var(--border)]">
+          <TheDaoLogo className="h-3 w-3 shrink-0" />
           <span>TheDAO Security Fund</span>
         </span>
 
         {/* Initiative Pitch */}
-        <span className="text-muted-foreground hidden md:inline">&bull;</span>
-        <span className="font-medium">
+        <span className="text-[var(--ink-tertiary)] hidden md:inline">&bull;</span>
+        <span className="font-normal text-[var(--ink-secondary)]">
           <span className="hidden sm:inline">Funding initiative: </span>
-          <span className="font-semibold text-foreground">
+          <span className="font-medium text-[var(--ink)]">
             Account Abstraction &amp; Mempool Security Analytics
           </span>
         </span>
 
         {/* CTA Button */}
-        <span className="inline-flex items-center gap-1 font-semibold text-primary underline-offset-4 group-hover:underline transition-colors ml-1 shrink-0">
+        <span className="inline-flex items-center gap-1 font-semibold text-[var(--brand)] underline-offset-4 group-hover:underline transition-colors ml-1 shrink-0">
           <span>Click here to support</span>
           <ExternalLink className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
         </span>
@@ -96,7 +96,7 @@ export function TheDaoBanner({ className }: { className?: string }) {
         type="button"
         onClick={handleDismiss}
         aria-label="Dismiss announcement banner"
-        className="shrink-0 p-1 rounded-md text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+        className="shrink-0 p-1 rounded-sm text-[var(--ink-tertiary)] hover:text-[var(--ink)] hover:bg-[var(--paper)] transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand)]"
       >
         <X className="h-4 w-4" />
       </button>

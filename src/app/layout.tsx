@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import {
   Libre_Baskerville as LibreBaskervilleFont,
   Inter as InterFont,
@@ -16,6 +17,7 @@ import { ShellSwitcher } from "@/components/shell-switcher";
 import { SiteAssistant } from "@/components/site-assistant";
 import { Toaster } from "@/components/ui/sonner";
 import { WhatsNewV4Dialog } from "@/components/whats-new-v4-dialog";
+import { CommandPalette } from "@/components/command-palette";
 import { Providers } from "@/providers/Providers";
 import { buildMetadata } from "@/lib/seo";
 // Giveth support banner removed
@@ -30,6 +32,24 @@ const Libre_Baskerville = LibreBaskervilleFont({
 const Inter = InterFont({
   variable: "--font-inter",
   subsets: ["latin"],
+});
+
+// Advercase: retro Apple-Garamond editorial serif for headlines and figures
+const Advercase = localFont({
+  src: [
+    {
+      path: "../../public/fonts/Advercase-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/Advercase-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-advercase",
+  display: "swap",
 });
 
 // ── Ledger design system fonts (docs/DESIGN.md) ──
@@ -124,9 +144,10 @@ export default function RootLayout({
         />
       </head>
       <body
-        className={`${Libre_Baskerville.variable} ${Inter.variable} ${Fraunces.variable} ${Instrument_Serif.variable} ${Plus_Jakarta_Sans.variable} ${Geist.variable} ${Geist_Mono.variable} antialiased`}
+        className={`${Advercase.variable} ${Libre_Baskerville.variable} ${Inter.variable} ${Fraunces.variable} ${Instrument_Serif.variable} ${Plus_Jakarta_Sans.variable} ${Geist.variable} ${Geist_Mono.variable} antialiased`}
       >
         <Providers>
+          <CommandPalette />
           <ShellSwitcher>{children}</ShellSwitcher>
           <SiteAssistant />
           <WhatsNewV4Dialog />

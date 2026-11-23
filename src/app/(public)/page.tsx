@@ -47,6 +47,8 @@ import { ChartWatermark } from '@/components/chart-watermark';
 import { CopyLinkButton } from '@/components/header';
 import { LastUpdated } from '@/components/analytics/LastUpdated';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
+import { SectionHead } from '@/components/ledger/section-head';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { HomeHeroSection } from './_components/home-hero-section';
 import HomeFAQs from './_components/home-faqs';
 import dynamic from 'next/dynamic';
@@ -59,6 +61,7 @@ const UpgradeWatchSection = dynamic(() => import('./_components/UpgradeWatchSect
   loading: () => <div className="py-12"><InlineBrandLoader size="md" label="Loading upgrade watch…" /></div>,
 });
 import { WeeklyRecapSection } from './_components/WeeklyRecapSection';
+import { HomeProtocolCalls } from './_components/home-protocol-calls';
 import { useSession } from '@/hooks/useSession';
 import { useTheme } from 'next-themes';
 import { cn } from '@/lib/utils';
@@ -672,7 +675,7 @@ export default function EIPsHomePage() {
   const [includeRips, setIncludeRips] = useState(false);
   const [showProposalTable, setShowProposalTable] = useState(false);
   const [editorRepoFilter, setEditorRepoFilter] = useState<EditorRepoFilter>('');
-  const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('');
+  const [developerRepoFilter, setDeveloperRepoFilter] = useState<DeveloperRepoFilter>('eips');
   const [selectedBoardProcesses, setSelectedBoardProcesses] = useState<string[]>([]);
   const [editorQueuePage, setEditorQueuePage] = useState(1);
   const [developerBoardPage, setDeveloperBoardPage] = useState(1);
@@ -1717,7 +1720,7 @@ export default function EIPsHomePage() {
     ] as const;
 
     return {
-      grid: { left: 16, right: 16, top: 32, bottom: 44, containLabel: true },
+      grid: { left: 16, right: 16, top: 32, bottom: 10, containLabel: true },
       tooltip: chartTooltip({
         trigger: 'axis',
         axisPointer: {
@@ -1769,32 +1772,6 @@ export default function EIPsHomePage() {
         axisLabel: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
         splitLine: { lineStyle: { color: isDark ? 'rgba(148,163,184,0.14)' : 'rgba(148,163,184,0.2)', type: 'dashed' } },
       },
-      dataZoom: [
-        {
-          type: 'inside',
-          xAxisIndex: 0,
-          filterMode: 'none',
-          zoomOnMouseWheel: true,
-          moveOnMouseMove: true,
-          moveOnMouseWheel: true,
-          preventDefaultMouseMove: false,
-        },
-        {
-          type: 'slider',
-          xAxisIndex: 0,
-          filterMode: 'none',
-          height: 16,
-          bottom: 8,
-          borderColor: isDark ? 'rgba(148,163,184,0.2)' : 'rgba(148,163,184,0.35)',
-          backgroundColor: isDark ? 'rgba(15,23,42,0.5)' : 'rgba(241,245,249,0.7)',
-          fillerColor: isDark ? 'rgba(59,130,246,0.28)' : 'rgba(59,130,246,0.2)',
-          handleStyle: {
-            color: isDark ? '#334155' : '#cbd5e1',
-            borderColor: isDark ? '#64748b' : '#94a3b8',
-          },
-          textStyle: { color: isDark ? '#94a3b8' : '#64748b', fontSize: 10 },
-        },
-      ],
       series: seriesConfig.map((series) => ({
         name: series.label,
         type: 'bar',
@@ -1867,81 +1844,81 @@ export default function EIPsHomePage() {
   const isTableFiltered = hasColumnFilters || activeBucket !== null;
 
   return (
-    <div className="w-full overflow-x-clip px-2.5 py-6 sm:px-4 sm:py-7 lg:px-5 xl:px-6">
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }} className="mb-6">
-        <HomeHeroSection />
-      </motion.div>
+    <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      <div className="wrap space-y-16 sm:space-y-20 py-6 sm:py-10">
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
+          <HomeHeroSection />
+        </motion.div>
 
-      <hr className="mb-6 border-border/70" />
+        <UpgradeWatchSection
+          sectionTitleClass={sectionTitleClass}
+          sectionSubtitleClass={sectionSubtitleClass}
+          upgradeWatchSlug={upgradeWatchSlug}
+          setUpgradeWatchSlug={setUpgradeWatchSlug}
+          upgradeOptions={upgradeOptions}
+          upgradeTimelineLoading={upgradeTimelineLoading}
+          upgradeTimelineRows={upgradeTimelineRows}
+          upgradeWatchChartOption={upgradeWatchChartOption}
+          latestCounts={{
+            included: latestUpgradeSnapshot?.included.length ?? 0,
+            scheduled: latestUpgradeSnapshot?.scheduled.length ?? 0,
+            considered: latestUpgradeSnapshot?.considered.length ?? 0,
+            proposed: latestUpgradeSnapshot?.proposed.length ?? 0,
+            declined: latestUpgradeSnapshot?.declined.length ?? 0,
+          }}
+          onDownloadMetadata={downloadUpgradeMetadataCSV}
+          downloadMetadataLoading={upgradeMetadataDownloading}
+        />
 
-      <UpgradeWatchSection
-        sectionTitleClass={sectionTitleClass}
-        sectionSubtitleClass={sectionSubtitleClass}
-        upgradeWatchSlug={upgradeWatchSlug}
-        setUpgradeWatchSlug={setUpgradeWatchSlug}
-        upgradeOptions={upgradeOptions}
-        upgradeTimelineLoading={upgradeTimelineLoading}
-        upgradeTimelineRows={upgradeTimelineRows}
-        upgradeWatchChartOption={upgradeWatchChartOption}
-        latestCounts={{
-          included: latestUpgradeSnapshot?.included.length ?? 0,
-          scheduled: latestUpgradeSnapshot?.scheduled.length ?? 0,
-          considered: latestUpgradeSnapshot?.considered.length ?? 0,
-          proposed: latestUpgradeSnapshot?.proposed.length ?? 0,
-          declined: latestUpgradeSnapshot?.declined.length ?? 0,
-        }}
-        onDownloadMetadata={downloadUpgradeMetadataCSV}
-        downloadMetadataLoading={upgradeMetadataDownloading}
-      />
-
-      <section className="mb-6 border-t border-border/70 pt-6" id="trending">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Flame className="h-5 w-5 text-rose-500 shrink-0" />
-              <SectionTitleLink href="/explore/trending" className={sectionTitleClass}>Trending Proposals</SectionTitleLink>
-              <CopyLinkButton sectionId="trending" tooltipLabel="Copy link" />
-            </div>
-            <p className={sectionSubtitleClass}>Most discussed proposals shaping Ethereum today.</p>
-          </div>
-        </div>
-        <TrendingProposals hideHeader />
-      </section>
-
-      <section
-          className="mb-6 border-t border-border/70 pt-6"
-          id="board"
-        >
-          <div className="mb-4 flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Activity className="h-5 w-5 text-blue-400 shrink-0" />
-                <SectionTitleLink href="/officehours/board" className={sectionTitleClass}>Board</SectionTitleLink>
-                <CopyLinkButton sectionId="board" tooltipLabel="Copy link" />
-              </div>
-              <p className={sectionSubtitleClass}>
-                Compact open PR snapshot from the{' '}
-                <Link href="/officehours/board" className="text-primary underline-offset-2 hover:underline">
-                  Editing Board
-                </Link>
-                .
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <select
-                aria-label="Board repository filter"
-                value={developerRepoFilter}
-                onChange={(e) => setDeveloperRepoFilter(e.target.value as DeveloperRepoFilter)}
-                className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+        <section className="mb-6 pt-2" id="trending">
+          <SectionHead
+            index="02"
+            eyebrow="Community momentum"
+            title="Trending Proposals"
+            description="Most discussed proposals shaping Ethereum today."
+            action={
+              <Link
+                href="/explore/trending"
+                className="btn btn-outline h-8 px-3 text-xs font-sans font-medium gap-1.5 hover:border-[var(--ink)]"
               >
-                <option value="">All Repos</option>
-                <option value="eips">EIPs</option>
-                <option value="ercs">ERCs</option>
-                <option value="rips">RIPs</option>
-              </select>
-            </div>
-          </div>
-          <div className="overflow-hidden rounded-xl border border-border/70 bg-card/60 shadow-sm">
+                <span>Explore Trending</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+              </Link>
+            }
+          />
+          <TrendingProposals hideHeader />
+        </section>
+
+        <section className="mb-6 pt-2" id="board">
+          <SectionHead
+            index="03"
+            eyebrow="Cross-repository triage"
+            title="Editorial PR Queue"
+            description="Live queue of open pull requests across all standards repositories (EIPs, ERCs, and RIPs) — triaged by workflow stage and whether the next action is waiting on author revision or editor review."
+            action={
+              <div className="flex items-center gap-2">
+                <select
+                  aria-label="Repository filter"
+                  value={developerRepoFilter}
+                  onChange={(e) => setDeveloperRepoFilter(e.target.value as DeveloperRepoFilter)}
+                  className="h-8 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-3 pr-8 text-xs font-sans font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink-muted)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand)] cursor-pointer"
+                >
+                  <option value="eips">EIPs</option>
+                  <option value="ercs">ERCs</option>
+                  <option value="rips">RIPs</option>
+                  <option value="">All Repositories</option>
+                </select>
+                <Link
+                  href="/officehours/board"
+                  className="btn btn-outline h-8 px-3 text-xs font-sans font-medium gap-1.5 hover:border-[var(--ink)]"
+                >
+                  <span>Full Queue</span>
+                  <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+                </Link>
+              </div>
+            }
+          />
+          <div className="card overflow-hidden">
             <div className="hidden md:block">
               <table className="min-w-full text-xs">
                 <thead>
@@ -1949,9 +1926,9 @@ export default function EIPsHomePage() {
                     <th className="w-20 px-3 py-2">PR</th>
                     <th className="px-3 py-2">Title</th>
                     <th className="w-28 px-3 py-2">Author</th>
-                    <th className="w-20 px-3 py-2">Wait</th>
+                    <th className="w-24 px-3 py-2">Wait Time</th>
                     <th className="w-28 px-3 py-2">Process</th>
-                    <th className="w-36 px-3 py-2">Status</th>
+                    <th className="w-40 px-3 py-2">Waiting On</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2062,18 +2039,247 @@ export default function EIPsHomePage() {
           </div>
         </section>
 
-      <section className="mb-6 border-t border-border/70 pt-6" id="over-time">
-        <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-400 shrink-0" />
-              <SectionTitleLink href="/#over-time" className={sectionTitleClass}>Governance Over Time</SectionTitleLink>
-              <CopyLinkButton sectionId="over-time" tooltipLabel="Copy link" />
+      <section className="mb-6 pt-2" id="over-time">
+        <SectionHead
+          index="04"
+          eyebrow="Historical trajectory"
+          title="Governance Over Time"
+          description="Track proposal lifecycle movement and volume across the network timeline."
+        />
+        <GovernanceOverTime />
+      </section>
+
+      <section className="pt-2" id="monthly">
+        <SectionHead
+          index="05"
+          eyebrow="Monthly velocity & leadership"
+          title="Monthly Standards Snapshot"
+          description="Monthly status distribution and editor action leaderboard."
+          action={
+            <div className="flex items-center gap-2">
+              <label htmlFor="homepage-month-select" className="text-xs font-mono text-[var(--ink-faint)]">
+                Month
+              </label>
+              <select
+                id="homepage-month-select"
+                value={currentMonthYear}
+                onChange={(e) => setCurrentMonthYear(e.target.value)}
+                className="h-8 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-3 pr-8 text-xs font-sans font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink-muted)] focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[var(--brand)] cursor-pointer"
+              >
+                {monthYearOptions.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
             </div>
-            <p className={sectionSubtitleClass}>Track proposal lifecycle movement across the network timeline.</p>
+          }
+        />
+
+        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+        <div
+          className={cn(
+            'card self-start p-4 flex flex-col',
+            'h-[560px] sm:h-[620px]',
+          )}
+        >
+          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="inline-flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[var(--brand-strong)]" />
+                <h3 className="t-h3 text-sm font-semibold">{monthLabel(currentMonthYear)} Insight</h3>
+              </div>
+              <p className="mt-0.5 text-xs text-[var(--ink-muted)]">
+                Monthly status distribution and movements.
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2">
+              <Link
+                href={`/insights/${currentMonthYear.split('-')[0]}/${parseInt(currentMonthYear.split('-')[1], 10)}`}
+                className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--brand-strong)] hover:underline"
+              >
+                Analysis
+                <ArrowRight className="h-3 w-3" />
+              </Link>
+              <button
+                onClick={downloadMonthlyInsightCSV}
+                disabled={downloading}
+                aria-label="Download status changes CSV"
+                title="Download status changes CSV"
+                className="chip cursor-pointer h-7 px-2"
+              >
+                <Download className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+
+          <div className="relative mt-2 min-h-0 flex-1">
+            <div className="h-full w-full">
+              {showInsightSkeleton ? (
+                <div className="h-full w-full animate-pulse rounded bg-[var(--surface-3)]" />
+              ) : febDelta.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                  <Activity className="h-8 w-8 text-[var(--ink-faint)]" />
+                  <div>
+                    <p className="text-sm font-medium text-[var(--ink-muted)]">No status changes yet</p>
+                    <p className="mt-1 text-xs text-[var(--ink-faint)]">
+                      We&apos;ll populate this chart when transitions start in {monthLabel(currentMonthYear)}.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <ReactECharts
+                  option={febInsightDonutOption}
+                  style={{ height: '100%', width: '100%' }}
+                  opts={{ renderer: 'svg' }}
+                />
+              )}
+            </div>
+            {!showInsightSkeleton && febDelta.length > 0 && (
+              <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--ink-faint)]">
+                EIPsInsight.com
+              </div>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs text-[var(--ink-muted)]">
+            {monthlyDeltaUpdatedAt ? (
+              <LastUpdated
+                timestamp={monthlyDeltaUpdatedAt}
+                prefix="Updated"
+                showAbsolute
+                className="font-mono text-xs"
+              />
+            ) : (
+              <span className="font-mono text-xs text-[var(--ink-faint)]">
+                No status changes recorded for this period
+              </span>
+            )}
+            <span className="font-mono text-xs text-[var(--ink-faint)]">
+              Monthly activity snapshot
+            </span>
           </div>
         </div>
-        <GovernanceOverTime />
+
+        <div
+          className={cn(
+            'card p-4 flex flex-col',
+            'h-[560px] sm:h-[620px]',
+          )}
+        >
+          <>
+              <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="inline-flex items-center gap-2">
+                    <Trophy className="h-4 w-4 text-[var(--brand-strong)]" />
+                    <h3 className="t-h3 text-sm font-semibold">Editor Leaderboard ({monthLabel(currentMonthYear)})</h3>
+                  </div>
+                  <p className="mt-0.5 text-xs text-[var(--ink-muted)]">
+                    Ranked by editor actions this month (open + closed PRs).
+                  </p>
+                </div>
+                <div className="inline-flex items-center gap-2">
+                  <Link
+                    href="/analytics/editors"
+                    className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--brand-strong)] hover:underline"
+                  >
+                    Full Leaderboard
+                    <ArrowRight className="h-3 w-3" />
+                  </Link>
+                  <button
+                    onClick={downloadLeaderboardDetailedCSV}
+                    disabled={downloadingLeaderboard}
+                    aria-label="Download editor leaderboard CSV"
+                    title="Download editor leaderboard CSV"
+                    className="chip cursor-pointer h-7 px-2"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-1 pr-2">
+                {showEditorSkeleton
+                  ? Array.from({ length: 6 }).map((_, i) => (
+                      <div key={`editor-skeleton-${i}`} className="rounded-lg border border-border p-2.5">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+                          <div className="flex-1">
+                            <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
+                            <div className="h-3 w-36 animate-pulse rounded bg-muted" />
+                          </div>
+                        </div>
+                        <div className="h-1.5 animate-pulse rounded-full bg-muted" />
+                      </div>
+                    ))
+                  : monthlyEditorRows.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                      <Trophy className="h-10 w-10 text-muted-foreground/40" />
+                      <div>
+                        <p className="text-sm font-medium text-muted-foreground">No editor activity yet</p>
+                        <p className="mt-1 text-xs text-muted-foreground/70">
+                          Editor actions for {monthLabel(currentMonthYear)} will appear here as PRs are reviewed.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                  : monthlyEditorRows.map((row, idx) => (
+                      <div
+                        key={`editor-${row.actor}`}
+                        className={`rounded-lg px-2.5 py-2.5 border ${idx === 0 ? 'bg-primary/10 border-primary/30' : 'bg-muted/40 border-border'}`}
+                      >
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <div className="h-8 w-8 shrink-0 rounded-full bg-background/80 p-[1.5px] ring-1 ring-border">
+                              <div className="h-full w-full overflow-hidden rounded-full">
+                                <Image
+                                  src={editorAvatar(row.actor)}
+                                  alt={row.actor}
+                                  width={32}
+                                  height={32}
+                                  className="h-full w-full object-cover object-center"
+                                />
+                              </div>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
+                              <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
+                            </div>
+                          </div>
+                          <span className="ml-2 min-w-[2.5ch] shrink-0 text-right text-sm leading-tight font-semibold tabular-nums text-primary">
+                            {row.totalActions}
+                          </span>
+                        </div>
+                        <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
+                          <div
+                            className="h-full bg-primary transition-all duration-300"
+                            style={{ width: `${row.totalActions > 0 ? Math.max(8, (row.totalActions / maxEditor) * 100) : 0}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+              </div>
+
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
+                {monthlyLeaderboardUpdatedAt ? (
+                  <LastUpdated
+                    timestamp={monthlyLeaderboardUpdatedAt}
+                    prefix="Updated"
+                    showAbsolute
+                    className="bg-muted/40 text-xs"
+                  />
+                ) : (
+                  <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
+                    No editor activity recorded for this period
+                  </span>
+                )}
+                <span className="text-xs text-muted-foreground">
+                  Monthly editor activity snapshot
+                </span>
+              </div>
+          </>
+        </div>
+      </div>
       </section>
 
       <div
@@ -2106,11 +2312,11 @@ export default function EIPsHomePage() {
             {dimension !== 'repo' && (
               <label
                 className={cn(
-                  'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
-                  'h-8 focus-within:ring-2 focus-within:ring-ring/40',
+                  'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-[var(--l-radius-control)] border px-2.5 text-xs font-medium transition-colors',
+                  'h-8',
                   includeRips
-                    ? 'border-primary/50 bg-primary/10 text-foreground'
-                    : 'border-border bg-card/70 text-muted-foreground hover:border-primary/40'
+                    ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
+                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:border-[var(--ink)]'
                 )}
                 title="RIPs are a separate track - off by default so status and category counts reflect EIPs and ERCs only."
               >
@@ -2122,7 +2328,7 @@ export default function EIPsHomePage() {
                     setPage(1);
                     setIncludeRips(e.target.checked);
                   }}
-                  className="h-3.5 w-3.5 accent-primary"
+                  className="h-3.5 w-3.5 accent-[var(--brand)]"
                 />
                 Include RIPs
               </label>
@@ -2138,7 +2344,7 @@ export default function EIPsHomePage() {
                       : Package;
               return (
                 <span className="relative inline-flex">
-                  <BrowseIcon className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-primary" />
+                  <BrowseIcon className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ink-muted)]" />
                   <select
                     aria-label="Browse dimension"
                     value={dimension}
@@ -2147,7 +2353,7 @@ export default function EIPsHomePage() {
                       setPage(1);
                       setDimension(e.target.value as Dimension);
                     }}
-                    className="h-8 rounded-md border border-border bg-card/70 pr-8 pl-7 text-xs font-medium text-foreground shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                    className="h-8 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-8 text-xs font-sans font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink-muted)] focus-visible:outline-none focus-visible:border-[var(--ink)] cursor-pointer"
                   >
                     <option value="status">Status</option>
                     <option value="category">Category</option>
@@ -2166,12 +2372,12 @@ export default function EIPsHomePage() {
           Array.from({ length: 6 }).map((_, i) => (
             <div
               key={`dist-skeleton-${i}`}
-              className="rounded-xl border border-border/70 bg-card/60 p-3 shadow-sm"
+              className="card p-3 shadow-none animate-pulse"
             >
-              <div className="mb-2 h-7 w-7 animate-pulse rounded-lg bg-muted" />
-              <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
-              <div className="mb-2 h-7 w-16 animate-pulse rounded bg-muted" />
-              <div className="h-1.5 w-full animate-pulse rounded-full bg-muted" />
+              <div className="mb-2 h-7 w-7 rounded-[var(--l-radius-control)] bg-[var(--surface-2)]" />
+              <div className="mb-1 h-3 w-24 rounded bg-[var(--surface-2)]" />
+              <div className="mb-2 h-7 w-16 rounded bg-[var(--surface-2)]" />
+              <div className="h-1.5 w-full rounded-full bg-[var(--surface-2)]" />
             </div>
           ))
         ) : (
@@ -2180,29 +2386,23 @@ export default function EIPsHomePage() {
           type="button"
           onClick={() => setActiveBucket(null)}
           className={cn(
-            'group relative overflow-hidden rounded-xl border px-3 py-3 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none shadow-sm',
-            'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
+            'group relative overflow-hidden rounded-[var(--l-radius)] border p-3 text-left transition-colors cursor-pointer',
             activeBucket === null
-              ? cn(
-                  'persona-drift-glow border-primary/50 bg-primary/10',
-                  'shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.24),0_10px_28px_rgb(var(--persona-accent-rgb)/0.10)]',
-                  'ring-1 ring-primary/40',
-                  'before:pointer-events-none before:absolute before:inset-0 before:rounded-xl before:bg-[radial-gradient(420px_circle_at_30%_10%,rgba(var(--persona-accent-rgb),0.20),transparent_60%)]',
-                )
-              : 'border-border/70 bg-card/60 hover:border-primary/40 hover:bg-primary/[0.05]',
+              ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
+              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--ink)]',
           )}
         >
           <div className="relative z-10">
           <div
             className={cn(
-              'mb-1 inline-flex h-7 w-7 items-center justify-center rounded-lg',
-              activeBucket === null ? 'bg-primary/20 text-primary' : 'bg-primary/10 text-primary',
+              'mb-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)]',
+              activeBucket === null ? 'bg-[var(--surface)] text-[var(--ink)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]',
             )}
           >
             <Layers className="h-3 w-3" />
           </div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Total</p>
-          <p className="mt-1 text-2xl font-semibold leading-none text-foreground sm:text-3xl">{dimension === 'stages' ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString() : totalCount.toLocaleString()}</p>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Total</p>
+          <p className="mt-1 font-serif text-2xl font-normal leading-none text-[var(--ink)] sm:text-3xl">{dimension === 'stages' ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString() : totalCount.toLocaleString()}</p>
           </div>
         </button>
 
@@ -2212,7 +2412,6 @@ export default function EIPsHomePage() {
           const maxForDimension = isStages ? Math.max(1, ...stagesDistribution.map((r) => r.count)) : maxCardCount;
           const pct = totalForDimension > 0 ? Math.round((row.count / totalForDimension) * 100) : 0;
           const selected = activeBucket === row.bucket;
-          const barColor = selected ? (isStages ? (STAGE_COLORS[row.bucket] || 'bg-cyan-500') : (STATUS_COLORS[row.bucket] || 'bg-cyan-500')) : 'bg-muted-foreground/40';
           const theme = getBucketTheme(dimension, row.bucket);
           const StageIcon = stageIconMap[row.bucket] ?? Layers;
           const StatusIcon = statusIconMap[row.bucket] ?? Layers;
@@ -2227,40 +2426,33 @@ export default function EIPsHomePage() {
               key={row.bucket}
               onClick={() => setActiveBucket((prev) => (prev === row.bucket ? null : row.bucket))}
               className={cn(
-                'group relative overflow-hidden rounded-xl border px-3 py-2 text-left transition hover:-translate-y-px active:translate-y-0 motion-reduce:transform-none',
-                'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35',
+                'group relative overflow-hidden rounded-[var(--l-radius)] border p-3 text-left transition-colors cursor-pointer',
                 selected
-                  ? cn(
-                      theme.border, theme.surface,
-                      'shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.12),0_6px_16px_rgb(var(--persona-accent-rgb)/0.06)]',
-                      'ring-1 ring-primary/30',
-                    )
-                  : 'border-border bg-card/60 hover:border-primary/30',
+                  ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--ink)]',
               )}
             >
               <div className="relative z-10">
               <div
                 className={cn(
-                  'mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-lg transition-colors',
-                  selected ? theme.iconWrap : 'bg-muted/60',
+                  'mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)]',
+                  selected ? 'bg-[var(--surface)] text-[var(--ink)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]',
                 )}
               >
-                <Icon className={cn('h-3.5 w-3.5', selected ? theme.icon : 'text-muted-foreground')} />
+                <Icon className="h-3.5 w-3.5" />
               </div>
               <div className="mb-0.5 flex items-center justify-between gap-2">
-                <p
-                  className={cn(
-                    'truncate text-[13px] font-medium leading-tight',
-                    selected ? theme.title : 'text-muted-foreground',
-                  )}
-                >
+                <p className="truncate text-xs font-semibold leading-tight text-[var(--ink)]">
                   {displayLabel}
                 </p>
-                <span className="text-[10px] text-muted-foreground">{pct}%</span>
+                <span className="font-mono text-[10px] text-[var(--ink-muted)]">{pct}%</span>
               </div>
-              <p className="text-xl font-semibold leading-none tracking-tight text-foreground sm:text-2xl">{row.count.toLocaleString()}</p>
-              <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/80">
-                <div className={`h-full ${barColor}`} style={{ width: `${Math.max(8, (row.count / maxForDimension) * 100)}%` }} />
+              <p className="font-serif text-xl font-normal leading-none tracking-tight text-[var(--ink)] sm:text-2xl">{row.count.toLocaleString()}</p>
+              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border)]">
+                <div
+                  className="h-full bg-[var(--ink)] transition-all"
+                  style={{ width: `${Math.max(6, (row.count / maxForDimension) * 100)}%` }}
+                />
               </div>
               </div>
             </button>
@@ -2272,19 +2464,19 @@ export default function EIPsHomePage() {
 
       {/* Stages context note */}
       {dimension === 'stages' && !stagesDistributionLoading && stagesDistribution.length > 0 && (
-        <div className="mb-3 flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3.5 py-2 text-xs text-muted-foreground">
-          <Package className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <div className="mb-3 flex items-center gap-2 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-3.5 py-2 text-xs text-[var(--ink-muted)]">
+          <Package className="h-3.5 w-3.5 shrink-0 text-[var(--brand-strong)]" />
           <span>
             Showing EIP inclusion stages across all active network upgrades including{' '}
-            <Link href="/upgrade/glamsterdam" className="font-semibold text-primary hover:underline">
+            <Link href="/upgrade/glamsterdam" className="font-semibold text-[var(--ink)] hover:underline">
               Glamsterdam
             </Link>
             {' & '}
-            <Link href="/upgrade/hegota" className="font-semibold text-primary hover:underline">
+            <Link href="/upgrade/hegota" className="font-semibold text-[var(--ink)] hover:underline">
               Hegota
             </Link>
             .{' '}
-            <Link href="/upgrade" className="text-primary hover:underline">
+            <Link href="/upgrade" className="text-[var(--brand-strong)] hover:underline">
               View all upgrades →
             </Link>
           </span>
@@ -2298,19 +2490,19 @@ export default function EIPsHomePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             className="mb-3 overflow-hidden"
           >
-            <div className="rounded-xl border border-border bg-card/60 px-3.5 py-2.5">
+            <div className="card px-3.5 py-2.5">
               <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ink-muted)]">
                   <Filter className="h-3.5 w-3.5" />
-                  <span>Filter <span className="font-semibold text-foreground">{activeBucket}</span> by Status</span>
+                  <span>Filter <span className="font-semibold text-[var(--ink)]">{activeBucket}</span> by Status</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSubFilter(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer"
                   aria-label="Hide sub-filter"
                 >
                   ×
@@ -2320,32 +2512,27 @@ export default function EIPsHomePage() {
                 <button
                   type="button"
                   onClick={() => setActiveStatusFilter(null)}
-                  className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                    activeStatusFilter === null
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                  )}
+                  data-active={activeStatusFilter === null ? 'true' : undefined}
+                  className="chip h-7 px-2.5 text-xs cursor-pointer"
                 >
                   All ({statusSubDist.reduce((s, r) => s + r.count, 0).toLocaleString()})
                 </button>
                 {statusSubDist.map((row) => {
                   const active = activeStatusFilter === row.status;
-                  const dotColor = STATUS_COLORS[row.status] || 'bg-muted-foreground';
                   return (
                     <button
                       key={row.status}
                       type="button"
                       onClick={() => setActiveStatusFilter(active ? null : row.status)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                        active
-                          ? (BADGE_COLORS[row.status] || 'border-primary/40 bg-primary/10 text-primary')
-                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                      )}
+                      data-active={active ? 'true' : undefined}
+                      className="chip h-7 px-2.5 text-xs cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      <span className={cn('h-1.5 w-1.5 rounded-full', dotColor)} />
-                      {row.status} ({row.count.toLocaleString()})
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: `var(--c-${row.status.toLowerCase().replace(/\s+/g, '')}, var(--ink-muted))` }}
+                      />
+                      <span>{row.status}</span>
+                      <span className="font-mono text-[10px] opacity-75">({row.count.toLocaleString()})</span>
                     </button>
                   );
                 })}
@@ -2365,19 +2552,19 @@ export default function EIPsHomePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             className="mb-3 overflow-hidden"
           >
-            <div className="rounded-xl border border-border bg-card/60 px-3.5 py-2.5">
+            <div className="card px-3.5 py-2.5">
               <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ink-muted)]">
                   <Filter className="h-3.5 w-3.5" />
-                  <span>Filter <span className="font-semibold text-foreground">{activeBucket}</span> by Category</span>
+                  <span>Filter <span className="font-semibold text-[var(--ink)]">{activeBucket}</span> by Category</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSubFilter(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer"
                   aria-label="Hide sub-filter"
                 >
                   ×
@@ -2387,41 +2574,33 @@ export default function EIPsHomePage() {
                 <button
                   type="button"
                   onClick={() => setActiveCategoryFilter(null)}
-                  className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                    activeCategoryFilter === null
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                  )}
+                  data-active={activeCategoryFilter === null ? 'true' : undefined}
+                  className="chip h-7 px-2.5 text-xs cursor-pointer"
                 >
                   All ({categorySubDist.reduce((s, r) => s + r.count, 0).toLocaleString()})
                 </button>
                 {categorySubDist.map((row) => {
                   const active = activeCategoryFilter === row.category;
-                  const theme = BUCKET_THEME_BY_CATEGORY[row.category];
                   return (
                     <button
                       key={row.category}
                       type="button"
                       onClick={() => setActiveCategoryFilter(active ? null : row.category)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                        active
-                          ? cn(theme?.border || 'border-primary/40', theme?.surface || 'bg-primary/10', 'text-foreground')
-                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                      )}
+                      data-active={active ? 'true' : undefined}
+                      className="chip h-7 px-2.5 text-xs cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      <span className={cn(
-                        'h-1.5 w-1.5 rounded-full',
-                        active ? (theme?.icon?.replace('text-', 'bg-').split(' ')[0] || 'bg-primary') : 'bg-muted-foreground/60',
-                      )} />
-                      {row.category} ({row.count.toLocaleString()})
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: `var(--c-${row.category.toLowerCase().replace(/\s+/g, '')}, var(--ink-muted))` }}
+                      />
+                      <span>{row.category}</span>
+                      <span className="font-mono text-[10px] opacity-75">({row.count.toLocaleString()})</span>
                     </button>
                   );
                 })}
               </div>
               {categorySubDistLoading && (
-                <div className="mt-1.5 text-[10px] text-muted-foreground">Loading…</div>
+                <div className="mt-1.5 text-[10px] text-[var(--ink-muted)]">Loading…</div>
               )}
             </div>
           </motion.div>
@@ -2435,19 +2614,19 @@ export default function EIPsHomePage() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25 }}
+            transition={{ duration: 0.2 }}
             className="mb-3 overflow-hidden"
           >
-            <div className="rounded-xl border border-border bg-card/60 px-3.5 py-2.5">
+            <div className="card px-3.5 py-2.5">
               <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
+                <div className="flex items-center gap-2 text-xs font-medium text-[var(--ink-muted)]">
                   <Filter className="h-3.5 w-3.5" />
-                  <span>Filter <span className="font-semibold text-foreground">{STAGE_FULL_LABELS[activeBucket] || activeBucket}</span> by Status</span>
+                  <span>Filter <span className="font-semibold text-[var(--ink)]">{STAGE_FULL_LABELS[activeBucket] || activeBucket}</span> by Status</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSubFilter(false)}
-                  className="text-xs text-muted-foreground hover:text-foreground"
+                  className="text-xs text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer"
                   aria-label="Hide sub-filter"
                 >
                   ×
@@ -2457,38 +2636,33 @@ export default function EIPsHomePage() {
                 <button
                   type="button"
                   onClick={() => setActiveStatusFilter(null)}
-                  className={cn(
-                    'rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                    activeStatusFilter === null
-                      ? 'border-primary/40 bg-primary/10 text-primary'
-                      : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                  )}
+                  data-active={activeStatusFilter === null ? 'true' : undefined}
+                  className="chip h-7 px-2.5 text-xs cursor-pointer"
                 >
                   All ({stageStatusSubDist.reduce((s, r) => s + r.count, 0).toLocaleString()})
                 </button>
                 {stageStatusSubDist.map((row) => {
                   const active = activeStatusFilter === row.status;
-                  const dotColor = STATUS_COLORS[row.status] || 'bg-muted-foreground';
                   return (
                     <button
                       key={row.status}
                       type="button"
                       onClick={() => setActiveStatusFilter(active ? null : row.status)}
-                      className={cn(
-                        'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                        active
-                          ? (BADGE_COLORS[row.status] || 'border-primary/40 bg-primary/10 text-primary')
-                          : 'border-border bg-muted/50 text-muted-foreground hover:border-primary/30 hover:text-foreground',
-                      )}
+                      data-active={active ? 'true' : undefined}
+                      className="chip h-7 px-2.5 text-xs cursor-pointer inline-flex items-center gap-1.5"
                     >
-                      <span className={cn('h-1.5 w-1.5 rounded-full', dotColor)} />
-                      {row.status} ({row.count.toLocaleString()})
+                      <span
+                        className="h-1.5 w-1.5 rounded-full shrink-0"
+                        style={{ backgroundColor: `var(--c-${row.status.toLowerCase().replace(/\s+/g, '')}, var(--ink-muted))` }}
+                      />
+                      <span>{row.status}</span>
+                      <span className="font-mono text-[10px] opacity-75">({row.count.toLocaleString()})</span>
                     </button>
                   );
                 })}
               </div>
               {stageStatusSubDistLoading && (
-                <div className="mt-1.5 text-[10px] text-muted-foreground">Loading…</div>
+                <div className="mt-1.5 text-[10px] text-[var(--ink-muted)]">Loading…</div>
               )}
             </div>
           </motion.div>
@@ -2496,21 +2670,21 @@ export default function EIPsHomePage() {
       </AnimatePresence>
 
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-muted-foreground">
+        <p className="text-xs font-medium text-[var(--ink-muted)]">
           Proposal table view
         </p>
         <button
           type="button"
           onClick={() => setShowProposalTable((prev) => !prev)}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground hover:border-primary/30 hover:text-primary"
+          className="chip h-7 px-2.5 text-xs cursor-pointer inline-flex items-center gap-1"
         >
-          {showProposalTable ? 'Hide table' : 'Show table'}
+          <span>{showProposalTable ? 'Hide table' : 'Show table'}</span>
           <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showProposalTable && 'rotate-180')} />
         </button>
       </div>
 
-      <div className="mb-6 overflow-hidden rounded-xl border border-border bg-card/60">
-        <div className="flex flex-col items-start justify-between gap-2 border-b border-border/70 bg-muted/40 px-4 py-3 text-xs sm:flex-row sm:items-center">
+      <div className="mb-6 card overflow-hidden">
+        <div className="flex flex-col items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-xs sm:flex-row sm:items-center">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-muted-foreground">
             {isTableFiltered ? 'Filtered proposals' : 'Total proposals'}:{' '}
@@ -2745,259 +2919,34 @@ export default function EIPsHomePage() {
       </div>
       </div>
 
-            <div className="mb-6 border-t border-border/70 pt-6" id="monthly">
-        <div className="mb-3 flex items-start justify-between gap-2">
-          <div>
-            <div className="inline-flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-amber-400 shrink-0" />
-              <SectionTitleLink href="/insights" className={sectionTitleClass}>Monthly Insight &amp; Editor Leadership Board</SectionTitleLink>
-              <CopyLinkButton sectionId="monthly" tooltipLabel="Copy link" />
-            </div>
-            <p className={sectionSubtitleClass}>Monthly status distribution and editor activity snapshot.</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="homepage-month-select" className="text-xs font-medium text-muted-foreground">
-              Month
-            </label>
-            <select
-              id="homepage-month-select"
-              value={currentMonthYear}
-              onChange={(e) => setCurrentMonthYear(e.target.value)}
-              className="h-8 rounded-md border border-border bg-muted/40 px-2.5 text-xs text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
-            >
-              {monthYearOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-        <div
-          className={cn(
-            'self-start rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
-            'h-[560px] sm:h-[620px]',
-          )}
-        >
-          <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Activity className="h-4 w-4 text-primary" />
-                <h3 className={panelTitleClass}>{monthLabel(currentMonthYear)} Insight (Status Changes)</h3>
-              </div>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                Monthly status distribution.
-              </p>
-            </div>
-            <div className="inline-flex items-center gap-2">
-              <Link
-                href={`/insights/${currentMonthYear.split('-')[0]}/${parseInt(currentMonthYear.split('-')[1], 10)}`}
-                className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-              >
-                Explore Month Analysis
-                <ArrowRight className="h-3 w-3" />
-              </Link>
-              <button
-                onClick={downloadMonthlyInsightCSV}
-                disabled={downloading}
-                aria-label="Download status changes CSV"
-                title="Download status changes CSV"
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-border bg-muted/40 text-foreground hover:border-primary/40 hover:bg-primary/5 hover:text-primary disabled:opacity-60"
-              >
-                <Download className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="relative mt-2 min-h-0 flex-1">
-            <div className="h-full w-full">
-              {showInsightSkeleton ? (
-                <div className="h-full w-full animate-pulse rounded-xl bg-muted" />
-              ) : febDelta.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-                  <Activity className="h-8 w-8 text-muted-foreground/35" />
-                  <div>
-                    <p className="text-sm font-medium text-muted-foreground">No status changes yet</p>
-                    <p className="mt-1 text-xs text-muted-foreground/70">
-                      We&apos;ll populate this chart when transitions start in {monthLabel(currentMonthYear)}.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                <ReactECharts
-                  option={febInsightDonutOption}
-                  style={{ height: '100%', width: '100%' }}
-                  opts={{ renderer: 'svg' }}
-                />
-              )}
-            </div>
-            {!showInsightSkeleton && febDelta.length > 0 && (
-              <div className="pointer-events-none absolute bottom-3 right-3 rounded-md border border-border/70 bg-background/80 px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground/80 backdrop-blur-sm">
-                EIPsInsight.com
-              </div>
-            )}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
-            {monthlyDeltaUpdatedAt ? (
-              <LastUpdated
-                timestamp={monthlyDeltaUpdatedAt}
-                prefix="Updated"
-                showAbsolute
-                className="bg-muted/40 text-xs"
-              />
-            ) : (
-              <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-                No status changes recorded for this period
-              </span>
-            )}
-            <span className="text-xs text-muted-foreground">
-              Monthly activity snapshot
-            </span>
-          </div>
-        </div>
-
-        <div
-          className={cn(
-            'rounded-xl border border-border bg-card/60 p-4 shadow-sm flex flex-col',
-            'h-[560px] sm:h-[620px]',
-          )}
-        >
-          <>
-              <div className="mb-3 flex flex-col items-start gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="inline-flex items-center gap-2">
-                    <Trophy className="h-4 w-4 text-primary" />
-                    <h3 className={panelTitleClass}>Editor Leaderboard ({monthLabel(currentMonthYear)})</h3>
-                  </div>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Ranked by editor actions this month (open + closed PRs).
-                  </p>
-                </div>
-                <div className="inline-flex items-center gap-2">
-                  <Link
-                    href="/analytics/editors"
-                    className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:underline"
-                  >
-                    Explore Editor Leaderboard
-                    <ArrowRight className="h-3 w-3" />
-                  </Link>
-                  <button
-                    onClick={downloadLeaderboardDetailedCSV}
-                    disabled={downloadingLeaderboard}
-                    aria-label="Download editor leaderboard CSV"
-                    title="Download editor leaderboard CSV"
-                    className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 disabled:opacity-60"
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-1 pr-2">
-                {showEditorSkeleton
-                  ? Array.from({ length: 6 }).map((_, i) => (
-                      <div key={`editor-skeleton-${i}`} className="rounded-lg border border-border p-2.5">
-                        <div className="mb-2 flex items-center gap-2">
-                          <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-                          <div className="flex-1">
-                            <div className="mb-1 h-3 w-24 animate-pulse rounded bg-muted" />
-                            <div className="h-3 w-36 animate-pulse rounded bg-muted" />
-                          </div>
-                        </div>
-                        <div className="h-1.5 animate-pulse rounded-full bg-muted" />
-                      </div>
-                    ))
-                  : monthlyEditorRows.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                      <Trophy className="h-10 w-10 text-muted-foreground/40" />
-                      <div>
-                        <p className="text-sm font-medium text-muted-foreground">No editor activity yet</p>
-                        <p className="mt-1 text-xs text-muted-foreground/70">
-                          Editor actions for {monthLabel(currentMonthYear)} will appear here as PRs are reviewed.
-                        </p>
-                      </div>
-                    </div>
-                  )
-                  : monthlyEditorRows.map((row, idx) => (
-                      <div
-                        key={`editor-${row.actor}`}
-                        className={`rounded-lg px-2.5 py-2.5 border ${idx === 0 ? 'bg-primary/10 border-primary/30' : 'bg-muted/40 border-border'}`}
-                      >
-                        <div className="mb-2 flex items-center justify-between gap-2">
-                          <div className="flex min-w-0 items-center gap-2">
-                            <div className="h-8 w-8 shrink-0 rounded-full bg-background/80 p-[1.5px] ring-1 ring-border">
-                              <div className="h-full w-full overflow-hidden rounded-full">
-                                <Image
-                                  src={editorAvatar(row.actor)}
-                                  alt={row.actor}
-                                  width={32}
-                                  height={32}
-                                  className="h-full w-full object-cover object-center"
-                                />
-                              </div>
-                            </div>
-                            <div className="min-w-0">
-                              <p className="truncate text-sm font-medium text-foreground">#{idx + 1} {row.actor}</p>
-                              <p className="text-xs text-muted-foreground">{row.totalActions} actions across {row.prsTouched} PRs</p>
-                            </div>
-                          </div>
-                          <span className="ml-2 min-w-[2.5ch] shrink-0 text-right text-sm leading-tight font-semibold tabular-nums text-primary">
-                            {row.totalActions}
-                          </span>
-                        </div>
-                        <div className="h-1.5 overflow-hidden rounded-full bg-muted/80">
-                          <div
-                            className="h-full bg-primary transition-all duration-300"
-                            style={{ width: `${row.totalActions > 0 ? Math.max(8, (row.totalActions / maxEditor) * 100) : 0}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-              </div>
-
-              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
-                {monthlyLeaderboardUpdatedAt ? (
-                  <LastUpdated
-                    timestamp={monthlyLeaderboardUpdatedAt}
-                    prefix="Updated"
-                    showAbsolute
-                    className="bg-muted/40 text-xs"
-                  />
-                ) : (
-                  <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-                    No editor activity recorded for this period
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  Monthly editor activity snapshot
-                </span>
-              </div>
-          </>
-        </div>
-      </div>
-      </div>
-
-      <div className="border-t border-border/70 pt-6">
+      <div id="weekly-recap">
         <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
       </div>
 
-      <section className="border-t border-border/70 pt-6" id="community">
+      <HomeProtocolCalls sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
+
+      <section className="pt-2" id="testimonials">
+        <SectionHead
+          index="08"
+          eyebrow="Ecosystem feedback"
+          title="Community Testimonials"
+          description="What Ethereum core developers, researchers, and editors say about EIPsInsight."
+        />
+        <TestimonialsSection featuredOnly limit={3} showViewAll eyebrow className="mb-4" />
+      </section>
+
+      <section className="border-t border-border/70 pt-8" id="faq">
+        <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
+      </section>
+
+      <section className="border-t border-border/70 pt-8" id="community">
         <SocialCommunityUpdates
           showCommunityResources={true}
           sectionTitleClass={sectionTitleClass}
           sectionSubtitleClass={sectionSubtitleClass}
         />
       </section>
-
-      <section className="mb-6 border-t border-border/70 pt-6" id="faq">
-        <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
-      </section>
-
-      <hr className="my-8 border-border/70" />
-      <TestimonialsSection featuredOnly limit={3} showViewAll eyebrow className="mb-4" />
+      </div>
     </div>
   );
 }
