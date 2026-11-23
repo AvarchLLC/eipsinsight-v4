@@ -1,76 +1,131 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import { ArrowRight, FlaskConical } from 'lucide-react';
+import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
+import { PageHead } from "@/components/ledger/page-head";
+import { SectionHead } from "@/components/ledger/section-head";
 
 export const metadata: Metadata = {
-  title: 'Research | EIPsInsight',
+  title: "Research | EIPsInsight",
   description:
-    'Original EIPsInsight research: deep dives on Ethereum protocol changes, run on our own nodes and indexers. Differential replays, gas audits, and measured on-chain impact.',
+    "Original EIPsInsight research: deep dives on Ethereum protocol changes, run on our own nodes and indexers. Differential replays, gas audits, and measured on-chain impact.",
 };
 
 export const revalidate = 3600;
 
 // Curated list of EIPsInsight research write-ups. Newest first.
+// `metric` is the finding's headline data, shown as the card's visual (data as
+// decoration), so the thumbnail never duplicates the title.
 type Article = {
   slug: string;
   title: string;
   dek: string;
   tags: string[];
   date: string;
-  thumb: string;
+  metric: {
+    eyebrow: string;
+    unit: string;
+    bars: { label: string; value: number }[];
+    max: number;
+  };
 };
 
 const ARTICLES: Article[] = [
   {
-    slug: 'glamsterdam',
-    title: 'What Glamsterdam breaks',
+    slug: "glamsterdam",
+    title: "What Glamsterdam breaks",
     dek: "EIP-8037/8038 reprice on-chain storage. A differential replay of real mainnet transactions finds ERC-4337 account abstraction hard-breaks at verificationGasLimit, the class the professional audits missed.",
-    tags: ['Glamsterdam', 'EIP-8037/8038', 'Account Abstraction'],
-    date: 'November 2026',
-    thumb: '/research/glamsterdam.svg',
+    tags: ["Glamsterdam", "EIP-8037/8038", "Account Abstraction"],
+    date: "November 2026",
+    metric: {
+      eyebrow: "Hard-break rate",
+      unit: "%",
+      max: 55,
+      bars: [
+        { label: "4337 module", value: 50 },
+        { label: "EntryPoint v0.7", value: 34 },
+        { label: "EntryPoint v0.6", value: 26 },
+      ],
+    },
   },
 ];
 
 export default function ResearchIndexPage() {
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <div className="flex items-center gap-2 font-mono text-[11px] uppercase tracking-wider text-primary">
-        <FlaskConical className="h-3.5 w-3.5" /> EIPsInsight Research
-      </div>
-      <h1 className="dec-title mt-3 text-3xl font-bold tracking-tight text-foreground sm:text-4xl">Research</h1>
-      <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted-foreground">
-        Original deep dives on Ethereum protocol changes, run on our own archive nodes and indexers. Differential replays,
-        gas audits, and measured on-chain impact, with every number reproducible.
-      </p>
+    <div data-ledger className="min-h-screen">
+      <PageHead
+        eyebrow="EIPsInsight research"
+        title={<>Research</>}
+        lead={
+          <>
+            Original deep dives on Ethereum protocol changes, run on our own archive nodes and indexers. Differential
+            replays, gas audits, and <span className="accent">measured on-chain impact</span>, with every number
+            reproducible.
+          </>
+        }
+      />
 
-      <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {ARTICLES.map((a) => (
-          <Link
-            key={a.slug}
-            href={`/research/${a.slug}`}
-            className="group overflow-hidden rounded-xl border border-border bg-card/50 transition-colors hover:border-primary/40"
-          >
-            <div className="aspect-[16/9] w-full overflow-hidden border-b border-border/60 bg-muted/30">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={a.thumb} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
-            </div>
-            <div className="p-5">
-              <div className="flex flex-wrap gap-1.5">
-                {a.tags.map((t) => (
-                  <span key={t} className="rounded-full bg-primary/10 px-2 py-0.5 text-[11px] font-medium text-primary border border-primary/20">{t}</span>
-                ))}
-              </div>
-              <h2 className="dec-title mt-3 text-lg font-semibold tracking-tight text-foreground">{a.title}</h2>
-              <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">{a.dek}</p>
-              <div className="mt-4 flex items-center justify-between">
-                <span className="font-mono text-[11px] uppercase tracking-wider text-muted-foreground">{a.date}</span>
-                <span className="inline-flex items-center gap-1 text-sm font-medium text-primary">
-                  Read <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-                </span>
-              </div>
-            </div>
-          </Link>
-        ))}
+      <div className="wrap py-8 sm:py-10">
+        <section>
+          <SectionHead
+            index="01"
+            eyebrow="Published"
+            title="On-chain impact"
+            description="What upcoming protocol changes actually do, replayed against real mainnet transactions."
+          />
+
+          <div className="space-y-5">
+            {ARTICLES.map((a) => (
+              <Link
+                key={a.slug}
+                href={`/research/${a.slug}`}
+                className="tile group flex flex-col overflow-hidden sm:flex-row"
+              >
+                <div className="flex w-full shrink-0 flex-col justify-center gap-4 border-b border-[var(--border)] bg-[var(--surface-2)] p-6 sm:w-[300px] sm:border-b-0 sm:border-r lg:w-[380px]">
+                  <div className="flex items-baseline justify-between">
+                    <span className="eyebrow">{a.metric.eyebrow}</span>
+                    <span className="eyebrow text-[var(--c-withdrawn)]">replay</span>
+                  </div>
+                  <div className="space-y-2.5">
+                    {a.metric.bars.map((b) => (
+                      <div key={b.label} className="flex items-center gap-3">
+                        <span className="mono w-[8.5rem] shrink-0 truncate text-right text-[0.72rem] text-[var(--ink-faint)]">
+                          {b.label}
+                        </span>
+                        <span className="h-[0.9rem] flex-1 overflow-hidden rounded-[2px] bg-[var(--surface-3)]">
+                          <span
+                            className="block h-full rounded-[2px] bg-[var(--c-withdrawn)]"
+                            style={{ width: `${(b.value / a.metric.max) * 100}%` }}
+                          />
+                        </span>
+                        <span className="mono w-9 shrink-0 text-[0.72rem] font-semibold tabular-nums text-[var(--ink)]">
+                          {b.value}
+                          {a.metric.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-1 flex-col justify-center p-6 sm:p-8">
+                  <div className="flex flex-wrap gap-1.5">
+                    {a.tags.map((t) => (
+                      <span key={t} className="eyebrow rounded border border-[var(--border)] px-2 py-1">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                  <h3 className="t-h2 mt-4">{a.title}</h3>
+                  <p className="mt-2 max-w-[52rem] text-[1.02rem] leading-relaxed text-[var(--ink-muted)]">{a.dek}</p>
+                  <div className="mt-5 flex items-center gap-4">
+                    <span className="eyebrow">{a.date}</span>
+                    <span className="inline-flex items-center gap-1 text-sm font-medium text-[var(--brand-strong)]">
+                      Read the research <ArrowRight className="tile-arrow h-3.5 w-3.5" />
+                    </span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
       </div>
     </div>
   );

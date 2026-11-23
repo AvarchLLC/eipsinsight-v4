@@ -1,7 +1,7 @@
 import { Fragment } from 'react';
 import Link from 'next/link';
-import { ArrowUpRight, ShieldAlert, Video, Boxes, CircleDot, GitFork, Link2Off, KeyRound, Layers, Map, BookOpen } from 'lucide-react';
-import { PQ_PIPELINE, PQ_PIPELINE_PHASES, pqSummary } from '@/data/pq-registry';
+import { ArrowUpRight, ShieldAlert, Video, Boxes, CircleDot, GitFork, Link2Off, KeyRound, Layers, Map, BookOpen, Gauge } from 'lucide-react';
+import { PQ_PIPELINE, PQ_PIPELINE_PHASES, pqSummary, PQ_EIPS, PQ_LAYERS, pqReadinessStage } from '@/data/pq-registry';
 import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
@@ -215,6 +215,67 @@ export default function PqOverviewPage() {
           <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-500" /> reached</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary" /> current frontier</span>
           <span className="inline-flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-muted-foreground/40" /> ahead</span>
+        </div>
+      </section>
+
+      {/* Readiness scorecard — where each tracked spec sits on the pipeline */}
+      <section id="pq-scorecard" className="scroll-mt-20 overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Gauge className="h-5 w-5 text-primary" />
+            <h2 className="text-base font-bold tracking-tight text-foreground sm:text-lg">Readiness scorecard</h2>
+            <CopyLinkButton sectionId="pq-scorecard" className="h-6 w-6" />
+          </div>
+          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+            Where each tracked PQ specification sits on the{' '}
+            <a href="#pq-pipeline" className="font-medium text-primary hover:underline">pipeline</a>, from research to
+            ecosystem migration. Derived conservatively from fork-inclusion status, client implementations, and testnet presence.
+          </p>
+        </div>
+        {PQ_LAYERS.map((layer) => {
+          const eips = PQ_EIPS.filter((e) => e.layer === layer);
+          if (eips.length === 0) return null;
+          return (
+            <div key={layer} className="border-t border-border">
+              <div className="bg-muted/30 px-5 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                {layer}
+              </div>
+              {eips.map((e) => {
+                const stage = pqReadinessStage(e);
+                return (
+                  <div key={e.number} className="border-t border-border/50 px-5 py-3 first:border-t-0">
+                    <div className="flex items-baseline justify-between gap-3">
+                      <div className="flex min-w-0 items-baseline gap-2">
+                        <Link href={`/eips/eip-${e.number}`} className="shrink-0 font-mono text-xs font-semibold text-primary hover:underline">
+                          {e.number}
+                        </Link>
+                        <span className="truncate text-sm text-foreground">{e.title}</span>
+                      </div>
+                      <span className="shrink-0 whitespace-nowrap text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                        {PQ_PIPELINE[stage].label}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex gap-0.5" role="img" aria-label={`Stage: ${PQ_PIPELINE[stage].label}`}>
+                      {PQ_PIPELINE.map((st, i) => (
+                        <span
+                          key={i}
+                          title={st.label}
+                          className={
+                            'h-1.5 flex-1 rounded-full ' +
+                            (i < stage ? 'bg-emerald-500/70' : i === stage ? 'bg-primary' : 'bg-muted')
+                          }
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+        <div className="border-t border-border/60 bg-muted/20 px-5 py-3 text-xs leading-relaxed text-muted-foreground">
+          Stages are conservative snapshots. The live status of each proposal is on its{' '}
+          <Link href="/standards" className="text-primary hover:underline">EIP page</Link>; testnet state comes from the PQTS breakout.
         </div>
       </section>
 

@@ -198,13 +198,61 @@ export default function PqImplementationPage() {
         <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-foreground">
           <KeyRound className="h-4 w-4 text-primary" /> PQ signature schemes in play
         </h2>
-        <div className="mt-3 grid gap-2.5 sm:grid-cols-2">
+        <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+          Post-quantum signatures are much larger than the secp256k1 and BLS signatures Ethereum uses today. That size
+          blow-up, below, is why in-mempool aggregation (EIP-8288) is the scalability piece of the PQ roadmap.
+        </p>
+
+        {/* Signature-size comparison */}
+        {(() => {
+          const sized = PQ_SCHEMES.filter((s) => typeof s.sigBytes === 'number').sort((a, b) => a.sigBytes! - b.sigBytes!);
+          const max = Math.max(...sized.map((s) => s.sigBytes!));
+          const base = PQ_SCHEMES.find((s) => s.name.startsWith('secp256k1'))?.sigBytes ?? 64;
+          return (
+            <div className="mt-4 rounded-lg border border-border bg-background/40 p-3">
+              <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Signature size by scheme</p>
+              <div className="space-y-1.5">
+                {sized.map((s) => {
+                  const pct = Math.max(1.5, (s.sigBytes! / max) * 100);
+                  const x = s.sigBytes! / base;
+                  return (
+                    <div key={s.name} className="flex items-center gap-2 sm:gap-3">
+                      <span className="w-24 shrink-0 truncate font-mono text-[10px] text-foreground sm:w-32" title={s.paramSet}>{s.name}</span>
+                      <div className="h-3.5 flex-1 overflow-hidden rounded bg-muted/50">
+                        <div className={'h-full rounded ' + (s.baseline ? 'bg-muted-foreground/40' : 'bg-primary/70')} style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="w-24 shrink-0 text-right font-mono text-[10px] text-muted-foreground sm:w-28">
+                        {s.sigBytes!.toLocaleString()} B{!s.baseline && x >= 2 ? ` · ${Math.round(x)}x` : ''}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[10px] leading-relaxed text-muted-foreground">
+                Signature bytes per named parameter set; multiples are relative to secp256k1 (64 B). Grey bars are the
+                classical schemes in use today. Lean-SPHINCS is omitted here because its value is aggregating many
+                signatures into roughly one proof per block.
+              </p>
+            </div>
+          );
+        })()}
+
+        <div className="mt-5 grid gap-2.5 sm:grid-cols-2">
           {PQ_SCHEMES.map((s) => (
             <div key={s.name} className="rounded-lg border border-border bg-background/50 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-xs font-semibold text-foreground">{s.name}</span>
+                <span className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-foreground">
+                  {s.name}
+                  {s.baseline && <span className="rounded border border-border bg-muted/50 px-1 py-px text-[9px] font-normal uppercase text-muted-foreground">today</span>}
+                  {s.aggregatable && <span className="rounded border border-primary/30 bg-primary/10 px-1 py-px text-[9px] font-normal uppercase text-primary">aggregatable</span>}
+                </span>
                 <span className="rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[10px] text-muted-foreground">{s.family}</span>
               </div>
+              {typeof s.sigBytes === 'number' && (
+                <p className="mt-1 font-mono text-[10px] text-muted-foreground">
+                  sig {s.sigBytes.toLocaleString()} B · pk {s.pubKeyBytes?.toLocaleString()} B{s.paramSet ? ` · ${s.paramSet}` : ''}
+                </p>
+              )}
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground"><span className="font-medium text-foreground/80">{s.use}.</span> {s.note}</p>
             </div>
           ))}

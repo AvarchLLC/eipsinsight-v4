@@ -412,3 +412,266 @@ html, body, #__next {
     color: transparent;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEDGER design system (docs/DESIGN.md)
+   Transition-scoped: tokens live under [data-ledger] so migrated pages opt in
+   and the rest of the app (shadcn tokens, persona theming) is untouched. When
+   the migration is complete these lift to :root and the old system is removed.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+[data-ledger] {
+  /* core surfaces + ink (light) */
+  --paper: oklch(0.985 0.003 165);
+  --surface: oklch(1 0 0);
+  --surface-2: oklch(0.966 0.004 165);
+  --surface-3: oklch(0.94 0.005 165);
+  --overlay: oklch(1 0 0);
+  --ink: oklch(0.2 0.012 165);
+  --ink-muted: oklch(0.42 0.012 165);
+  --ink-faint: oklch(0.55 0.01 165);
+  --border: oklch(0.905 0.005 165);
+  --border-strong: oklch(0.8 0.008 165);
+  /* brand */
+  --brand: oklch(0.62 0.15 162);
+  --brand-strong: oklch(0.45 0.115 162);
+  --brand-soft: oklch(0.955 0.035 162);
+  --brand-ink: oklch(0.18 0.04 162);
+  /* shape */
+  --l-radius: 0.5rem;
+  --l-radius-control: 0.375rem;
+  --ring: var(--brand);
+  --shadow-overlay: 0 12px 40px -8px oklch(0.2 0.012 165 / 0.28);
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-plus-jakarta), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  line-height: 1.62;
+}
+
+.dark [data-ledger] {
+  --paper: oklch(0.155 0.004 165);
+  --surface: oklch(0.19 0.005 165);
+  --surface-2: oklch(0.225 0.006 165);
+  --surface-3: oklch(0.26 0.007 165);
+  --overlay: oklch(0.21 0.006 165);
+  --ink: oklch(0.955 0.004 165);
+  --ink-muted: oklch(0.74 0.008 165);
+  --ink-faint: oklch(0.58 0.009 165);
+  --border: oklch(0.275 0.007 165);
+  --border-strong: oklch(0.38 0.01 165);
+  --brand: oklch(0.78 0.15 162);
+  --brand-strong: oklch(0.84 0.13 162);
+  --brand-soft: oklch(0.27 0.05 162);
+  --brand-ink: oklch(0.16 0.03 162);
+  --shadow-overlay: 0 12px 40px -8px oklch(0 0 0 / 0.5);
+}
+
+@layer components {
+  /* ── Measure ── */
+  .wrap {
+    width: 100%;
+    max-width: min(104rem, 100%);
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (min-width: 640px) {
+    .wrap { padding-inline: 2rem; }
+  }
+  .wrap-narrow { max-width: 50rem; }
+
+  /* ── Typography ── */
+  .t-display {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2.7rem, 6.4vw, 5.2rem);
+    line-height: 0.98;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .t-h1 {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(1.9rem, 3vw, 2.7rem);
+    line-height: 1.06;
+    letter-spacing: -0.015em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .t-h2 {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(1.65rem, 2.8vw, 2.2rem);
+    line-height: 1.1;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    text-wrap: balance;
+  }
+  .t-h3 {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 600;
+    font-size: 1.25rem;
+    line-height: 1.25;
+    color: var(--ink);
+  }
+  .t-lead {
+    font-size: 1.15rem;
+    line-height: 1.55;
+    color: var(--ink-muted);
+  }
+  .t-figure {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(2.4rem, 4.6vw, 3.5rem);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+  }
+  .eyebrow {
+    font-family: var(--font-geist-mono), ui-monospace, monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-faint);
+  }
+  .accent {
+    font-family: var(--font-instrument-serif), Georgia, serif;
+    font-style: italic;
+    color: var(--brand-strong);
+  }
+  .mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+
+  /* ── Masthead ── */
+  /* A bg-surface band with a faint fading engineering-grid texture for depth
+     (docs/DESIGN.md §5). The grid is drawn from hairlines, not a wash. */
+  .masthead {
+    position: relative;
+    isolation: isolate;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+  /* Fine engineering-paper grid, faded from the top-right so the title stays
+     crisp over the texture. A ruled texture, not a wash. */
+  .masthead::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(to right, var(--border) 1px, transparent 1px),
+      linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+    background-size: 1.5rem 1.5rem;
+    background-position: right top;
+    opacity: 0.6;
+    -webkit-mask-image: radial-gradient(135% 125% at 90% -15%, black 10%, transparent 70%);
+    mask-image: radial-gradient(135% 125% at 90% -15%, black 10%, transparent 70%);
+  }
+  .dark .masthead::before { opacity: 0.38; }
+
+  /* ── Surfaces ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--l-radius);
+  }
+  .card-quiet {
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--l-radius);
+  }
+  .tile {
+    display: block;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--l-radius);
+    transition: border-color 160ms ease, background-color 160ms ease;
+  }
+  .tile:hover { border-color: var(--ink); }
+  .tile-arrow { transition: transform 160ms ease; }
+  .tile:hover .tile-arrow { transform: translateX(2px); }
+
+  /* ── Controls ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-radius: var(--l-radius-control);
+    border: 1px solid var(--border-strong);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+  .btn:hover { border-color: var(--ink); }
+  .btn-primary {
+    background: var(--brand);
+    border-color: var(--brand);
+    color: var(--brand-ink);
+  }
+  .btn-primary:hover { filter: brightness(0.96); border-color: var(--brand); }
+  .btn-outline { background: transparent; }
+
+  /* ── Chip ── */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    height: 1.9rem;
+    padding-inline: 0.7rem;
+    border-radius: var(--l-radius-control);
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--ink-muted);
+    font-size: 0.82rem;
+    font-weight: 500;
+    transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
+  }
+  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip[data-active="true"] {
+    background: var(--ink);
+    border-color: var(--ink);
+    color: var(--paper);
+  }
+
+  /* ── Focus ── */
+  [data-ledger] a:focus-visible,
+  [data-ledger] button:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+}
+
+/* Instrument Serif is a single-weight display face; keep Ledger titles at 400
+   so the browser never synthesizes a heavier weight. */
+.t-display, .t-h1, .t-h2, .t-h3, .t-figure { font-weight: 400; letter-spacing: -0.01em; }
+
+/* ── Ledger semantic constants (docs/DESIGN.md §2) — status/track colours.
+   Each has a lighter dark-mode twin. Read through data-token / --token later. */
+[data-ledger] {
+  --c-draft: oklch(0.6 0.02 255);
+  --c-review: oklch(0.72 0.14 75);
+  --c-lastcall: oklch(0.68 0.16 50);
+  --c-final: oklch(0.6 0.13 150);
+  --c-living: oklch(0.65 0.1 190);
+  --c-stagnant: oklch(0.62 0.08 10);
+  --c-withdrawn: oklch(0.58 0.2 25);
+  --c-moved: oklch(0.55 0.18 300);
+}
+.dark [data-ledger] {
+  --c-draft: oklch(0.72 0.02 255);
+  --c-review: oklch(0.8 0.13 75);
+  --c-lastcall: oklch(0.77 0.15 50);
+  --c-final: oklch(0.75 0.14 150);
+  --c-living: oklch(0.76 0.1 190);
+  --c-stagnant: oklch(0.74 0.08 10);
+  --c-withdrawn: oklch(0.7 0.19 25);
+  --c-moved: oklch(0.72 0.16 300);
+}

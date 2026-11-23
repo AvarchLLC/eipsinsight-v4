@@ -265,6 +265,20 @@ export const PQ_GAPS: PqGap[] = [
     eip: 'EIP-8365 + TBD',
     action: 'Identify specification owners for the balance-sunset and retirement stages after 8365.',
   },
+  {
+    title: 'PQ decoupled consensus',
+    milestone: 'L* → M*',
+    research: 'Partial',
+    eip: 'Not identified',
+    action: 'Open architectural choice surfaced by the Ethlabs pqai27 position: PQ-fy the current Gasper protocol in place, or jump directly to PQ decoupled consensus (the final form, unlocking fast finality and faster slots). No EIP covers either path yet.',
+  },
+  {
+    title: 'Contract-based validator registration',
+    milestone: 'I*',
+    research: 'Partial',
+    eip: 'Not identified',
+    action: 'Proposed in pqai27: deploy a registration contract now and load its state into the next fork, avoiding a dedicated registration fork. Needs a specification owner and a decision on whether it is a protocol EIP.',
+  },
 ];
 
 /** Grouped phase a pipeline stage belongs to. */
@@ -507,17 +521,149 @@ export const PQTS_TESTNET = {
   ] as PqtsPhase[],
 };
 
-// PQ signature schemes seen across the PQTS work.
+// PQ signature schemes seen across the PQTS work, plus the classical baselines
+// Ethereum uses today, so the size blow-up is visible. Sizes are the standard
+// parameter-set values in bytes; they are parameter-set dependent, so each row
+// names its set. Hash-based signatures are large, which is exactly why in-mempool
+// aggregation (EIP-8288) is the scalability piece of the PQ roadmap.
 export interface PqScheme {
   name: string;
   family: string;
   use: string;
+  /** Parameter set the sizes below refer to. */
+  paramSet?: string;
+  /** Public-key size in bytes. */
+  pubKeyBytes?: number;
+  /** Signature size in bytes (approximate for variable-length schemes). */
+  sigBytes?: number;
+  /** Signatures aggregate into a shorter proof (BLS today; Lean-SPHINCS for PQ). */
+  aggregatable?: boolean;
+  /** A classical scheme in use today, shown only for size comparison. */
+  baseline?: boolean;
   note?: string;
 }
 
 export const PQ_SCHEMES: PqScheme[] = [
-  { name: 'SPHINCS+', family: 'Hash-based (stateless)', use: 'Transaction signatures', note: 'Runs on the PQTS testnet today.' },
-  { name: 'Lean-SPHINCS / LeanVM', family: 'Hash-based + aggregation', use: 'Signature aggregation', note: 'Aggregation-friendly variant targeted for EIP-8288.' },
-  { name: 'XMSS', family: 'Hash-based (stateful)', use: 'Validator keys', note: 'Candidate to replace BLS validator keys (EIP-8310).' },
-  { name: 'ML-DSA (Dilithium)', family: 'Lattice-based', use: 'Transaction signatures', note: 'NIST standard; a 6x-optimized EVM verifier was demoed by Fireblocks (PQTS #14).' },
+  { name: 'secp256k1 (ECDSA)', family: 'Elliptic curve', use: 'EOA transaction signatures today', paramSet: 'secp256k1', pubKeyBytes: 33, sigBytes: 64, baseline: true, note: 'The classical baseline every EOA uses now. Not quantum-safe.' },
+  { name: 'BLS12-381', family: 'Pairing-based', use: 'Validator signatures today', paramSet: 'BLS12-381', pubKeyBytes: 48, sigBytes: 96, aggregatable: true, baseline: true, note: 'Aggregatable, which is why the consensus layer scales. Not quantum-safe; the PQ roadmap must replace it without losing aggregation.' },
+  { name: 'SPHINCS+', family: 'Hash-based (stateless)', use: 'Transaction signatures', paramSet: 'SHA2-128s', pubKeyBytes: 32, sigBytes: 7856, note: 'Runs on the PQTS testnet today. The 128f (fast) set is larger at ~17 KB per signature.' },
+  { name: 'Lean-SPHINCS / LeanVM', family: 'Hash-based + aggregation', use: 'Signature aggregation', aggregatable: true, note: 'Aggregation-friendly variant targeted for EIP-8288; many signatures compress to one proof per block.' },
+  { name: 'XMSS', family: 'Hash-based (stateful)', use: 'Validator keys', paramSet: 'SHA2_10_256', pubKeyBytes: 64, sigBytes: 2500, note: 'Candidate to replace BLS validator keys (EIP-8310). Stateful: the signer must not reuse a one-time key.' },
+  { name: 'ML-DSA (Dilithium)', family: 'Lattice-based', use: 'Transaction signatures', paramSet: 'ML-DSA-65', pubKeyBytes: 1952, sigBytes: 3309, note: 'NIST standard (FIPS 204). A 6x-optimized EVM verifier was demoed by Fireblocks (PQTS #14).' },
+  { name: 'Falcon-512', family: 'Lattice-based', use: 'Transaction signatures', paramSet: 'Falcon-512', pubKeyBytes: 897, sigBytes: 666, note: 'The most compact PQ signatures, but tricky constant-time implementation. Precompiles proposed in EIP-7619 / 8052.' },
 ];
+
+// ── Roadmap positions ────────────────────────────────────────────────────────
+// Competing views on HOW FAST and VIA WHICH PATH Ethereum reaches PQ security.
+// These are positions and proposals, NOT EIPs and NOT settled consensus. The
+// registry tracks that each exists and what it claims; it does not endorse one.
+// "PQ-ready" = can switch to PQ mechanisms and keep operating (possibly at
+// reduced capacity). "PQ-scaled" = full capacity using PQ transactions and DA.
+
+export type PositionKind = 'EF roadmap' | 'Lab proposal' | 'Historical baseline';
+export type PositionStatus = 'Reference' | 'Under discussion' | 'Superseded';
+
+export interface PqPosition {
+  id: string;
+  title: string;
+  author: string;
+  kind: PositionKind;
+  status: PositionStatus;
+  /** Headline timeline, e.g. "2027 PQ-ready (2029 PQ-scaled stretch)". */
+  target?: string;
+  summary: string;
+  /** What it would change relative to the current trajectory. */
+  changes?: string[];
+  discussionsTo?: string;
+  writeup?: string;
+  /** One-line reminder of standing, shown as a caveat. */
+  neutralityNote?: string;
+}
+
+export const PQ_POSITIONS: PqPosition[] = [
+  {
+    id: 'ef-roadmap',
+    title: 'EF protocol priorities and the lean PQ roadmap',
+    author: 'Ethereum Foundation',
+    kind: 'EF roadmap',
+    status: 'Reference',
+    target: '2029 full post-quantum (PQ-scaled)',
+    summary:
+      'The baseline this hub maps against. pq.ethereum.org sets the lean-roadmap milestones (I*/J*/L*/M*) and the capabilities each must deliver; the EF protocol-priorities post frames PQ as a long-horizon, full-capacity target.',
+    discussionsTo: 'https://pq.ethereum.org',
+    writeup: 'https://blog.ethereum.org/2026/09/07/protocol-priorities',
+    neutralityNote: 'Roadmap direction, not a per-fork commitment; the live status of each capability is on its EIP pages.',
+  },
+  {
+    id: 'pqai27',
+    title: 'An Ethlabs view on post-quantum and post-AI timelines (pqai27)',
+    author: 'Ethlabs (Josh Rudolf, Barnabe Monnot)',
+    kind: 'Lab proposal',
+    status: 'Under discussion',
+    target: '2027 PQ-ready (2029 PQ-scaled stretch)',
+    summary:
+      'Argues the PQ migration can be accelerated because several steps once thought necessary are not: Ethereum can reach PQ security without first building decoupled consensus on BLS, and without a dedicated fork for validator registration. Rising quantum and AI threat assessment plus faster-than-expected research progress make going all-in on PQ attractive.',
+    changes: [
+      'Target PQ-ready by 2027 (full PQ-scaled as a stretch goal) versus the 2029 baseline.',
+      'For consensus, either PQ-fy the current Gasper protocol or jump directly to PQ decoupled consensus (fast finality, faster slots, provably secure consensus).',
+      'Register validators via a contract whose state loads into the next fork, instead of waiting for a registration fork.',
+      'Withdraw Quick Slots from Hegota to concentrate resources on the PQ effort.',
+    ],
+    discussionsTo: 'https://ethereum-magicians.org/t/an-ethlabs-view-on-post-quantum-and-post-ai-timelines-pqai27/30351',
+    writeup: 'https://ethlabs.org/writings/pqai27.html',
+    neutralityNote: 'An Ethlabs proposal under early discussion, not an Ethereum-wide hard-fork commitment.',
+  },
+  {
+    id: 'mission-2028',
+    title: 'Mission 2028 (Cambridge / Devcon timeline)',
+    author: 'Presented by Justin Drake at Devcon',
+    kind: 'Historical baseline',
+    status: 'Superseded',
+    target: '2028 PQ steps, Hegota process continuing with Quick Slots',
+    summary:
+      'The prior trajectory the pqai27 post reacts to: deliver the PQ steps by 2028 while continuing Hegota as it had been going, including Quick Slots. pqai27 argues the cards have since been reshuffled toward an earlier, all-in PQ delivery.',
+    neutralityNote: 'Context for the current debate; the active proposals are the two above.',
+  },
+];
+
+// ── Readiness scorecard ──────────────────────────────────────────────────────
+// The furthest PQ_PIPELINE stage a spec has reached, derived from its tracked
+// signals (fork-inclusion status, client implementations, testnet presence).
+// Conservative: a spec sits at the EIP-draft stage until there is evidence it
+// has moved further. The index points into PQ_PIPELINE.
+
+const UPGRADE_STAGE: Record<UpgradeStatus, number> = {
+  Proposed: 2,   // EIP draft
+  PFI: 3,
+  CFI: 4,
+  DFI: 2,        // declined: does not advance the pipeline
+  SFI: 7,
+  Scheduled: 8,  // testnet
+  Deployed: 9,   // mainnet
+  '—': 2,
+};
+
+function implAdvances(state: ImplState): boolean {
+  return state === 'implemented' || state === 'interoperable' || state === 'tested';
+}
+
+export function pqReadinessStage(e: PqEip): number {
+  let stage = 2; // listed in the registry => at least an EIP draft exists
+  if (e.upgradeStatus) stage = Math.max(stage, UPGRADE_STAGE[e.upgradeStatus]);
+
+  const impls = PQ_IMPLEMENTATIONS[e.number] ?? {};
+  if (Object.entries(impls).some(([client, v]) => client !== 'Devnet' && implAdvances(v.state))) {
+    stage = Math.max(stage, 5); // client implementation
+  }
+  if (impls['Devnet'] && implAdvances(impls['Devnet'].state)) {
+    stage = Math.max(stage, 6); // devnet
+  }
+
+  for (const phase of PQTS_TESTNET.phases) {
+    if (!phase.eips.includes(e.number)) continue;
+    if (phase.status === 'live') stage = Math.max(stage, 8); // testnet
+    else if (phase.status === 'in-progress') stage = Math.max(stage, 6); // devnet-equivalent
+  }
+
+  return Math.min(stage, PQ_PIPELINE.length - 1);
+}
