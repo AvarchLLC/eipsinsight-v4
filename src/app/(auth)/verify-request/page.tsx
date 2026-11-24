@@ -3,18 +3,16 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authClient } from "@/lib/auth-client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { ArrowLeft, Mail, Loader2, CheckCircle2 } from "lucide-react";
-import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { toast } from "sonner";
+import { ThemedLogoGif } from "@/components/themed-logo-gif";
 
 function VerifyRequestContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const email = searchParams.get("email") || "";
-  
+
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
@@ -57,8 +55,9 @@ function VerifyRequestContent() {
       setTimeout(() => {
         router.push("/");
       }, 1500);
-    } catch (err: Error | unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Invalid verification code. Please try again.";
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Invalid verification code. Please try again.";
       setError(errorMessage);
     } finally {
       setLoading(false);
@@ -80,8 +79,9 @@ function VerifyRequestContent() {
       toast.success("Verification code resent", {
         description: email,
       });
-    } catch (err: Error | unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Failed to resend code";
+    } catch (err: unknown) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to resend code";
       const cooldown = readCooldownFromMessage(errorMessage);
       if (cooldown && cooldown > 0) {
         setResendCooldown(cooldown);
@@ -94,111 +94,101 @@ function VerifyRequestContent() {
   };
 
   return (
-    <div className="w-full max-w-md">
-      <div className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-8 shadow-lg shadow-primary/10 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-primary/10 to-transparent" />
+    <div className="w-full max-w-[440px]">
+      <div className="relative rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-7 sm:p-9 shadow-xl">
+        {/* Top Ledger Rule */}
+        <div className="mb-6 flex items-center">
+          <span className="h-px w-8 bg-[var(--brand)]" />
+          <span className="h-px flex-1 bg-[var(--ink)]" />
+        </div>
 
-        <div className="relative z-10">
+        <div className="mb-5 flex items-center justify-between">
+          <p className="eyebrow text-[var(--brand-strong)]">00 VERIFICATION</p>
           <Link
             href="/login"
-            className="mb-6 inline-flex items-center gap-2 text-sm text-primary transition-colors hover:text-primary/80"
+            className="inline-flex items-center gap-1.5 text-xs font-mono text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to login
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Back</span>
           </Link>
-
-          <div className="mb-8 text-center">
-            <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full border border-primary/30 bg-primary/10">
-              <Mail className="h-8 w-8 text-primary" />
-            </div>
-            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-              Check Your Email
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              We sent a verification code to
-            </p>
-            <p className="mt-1 font-semibold text-foreground">{email}</p>
-          </div>
-
-          {success ? (
-            <div className="space-y-4 text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/30 bg-emerald-500/10">
-                <CheckCircle2 className="h-8 w-8 text-emerald-600 dark:text-emerald-300" />
-              </div>
-              <div>
-                <p className="text-lg font-semibold text-foreground">Verified!</p>
-                <p className="text-sm text-muted-foreground">Redirecting you now...</p>
-              </div>
-            </div>
-          ) : (
-            <>
-              <form onSubmit={handleVerify} className="space-y-4">
-                <div>
-                  <label className="mb-2 block text-sm font-medium text-muted-foreground">
-                    Verification Code
-                  </label>
-                  <Input
-                    type="text"
-                    placeholder="123456"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
-                    required
-                    maxLength={6}
-                    className="h-14 border-border bg-muted/40 text-center text-2xl tracking-widest text-foreground placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40"
-                  />
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    Enter the 6-digit code sent to your email
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
-                    {error}
-                  </div>
-                )}
-
-                <Button
-                  type="submit"
-                  disabled={loading || otp.length !== 6}
-                  className={cn(
-                    "group relative h-12 w-full overflow-hidden border border-primary/30 bg-primary/10 text-primary transition-all duration-300",
-                    "hover:bg-primary/15 hover:shadow-lg hover:shadow-primary/10",
-                    "disabled:opacity-50 disabled:cursor-not-allowed"
-                  )}
-                >
-                  <div className="relative flex items-center justify-center gap-3">
-                    {loading && <Loader2 className="h-5 w-5 animate-spin" />}
-                    <span className="font-semibold">
-                      {loading ? "Verifying..." : "Verify & Sign In"}
-                    </span>
-                  </div>
-                </Button>
-              </form>
-
-              <div className="mt-6 text-center">
-                <p className="mb-2 text-sm text-muted-foreground">Didn&apos;t receive the code?</p>
-                <Button
-                  onClick={handleResend}
-                  disabled={resending || resendCooldown > 0}
-                  variant="ghost"
-                  className="text-primary hover:bg-primary/10 hover:text-primary/80"
-                >
-                  {resending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending...
-                    </>
-                  ) : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend code"}
-                </Button>
-              </div>
-
-              <div className="mt-6 rounded-lg border border-border bg-muted/40 p-4 text-xs text-muted-foreground">
-                <p className="mb-1 font-semibold text-foreground">Code expires in 5 minutes</p>
-                <p>You have 3 attempts to enter the correct code. After that, you&apos;ll need to request a new one.</p>
-              </div>
-            </>
-          )}
         </div>
+
+        <div className="mb-6">
+          <h1 className="font-serif text-2xl sm:text-3xl font-semibold tracking-tight text-[var(--ink)] leading-snug">
+            Verify Passcode
+          </h1>
+          <p className="mt-1 text-xs font-sans text-[var(--ink-muted)]">
+            We sent a 6-digit verification code to
+          </p>
+          <p className="mt-1 font-mono text-xs font-semibold text-[var(--brand-strong)]">
+            {email}
+          </p>
+        </div>
+
+        {success ? (
+          <div className="space-y-3 py-6 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <CheckCircle2 className="h-7 w-7" />
+            </div>
+            <div>
+              <p className="text-base font-sans font-bold text-[var(--ink)]">Verified!</p>
+              <p className="text-xs font-sans text-[var(--ink-muted)]">Redirecting to home…</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <form onSubmit={handleVerify} className="space-y-4">
+              <div>
+                <label className="mb-2 block text-[11px] font-mono uppercase tracking-wider text-[var(--ink-muted)] text-center">
+                  Enter 6-digit passcode
+                </label>
+                <input
+                  type="text"
+                  placeholder="123456"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                  required
+                  maxLength={6}
+                  className="h-12 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-center font-mono text-2xl tracking-[0.3em] text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--brand)] focus:outline-none transition-colors"
+                />
+              </div>
+
+              {error && (
+                <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-2.5 text-xs text-red-600 dark:text-red-400 font-sans text-center">
+                  {error}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={loading || otp.length !== 6}
+                className="btn btn-primary h-11 w-full rounded-lg font-sans font-semibold text-xs tracking-wide bg-[var(--ink)] text-[var(--paper)] hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer shadow-xs"
+              >
+                {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                <span>{loading ? "Verifying…" : "Verify Passcode →"}</span>
+              </button>
+            </form>
+
+            <div className="mt-5 text-center">
+              <button
+                type="button"
+                onClick={handleResend}
+                disabled={resending || resendCooldown > 0}
+                className="text-xs font-sans font-medium text-[var(--brand-strong)] hover:underline disabled:opacity-50 disabled:no-underline cursor-pointer"
+              >
+                {resending
+                  ? "Resending code…"
+                  : resendCooldown > 0
+                    ? `Resend code in ${resendCooldown}s`
+                    : "Didn't receive code? Resend"}
+              </button>
+            </div>
+
+            <div className="mt-5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3 text-[11px] font-sans text-[var(--ink-muted)] text-center">
+              Code expires in 5 minutes. Check spam folder if not received.
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -206,19 +196,17 @@ function VerifyRequestContent() {
 
 export default function VerifyRequestPage() {
   return (
-    <Suspense fallback={
-      <div className="w-full max-w-md">
-        <div className="relative overflow-hidden rounded-2xl border border-border bg-card/80 p-8 backdrop-blur-2xl">
-          <div className="animate-pulse space-y-6">
-            <div className="mx-auto h-16 w-16 rounded-full bg-muted" />
-            <div className="h-8 w-48 mx-auto rounded bg-muted" />
-            <div className="h-4 w-64 mx-auto rounded bg-muted" />
-            <div className="h-16 rounded-lg bg-muted" />
-            <div className="h-12 rounded-lg bg-muted" />
+    <Suspense
+      fallback={
+        <div className="w-full max-w-md">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-8 text-center animate-pulse">
+            <div className="mx-auto h-12 w-12 rounded-xl bg-[var(--surface-2)] mb-4" />
+            <div className="h-5 w-36 mx-auto rounded bg-[var(--surface-2)] mb-2" />
+            <div className="h-4 w-48 mx-auto rounded bg-[var(--surface-2)]" />
           </div>
         </div>
-      </div>
-    }>
+      }
+    >
       <VerifyRequestContent />
     </Suspense>
   );

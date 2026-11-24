@@ -110,10 +110,8 @@ export function ThemeToggle({
         onClick={toggleTheme}
         aria-label="Toggle theme"
         className={cn(
-          'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-all duration-300',
-          'border border-slate-300 dark:border-slate-600/50',
-          'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800/50 dark:hover:bg-slate-700/50',
-          'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+          'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors cursor-pointer',
+          'border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] text-[var(--ink-muted)] hover:text-[var(--ink)] shadow-2xs',
           'active:scale-95',
           className
         )}
@@ -131,25 +129,22 @@ export function ThemeToggle({
       onClick={toggleTheme}
       aria-label="Toggle theme"
       className={cn(
-        'relative flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-300',
-        'border',
-        isDark
-          ? 'border-slate-600/50 bg-slate-800'
-          : 'border-slate-300 bg-slate-200',
+        'relative flex h-8 w-14 shrink-0 items-center rounded-full transition-colors duration-300 cursor-pointer',
+        'border border-[var(--border)] bg-[var(--surface-2)] hover:border-[var(--brand)]/50',
         'active:scale-[0.98]',
         className
       )}
     >
       <span
         className={cn(
-          'absolute flex h-6 w-6 items-center justify-center rounded-full shadow-md transition-all duration-300 ease-out',
+          'absolute flex h-6 w-6 items-center justify-center rounded-full transition-all duration-300 ease-out border border-[var(--border)] shadow-xs',
           isDark
-            ? 'left-1 bg-slate-700 text-amber-300'
-            : 'left-1 bg-white text-amber-500'
+            ? 'left-1 bg-[var(--surface)] text-amber-300'
+            : 'left-1 bg-white text-amber-500 shadow-sm'
         )}
         style={{ transform: isDark ? 'translateX(24px)' : 'translateX(0)' }}
       >
-        {isDark ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+        {isDark ? <Moon className="h-3.5 w-3.5 fill-amber-300/20" /> : <Sun className="h-3.5 w-3.5 fill-amber-500/20" />}
       </span>
     </button>
   );

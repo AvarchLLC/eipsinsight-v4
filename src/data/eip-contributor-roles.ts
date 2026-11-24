@@ -18,6 +18,20 @@ export const CANONICAL_EIP_REVIEWERS = [
 
 export const ASSOCIATE_EIP_EDITORS = [] as const;
 
+export const EXCLUDED_EDITOR_HANDLES = [
+  "abcoathup",
+  "eip-review-bot",
+] as const;
+
+export const EXCLUDED_EDITOR_HANDLES_LOWER = new Set<string>(
+  EXCLUDED_EDITOR_HANDLES.map((h) => h.toLowerCase())
+);
+
+export function isExcludedEditor(actor?: string | null): boolean {
+  if (!actor) return false;
+  return EXCLUDED_EDITOR_HANDLES_LOWER.has(actor.trim().toLowerCase());
+}
+
 export const CANONICAL_EIP_EDITOR_LOWER = CANONICAL_EIP_EDITORS.map((editor) => editor.toLowerCase());
 export const CANONICAL_EIP_REVIEWER_LOWER = CANONICAL_EIP_REVIEWERS.map((reviewer) => reviewer.toLowerCase());
 

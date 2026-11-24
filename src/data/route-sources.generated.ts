@@ -104,6 +104,7 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/whats-new", source: "src/app/whats-new/page.tsx" },
   { pattern: "/timeline", source: "src/app/(tools)/timeline/page.tsx" },
   { pattern: "/EIPOH100", source: "src/app/EIPOH100/page.tsx" },
+  { pattern: "/adoption", source: "src/app/adoption/page.tsx" },
   { pattern: "/feedback", source: "src/app/feedback/page.tsx" },
   { pattern: "/insights", source: "src/app/insights/page.tsx" },
   { pattern: "/research", source: "src/app/research/page.tsx" },

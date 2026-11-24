@@ -645,6 +645,7 @@ export const dashboardProcedures = {
             ON pr.pr_number = pe.pr_number
            AND pr.repository_id = pe.repository_id
           WHERE pe.actor_role = 'EDITOR'
+            AND LOWER(pe.actor) NOT IN ('abcoathup', 'eip-review-bot')
             AND pe.created_at >= $1
           ORDER BY pe.created_at DESC
           LIMIT 50`,
