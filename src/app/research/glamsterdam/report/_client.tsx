@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { ArrowLeft, ExternalLink } from 'lucide-react';
 import { PageHead } from '@/components/ledger/page-head';
-import { META, INVARIANTS, SCAN, NEWACCT, SELFDESTRUCT, NEWACCT_SENDERS, STATE_REPLAY } from '../_data';
+import { META, INVARIANTS, SCAN, NEWACCT, SELFDESTRUCT, NEWACCT_SENDERS, STATE_REPLAY, AA_STATEBREAK } from '../_data';
 import {
   Reveal,
   SerifSectionHead,
@@ -15,6 +15,7 @@ import {
   DensityChart,
   SelfDestructChart,
   StateReplayChart,
+  AaBreakChart,
 } from '../_charts';
 
 const fmt = (n: number) => n.toLocaleString();
@@ -79,8 +80,10 @@ export function GlamsterdamReport() {
                 <span className={ink}>{SCAN.scanned} busiest mainnet contracts</span> against the repricing&apos;s
                 eight-invariant framework, flagging <span className={ink}>{SCAN.flagged} candidates</span> worth re-checking.
                 The flags are candidates for review, <span className={ink}>not confirmed breaks</span>. The headline take: the
-                repricing is real and measurable, but the scariest early hypothesis, that it hard-breaks ERC-4337 account
-                abstraction, did not hold up under verification (see §03).
+                repricing is real, measurable and <span className={ink}>surgical</span> — it hits state-creating operations hard
+                and leaves pure execution untouched. Its single largest impact is on <span className={ink}>ERC-4337 account
+                abstraction</span>: steady-state validation is fine, but userOps that create state (wallet deployments, first
+                SSTOREs) exceed their signed gas limits and break unrescuably (§03).
               </p>
             </div>
           </Reveal>
@@ -134,28 +137,52 @@ export function GlamsterdamReport() {
           <Reveal>
             <div className=" space-y-4 text-[16px] leading-relaxed text-[var(--ink-muted)]">
               <p>
-                The static scan over-flags by design (see §04), so a flag means &quot;worth a look,&quot; not
-                &quot;broken.&quot; The question that mattered most: <span className={ink}>does the repricing break ERC-4337
-                account abstraction?</span> The EntryPoints sit on top of the flagged list by traffic, so if they broke, the
-                blast radius would be enormous. We traced real user operations through the live EntryPoints. They do not break.
+                The question that mattered most: <span className={ink}>does the repricing break ERC-4337 account abstraction?</span>{' '}
+                The EntryPoints sit on top of the flagged list by traffic, so the blast radius is enormous. The answer has two
+                halves, and getting it right took two passes and one correction.
+              </p>
+              <p>
+                <span className={ink}>Steady-state validation holds.</span> We traced real userOps:{' '}
+                <span className="mono text-[13px] text-[var(--ink)]">validateUserOp</span> spends ~15,000 gas against a signed
+                ~95,000 <span className="mono text-[13px] text-[var(--ink)]">verificationGasLimit</span> — about 80,000 of
+                headroom. The repricing adds only a few thousand gas there, so a userOp that touches only existing state does
+                not break. That is why the original &quot;every userOp reverts&quot; claim (34% / 26% / 50%) was a tooling
+                artifact: for steady-state ops the headroom is real.
               </p>
             </div>
           </Reveal>
           <Reveal className="mt-8">
             <HeadroomChart />
           </Reveal>
+          <Reveal className="mt-10">
+            <div className=" space-y-4 text-[16px] leading-relaxed text-[var(--ink-muted)]">
+              <p>
+                <span className={ink}>But userOps that create state are a different story — and here we first under-called it.</span>{' '}
+                Tracing 40 recent userOps per EntryPoint with <span className="mono text-[13px] text-[var(--ink)]">prestateTracer</span>,{' '}
+                <span className={ink}>~53% create new state</span>: a wallet deployment (a new account, +{fmt(158600)}) or a
+                first-touch SSTORE (a new slot, +{fmt(77920)}). The median state-creating userOp adds +{fmt(155840)} gas; the
+                worst we saw on v0.7 added +{fmt(AA_STATEBREAK.entrypoints[0].maxDelta)}.
+              </p>
+              <p>
+                And <span className="mono text-[13px] text-[var(--ink)]">callGasLimit</span> /{' '}
+                <span className="mono text-[13px] text-[var(--ink)]">verificationGasLimit</span> are{' '}
+                <span className={ink}>signed into the userOp</span>, so they cannot be raised without re-signing.{' '}
+                <span className={ink}>{AA_STATEBREAK.entrypoints[0].exceedHeadroom} of {AA_STATEBREAK.entrypoints[0].sampled}</span>{' '}
+                v0.7 userOps and {AA_STATEBREAK.entrypoints[1].exceedHeadroom} of {AA_STATEBREAK.entrypoints[1].sampled} v0.6
+                create more state-gas than the entire ~{fmt(AA_STATEBREAK.headroom)} validation headroom — they fail, and no
+                gas-limit bump rescues them (unrescuable).
+              </p>
+            </div>
+          </Reveal>
           <Reveal className="mt-8">
-            <ul className="ml-1 space-y-2 border-l-2 border-[var(--brand)]/50 pl-5 text-[16px] leading-relaxed text-[var(--ink-muted)]">
-              <li>A user op signs a <span className="mono text-[13px] text-[var(--ink)]">verificationGasLimit</span> (the validation budget), typically <span className={ink}>~95,000 gas</span>.</li>
-              <li>In the traces, <span className="mono text-[13px] text-[var(--ink)]">validateUserOp</span> actually spends <span className={ink}>~15,000 gas</span>, roughly <span className={ink}>80,000 gas of headroom</span>.</li>
-              <li>EIP-8037/8038 add at most a few thousand gas to a validation path touching a few cold slots, comfortably inside that headroom, so validation completes and the EntryPoint does not revert.</li>
-            </ul>
+            <AaBreakChart />
           </Reveal>
           <Reveal>
             <p className="mt-6 text-[16px] leading-relaxed text-[var(--ink-muted)]">
-              This matches the public signal: the teams running ERC-4337 infrastructure have not reported EntryPoint breakage
-              from the repricing. An earlier internal pass reported an AA &quot;hard-break,&quot; and it was wrong: a tooling
-              artifact, corrected here. The honest validated result is that <span className={ink}>the core 4337 validation flow holds</span>.
+              This matches the EF repricing-impact dashboard, which ranks eth-infinitism&apos;s EntryPoints the single
+              most-affected entity (millions of unrescuable role-hits, ~150,400 wallet deployments out of gas). The honest
+              result: <span className={ink}>the 4337 validation base holds for steady-state userOps, but state-creating userOps —
+              deployments and first SSTOREs — break unrescuably, and that is the largest single impact of the repricing</span>.
             </p>
           </Reveal>
         </section>
@@ -165,11 +192,12 @@ export function GlamsterdamReport() {
           <Reveal><SerifSectionHead n="04" title="Challenges" /></Reveal>
           <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             <Reveal>
-              <Card eyebrow="The replay engine">
-                Our first differential replay used a gas-schedule build whose accounting was wrong: it produced per-tx gas
-                deltas larger than the whole transaction&apos;s gas use, a physically impossible result. Trusting it is what
-                produced the false AA &quot;hard-break.&quot; Every replayed break now needs a ground-truth check against the
-                real trace; any delta exceeding the tx&apos;s own gas is a tool bug, not a finding.
+              <Card eyebrow="The replay engine, twice">
+                Our first differential replay used a gas-schedule build whose accounting was wrong: it produced per-tx deltas
+                larger than the whole transaction, a physically impossible result that produced a false AA &quot;hard-break.&quot;
+                We then over-corrected to &quot;AA is fine&quot; from a steady-state sample. Both were wrong. The fix was to stop
+                trusting any engine and measure state creation deterministically (prestate diff × confirmed EIP deltas) — which
+                both kills impossible numbers and catches the real state-creation break (§03).
               </Card>
             </Reveal>
             <Reveal delay={0.05}>
@@ -334,9 +362,17 @@ export function GlamsterdamReport() {
           <Reveal><SerifSectionHead n="07" title="Compatibility & risk summary" /></Reveal>
           <div className="space-y-3">
             <Reveal>
+              <Card eyebrow="Act — highest impact" tone="--c-lastcall">
+                <span className={ink}>ERC-4337 state-creating userOps (wallet deployments, first SSTOREs).</span> ~53% of
+                userOps create state; ~1 in 3 exceed the signed validation budget and break <span className={ink}>unrescuably</span>{' '}
+                (§03). The single largest impact of the repricing. Bundlers, SDKs and smart-account/factory authors must act;
+                account migration may be required.
+              </Card>
+            </Reveal>
+            <Reveal>
               <Card eyebrow="Low risk" tone="--c-final">
-                <span className={ink}>ERC-4337 EntryPoint validation (v0.6 / v0.7 / v0.8).</span> Validation runs well inside
-                its signed gas budget; the repricing does not break it. No action needed beyond normal re-testing on a devnet.
+                <span className={ink}>ERC-4337 steady-state validation.</span> A userOp that touches only existing state runs
+                well inside its signed budget (~15k used of ~95k); that path does not break. The risk is state creation, above.
               </Card>
             </Reveal>
             <Reveal>
@@ -390,7 +426,13 @@ export function GlamsterdamReport() {
               </li>
               <li>
                 EIPsInsight archive node <span className="mono text-[12px]">prestateTracer</span>: the per-contract
-                state-creation measurement (§05), {STATE_REPLAY.perContract} real txs traced for each contract.
+                state-creation measurement (§05) and the EntryPoint userOp measurement (§03), 40 real userOps per EntryPoint.
+              </li>
+              <li>
+                <Link href="https://ethereum.github.io/repricing-impact/entity-report.html" target="_blank" className={linkCls}>
+                  EF repricing-impact dashboard <ExternalLink className="inline h-3 w-3" />
+                </Link>{' '}
+                · cross-checked against our own node measurements; ranks the EntryPoints the most-affected entity.
               </li>
             </ul>
           </Reveal>

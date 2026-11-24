@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import ReactECharts from 'echarts-for-react';
 import * as echarts from 'echarts';
 import { Download, Loader2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { client } from '@/lib/orpc';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { ChartWatermark } from '@/components/chart-watermark';
@@ -47,24 +48,44 @@ type ChartClickParam = {
   seriesName?: string;
 };
 
-const STATUS_COLOR_MAP: Record<string, string> = {
+const STATUS_COLOR_MAP_DARK: Record<string, string> = {
   Draft: '#64748b',
   Review: '#f59e0b',
   'Last Call': '#f97316',
   Final: '#10b981',
-  Living: '#22d3ee',
+  Living: '#06b6d4',
   Stagnant: '#6b7280',
   Withdrawn: '#ef4444',
 };
 
-const CATEGORY_COLOR_MAP: Record<string, string> = {
+const STATUS_COLOR_MAP_LIGHT: Record<string, string> = {
+  Draft: '#475569',
+  Review: '#d97706',
+  'Last Call': '#ea580c',
+  Final: '#059669',
+  Living: '#0891b2',
+  Stagnant: '#64748b',
+  Withdrawn: '#dc2626',
+};
+
+const CATEGORY_COLOR_MAP_DARK: Record<string, string> = {
   Core: '#10b981',
-  ERC: '#22d3ee',
-  Networking: '#60a5fa',
-  Interface: '#a78bfa',
-  Meta: '#f472b6',
+  ERC: '#06b6d4',
+  Networking: '#3b82f6',
+  Interface: '#8b5cf6',
+  Meta: '#ec4899',
   Informational: '#94a3b8',
-  RIP: '#fb923c',
+  RIP: '#f97316',
+};
+
+const CATEGORY_COLOR_MAP_LIGHT: Record<string, string> = {
+  Core: '#059669', // Rich emerald-600
+  ERC: '#0891b2', // High-contrast deep cyan-600 (not washed out)
+  Networking: '#2563eb', // Vibrant blue-600
+  Interface: '#7c3aed', // Purple-600
+  Meta: '#db2777', // Pink-600
+  Informational: '#475569', // Slate-600
+  RIP: '#ea580c', // Orange-600
 };
 
 const EXCLUDED_EIP_NUMBERS = new Set([2512, 3297, 1047]);
@@ -86,36 +107,25 @@ export function GovernanceOverTimeShared({
   watermark = false,
   loadingLabel = 'Loading governance graph...',
 }: GovernanceOverTimeSharedProps) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [viewMode, setViewMode] = useState<'category' | 'status'>('category');
   const [includeRIPs, setIncludeRIPs] = useState(true);
   const [categoryData, setCategoryData] = useState<TimelinePoint[]>([]);
   const [statusData, setStatusData] = useState<TimelinePoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [downloadingCsv, setDownloadingCsv] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
-    const detectTheme = () => {
-      if (typeof window === 'undefined') return;
-      const isDark =
-        document.documentElement.classList.contains('dark') ||
-        window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(isDark);
-    };
-    detectTheme();
-
-    const observer = new MutationObserver(detectTheme);
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleChange = (e: MediaQueryListEvent) => setIsDarkMode(e.matches);
-    mediaQuery.addEventListener('change', handleChange);
-
-    return () => {
-      observer.disconnect();
-      mediaQuery.removeEventListener('change', handleChange);
-    };
+    setMounted(true);
   }, []);
+
+  // Accurately resolve dark mode from next-themes or documentElement class (no OS matchMedia fallback override)
+  const isDarkMode = mounted
+    ? resolvedTheme === 'dark'
+    : typeof document !== 'undefined'
+      ? document.documentElement.classList.contains('dark')
+      : true;
 
   useEffect(() => {
     async function fetchData() {
@@ -145,10 +155,12 @@ export function GovernanceOverTimeShared({
     [timelineData]
   );
 
-  const colors = useMemo(
-    () => (viewMode === 'category' ? CATEGORY_COLOR_MAP : STATUS_COLOR_MAP),
-    [viewMode]
-  );
+  const colors = useMemo(() => {
+    if (viewMode === 'category') {
+      return isDarkMode ? CATEGORY_COLOR_MAP_DARK : CATEGORY_COLOR_MAP_LIGHT;
+    }
+    return isDarkMode ? STATUS_COLOR_MAP_DARK : STATUS_COLOR_MAP_LIGHT;
+  }, [viewMode, isDarkMode]);
 
   const allKeys = useMemo(() => {
     const keys = new Set<string>();
@@ -176,11 +188,11 @@ export function GovernanceOverTimeShared({
     if (chartData.length === 0) return null;
 
     const isLight = !isDarkMode;
-    const axisLabelColor = isLight ? '#475569' : '#94A3B8';
-    const gridLineColor = isLight ? 'rgba(100, 116, 139, 0.12)' : 'rgba(148, 163, 184, 0.08)';
+    const axisLabelColor = isLight ? '#334155' : '#94A3B8';
+    const gridLineColor = isLight ? 'rgba(100, 116, 139, 0.16)' : 'rgba(148, 163, 184, 0.08)';
 
     const series: echarts.SeriesOption[] = allKeys.map((key) => {
-      const baseColor = colors[key] || '#94a3b8';
+      const baseColor = colors[key] || (isLight ? '#475569' : '#94a3b8');
       return {
         name: key,
         type: 'bar',
@@ -188,11 +200,14 @@ export function GovernanceOverTimeShared({
         barMaxWidth: 26,
         data: chartData.map((d) => d[key] || 0),
         itemStyle: {
-          borderRadius: [4, 4, 0, 0],
+          borderRadius: [3, 3, 0, 0],
+          // Keep rich saturation across the entire bar height
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: `${baseColor}E6` },
-            { offset: 1, color: `${baseColor}73` },
+            { offset: 0, color: baseColor },
+            { offset: 1, color: isLight ? `${baseColor}E6` : `${baseColor}B3` },
           ]),
+          borderWidth: isLight ? 0.75 : 0,
+          borderColor: isLight ? 'rgba(0, 0, 0, 0.06)' : 'transparent',
         },
         emphasis: { focus: 'series' },
       };
@@ -208,9 +223,13 @@ export function GovernanceOverTimeShared({
       type: 'line',
       smooth: true,
       symbol: 'circle',
-      symbolSize: 4,
-      lineStyle: { width: 1.5, color: isLight ? '#334155' : '#cbd5e1' },
-      itemStyle: { color: isLight ? '#334155' : '#cbd5e1' },
+      symbolSize: 6,
+      lineStyle: { width: 2.5, color: isLight ? '#0f172a' : '#f8fafc' },
+      itemStyle: {
+        color: isLight ? '#0f172a' : '#f8fafc',
+        borderWidth: 2,
+        borderColor: isLight ? '#ffffff' : '#121316',
+      },
       data: totals,
       z: 8,
     });
@@ -403,7 +422,7 @@ export function GovernanceOverTimeShared({
               No data available for current filter selection.
             </div>
           ) : chartOption ? (
-            <div className="relative" key={`${viewMode}-${includeRIPs}`}>
+            <div className="relative" key={`${viewMode}-${includeRIPs}-${isDarkMode ? 'dark' : 'light'}`}>
               <ReactECharts
                 option={chartOption as object}
                 style={{ height: '420px', width: '100%' }}
