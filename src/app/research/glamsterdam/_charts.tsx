@@ -3,17 +3,22 @@
 import { useMemo } from 'react';
 import { motion, useReducedMotion } from 'framer-motion';
 import {
+  Area,
+  AreaChart,
   Bar,
   BarChart,
   Cell,
   LabelList,
+  Pie,
+  PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
   YAxis,
 } from 'recharts';
 import { cn } from '@/lib/utils';
-import { INVARIANTS, SCAN, FLAGGED, REPRICING, AA_HEADROOM, NEWACCT, SELFDESTRUCT, STATE_REPLAY } from './_data';
+import { INVARIANTS, SCAN, FLAGGED, REPRICING, AA_HEADROOM, NEWACCT, SELFDESTRUCT, STATE_REPLAY, AA_STATEBREAK, COMPOSITION } from './_data';
 
 const fmt = (n: number) => n.toLocaleString();
 
@@ -174,7 +179,7 @@ export function HeadroomChart() {
     [],
   );
   return (
-    <ChartFrame title="Validation gas: used vs signed budget" sub="verificationGasLimit, real traced user-ops">
+    <ChartFrame title="Validation gas: used vs signed budget" sub="steady-state user-ops (no new state)">
       <ResponsiveContainer width="100%" height={200}>
         <BarChart layout="vertical" data={data} margin={{ left: 0, right: 56, top: 4, bottom: 4 }} barCategoryGap="28%">
           <XAxis type="number" tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
@@ -193,7 +198,7 @@ export function HeadroomChart() {
         </BarChart>
       </ResponsiveContainer>
       <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-        green = gas validation actually used · grey = unused headroom · repricing adds only a few k, well inside the gap
+        green = validation gas used · grey = unused headroom · holds for steady-state ops; state-creating userOps exceed it (below)
       </p>
     </ChartFrame>
   );
@@ -324,6 +329,160 @@ export function StateReplayChart() {
       </ResponsiveContainer>
       <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
         new account +{fmt(STATE_REPLAY.deltaAcct)} · new storage slot +{fmt(STATE_REPLAY.deltaSlot)} gas (EIP-8037) · swaps create no new state
+      </p>
+    </ChartFrame>
+  );
+}
+
+/* ── 10. AA userOps: steady-state vs creates-state vs unrescuable (our node) ── */
+export function AaBreakChart() {
+  const data = useMemo(
+    () => AA_STATEBREAK.entrypoints.map((e) => ({
+      name: e.name,
+      steady: e.sampled - e.createState,
+      within: e.createState - e.exceedHeadroom,
+      exceed: e.exceedHeadroom,
+    })),
+    [],
+  );
+  return (
+    <ChartFrame title="EntryPoint userOps by outcome under EIP-8037" sub="40 real userOps each, our archive node">
+      <ResponsiveContainer width="100%" height={200}>
+        <BarChart layout="vertical" data={data} margin={{ left: 0, right: 16, top: 4, bottom: 4 }} barCategoryGap="26%">
+          <XAxis type="number" tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} />
+          <YAxis type="category" dataKey="name" width={115} tick={{ fill: 'var(--ink)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} />
+          <Tooltip
+            contentStyle={TT}
+            labelStyle={TT_LABEL}
+            itemStyle={TT_ITEM}
+            formatter={(v: number, key) => [`${v} userOps`, key === 'steady' ? 'steady-state (headroom holds)' : key === 'within' ? 'creates state, within headroom' : 'exceeds headroom · unrescuable']}
+            cursor={{ fill: 'var(--surface-2)', opacity: 0.6 }}
+          />
+          <Bar dataKey="steady" stackId="a" isAnimationActive={false} fill="var(--ink-faint)" barSize={18} radius={[3, 0, 0, 3]} />
+          <Bar dataKey="within" stackId="a" isAnimationActive={false} fill="var(--brand)" barSize={18} />
+          <Bar dataKey="exceed" stackId="a" isAnimationActive={false} fill="var(--c-withdrawn)" barSize={18} radius={[0, 3, 3, 0]} />
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+        grey = steady-state (validation headroom holds) · green = creates state, fits · red = exceeds the signed limit, unrescuable
+      </p>
+    </ChartFrame>
+  );
+}
+
+/* ── 11. State-impact composition donut (our node) ── */
+const COMP_COLORS = { no: 'var(--ink-faint)', state: 'var(--brand)', aa: 'var(--c-withdrawn)' } as const;
+export function CompositionDonut() {
+  const data = useMemo(
+    () => [
+      { key: 'No new state', value: COMPOSITION.pctNo, fill: COMP_COLORS.no },
+      { key: 'Creates state', value: COMPOSITION.pctState, fill: COMP_COLORS.state },
+      { key: 'AA state (unrescuable-prone)', value: COMPOSITION.pctAa, fill: COMP_COLORS.aa },
+    ],
+    [],
+  );
+  return (
+    <ChartFrame title="Mainnet traffic by EIP-8037 state impact" sub="7-day exact census · 13.08M transactions, every one classified">
+      <ResponsiveContainer width="100%" height={260}>
+        <PieChart>
+          <Pie data={data} dataKey="value" nameKey="key" cx="50%" cy="50%" innerRadius={62} outerRadius={96} paddingAngle={1.5} isAnimationActive={false} stroke="var(--paper)" strokeWidth={2}>
+            {data.map((d) => <Cell key={d.key} fill={d.fill} />)}
+          </Pie>
+          <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, _n, item) => [`${v}%`, (item?.payload as { key?: string })?.key || '']} />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1.5">
+        {data.map((d) => (
+          <span key={d.key} className="inline-flex items-center gap-1.5 mono text-[11px] text-[var(--ink-muted)]">
+            <span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: d.fill }} />
+            {d.key} · <span className="font-semibold text-[var(--ink)]">{d.value}%</span>
+          </span>
+        ))}
+      </div>
+    </ChartFrame>
+  );
+}
+
+/* ── 12. State-impact composition over time (stacked area) ── */
+export function CompositionOverTime() {
+  const data = useMemo(() => COMPOSITION.series.map((d) => ({ label: d.label, no: d.no, state: d.state, aa: d.aa })), []);
+  return (
+    <ChartFrame title="State-creating transactions per day" sub="Nov 17–23 · every transaction on every block, classified">
+      <ResponsiveContainer width="100%" height={260}>
+        <AreaChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 4 }}>
+          <defs>
+            <linearGradient id="gNo" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--ink-faint)" stopOpacity={0.5} /><stop offset="100%" stopColor="var(--ink-faint)" stopOpacity={0.15} /></linearGradient>
+            <linearGradient id="gState" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand)" stopOpacity={0.85} /><stop offset="100%" stopColor="var(--brand)" stopOpacity={0.3} /></linearGradient>
+            <linearGradient id="gAa" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--c-withdrawn)" stopOpacity={0.9} /><stop offset="100%" stopColor="var(--c-withdrawn)" stopOpacity={0.4} /></linearGradient>
+          </defs>
+          <XAxis dataKey="label" tick={{ fill: 'var(--ink-muted)', fontSize: 10.5, fontFamily: MONO }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v / 1_000_000).toFixed(1)}M`} />
+          <Tooltip
+            contentStyle={TT}
+            labelStyle={TT_LABEL}
+            itemStyle={TT_ITEM}
+            formatter={(v: number, key) => [`${fmt(v)} txs`, key === 'no' ? 'no new state' : key === 'state' ? 'creates state' : 'AA state']}
+            cursor={{ fill: 'var(--surface-2)', opacity: 0.6 }}
+          />
+          <Area type="monotone" dataKey="no" stackId="1" stroke="var(--ink-faint)" fill="url(#gNo)" isAnimationActive={false} />
+          <Area type="monotone" dataKey="state" stackId="1" stroke="var(--brand)" fill="url(#gState)" isAnimationActive={false} />
+          <Area type="monotone" dataKey="aa" stackId="1" stroke="var(--c-withdrawn)" fill="url(#gAa)" isAnimationActive={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+      <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+        grey = no new state · green = creates state (pays the 8037 surcharge) · red = AA state-creating (unrescuable-prone)
+      </p>
+    </ChartFrame>
+  );
+}
+
+/* ── 13. State-gas added to the network per day (EIP-8037 surcharge) ── */
+export function StateGasPerDayChart() {
+  const data = useMemo(() => COMPOSITION.series.map((d) => ({ label: d.label, gas: d.stateGas / 1e9 })), []);
+  const avg = COMPOSITION.week.stateGas / COMPOSITION.week.days / 1e9;
+  return (
+    <ChartFrame title="Extra state-gas added to the network per day" sub={`EIP-8037 surcharge · averaging ${avg.toFixed(1)}B gas/day across the week`}>
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 4 }}>
+          <defs>
+            <linearGradient id="gStateGas" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand)" stopOpacity={0.95} /><stop offset="100%" stopColor="var(--brand)" stopOpacity={0.55} /></linearGradient>
+          </defs>
+          <XAxis dataKey="label" tick={{ fill: 'var(--ink-muted)', fontSize: 10.5, fontFamily: MONO }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}B`} />
+          <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number) => [`${v.toFixed(1)}B gas`, 'state-creation surcharge']} cursor={{ fill: 'var(--surface-2)', opacity: 0.6 }} />
+          <ReferenceLine y={avg} stroke="var(--ink-muted)" strokeDasharray="4 4" />
+          <Bar dataKey="gas" fill="url(#gStateGas)" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+        dashed line = 7-day average · {(COMPOSITION.week.stateGas / 1e9).toFixed(0)}B gas added over the week in total
+      </p>
+    </ChartFrame>
+  );
+}
+
+/* ── 14. Per-transaction extra-gas distribution (how hard each state tx is hit) ── */
+export function DeltaHistogram() {
+  const data = useMemo(() => COMPOSITION.hist.map((h) => ({ bucket: h.bucket, label: h.label, txs: h.txs })), []);
+  const total = useMemo(() => COMPOSITION.hist.reduce((s, h) => s + h.txs, 0), []);
+  const heavy = useMemo(() => COMPOSITION.hist.filter((h) => !['≤78k', '78–160k'].includes(h.bucket)).reduce((s, h) => s + h.txs, 0), []);
+  return (
+    <ChartFrame title="Extra gas added per state-creating transaction" sub={`${fmt(total)} state-touching txs over the week, bucketed by EIP-8037 surcharge`}>
+      <ResponsiveContainer width="100%" height={260}>
+        <BarChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 4 }}>
+          <defs>
+            <linearGradient id="gHist" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="var(--brand)" stopOpacity={0.9} /><stop offset="100%" stopColor="var(--brand)" stopOpacity={0.45} /></linearGradient>
+          </defs>
+          <XAxis dataKey="bucket" tick={{ fill: 'var(--ink-muted)', fontSize: 10.5, fontFamily: MONO }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} tickFormatter={(v) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${Math.round(v / 1000)}k`)} />
+          <Tooltip contentStyle={TT} labelStyle={TT_LABEL} itemStyle={TT_ITEM} formatter={(v: number, _n, item) => [`${fmt(v)} txs`, (item?.payload as { label?: string })?.label || '']} cursor={{ fill: 'var(--surface-2)', opacity: 0.6 }} />
+          <Bar dataKey="txs" fill="url(#gHist)" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+            <LabelList dataKey="txs" position="top" fill="var(--ink-muted)" fontSize={10} fontFamily={MONO} formatter={(v: number) => (v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${Math.round(v / 1000)}k`)} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+      <p className="mt-2 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
+        most txs add one slot (≤78k gas) · {fmt(heavy)} add more than a single account, {fmt(COMPOSITION.hist[COMPOSITION.hist.length - 1].txs)} exceed 1.3M (contract deploys)
       </p>
     </ChartFrame>
   );

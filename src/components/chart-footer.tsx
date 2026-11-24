@@ -1,19 +1,23 @@
 import React from 'react';
 import { ThemedLogoGif } from '@/components/themed-logo-gif';
 
-function formatFooterDate(value: Date | null): string {
+function formatFooterDate(value: Date | string | null): string {
   if (!value) return '—';
-  const dd = String(value.getDate()).padStart(2, '0');
-  const mm = String(value.getMonth() + 1).padStart(2, '0');
-  const yyyy = value.getFullYear();
-  const hh = value.toLocaleString('en-US', { hour: '2-digit', hour12: true }).slice(0, 2);
-  const min = value.toLocaleString('en-US', { minute: '2-digit' });
-  const ap = value.toLocaleString('en-US', { hour: '2-digit', hour12: true }).slice(-2).toUpperCase();
+  const d = typeof value === 'string' ? new Date(value) : value;
+  if (isNaN(d.getTime())) return '—';
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  const hh = d.toLocaleString('en-US', { hour: '2-digit', hour12: true }).slice(0, 2);
+  const min = d.toLocaleString('en-US', { minute: '2-digit' });
+  const ap = d.toLocaleString('en-US', { hour: '2-digit', hour12: true }).slice(-2).toUpperCase();
   return `${dd}-${mm}-${yyyy} ${hh}:${min} ${ap}`;
 }
 
-export function ChartFooter({ nextUpdateAt }: { nextUpdateAt?: Date | null }) {
-  const effectiveNextUpdate = nextUpdateAt ?? new Date(Date.now() + 6 * 60 * 60 * 1000);
+export function ChartFooter({ nextUpdateAt }: { nextUpdateAt?: Date | string | null }) {
+  const effectiveNextUpdate = nextUpdateAt
+    ? (typeof nextUpdateAt === 'string' ? new Date(nextUpdateAt) : nextUpdateAt)
+    : new Date(Date.now() + 6 * 60 * 60 * 1000);
 
   return (
     <div className="mt-3 border-t border-border/70 pt-2.5">

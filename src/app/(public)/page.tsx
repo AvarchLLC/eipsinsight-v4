@@ -44,13 +44,13 @@ import {
 import { client } from '@/lib/orpc';
 import ReactECharts from 'echarts-for-react';
 import { ChartWatermark } from '@/components/chart-watermark';
+import { ChartFooter } from '@/components/chart-footer';
 import { CopyLinkButton } from '@/components/header';
 import { LastUpdated } from '@/components/analytics/LastUpdated';
 import { InlineBrandLoader } from '@/components/inline-brand-loader';
 import { SectionHead } from '@/components/ledger/section-head';
 import { LedgerBadge } from '@/components/ledger/badge';
 import { HomeHeroSection } from './_components/home-hero-section';
-import HomeFAQs from './_components/home-faqs';
 import dynamic from 'next/dynamic';
 import SocialCommunityUpdates from './_components/social-community-updates';
 import { TestimonialsSection } from '@/components/testimonials-section';
@@ -205,15 +205,26 @@ const BOARD_PROCESS_BADGES: Record<string, string> = {
   Misc: 'bg-zinc-500/15 text-zinc-700 dark:text-zinc-300 border-zinc-500/20',
 };
 
-const STATUS_PIE_COLORS: Record<string, string> = {
+const STATUS_COLORS_DARK: Record<string, string> = {
+  Final: '#10b981',
+  'Last Call': '#f97316',
+  Review: '#f59e0b',
   Draft: '#64748b',
-  Review: '#eab308',
-  'Last Call': '#15803d',
-  Final: '#3b82f6',
-  Living: '#22d3ee',
-  Stagnant: '#ef4444',
-  Withdrawn: '#dc2626',
+  Living: '#06b6d4',
+  Stagnant: '#6b7280',
+  Withdrawn: '#ef4444',
   Unknown: '#94a3b8',
+};
+
+const STATUS_COLORS_LIGHT: Record<string, string> = {
+  Final: '#059669',
+  'Last Call': '#ea580c',
+  Review: '#d97706',
+  Draft: '#475569',
+  Living: '#0891b2',
+  Stagnant: '#64748b',
+  Withdrawn: '#dc2626',
+  Unknown: '#64748b',
 };
 
 const PROCESS_STACK_COLORS: Record<string, string> = {
@@ -559,6 +570,49 @@ function formatEditorAction(eventType: string) {
   return map[raw] || raw.replace(/_/g, ' ');
 }
 
+function getDimensionColor(dimension: Dimension, bucket: string, isDark: boolean): string {
+  if (dimension === 'status') {
+    const map = isDark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
+    return map[bucket] || (isDark ? '#94a3b8' : '#64748b');
+  }
+  if (dimension === 'category') {
+    const darkMap: Record<string, string> = {
+      Core: '#10b981',
+      ERC: '#06b6d4',
+      Networking: '#3b82f6',
+      Interface: '#8b5cf6',
+      Meta: '#ec4899',
+      Informational: '#94a3b8',
+      RIP: '#f97316',
+    };
+    const lightMap: Record<string, string> = {
+      Core: '#059669',
+      ERC: '#0891b2',
+      Networking: '#2563eb',
+      Interface: '#7c3aed',
+      Meta: '#db2777',
+      Informational: '#475569',
+      RIP: '#ea580c',
+    };
+    return (isDark ? darkMap : lightMap)[bucket] || (isDark ? '#94a3b8' : '#64748b');
+  }
+  if (dimension === 'repo') {
+    if (bucket === 'ERCs') return isDark ? '#10b981' : '#059669';
+    if (bucket === 'EIPs') return isDark ? '#06b6d4' : '#0891b2';
+    if (bucket === 'RIPs') return isDark ? '#f97316' : '#ea580c';
+    return isDark ? '#94a3b8' : '#64748b';
+  }
+  if (dimension === 'stages') {
+    if (bucket.includes('Included')) return isDark ? '#10b981' : '#059669';
+    if (bucket.includes('Scheduled') || bucket.includes('SFI')) return isDark ? '#06b6d4' : '#0891b2';
+    if (bucket.includes('Considered') || bucket.includes('PFI')) return isDark ? '#3b82f6' : '#2563eb';
+    if (bucket.includes('Candidate') || bucket.includes('CFI')) return isDark ? '#f59e0b' : '#d97706';
+    if (bucket.includes('Declined') || bucket.includes('DFI')) return isDark ? '#ef4444' : '#dc2626';
+    return isDark ? '#94a3b8' : '#64748b';
+  }
+  return isDark ? '#94a3b8' : '#64748b';
+}
+
 function getBucketTheme(dimension: Dimension, bucket: string): BucketTheme {
   if (dimension === 'status') return BUCKET_THEME_BY_STATUS[bucket] || BUCKET_THEME_BY_STATUS.Unknown || DEFAULT_BUCKET_THEME;
   if (dimension === 'category') return BUCKET_THEME_BY_CATEGORY[bucket] || DEFAULT_BUCKET_THEME;
@@ -608,8 +662,6 @@ export default function EIPsHomePage() {
   const [showSubFilter, setShowSubFilter] = useState(true);
 
   const [distribution, setDistribution] = useState<Array<{ bucket: string; count: number }>>([]);
-  const [faqCategoryBreakdown, setFaqCategoryBreakdown] = useState<Array<{ category: string; count: number }>>([]);
-  const [faqStatusDist, setFaqStatusDist] = useState<Array<{ status: string; count: number }>>([]);
   const [tableData, setTableData] = useState<{
     total: number;
       totalPages: number;
@@ -626,6 +678,7 @@ export default function EIPsHomePage() {
     }>;
   } | null>(null);
   const [febDelta, setFebDelta] = useState<Array<{ status: string; count: number }>>([]);
+  const [insightView, setInsightView] = useState<'donut' | 'bars'>('donut');
   const [febEditors, setFebEditors] = useState<HomepageEditorRow[]>([]);
   const [recentChanges, setRecentChanges] = useState<Array<{
     eip: string;
@@ -791,27 +844,6 @@ export default function EIPsHomePage() {
     return () => window.clearTimeout(t);
   }, [columnSearch]);
 
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const [categoryRes, statusRes] = await Promise.all([
-          client.standards.getCategoryBreakdown({}),
-          client.standards.getStatusDistribution({}),
-        ]);
-
-        const statusMap = new Map<string, number>();
-        statusRes.forEach((r: { status: string; count: number }) => {
-          statusMap.set(r.status, (statusMap.get(r.status) || 0) + r.count);
-        });
-
-        setFaqCategoryBreakdown(categoryRes);
-        setFaqStatusDist(Array.from(statusMap.entries()).map(([status, count]) => ({ status, count })));
-      } catch (err) {
-        console.error('Failed to load FAQ reference data:', err);
-      }
-    })();
-  }, []);
 
   // Clear sub-filters when dimension or bucket changes
   useEffect(() => {
@@ -1075,14 +1107,18 @@ export default function EIPsHomePage() {
     [distribution]
   );
 
-  const febInsightPieData = useMemo(
-    () => febDelta.filter((d) => d.count > 0).map((d) => ({
-      name: d.status,
-      value: d.count,
-      fill: STATUS_PIE_COLORS[d.status] || STATUS_PIE_COLORS.Unknown,
-    })),
-    [febDelta]
-  );
+  const febInsightPieData = useMemo(() => {
+    const colorMap = isDark ? STATUS_COLORS_DARK : STATUS_COLORS_LIGHT;
+    return febDelta
+      .filter((d) => d.count > 0)
+      .map((d) => ({
+        name: d.status,
+        value: d.count,
+        fill: colorMap[d.status] || colorMap.Unknown,
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [febDelta, isDark]);
+
   const monthlyEditorRows = useMemo(
     () => febEditors.slice(0, 10),
     [febEditors]
@@ -1094,66 +1130,75 @@ export default function EIPsHomePage() {
   const febInsightDonutOption = useMemo(() => ({
     tooltip: chartTooltip({
       trigger: 'item',
-      formatter: (params: { name: string; value: number; percent: number }) =>
-        `${params.name}<br/>${params.value} (${params.percent}%)`,
+      formatter: (params: { name: string; value: number; percent: number; color?: string }) =>
+        `<div style="font-weight:600;margin-bottom:4px;display:flex;align-items:center;gap:6px">
+          <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${params.color || '#94a3b8'}"></span>
+          ${params.name}
+        </div>
+        <div style="display:flex;justify-content:space-between;gap:16px;font-size:12px">
+          <span>Movements</span>
+          <span style="font-weight:700">${params.value} (${params.percent}%)</span>
+        </div>`,
     }),
-    legend: {
-      show: true,
-      orient: 'vertical',
-      right: 8,
-      top: 'middle',
-      itemWidth: 10,
-      itemHeight: 10,
-      icon: 'circle',
-      textStyle: {
-        color: isDark ? '#cbd5e1' : '#475569',
-        fontSize: 11,
-      },
-      formatter: (name: string) => {
-        const item = febInsightPieData.find((d) => d.name === name);
-        return `${name} (${item?.value ?? 0})`;
-      },
-    },
-    graphic: [
-      {
-        type: 'text',
-        left: '36%',
-        top: '45%',
-        style: {
-          text: monthlyInsightTotal.toLocaleString(),
-          fill: isDark ? '#f8fafc' : '#0f172a',
-          fontSize: 22,
-          fontWeight: 700,
-          textAlign: 'center',
-        },
-      },
-      {
-        type: 'text',
-        left: '36%',
-        top: '53%',
-        style: {
-          text: 'Total',
-          fill: isDark ? '#94a3b8' : '#64748b',
-          fontSize: 11,
-          fontWeight: 600,
-          textAlign: 'center',
-        },
-      },
-    ],
+    legend: { show: false },
     series: [
       {
         type: 'pie',
-        radius: ['52%', '80%'],
-        center: ['36%', '50%'],
+        radius: ['62%', '82%'],
+        center: ['50%', '50%'],
         avoidLabelOverlap: false,
-        minAngle: 3,
+        minAngle: 4,
         itemStyle: {
-          borderRadius: 4,
-          borderWidth: 1,
-          borderColor: isDark ? 'rgba(15,23,42,0.12)' : 'rgba(148,163,184,0.22)',
+          borderRadius: 6,
+          borderWidth: isDark ? 2 : 1.5,
+          borderColor: isDark ? '#121316' : '#ffffff',
         },
-        label: { show: false },
-        labelLine: { show: false },
+        label: {
+          show: true,
+          position: 'center',
+          formatter: () => `{total|${monthlyInsightTotal.toLocaleString()}}\n{label|Total}`,
+          rich: {
+            total: {
+              fontSize: 24,
+              fontWeight: 700,
+              color: isDark ? '#f8fafc' : '#0f172a',
+              lineHeight: 28,
+              fontFamily: 'var(--font-plus-jakarta)',
+            },
+            label: {
+              fontSize: 11,
+              fontWeight: 600,
+              color: isDark ? '#94a3b8' : '#64748b',
+              lineHeight: 18,
+              fontFamily: 'var(--font-plus-jakarta)',
+            },
+          },
+        },
+        emphasis: {
+          scale: true,
+          scaleSize: 6,
+          label: {
+            show: true,
+            formatter: (params: { name: string; value: number }) =>
+              `{name|${params.name}}\n{val|${params.value}}`,
+            rich: {
+              name: {
+                fontSize: 11,
+                fontWeight: 600,
+                color: isDark ? '#94a3b8' : '#64748b',
+                lineHeight: 16,
+                fontFamily: 'var(--font-plus-jakarta)',
+              },
+              val: {
+                fontSize: 22,
+                fontWeight: 700,
+                color: isDark ? '#f8fafc' : '#0f172a',
+                lineHeight: 26,
+                fontFamily: 'var(--font-plus-jakarta)',
+              },
+            },
+          },
+        },
         data: febInsightPieData.map((d) => ({
           name: d.name,
           value: d.value,
@@ -2094,6 +2139,34 @@ export default function EIPsHomePage() {
               </p>
             </div>
             <div className="inline-flex items-center gap-2">
+              {/* View Switcher: Donut vs Bars */}
+              <div className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs font-sans font-medium">
+                <button
+                  type="button"
+                  onClick={() => setInsightView('donut')}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 text-xs font-sans font-medium transition-all cursor-pointer',
+                    insightView === 'donut'
+                      ? 'bg-[var(--ink)] text-[var(--paper)] font-semibold shadow-xs'
+                      : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
+                  )}
+                >
+                  Donut
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInsightView('bars')}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 text-xs font-sans font-medium transition-all cursor-pointer',
+                    insightView === 'bars'
+                      ? 'bg-[var(--ink)] text-[var(--paper)] font-semibold shadow-xs'
+                      : 'text-[var(--ink-muted)] hover:text-[var(--ink)]'
+                  )}
+                >
+                  Bars
+                </button>
+              </div>
+
               <Link
                 href={`/insights/${currentMonthYear.split('-')[0]}/${parseInt(currentMonthYear.split('-')[1], 10)}`}
                 className="inline-flex items-center gap-1 text-[11px] font-mono text-[var(--brand-strong)] hover:underline"
@@ -2113,52 +2186,156 @@ export default function EIPsHomePage() {
             </div>
           </div>
 
-          <div className="relative mt-2 min-h-0 flex-1">
-            <div className="h-full w-full">
-              {showInsightSkeleton ? (
-                <div className="h-full w-full animate-pulse rounded bg-[var(--surface-3)]" />
-              ) : febDelta.length === 0 ? (
-                <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
-                  <Activity className="h-8 w-8 text-[var(--ink-faint)]" />
-                  <div>
-                    <p className="text-sm font-medium text-[var(--ink-muted)]">No status changes yet</p>
-                    <p className="mt-1 text-xs text-[var(--ink-faint)]">
-                      We&apos;ll populate this chart when transitions start in {monthLabel(currentMonthYear)}.
-                    </p>
-                  </div>
+          {/* Hero KPI Stat & Multi-segment Proportional Strip */}
+          {!showInsightSkeleton && febDelta.length > 0 && (
+            <div className="mb-3 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-2xl font-bold font-mono tracking-tight text-[var(--ink)]">
+                    {monthlyInsightTotal.toLocaleString()}
+                  </span>
+                  <span className="ml-2 text-xs font-sans text-[var(--ink-muted)]">
+                    Total Status Movements
+                  </span>
                 </div>
-              ) : (
-                <ReactECharts
-                  option={febInsightDonutOption}
-                  style={{ height: '100%', width: '100%' }}
-                  opts={{ renderer: 'svg' }}
-                />
-              )}
+                <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2.5 py-0.5 font-mono text-[11px] text-[var(--ink-muted)]">
+                  {febInsightPieData.length} {febInsightPieData.length === 1 ? 'status' : 'statuses'} active
+                </span>
+              </div>
+
+              {/* Multi-segment proportional bar */}
+              <div className="mt-2.5 flex h-2 w-full overflow-hidden rounded-full bg-[var(--surface-3)]">
+                {febInsightPieData.map((d) => (
+                  <div
+                    key={`strip-${d.name}`}
+                    style={{
+                      width: `${(d.value / Math.max(1, monthlyInsightTotal)) * 100}%`,
+                      backgroundColor: d.fill,
+                    }}
+                    title={`${d.name}: ${d.value} (${((d.value / Math.max(1, monthlyInsightTotal)) * 100).toFixed(1)}%)`}
+                    className="h-full transition-all duration-300 first:rounded-l-full last:rounded-r-full"
+                  />
+                ))}
+              </div>
             </div>
-            {!showInsightSkeleton && febDelta.length > 0 && (
-              <div className="pointer-events-none absolute bottom-3 right-3 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-mono uppercase tracking-[0.18em] text-[var(--ink-faint)]">
-                EIPsInsight.com
+          )}
+
+          <div className="relative mt-1 min-h-0 flex-1">
+            {showInsightSkeleton ? (
+              <div className="h-full w-full animate-pulse rounded bg-[var(--surface-3)]" />
+            ) : febDelta.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
+                <Activity className="h-8 w-8 text-[var(--ink-faint)]" />
+                <div>
+                  <p className="text-sm font-medium text-[var(--ink-muted)]">No status changes yet</p>
+                  <p className="mt-1 text-xs text-[var(--ink-faint)]">
+                    We&apos;ll populate this chart when transitions start in {monthLabel(currentMonthYear)}.
+                  </p>
+                </div>
+              </div>
+            ) : insightView === 'donut' ? (
+              /* Donut View: Centered donut on left, perfectly aligned numbers on right */
+              <div className="grid h-full grid-cols-1 items-center gap-3 sm:grid-cols-12">
+                <div className="relative h-[220px] sm:h-full sm:col-span-6 flex items-center justify-center">
+                  <ReactECharts
+                    option={febInsightDonutOption}
+                    style={{ height: '100%', width: '100%' }}
+                    opts={{ renderer: 'svg' }}
+                  />
+                </div>
+
+                <div className="sm:col-span-6 flex flex-col justify-center space-y-2 pr-1">
+                  <div className="mb-1 flex items-center justify-between border-b border-[var(--border)] pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-faint)]">
+                    <span>Status</span>
+                    <div className="flex items-center gap-4">
+                      <span>Count</span>
+                      <span className="w-12 text-right">Share</span>
+                    </div>
+                  </div>
+                  {febInsightPieData.map((item) => {
+                    const percent = ((item.value / Math.max(1, monthlyInsightTotal)) * 100).toFixed(1);
+                    return (
+                      <div
+                        key={`legend-${item.name}`}
+                        className="group flex items-center justify-between gap-2 rounded-md border border-[var(--border)] bg-[var(--surface)] p-2 transition-colors hover:border-[var(--ink-muted)] hover:bg-[var(--surface-2)]"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.fill }}
+                          />
+                          <span className="truncate text-xs font-sans font-medium text-[var(--ink)]">
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-4 shrink-0">
+                          <span className="font-mono text-xs font-semibold tabular-nums text-[var(--ink)]">
+                            {item.value}
+                          </span>
+                          <span className="w-12 text-right font-mono text-xs tabular-nums text-[var(--ink-muted)]">
+                            {percent}%
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <ChartWatermark position="bottom-right" />
+              </div>
+            ) : (
+              /* Bars View: Full-width ranked velocity progress cards */
+              <div className="h-full space-y-2 overflow-y-auto pr-1">
+                {febInsightPieData.map((item, idx) => {
+                  const percent = ((item.value / Math.max(1, monthlyInsightTotal)) * 100).toFixed(1);
+                  const maxCount = febInsightPieData[0]?.value || 1;
+                  const barWidth = Math.max(6, (item.value / maxCount) * 100);
+                  return (
+                    <div
+                      key={`bar-card-${item.name}`}
+                      className={cn(
+                        'rounded-lg border px-3 py-2.5 transition-colors',
+                        idx === 0
+                          ? 'border-[var(--border-strong)] bg-[var(--surface-2)]'
+                          : 'border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)]'
+                      )}
+                    >
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+                            style={{ backgroundColor: item.fill }}
+                          />
+                          <span className="text-xs font-sans font-semibold text-[var(--ink)]">
+                            {item.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 shrink-0">
+                          <span className="font-mono text-xs font-semibold tabular-nums text-[var(--ink)]">
+                            {item.value} <span className="text-[10px] font-normal text-[var(--ink-muted)]">movements</span>
+                          </span>
+                          <span className="font-mono text-xs font-medium tabular-nums text-[var(--ink-muted)]">
+                            ({percent}%)
+                          </span>
+                        </div>
+                      </div>
+                      <div className="h-1.5 overflow-hidden rounded-full bg-[var(--surface-3)]">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${barWidth}%`,
+                            backgroundColor: item.fill,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <ChartWatermark position="bottom-right" />
               </div>
             )}
           </div>
 
-          <div className="mt-3 flex items-center justify-between gap-2 border-t border-[var(--border)] pt-3 text-xs text-[var(--ink-muted)]">
-            {monthlyDeltaUpdatedAt ? (
-              <LastUpdated
-                timestamp={monthlyDeltaUpdatedAt}
-                prefix="Updated"
-                showAbsolute
-                className="font-mono text-xs"
-              />
-            ) : (
-              <span className="font-mono text-xs text-[var(--ink-faint)]">
-                No status changes recorded for this period
-              </span>
-            )}
-            <span className="font-mono text-xs text-[var(--ink-faint)]">
-              Monthly activity snapshot
-            </span>
-          </div>
+          <ChartFooter nextUpdateAt={monthlyDeltaUpdatedAt} />
         </div>
 
         <div
@@ -2260,122 +2437,81 @@ export default function EIPsHomePage() {
                     ))}
               </div>
 
-              <div className="mt-3 flex items-center justify-between gap-2 border-t border-border/70 pt-3">
-                {monthlyLeaderboardUpdatedAt ? (
-                  <LastUpdated
-                    timestamp={monthlyLeaderboardUpdatedAt}
-                    prefix="Updated"
-                    showAbsolute
-                    className="bg-muted/40 text-xs"
-                  />
-                ) : (
-                  <span className="rounded-md bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground">
-                    No editor activity recorded for this period
-                  </span>
-                )}
-                <span className="text-xs text-muted-foreground">
-                  Monthly editor activity snapshot
-                </span>
-              </div>
+              <ChartFooter nextUpdateAt={monthlyLeaderboardUpdatedAt} />
           </>
         </div>
       </div>
       </section>
 
-      <div
-        className="mb-6 border-t border-border/70 pt-6"
-        id="browse"
-      >
-      <div className="mb-4 space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div className="flex min-w-0 items-start">
-            <div>
-              <div className="inline-flex items-center gap-2">
-                <Eye className="h-5 w-5 text-teal-400 shrink-0" />
-                <SectionTitleLink href="/explore" className={sectionTitleClass}>
-                  Browse by Status, Category, Repository &amp; Stages
-                </SectionTitleLink>
-                <CopyLinkButton
-                  sectionId="browse"
-                  tooltipLabel="Copy link"
-                  className="h-8 w-8 rounded-md"
-                />
+      <section className="mb-8 pt-2" id="browse">
+        <SectionHead
+          index="06"
+          eyebrow="Standards taxonomy & explorer"
+          title="Browse by Standards Dimension"
+          description="Filter proposals across status, category, repository, and hard fork upgrade stages."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Segmented dimension pill toggle: Status | Category | Repo | Stages */}
+              <div className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface)] p-1 text-xs font-sans font-medium shadow-xs">
+                {(['status', 'category', 'repo', 'stages'] as Dimension[]).map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => {
+                      setActiveBucket(null);
+                      setPage(1);
+                      setDimension(d);
+                    }}
+                    className={cn(
+                      'rounded-full px-3 py-1 text-xs font-sans font-medium transition-all duration-150 cursor-pointer',
+                      dimension === d
+                        ? 'bg-[var(--ink)] text-[var(--paper)] font-semibold shadow-xs'
+                        : 'text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]'
+                    )}
+                  >
+                    {d === 'repo' ? 'Repository' : d === 'stages' ? 'Stages' : d.charAt(0).toUpperCase() + d.slice(1)}
+                  </button>
+                ))}
               </div>
-              <p className={sectionSubtitleClass}>
-                Explore a compact snapshot here, then jump to full explorer tools.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Repo view is the EIPs/ERCs/RIPs split itself, so the toggle is
-                meaningless there - hidden rather than shown as a no-op. */}
-            {dimension !== 'repo' && (
-              <label
-                className={cn(
-                  'inline-flex cursor-pointer select-none items-center gap-1.5 rounded-[var(--l-radius-control)] border px-2.5 text-xs font-medium transition-colors',
-                  'h-8',
-                  includeRips
-                    ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
-                    : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:border-[var(--ink)]'
-                )}
-                title="RIPs are a separate track - off by default so status and category counts reflect EIPs and ERCs only."
-              >
-                <input
-                  type="checkbox"
-                  checked={includeRips}
-                  onChange={(e) => {
-                    setActiveBucket(null);
-                    setPage(1);
-                    setIncludeRips(e.target.checked);
-                  }}
-                  className="h-3.5 w-3.5 accent-[var(--brand)]"
-                />
-                Include RIPs
-              </label>
-            )}
-            {(() => {
-              const BrowseIcon =
-                dimension === 'status'
-                  ? Activity
-                  : dimension === 'category'
-                    ? Layers
-                    : dimension === 'repo'
-                      ? GitBranch
-                      : Package;
-              return (
-                <span className="relative inline-flex">
-                  <BrowseIcon className="pointer-events-none absolute top-1/2 left-2.5 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ink-muted)]" />
-                  <select
-                    aria-label="Browse dimension"
-                    value={dimension}
+
+              {/* Include RIPs toggle */}
+              {dimension !== 'repo' && (
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs font-sans font-medium text-[var(--ink-muted)] transition-colors hover:border-[var(--ink)] hover:text-[var(--ink)] select-none">
+                  <input
+                    type="checkbox"
+                    checked={includeRips}
                     onChange={(e) => {
                       setActiveBucket(null);
                       setPage(1);
-                      setDimension(e.target.value as Dimension);
+                      setIncludeRips(e.target.checked);
                     }}
-                    className="h-8 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-8 text-xs font-sans font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink-muted)] focus-visible:outline-none focus-visible:border-[var(--ink)] cursor-pointer"
-                  >
-                    <option value="status">Status</option>
-                    <option value="category">Category</option>
-                    <option value="repo">Repo</option>
-                    <option value="stages">Stages</option>
-                  </select>
-                </span>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
+                    className="h-3.5 w-3.5 rounded border-[var(--border)] bg-[var(--surface-2)] accent-[var(--brand)] focus:ring-0 cursor-pointer"
+                  />
+                  <span>Include RIPs</span>
+                </label>
+              )}
+
+              {/* Full Explorer link button */}
+              <Link
+                href="/explore"
+                className="btn btn-outline h-8 px-3 text-xs font-sans font-medium gap-1.5 hover:border-[var(--ink)]"
+              >
+                <span>Full Explorer</span>
+                <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+              </Link>
+            </div>
+          }
+        />
 
       <div className="mb-4 grid grid-cols-1 gap-3 min-[520px]:grid-cols-2 lg:grid-cols-4">
         {(dimension === 'stages' ? stagesDistributionLoading : showDistributionSkeleton) ? (
-          Array.from({ length: 6 }).map((_, i) => (
+          Array.from({ length: 8 }).map((_, i) => (
             <div
               key={`dist-skeleton-${i}`}
-              className="card p-3 shadow-none animate-pulse"
+              className="card p-3.5 shadow-none animate-pulse rounded-xl"
             >
-              <div className="mb-2 h-7 w-7 rounded-[var(--l-radius-control)] bg-[var(--surface-2)]" />
-              <div className="mb-1 h-3 w-24 rounded bg-[var(--surface-2)]" />
+              <div className="mb-2 h-7 w-7 rounded-lg bg-[var(--surface-2)]" />
+              <div className="mb-1 h-3 w-20 rounded bg-[var(--surface-2)]" />
               <div className="mb-2 h-7 w-16 rounded bg-[var(--surface-2)]" />
               <div className="h-1.5 w-full rounded-full bg-[var(--surface-2)]" />
             </div>
@@ -2386,23 +2522,35 @@ export default function EIPsHomePage() {
           type="button"
           onClick={() => setActiveBucket(null)}
           className={cn(
-            'group relative overflow-hidden rounded-[var(--l-radius)] border p-3 text-left transition-colors cursor-pointer',
+            'group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all duration-150 cursor-pointer',
             activeBucket === null
-              ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
-              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--ink)]',
+              ? 'border-[var(--brand)] bg-[var(--surface-2)] ring-1 ring-[var(--brand)] shadow-xs'
+              : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--ink-muted)] hover:shadow-xs'
           )}
         >
-          <div className="relative z-10">
-          <div
-            className={cn(
-              'mb-1 inline-flex h-7 w-7 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)]',
-              activeBucket === null ? 'bg-[var(--surface)] text-[var(--ink)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]',
-            )}
-          >
-            <Layers className="h-3 w-3" />
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div
+              className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--brand-muted)] text-[var(--brand-strong)] transition-transform duration-150 group-hover:scale-105"
+            >
+              <Layers className="h-3.5 w-3.5" />
+            </div>
+            <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--ink-muted)]">
+              100%
+            </span>
           </div>
-          <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Total</p>
-          <p className="mt-1 font-serif text-2xl font-normal leading-none text-[var(--ink)] sm:text-3xl">{dimension === 'stages' ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString() : totalCount.toLocaleString()}</p>
+          <p className="truncate text-xs font-sans font-medium text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
+            All Standards
+          </p>
+          <p className="mt-1 font-sans text-2xl font-bold tracking-tight text-[var(--ink)] tabular-nums sm:text-3xl">
+            {dimension === 'stages'
+              ? stagesDistribution.reduce((s, r) => s + r.count, 0).toLocaleString()
+              : totalCount.toLocaleString()}
+          </p>
+          <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-3)]">
+            <div
+              className="h-full rounded-full bg-[var(--brand-strong)] transition-all duration-300"
+              style={{ width: '100%' }}
+            />
           </div>
         </button>
 
@@ -2412,7 +2560,7 @@ export default function EIPsHomePage() {
           const maxForDimension = isStages ? Math.max(1, ...stagesDistribution.map((r) => r.count)) : maxCardCount;
           const pct = totalForDimension > 0 ? Math.round((row.count / totalForDimension) * 100) : 0;
           const selected = activeBucket === row.bucket;
-          const theme = getBucketTheme(dimension, row.bucket);
+          const color = getDimensionColor(dimension, row.bucket, isDark);
           const StageIcon = stageIconMap[row.bucket] ?? Layers;
           const StatusIcon = statusIconMap[row.bucket] ?? Layers;
           const CategoryIcon = categoryIconMap[row.bucket] ?? Layers;
@@ -2426,34 +2574,43 @@ export default function EIPsHomePage() {
               key={row.bucket}
               onClick={() => setActiveBucket((prev) => (prev === row.bucket ? null : row.bucket))}
               className={cn(
-                'group relative overflow-hidden rounded-[var(--l-radius)] border p-3 text-left transition-colors cursor-pointer',
+                'group relative overflow-hidden rounded-xl border p-3.5 text-left transition-all duration-150 cursor-pointer',
                 selected
-                  ? 'border-[var(--ink)] bg-[var(--surface-2)] text-[var(--ink)]'
-                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--ink)] hover:border-[var(--ink)]',
+                  ? 'border-[var(--brand)] bg-[var(--surface-2)] ring-1 ring-[var(--brand)] shadow-xs'
+                  : 'border-[var(--border)] bg-[var(--surface)] hover:border-[var(--ink-muted)] hover:shadow-xs'
               )}
             >
-              <div className="relative z-10">
-              <div
-                className={cn(
-                  'mb-1.5 inline-flex h-7 w-7 items-center justify-center rounded-[var(--l-radius-control)] border border-[var(--border)]',
-                  selected ? 'bg-[var(--surface)] text-[var(--ink)]' : 'bg-[var(--surface-2)] text-[var(--ink-muted)]',
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-              </div>
-              <div className="mb-0.5 flex items-center justify-between gap-2">
-                <p className="truncate text-xs font-semibold leading-tight text-[var(--ink)]">
-                  {displayLabel}
-                </p>
-                <span className="font-mono text-[10px] text-[var(--ink-muted)]">{pct}%</span>
-              </div>
-              <p className="font-serif text-xl font-normal leading-none tracking-tight text-[var(--ink)] sm:text-2xl">{row.count.toLocaleString()}</p>
-              <div className="mt-2 h-1 overflow-hidden rounded-full bg-[var(--border)]">
+              <div className="mb-2 flex items-center justify-between gap-2">
                 <div
-                  className="h-full bg-[var(--ink)] transition-all"
-                  style={{ width: `${Math.max(6, (row.count / maxForDimension) * 100)}%` }}
-                />
+                  className="inline-flex h-7 w-7 items-center justify-center rounded-lg transition-transform duration-150 group-hover:scale-105"
+                  style={{
+                    backgroundColor: `${color}18`,
+                    color: color,
+                  }}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[10px] font-medium text-[var(--ink-muted)] tabular-nums">
+                  {pct}%
+                </span>
               </div>
+
+              <p className="truncate text-xs font-sans font-medium text-[var(--ink-muted)] group-hover:text-[var(--ink)] transition-colors">
+                {displayLabel}
+              </p>
+
+              <p className="mt-1 font-sans text-2xl font-bold tracking-tight text-[var(--ink)] tabular-nums sm:text-3xl">
+                {row.count.toLocaleString()}
+              </p>
+
+              <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-3)]">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.max(6, (row.count / maxForDimension) * 100)}%`,
+                    backgroundColor: color,
+                  }}
+                />
               </div>
             </button>
           );
@@ -2669,255 +2826,344 @@ export default function EIPsHomePage() {
         )}
       </AnimatePresence>
 
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="text-xs font-medium text-[var(--ink-muted)]">
-          Proposal table view
-        </p>
-        <button
-          type="button"
-          onClick={() => setShowProposalTable((prev) => !prev)}
-          className="chip h-7 px-2.5 text-xs cursor-pointer inline-flex items-center gap-1"
-        >
-          <span>{showProposalTable ? 'Hide table' : 'Show table'}</span>
-          <ChevronDown className={cn('h-3.5 w-3.5 transition-transform', showProposalTable && 'rotate-180')} />
-        </button>
-      </div>
-
+      {/* Proposal Table Summary Toolbar / Detailed View */}
       <div className="mb-6 card overflow-hidden">
-        <div className="flex flex-col items-start justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-xs sm:flex-row sm:items-center">
+        <div
+          className={cn(
+            'flex flex-col items-start justify-between gap-3 p-3.5 text-xs font-sans sm:flex-row sm:items-center transition-colors',
+            showProposalTable && 'border-b border-[var(--border)] bg-[var(--surface-2)]'
+          )}
+        >
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground">
-            {isTableFiltered ? 'Filtered proposals' : 'Total proposals'}:{' '}
-            <span className="font-semibold text-foreground">{tableData?.total.toLocaleString() || 0}</span>
+            <span className="font-medium text-[var(--ink-muted)]">
+              {isTableFiltered ? 'Filtered proposals' : 'Total indexed proposals'}:
+            </span>
+            <span className="font-mono font-bold text-[var(--ink)] tabular-nums">
+              {tableData?.total.toLocaleString() || 0}
             </span>
             {activeBucket && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {dimension}: <span className="text-foreground">{activeBucket}</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-0.5 text-[11px] font-sans font-medium text-[var(--ink)]">
+                <span>{dimension === 'stages' ? 'Stage' : dimension.charAt(0).toUpperCase() + dimension.slice(1)}: <strong>{activeBucket}</strong></span>
                 <button
                   type="button"
                   onClick={() => setActiveBucket(null)}
-                  className="ml-1 rounded-full px-1 text-muted-foreground hover:text-foreground"
-                  aria-label="Clear active bucket"
+                  className="rounded-full text-[var(--ink-muted)] hover:text-[var(--ink)] cursor-pointer"
+                  aria-label="Clear active bucket filter"
                 >
                   ×
                 </button>
               </span>
             )}
             {tableLoading && (
-              <span className="inline-flex items-center rounded-full border border-border bg-muted/60 px-2.5 py-1">
+              <span className="inline-flex items-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-0.5">
                 <InlineBrandLoader
                   size="sm"
                   label="Updating…"
-                  className="flex-row gap-2 [&>span]:text-[10px] [&>span]:font-semibold [&>span]:uppercase [&>span]:tracking-wider"
+                  className="flex-row gap-1.5 [&>span]:text-[10px] [&>span]:font-semibold [&>span]:uppercase [&>span]:tracking-wider"
                 />
               </span>
             )}
           </div>
-          <button
-            onClick={downloadDetailedCSV}
-            disabled={downloading}
-            className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/10 px-2 py-1 text-xs font-medium text-primary hover:bg-primary/15 disabled:opacity-60"
-          >
-            <Download className="h-3.5 w-3.5" />
-            {downloading ? 'Exporting...' : (isTableFiltered ? 'Download Filtered CSV' : 'Download CSV')}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowProposalTable((prev) => !prev)}
+              className="btn btn-outline h-8 px-3 text-xs font-sans font-medium inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>{showProposalTable ? 'Hide Table' : 'Show Detailed Table'}</span>
+              <ChevronDown className={cn('h-3.5 w-3.5 transition-transform duration-150', showProposalTable && 'rotate-180')} />
+            </button>
+            <button
+              onClick={downloadDetailedCSV}
+              disabled={downloading}
+              className="inline-flex h-8 items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 text-xs font-sans font-medium text-[var(--ink)] hover:border-[var(--ink-muted)] hover:bg-[var(--surface-2)] disabled:opacity-50 cursor-pointer"
+              title="Download proposals CSV"
+            >
+              <Download className="h-3.5 w-3.5 text-[var(--ink-muted)]" />
+              <span>{downloading ? 'Exporting...' : (isTableFiltered ? 'Filtered CSV' : 'Export CSV')}</span>
+            </button>
+          </div>
         </div>
-        {showProposalTable ? (
+
+        {showProposalTable && (
           <>
-        <div className="relative hidden overflow-x-auto md:block" aria-busy={tableLoading}>
-          <table className="min-w-[980px] text-sm">
-            <thead>
-              <tr className="border-b border-border/70 bg-muted/40 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                {[
-                  ['github', 'GitHub'],
-                  ['eip', 'EIP'],
-                  ['title', 'Title'],
-                  ['author', 'Author'],
-                  ['type', 'Type'],
-                  ['category', 'Category'],
-                  ['status', 'Status'],
-                  ...(dimension === 'stages' ? [['updated_at', 'Upgrade']] : []),
-                ].map(([key, label]) => (
-                  <th key={key} className="px-4 py-3">
-                    <button onClick={() => toggleSort(key as SortBy)} className="inline-flex items-center gap-1 hover:text-foreground">
-                      {label}
-                      {sortBy === key ? (sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />) : <ArrowUpDown className="h-3 w-3" />}
-                    </button>
-                  </th>
-                ))}
-              </tr>
-              <tr className="border-b border-border/60 bg-muted/40">
-                <th className="px-4 py-3"><input value={columnSearch.github} onChange={(e) => handleColumnSearch('github', e.target.value)} placeholder="/EIPs" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={eipDisplayValue} onChange={(e) => handleColumnSearch('eip', e.target.value)} placeholder="/EIP-1559" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={columnSearch.title} onChange={(e) => handleColumnSearch('title', e.target.value)} placeholder="Title" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={columnSearch.author} onChange={(e) => handleColumnSearch('author', e.target.value)} placeholder="Author" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={columnSearch.type} onChange={(e) => handleColumnSearch('type', e.target.value)} placeholder="Type" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={columnSearch.category} onChange={(e) => handleColumnSearch('category', e.target.value)} placeholder="Category" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                <th className="px-4 py-3"><input value={columnSearch.status} onChange={(e) => handleColumnSearch('status', e.target.value)} placeholder="Status" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>
-                {dimension === 'stages' && <th className="px-4 py-3"><input value={columnSearch.upgrade} onChange={(e) => handleColumnSearch('upgrade', e.target.value)} placeholder="Upgrade" className="h-9 w-full rounded-md border border-border bg-muted/60 px-3 text-sm text-foreground outline-none focus:border-primary/50 focus:ring-1 focus:ring-primary/30" /></th>}
-              </tr>
-            </thead>
-            <tbody>
-              {showTableSkeleton ? (
-                Array.from({ length: 10 }).map((_, i) => (
-                  <tr key={i} className="border-b border-border/60">
-                    <td colSpan={dimension === 'stages' ? 8 : 7} className="px-2 py-3">
-                      <div className="h-5 animate-pulse rounded bg-muted" />
-                    </td>
+            <div className="relative hidden overflow-x-auto md:block" aria-busy={tableLoading}>
+              <table className="min-w-[980px] text-sm font-sans">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface-2)] text-left text-[11px] font-sans font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+                    {[
+                      ['github', 'GitHub'],
+                      ['eip', 'EIP'],
+                      ['title', 'Title'],
+                      ['author', 'Author'],
+                      ['type', 'Type'],
+                      ['category', 'Category'],
+                      ['status', 'Status'],
+                      ...(dimension === 'stages' ? [['updated_at', 'Upgrade']] : []),
+                    ].map(([key, label]) => (
+                      <th key={key} className="px-4 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(key as SortBy)}
+                          className="inline-flex items-center gap-1 text-[var(--ink-muted)] hover:text-[var(--ink)] transition-colors cursor-pointer"
+                        >
+                          <span>{label}</span>
+                          {sortBy === key ? (
+                            sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                          ) : (
+                            <ArrowUpDown className="h-3 w-3 opacity-60" />
+                          )}
+                        </button>
+                      </th>
+                    ))}
                   </tr>
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.github}
+                        onChange={(e) => handleColumnSearch('github', e.target.value)}
+                        placeholder="/EIPs"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={eipDisplayValue}
+                        onChange={(e) => handleColumnSearch('eip', e.target.value)}
+                        placeholder="/EIP-1559"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.title}
+                        onChange={(e) => handleColumnSearch('title', e.target.value)}
+                        placeholder="Title"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.author}
+                        onChange={(e) => handleColumnSearch('author', e.target.value)}
+                        placeholder="Author"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.type}
+                        onChange={(e) => handleColumnSearch('type', e.target.value)}
+                        placeholder="Type"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.category}
+                        onChange={(e) => handleColumnSearch('category', e.target.value)}
+                        placeholder="Category"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    <th className="px-4 py-2">
+                      <input
+                        value={columnSearch.status}
+                        onChange={(e) => handleColumnSearch('status', e.target.value)}
+                        placeholder="Status"
+                        className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                      />
+                    </th>
+                    {dimension === 'stages' && (
+                      <th className="px-4 py-2">
+                        <input
+                          value={columnSearch.upgrade}
+                          onChange={(e) => handleColumnSearch('upgrade', e.target.value)}
+                          placeholder="Upgrade"
+                          className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-sans text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)] focus:ring-1 focus:ring-[var(--brand)]"
+                        />
+                      </th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody>
+                  {showTableSkeleton ? (
+                    Array.from({ length: 10 }).map((_, i) => (
+                      <tr key={i} className="border-b border-[var(--border)]">
+                        <td colSpan={dimension === 'stages' ? 8 : 7} className="px-4 py-3">
+                          <div className="h-5 animate-pulse rounded bg-[var(--surface-2)]" />
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    (tableData?.rows || []).map((row) => (
+                      <tr
+                        key={`${row.repo}-${row.kind}-${row.number}`}
+                        className="border-b border-[var(--border)] text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
+                      >
+                        <td className="px-4 py-3">
+                          <a
+                            href={githubProposalUrl(row.kind, row.number)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-[var(--brand-strong)] hover:underline"
+                          >
+                            {githubRepoLabel(row.repo, row.kind)}
+                          </a>
+                        </td>
+                        <td className="px-4 py-3 font-mono font-medium text-[var(--ink)]">
+                          <Link href={proposalUrl(row.repo, row.kind, row.number)} className="hover:text-[var(--brand-strong)] hover:underline">
+                            {row.kind}-{row.number}
+                          </Link>
+                        </td>
+                        <td className="max-w-[420px] px-4 py-3 text-[var(--ink)]">
+                          {row.title || `${row.kind}-${row.number}`}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--ink-muted)]">
+                          {(() => {
+                            const author = row.author?.trim() || '';
+                            if (!author) return '-';
+                            const tokens = parseAuthorTokens(author);
+                            return (
+                              <>
+                                {tokens.map((token, idx) => (
+                                  <React.Fragment key={`${token.label}-${idx}`}>
+                                    {idx > 0 ? ', ' : ''}
+                                    {token.username ? (
+                                      <Link href={peopleUrl(token.username)} className="text-[var(--brand-strong)] hover:underline">
+                                        {token.label}
+                                      </Link>
+                                    ) : (
+                                      token.label
+                                    )}
+                                  </React.Fragment>
+                                ))}
+                              </>
+                            );
+                          })()}
+                        </td>
+                        <td className="px-4 py-3 text-[var(--ink-muted)]">{row.type || '-'}</td>
+                        <td className="px-4 py-3">{row.category}</td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full border px-2 py-0.5 text-[11px] font-sans font-medium',
+                              BADGE_COLORS[row.status] || BADGE_COLORS.Unknown
+                            )}
+                          >
+                            {row.status}
+                          </span>
+                        </td>
+                        {dimension === 'stages' && (
+                          <td className="px-4 py-3">
+                            {(row as typeof row & { upgradeName?: string | null }).upgradeName ? (
+                              <Link
+                                href={`/upgrade/${(row as typeof row & { upgradeName?: string | null }).upgradeName!.toLowerCase()}`}
+                                className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[11px] font-medium text-[var(--ink)] hover:border-[var(--ink-muted)] hover:underline"
+                              >
+                                <Package className="h-3 w-3 text-[var(--brand-strong)]" />
+                                {(row as typeof row & { upgradeName?: string | null }).upgradeName}
+                              </Link>
+                            ) : (
+                              <span className="text-xs text-[var(--ink-muted)]">–</span>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+
+              {tableLoading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-[var(--paper)]/60 backdrop-blur-[2px]">
+                  <InlineBrandLoader size="md" label="Updating table…" className="flex-row gap-3" />
+                </div>
+              )}
+            </div>
+
+            {/* Mobile Cards */}
+            <div className="relative space-y-2 p-2 md:hidden" aria-busy={tableLoading}>
+              {showTableSkeleton ? (
+                Array.from({ length: 6 }).map((_, i) => (
+                  <div key={`mobile-row-skeleton-${i}`} className="rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-3">
+                    <div className="mb-2 h-4 w-28 animate-pulse rounded bg-[var(--surface-3)]" />
+                    <div className="mb-1.5 h-3 w-full animate-pulse rounded bg-[var(--surface-3)]" />
+                    <div className="mb-1.5 h-3 w-2/3 animate-pulse rounded bg-[var(--surface-3)]" />
+                    <div className="h-3 w-1/2 animate-pulse rounded bg-[var(--surface-3)]" />
+                  </div>
                 ))
               ) : (
                 (tableData?.rows || []).map((row) => (
-                  <tr key={`${row.repo}-${row.kind}-${row.number}`} className="border-b border-border/60 text-foreground hover:bg-muted/40">
-                    <td className="px-4 py-3">
+                  <div key={`mobile-${row.repo}-${row.kind}-${row.number}`} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <Link href={proposalUrl(row.repo, row.kind, row.number)} className="text-sm font-semibold text-[var(--ink)] hover:text-[var(--brand-strong)] hover:underline">
+                        {row.kind}-{row.number}
+                      </Link>
+                      <span className={cn('inline-flex rounded-full border px-2 py-0.5 text-[11px] font-sans font-medium', BADGE_COLORS[row.status] || BADGE_COLORS.Unknown)}>
+                        {row.status}
+                      </span>
+                    </div>
+                    <p className="mb-1 line-clamp-2 text-sm text-[var(--ink)]">{row.title || `${row.kind}-${row.number}`}</p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--ink-muted)]">
+                      <span>{row.type || '-'}</span>
+                      <span>{row.category}</span>
                       <a
                         href={githubProposalUrl(row.kind, row.number)}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-primary hover:underline"
+                        className="text-[var(--brand-strong)] hover:underline"
                       >
                         {githubRepoLabel(row.repo, row.kind)}
                       </a>
-                    </td>
-                    <td className="px-4 py-3 font-medium text-primary">
-                      <Link href={proposalUrl(row.repo, row.kind, row.number)} className="hover:underline">{row.kind}-{row.number}</Link>
-                    </td>
-                    <td className="max-w-[420px] px-4 py-3 text-foreground">{row.title || `${row.kind}-${row.number}`}</td>
-                    <td className="px-4 py-3 text-muted-foreground">
-                      {(() => {
-                        const author = row.author?.trim() || '';
-                        if (!author) return '-';
-                        const tokens = parseAuthorTokens(author);
-                        return (
-                          <>
-                            {tokens.map((token, idx) => (
-                              <React.Fragment key={`${token.label}-${idx}`}>
-                                {idx > 0 ? ', ' : ''}
-                                {token.username ? (
-                                  <Link href={peopleUrl(token.username)} className="text-primary hover:underline">
-                                    {token.label}
-                                  </Link>
-                                ) : (
-                                  token.label
-                                )}
-                              </React.Fragment>
-                            ))}
-                          </>
-                        );
-                      })()}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{row.type || '-'}</td>
-                    <td className="px-4 py-3">{row.category}</td>
-                    <td className="px-4 py-3"><span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${BADGE_COLORS[row.status] || BADGE_COLORS.Unknown}`}>{row.status}</span></td>
-                    {dimension === 'stages' && (
-                      <td className="px-4 py-3">
-                        {(row as typeof row & { upgradeName?: string | null }).upgradeName ? (
-                          <Link
-                            href={`/upgrade/${(row as typeof row & { upgradeName?: string | null }).upgradeName!.toLowerCase()}`}
-                            className="inline-flex items-center gap-1 rounded-full border border-border bg-muted/60 px-2 py-0.5 text-[11px] font-medium text-primary hover:underline"
-                          >
-                            <Package className="h-3 w-3" />
-                            {(row as typeof row & { upgradeName?: string | null }).upgradeName}
-                          </Link>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">–</span>
-                        )}
-                      </td>
-                    )}
-                  </tr>
+                    </div>
+                  </div>
                 ))
               )}
-            </tbody>
-          </table>
 
-          {tableLoading && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-background/55 backdrop-blur-[2px]">
-              <InlineBrandLoader size="md" label="Updating table…" className="flex-row gap-3" />
-            </div>
-          )}
-        </div>
-
-        <div className="relative space-y-2 p-2 md:hidden" aria-busy={tableLoading}>
-          {showTableSkeleton ? (
-            Array.from({ length: 6 }).map((_, i) => (
-              <div key={`mobile-row-skeleton-${i}`} className="rounded-lg border border-border bg-muted/40 p-3">
-                <div className="mb-2 h-4 w-28 animate-pulse rounded bg-muted" />
-                <div className="mb-1.5 h-3 w-full animate-pulse rounded bg-muted" />
-                <div className="mb-1.5 h-3 w-2/3 animate-pulse rounded bg-muted" />
-                <div className="h-3 w-1/2 animate-pulse rounded bg-muted" />
-              </div>
-            ))
-          ) : (
-            (tableData?.rows || []).map((row) => (
-              <div key={`mobile-${row.repo}-${row.kind}-${row.number}`} className="rounded-lg border border-border bg-card/70 p-3">
-                <div className="mb-2 flex items-center justify-between gap-2">
-                  <Link href={proposalUrl(row.repo, row.kind, row.number)} className="text-sm font-semibold text-primary hover:underline">
-                    {row.kind}-{row.number}
-                  </Link>
-                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] ${BADGE_COLORS[row.status] || BADGE_COLORS.Unknown}`}>
-                    {row.status}
-                  </span>
+              {tableLoading && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-[var(--paper)]/60 backdrop-blur-[2px]">
+                  <InlineBrandLoader size="md" label="Updating table…" className="flex-row gap-3" />
                 </div>
-                <p className="mb-1 line-clamp-2 text-sm text-foreground">{row.title || `${row.kind}-${row.number}`}</p>
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                  <span>{row.type || '-'}</span>
-                  <span>{row.category}</span>
-                  <a
-                    href={githubProposalUrl(row.kind, row.number)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline"
-                  >
-                    {githubRepoLabel(row.repo, row.kind)}
-                  </a>
-                </div>
-              </div>
-            ))
-          )}
-
-          {tableLoading && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center rounded-xl bg-background/55 backdrop-blur-[2px]">
-              <InlineBrandLoader size="md" label="Updating table…" className="flex-row gap-3" />
+              )}
             </div>
-          )}
-        </div>
 
-        <div className="flex flex-col gap-2 border-t border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>{isTableFiltered ? 'Filtered results' : 'Results'}: {tableData?.total.toLocaleString() || 0}</span>
-          <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
-            <button
-              onClick={clearFilters}
-              className="rounded-md border border-border bg-muted/60 px-2 py-1 text-muted-foreground hover:border-primary/40 hover:text-primary"
-            >
-              Reset Filters
-            </button>
-            <button
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1}
-              className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-            >
-              Prev
-            </button>
-            <span>Page {page} / {tableData?.totalPages || 1}</span>
-            <button
-              onClick={() => setPage((p) => Math.min(tableData?.totalPages || 1, p + 1))}
-              disabled={page >= (tableData?.totalPages || 1)}
-              className="rounded-md border border-border bg-muted/60 px-2 py-1 disabled:opacity-40"
-            >
-              Next
-            </button>
-          </div>
-        </div>
+            {/* Pagination Footer */}
+            <div className="flex flex-col gap-2 border-t border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-xs font-sans text-[var(--ink-muted)] sm:flex-row sm:items-center sm:justify-between">
+              <span>{isTableFiltered ? 'Filtered results' : 'Showing'}: <strong className="font-mono font-bold text-[var(--ink)]">{tableData?.total.toLocaleString() || 0}</strong> proposals</span>
+              <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:flex-nowrap">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="btn btn-outline h-7 px-2.5 text-xs font-sans font-medium cursor-pointer"
+                >
+                  Reset Filters
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page <= 1}
+                  className="btn btn-outline h-7 px-2.5 text-xs font-sans font-medium disabled:opacity-40 cursor-pointer"
+                >
+                  Prev
+                </button>
+                <span>Page <strong className="font-mono text-[var(--ink)]">{page}</strong> of <strong className="font-mono text-[var(--ink)]">{tableData?.totalPages || 1}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(tableData?.totalPages || 1, p + 1))}
+                  disabled={page >= (tableData?.totalPages || 1)}
+                  className="btn btn-outline h-7 px-2.5 text-xs font-sans font-medium disabled:opacity-40 cursor-pointer"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
           </>
-        ) : (
-          <div className="px-4 py-6 text-center">
-            <p className="text-sm text-muted-foreground">
-              Proposal table is hidden for faster scanning. Click <span className="font-medium text-foreground">Show table</span> when you need detailed rows.
-            </p>
-          </div>
         )}
       </div>
-      </div>
+
+      <ChartFooter nextUpdateAt={null} />
+      </section>
 
       <div id="weekly-recap">
         <WeeklyRecapSection sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
@@ -2925,27 +3171,26 @@ export default function EIPsHomePage() {
 
       <HomeProtocolCalls sectionTitleClass={sectionTitleClass} sectionSubtitleClass={sectionSubtitleClass} />
 
-      <section className="pt-2" id="testimonials">
+      <section className="mb-8 pt-2 scroll-mt-24" id="testimonials">
         <SectionHead
-          index="08"
+          index="09"
           eyebrow="Ecosystem feedback"
           title="Community Testimonials"
           description="What Ethereum core developers, researchers, and editors say about EIPsInsight."
+          action={
+            <Link
+              href="/testimonials"
+              className="btn btn-outline h-8 px-3 text-xs font-sans font-medium inline-flex items-center gap-1.5 hover:border-[var(--ink)] cursor-pointer"
+            >
+              <span>View All</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
+            </Link>
+          }
         />
-        <TestimonialsSection featuredOnly limit={3} showViewAll eyebrow className="mb-4" />
+        <TestimonialsSection showHeader={false} />
       </section>
 
-      <section className="border-t border-border/70 pt-8" id="faq">
-        <HomeFAQs categoryBreakdown={faqCategoryBreakdown} statusDist={faqStatusDist} />
-      </section>
-
-      <section className="border-t border-border/70 pt-8" id="community">
-        <SocialCommunityUpdates
-          showCommunityResources={true}
-          sectionTitleClass={sectionTitleClass}
-          sectionSubtitleClass={sectionSubtitleClass}
-        />
-      </section>
+      <SocialCommunityUpdates showCommunityResources={true} />
       </div>
     </div>
   );

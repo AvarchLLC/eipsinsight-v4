@@ -122,7 +122,68 @@ export const NEWACCT_SENDERS = {
   ],
 } as const;
 
-// ── AA validation headroom (the evidence that 4337 does not hard-break) ──
+// ── State-impact composition (our node) ──
+// How mainnet traffic divides by EIP-8037 state impact. Over-time + aggregate
+// are from a 400-tx/day sample across 10 days, scaled to each day's real tx
+// volume. `exact` holds one full day where EVERY transaction was classified
+// (no sampling, no per-block diagnostic cap). Buckets: no new state (unaffected
+// by 8037) · creates state (pays the surcharge, usually fixable) · AA state
+// (through an ERC-4337 EntryPoint, signed limit → unrescuable-prone).
+export type CompDay = { label: string; total: number; no: number; state: number; aa: number; na: number; ns: number; stateGas: number; pctState: number };
+export type HistBucket = { bucket: string; label: string; txs: number };
+export const COMPOSITION = {
+  pctNo: 72.4,
+  pctState: 26.7,
+  pctAa: 0.9,
+  // Seven consecutive days (Nov 17–23 2026), EVERY transaction on every block
+  // classified by differential state-diff replay — no sampling, no per-block cap.
+  // 13.08M transactions in all. `stateGas` is the extra gas EIP-8037 adds that day.
+  sampledPerDay: 0,
+  series: [
+    { label: 'Nov 17', total: 2116818, no: 1617865, state: 480663, aa: 17805, na: 11482, ns: 995727, stateGas: 79408093040, pctState: 23.6 },
+    { label: 'Nov 18', total: 1824338, no: 1291684, state: 514625, aa: 17351, na: 11459, ns: 1078257, stateGas: 85835182840, pctState: 29.2 },
+    { label: 'Nov 19', total: 1801336, no: 1249094, state: 535160, aa: 16702, na: 12398, ns: 1049779, stateGas: 83765102480, pctState: 30.6 },
+    { label: 'Nov 20', total: 1965716, no: 1380967, state: 566301, aa: 17913, na: 11135, ns: 1064811, stateGas: 84736084120, pctState: 29.7 },
+    { label: 'Nov 21', total: 1849520, no: 1353490, state: 479321, aa: 15552, na: 10595, ns: 1300443, stateGas: 103010885560, pctState: 26.8 },
+    { label: 'Nov 22', total: 1646421, no: 1210272, state: 420345, aa: 15524, na: 11419, ns: 1439709, stateGas: 113993178680, pctState: 26.5 },
+    { label: 'Nov 23', total: 1882470, no: 1372131, state: 493002, aa: 16446, na: 11714, ns: 1230518, stateGas: 97739802960, pctState: 27.1 },
+  ] as CompDay[],
+  // whole-week aggregate across the 7 exact days
+  week: { days: 7, txseen: 13082213, stateTx: 3489417, aaTx: 117293, newAccounts: 80202, newSlots: 8159244, stateGas: 648488329680, avgStateGasDay: 92641190, pctState: 26.7 },
+  // one full day (Nov 23 2026) kept for the single-day headline card
+  exact: { date: 'Nov 23, 2026', totalTx: 1881579, newAccounts: 11714, newSlots: 1230518, stateGasDay: 97739802960, pctState: 27.1 },
+  // per-transaction extra-gas distribution, every state-creating tx across the week
+  // bucketed by the EIP-8037 gas it adds (DELTA). ~3.6M state-touching txs in all.
+  hist: [
+    { bucket: '≤78k', label: '1 slot', txs: 2928998 },
+    { bucket: '78–160k', label: '~1 account', txs: 325950 },
+    { bucket: '160–320k', label: '2–4 slots', txs: 169590 },
+    { bucket: '320–640k', label: '5–8 slots', txs: 84168 },
+    { bucket: '640k–1.3M', label: 'heavy', txs: 66965 },
+    { bucket: '>1.3M', label: 'deploys', txs: 31039 },
+  ] as HistBucket[],
+} as const;
+
+// ── AA state-creation break (measured on our node) ──
+// Our earlier headroom check only looked at STEADY-STATE validation. Tracing 40
+// recent userOps per EntryPoint with prestateTracer shows the other half of the
+// story: ~53% of userOps create new state (wallet deployments, first-touch
+// SSTOREs), and ~1 in 3 create MORE state-gas than the entire ~80k validation
+// headroom. Because callGasLimit / verificationGasLimit are signed into the
+// userOp, that shortfall cannot be rescued by raising a limit — it is unrescuable
+// (the EF repricing-impact dashboard ranks these EntryPoints the #1 affected
+// entity). v0.8's 40-tx window happened to be all steady-state in our sample.
+export type AaEp = { name: string; sampled: number; createState: number; exceedHeadroom: number; medDelta: number; maxDelta: number };
+export const AA_STATEBREAK = {
+  headroom: 80000,
+  entrypoints: [
+    { name: 'EntryPoint v0.7', sampled: 40, createState: 22, exceedHeadroom: 14, medDelta: 155840, maxDelta: 1015720 },
+    { name: 'EntryPoint v0.6', sampled: 40, createState: 21, exceedHeadroom: 12, medDelta: 155840, maxDelta: 470280 },
+    { name: 'EntryPoint v0.8', sampled: 40, createState: 0, exceedHeadroom: 0, medDelta: 0, maxDelta: 0 },
+  ] as AaEp[],
+} as const;
+
+// ── AA validation headroom (steady-state userOps only — see AA_STATEBREAK) ──
 // Real user-operations traced on the EIPsInsight archive node. `budget` is the
 // signed verificationGasLimit; `used` is the gas validateUserOp actually spent.
 // The repricing adds, at most, a few thousand gas to validation — far inside the

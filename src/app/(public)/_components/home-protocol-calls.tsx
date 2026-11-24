@@ -104,7 +104,7 @@ export function HomeProtocolCalls({
   return (
     <section className="mb-12 pt-6" id="calls">
       <SectionHead
-        index="07"
+        index="08"
         eyebrow="AllCoreDevs & breakouts"
         title="Protocol Calls"
         description="AllCoreDevs, testing, and breakout meetings where Ethereum decisions happen in real time."

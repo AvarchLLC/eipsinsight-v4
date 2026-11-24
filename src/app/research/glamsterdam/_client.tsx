@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { ExternalLink, Plus, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHead } from '@/components/ledger/page-head';
-import { META, SCAN, FLAGGED, NEWACCT, SCANNED } from './_data';
+import { META, SCAN, FLAGGED, NEWACCT, SCANNED, COMPOSITION } from './_data';
 import {
   Reveal,
   RepricingBars,
@@ -14,6 +14,10 @@ import {
   DensityChart,
   ActivityChart,
   NewAcctChart,
+  CompositionDonut,
+  CompositionOverTime,
+  StateGasPerDayChart,
+  DeltaHistogram,
 } from './_charts';
 
 const addrUrl = (a: string) => `https://etherscan.io/address/${a}`;
@@ -73,10 +77,64 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 02 — live impact: new-account transfers (our node) */}
+        {/* 02 — how it lands on mainnet: state-impact composition */}
         <section className="mt-16">
           <Reveal>
-            <SectionHead n="02" title="A live, measurable impact" />
+            <SectionHead n="02" title="How it lands on mainnet" />
+          </Reveal>
+          <Reveal>
+            <p className="mb-8 max-w-[52rem] text-[15px] leading-relaxed text-[var(--ink-muted)]">
+              Classifying mainnet traffic by what EIP-8037 does to it, measured on our own node:{' '}
+              <span className="font-medium text-[var(--ink)]">{COMPOSITION.pctNo}%</span> of transactions create no new state and
+              are unaffected; <span className="font-medium text-[var(--ink)]">{COMPOSITION.pctState}%</span> create state and pay
+              the surcharge (usually fixable by raising the gas limit); and{' '}
+              <span className="font-medium text-[var(--ink)]">{COMPOSITION.pctAa}%</span> run through an ERC-4337 EntryPoint where
+              the limit is signed and the shortfall is unrescuable.
+            </p>
+          </Reveal>
+          <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
+            <Reveal><CompositionDonut /></Reveal>
+            <Reveal><CompositionOverTime /></Reveal>
+          </div>
+
+          {/* exact-day headline — every tx, no sampling */}
+          <Reveal>
+            <div className="mt-10 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 sm:p-6">
+              <p className="mb-4 flex flex-wrap items-baseline gap-x-2 text-[15px] text-[var(--ink-muted)]">
+                <span className="text-[1.05rem] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">One day, every transaction.</span>
+                <span>On {COMPOSITION.exact.date} we classified all {fmt(COMPOSITION.exact.totalTx)} mainnet transactions — not a sample, no per-block cap.</span>
+              </p>
+              <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+                {[
+                  { v: `${(COMPOSITION.exact.stateGasDay / 1e9).toFixed(1)}B`, k: 'gas of state-creation added, that day' },
+                  { v: fmt(COMPOSITION.exact.newSlots), k: 'new storage slots created' },
+                  { v: fmt(COMPOSITION.exact.newAccounts), k: 'new accounts created' },
+                  { v: `${COMPOSITION.exact.pctState}%`, k: 'of txs create state (exact)' },
+                ].map((s) => (
+                  <div key={s.k}>
+                    <div className="mono text-[1.6rem] font-bold leading-none tabular-nums text-[var(--ink)]">{s.v}</div>
+                    <div className="mt-1.5 mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">{s.k}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+
+          <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
+            <Reveal><StateGasPerDayChart /></Reveal>
+            <Reveal><DeltaHistogram /></Reveal>
+          </div>
+          <Reveal>
+            <p className="mt-4 mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">
+              Seven consecutive days · {fmt(COMPOSITION.week.txseen)} transactions classified · {(COMPOSITION.week.stateGas / 1e9).toFixed(0)}B gas of state-creation surcharge in all · {fmt(COMPOSITION.week.newAccounts)} new accounts, {fmt(COMPOSITION.week.newSlots)} new slots
+            </p>
+          </Reveal>
+        </section>
+
+        {/* 03 — live impact: new-account transfers (our node) */}
+        <section className="mt-16">
+          <Reveal>
+            <SectionHead n="03" title="A live, measurable impact" />
           </Reveal>
           <Reveal>
             <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -99,10 +157,10 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 03 — the scan */}
+        {/* 04 — the scan */}
         <section className="mt-16">
           <Reveal>
-            <SectionHead n="03" title="The scan" />
+            <SectionHead n="04" title="The scan" />
           </Reveal>
 
           {/* funnel */}
@@ -188,10 +246,10 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 04 — the flagged contracts */}
+        {/* 05 — the flagged contracts */}
         <section className="mt-16">
           <Reveal>
-            <SectionHead n="04" title="The flagged contracts" />
+            <SectionHead n="05" title="The flagged contracts" />
           </Reveal>
 
           <Reveal>

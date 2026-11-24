@@ -2,6 +2,7 @@
 // Maps each App Router URL pattern to its source page.tsx (for the GitHub source link).
 export interface RouteSource { pattern: string; source: string; }
 export const ROUTE_SOURCES: RouteSource[] = [
+  { pattern: "/research/glamsterdam/report", source: "src/app/research/glamsterdam/report/page.tsx" },
   { pattern: "/officehours/board/agenda", source: "src/app/officehours/board/agenda/page.tsx" },
   { pattern: "/admin/videos/:id/edit", source: "src/app/admin/videos/[id]/edit/page.tsx" },
   { pattern: "/admin/blogs/:id/edit", source: "src/app/admin/blogs/[id]/edit/page.tsx" },

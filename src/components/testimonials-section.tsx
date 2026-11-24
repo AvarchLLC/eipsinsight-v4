@@ -21,24 +21,22 @@ function Avatar({ name, src }: { name: string; src?: string }) {
   const [failed, setFailed] = useState(false);
   if (!src || failed) {
     return (
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary/25 to-primary/5 text-sm font-semibold text-primary ring-2 ring-primary/15">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface-2)] text-xs font-sans font-bold text-[var(--ink)] ring-1 ring-[var(--border)]">
         {initials(name)}
       </div>
     );
   }
   return (
-    // Plain <img> (not next/image) so no remote-domain config is needed; twimg
-    // can block hotlinking without a relaxed referrer policy.
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={src}
       alt={name}
-      width={44}
-      height={44}
+      width={40}
+      height={40}
       referrerPolicy="no-referrer"
       loading="lazy"
       onError={() => setFailed(true)}
-      className="h-11 w-11 shrink-0 rounded-full object-cover ring-2 ring-primary/15"
+      className="h-10 w-10 shrink-0 rounded-full object-cover ring-1 ring-[var(--border)]"
     />
   );
 }
@@ -50,7 +48,7 @@ function QuoteText({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         part.startsWith('@') ? (
-          <span key={i} className="font-semibold text-primary">
+          <span key={i} className="font-semibold text-[var(--brand-strong)]">
             {part}
           </span>
         ) : (
@@ -61,54 +59,75 @@ function QuoteText({ text }: { text: string }) {
   );
 }
 
-function TestimonialCard({ t, index }: { t: Testimonial; index: number }) {
+function TestimonialCard({
+  t,
+  index,
+  isWide = false,
+}: {
+  t: Testimonial;
+  index: number;
+  isWide?: boolean;
+}) {
   const card = (
     <motion.div
-      initial={{ opacity: 0, y: 24 }}
+      initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, amount: 0.2 }}
-      transition={{ duration: 0.5, delay: index * 0.09, ease: [0.21, 0.5, 0.35, 1] }}
-      whileHover={{ y: -4 }}
+      viewport={{ once: true, amount: 0.15 }}
+      transition={{ duration: 0.45, delay: index * 0.06, ease: [0.21, 0.5, 0.35, 1] }}
+      whileHover={{ y: -3 }}
       className={cn(
-        'group relative flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card/60 p-5',
-        'shadow-sm transition-colors duration-300 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5'
+        'group relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition-all duration-200 hover:border-[var(--brand)]/50 hover:bg-[var(--surface-2)] hover:shadow-lg hover:shadow-[var(--brand)]/5',
+        isWide ? 'lg:col-span-2 md:col-span-2' : 'col-span-1'
       )}
     >
-      {/* Accent wash that fades in on hover */}
+      {/* Subtle accent wash that fades in on hover */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
+        className="pointer-events-none absolute inset-0 bg-gradient-to-br from-[var(--brand-muted)] via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
       />
-      {/* Oversized decorative quote mark */}
+      {/* Oversized faint decorative quote watermark */}
       <Quote
         aria-hidden
-        className="pointer-events-none absolute -right-2 -top-2 h-16 w-16 rotate-180 text-primary/[0.06] transition-colors duration-300 group-hover:text-primary/[0.12]"
+        className="pointer-events-none absolute -right-2 -top-2 h-16 w-16 rotate-180 text-[var(--ink)]/5 transition-colors duration-300 group-hover:text-[var(--brand)]/10"
       />
 
-      <Quote className="relative h-5 w-5 text-primary/50" />
-      <p className="relative mt-3 flex-1 text-[15px] leading-relaxed text-foreground">
-        <QuoteText text={t.quote} />
-      </p>
+      <div className="relative z-10 flex-1">
+        <div className="mb-3 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--brand-muted)] text-[var(--brand-strong)] transition-transform duration-200 group-hover:scale-105">
+          <Quote className="h-3.5 w-3.5" />
+        </div>
+        <p
+          className={cn(
+            'leading-relaxed text-[var(--ink)] font-sans',
+            isWide ? 'text-sm sm:text-base font-medium' : 'text-sm'
+          )}
+        >
+          <QuoteText text={t.quote} />
+        </p>
+      </div>
 
-      <div className="relative mt-5 flex items-center gap-3 border-t border-border/50 pt-4">
-        <Avatar name={t.name} src={t.avatar} />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
-            <span className="truncate text-sm font-semibold text-foreground">{t.name}</span>
-            {t.badge && (
-              <span className="shrink-0 rounded-full border border-primary/30 bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                {t.badge}
+      <div className="relative z-10 mt-5 flex items-center justify-between gap-3 border-t border-[var(--border)] pt-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <Avatar name={t.name} src={t.avatar} />
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="truncate text-sm font-semibold font-sans text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
+                {t.name}
               </span>
-            )}
-          </div>
-          <div className="truncate text-xs text-muted-foreground">
-            @{t.handle}
-            {t.role ? ` · ${t.role}` : ''}
-            {t.date ? ` · ${t.date}` : ''}
+              {t.badge && (
+                <span className="shrink-0 rounded-full border border-[var(--brand)]/30 bg-[var(--brand-muted)] px-2 py-0.5 text-[10px] font-sans font-semibold text-[var(--brand-strong)]">
+                  {t.badge}
+                </span>
+              )}
+            </div>
+            <div className="truncate text-xs text-[var(--ink-muted)] font-sans">
+              <span className="font-mono text-[var(--ink-faint)]">@{t.handle}</span>
+              {t.role ? ` · ${t.role}` : ''}
+              {t.date ? ` · ${t.date}` : ''}
+            </div>
           </div>
         </div>
         {t.url && (
-          <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/40 transition-all duration-300 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary" />
+          <ArrowUpRight className="h-4 w-4 shrink-0 text-[var(--ink-faint)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-[var(--brand-strong)]" />
         )}
       </div>
     </motion.div>
@@ -116,7 +135,7 @@ function TestimonialCard({ t, index }: { t: Testimonial; index: number }) {
 
   if (!t.url) return card;
   return (
-    <a href={t.url} target="_blank" rel="noopener noreferrer" className="block h-full">
+    <a href={t.url} target="_blank" rel="noopener noreferrer" className={cn('block h-full', isWide ? 'lg:col-span-2 md:col-span-2' : 'col-span-1')}>
       {card}
     </a>
   );
@@ -125,7 +144,7 @@ function TestimonialCard({ t, index }: { t: Testimonial; index: number }) {
 type Props = {
   /** Override the default list (all testimonials). */
   testimonials?: Testimonial[];
-  /** Cap the number shown (e.g. featured strip on the home page). */
+  /** Cap the number shown. */
   limit?: number;
   /** Only show entries marked `featured`. */
   featuredOnly?: boolean;
@@ -135,6 +154,8 @@ type Props = {
   showViewAll?: boolean;
   /** Show the small "Community love" eyebrow pill above the heading. */
   eyebrow?: boolean;
+  /** Explicit control over showing the component's internal header. */
+  showHeader?: boolean;
   className?: string;
 };
 
@@ -146,6 +167,7 @@ export function TestimonialsSection({
   subtitle = 'What builders, editors, and researchers say about EIPsInsight.',
   showViewAll = false,
   eyebrow = false,
+  showHeader,
   className,
 }: Props) {
   let list = testimonials ?? TESTIMONIALS;
@@ -153,11 +175,17 @@ export function TestimonialsSection({
   if (limit) list = list.slice(0, limit);
   if (list.length === 0) return null;
 
-  const showHeader = Boolean(heading || subtitle || showViewAll || eyebrow);
+  const shouldRenderHeader = showHeader ?? Boolean((heading && heading.length > 0) || (subtitle && subtitle.length > 0) || showViewAll || eyebrow);
+
+  // Bento layout mapping for 7 items:
+  // Row 1: Item 0 (wide, 2 cols) + Item 1 (1 col) = 3 cols
+  // Row 2: Item 2 (1 col) + Item 3 (wide, 2 cols) = 3 cols
+  // Row 3: Item 4 (1 col) + Item 5 (1 col) + Item 6 (1 col) = 3 cols
+  const wideIndices = new Set([0, 3]);
 
   return (
-    <section className={cn('w-full', className)} id="testimonials">
-      {showHeader && (
+    <div className={cn('w-full', className)}>
+      {shouldRenderHeader && (
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -167,33 +195,40 @@ export function TestimonialsSection({
         >
           <div>
             {eyebrow && (
-              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider text-primary">
+              <span className="mb-2 inline-flex items-center gap-1.5 rounded-full border border-[var(--brand)]/30 bg-[var(--brand-muted)] px-2.5 py-1 text-[11px] font-sans font-semibold uppercase tracking-wider text-[var(--brand-strong)]">
                 <Sparkles className="h-3.5 w-3.5" /> Community love
               </span>
             )}
             {heading && (
-              <h2 className="dec-title persona-title text-xl font-bold tracking-tight text-foreground sm:text-2xl">
+              <h2 className="dec-title persona-title text-xl font-bold tracking-tight text-[var(--ink)] sm:text-2xl">
                 {heading}
               </h2>
             )}
-            {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+            {subtitle && <p className="mt-1 text-sm text-[var(--ink-muted)] font-sans">{subtitle}</p>}
           </div>
           {showViewAll && (
             <Link
               href="/testimonials"
-              className="group inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-card/60 px-3 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              className="btn btn-outline h-8 px-3 text-xs font-sans font-medium inline-flex items-center gap-1.5 hover:border-[var(--ink)]"
             >
-              See all
-              <ArrowUpRight className="h-4 w-4 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+              <span>See all</span>
+              <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)]" />
             </Link>
           )}
         </motion.div>
       )}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+
+      {/* Bento Grid */}
+      <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 lg:grid-cols-3">
         {list.map((t, i) => (
-          <TestimonialCard key={`${t.handle}-${t.quote.slice(0, 16)}`} t={t} index={i} />
+          <TestimonialCard
+            key={`${t.handle}-${t.quote.slice(0, 16)}`}
+            t={t}
+            index={i}
+            isWide={wideIndices.has(i)}
+          />
         ))}
       </div>
-    </section>
+    </div>
   );
 }
