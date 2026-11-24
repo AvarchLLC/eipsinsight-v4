@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { CalendarClock, Info, Users } from "lucide-react";
+import { CalendarClock, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface AttendanceColumn {
@@ -82,7 +82,6 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Apr 15",
     fullDate: "April 15, 2026",
     editorsPresent: 2,
-    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -96,7 +95,6 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "May 27",
     fullDate: "May 27, 2026",
     editorsPresent: 2,
-    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -110,7 +108,6 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Jun 3",
     fullDate: "June 03, 2026",
     editorsPresent: 2,
-    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -124,7 +121,6 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Jul 8",
     fullDate: "July 08, 2026",
     editorsPresent: 2,
-    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -138,7 +134,6 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Aug 12",
     fullDate: "August 12, 2026",
     editorsPresent: 2,
-    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -284,7 +279,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
             <CalendarClock className="h-4 w-4 text-primary" />
             <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">
               {series === "eipip"
-                ? "EIPIP: five straight meetings (Apr to Aug) had only Sam and Jochem"
+                ? "EIPIP: Meeting Attendance Matrix"
                 : "EIP Editing Office Hours: Meeting Attendance Matrix"}
             </h2>
           </div>
@@ -336,10 +331,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <th
                     key={`present-${col.meeting}`}
-                    className={cn(
-                      "px-3 py-2 text-center font-mono font-semibold text-foreground tabular-nums",
-                      col.highlight && series === "eipip" && "bg-primary/[0.04]"
-                    )}
+                    className="px-3 py-2 text-center font-mono font-semibold text-foreground tabular-nums"
                   >
                     {col.editorsPresent}
                   </th>
@@ -354,10 +346,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <th
                     key={`meeting-${col.meeting}`}
-                    className={cn(
-                      "px-3 py-2.5 text-center font-mono font-semibold text-foreground tabular-nums",
-                      col.highlight && series === "eipip" && "bg-primary/[0.04]"
-                    )}
+                    className="px-3 py-2.5 text-center font-mono font-semibold text-foreground tabular-nums"
                   >
                     <Link
                       href={
@@ -403,10 +392,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                     return (
                       <td
                         key={`${editor.handle}-${col.meeting}`}
-                        className={cn(
-                          "px-3 py-3 text-center align-middle",
-                          col.highlight && series === "eipip" && "bg-primary/[0.04]"
-                        )}
+                        className="px-3 py-3 text-center align-middle"
                         title={`${editor.displayName}: ${attended ? "Attended" : "Absent"} (Meeting #${col.meeting}, ${col.fullDate})`}
                       >
                         <div className="flex items-center justify-center">
@@ -428,10 +414,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <td
                     key={`date-${col.meeting}`}
-                    className={cn(
-                      "px-3 py-2.5 text-center font-mono tabular-nums whitespace-nowrap",
-                      col.highlight && series === "eipip" && "bg-primary/[0.04]"
-                    )}
+                    className="px-3 py-2.5 text-center font-mono tabular-nums whitespace-nowrap"
                   >
                     {col.dateLabel}
                   </td>
@@ -439,16 +422,6 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
               </tr>
             </tbody>
           </table>
-
-          {/* Highlight Callout Footer for EIPIP */}
-          {series === "eipip" && (
-            <div className="mt-3 flex items-center justify-center">
-              <div className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                <Info className="h-3.5 w-3.5" />
-                <span>April 15 to August 12 (Meetings 125–129): Sam and Jochem only</span>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </section>
