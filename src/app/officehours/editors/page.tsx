@@ -177,15 +177,33 @@ export default function OfficeHoursEditorsPage() {
   // Parse initial query params from URL
   useEffect(() => {
     const m = urlParam("mode");
-    if (m === "range" || m === "day") setMode(m);
-    const d = urlParam("day");
-    if (d) setDay(d);
-    if (m === "day" && d && OFFICE_HOUR_MEETINGS.some((x) => x.dateISO === d))
-      setFilterMode("meeting");
-    const f = urlParam("from");
-    if (f) setFrom(f);
-    const t = urlParam("to");
-    if (t) setTo(t);
+    const preset = urlParam("preset") || urlParam("range");
+    if (preset === "all") {
+      setMode("range");
+      setFrom(ALL_TIME_START);
+      setTo(today);
+    } else if (preset === "month") {
+      setMode("range");
+      setFrom(monthStart);
+      setTo(today);
+    } else if (preset === "7d") {
+      setMode("range");
+      setFrom(addDays(today, -6));
+      setTo(today);
+    } else if (preset === "today") {
+      setMode("day");
+      setDay(today);
+    } else {
+      if (m === "range" || m === "day") setMode(m);
+      const d = urlParam("day");
+      if (d) setDay(d);
+      if (m === "day" && d && OFFICE_HOUR_MEETINGS.some((x) => x.dateISO === d))
+        setFilterMode("meeting");
+      const f = urlParam("from");
+      if (f) setFrom(f);
+      const t = urlParam("to");
+      if (t) setTo(t);
+    }
     const r = urlParam("repos");
     if (r) {
       const set = new Set<RepoKey>(
@@ -257,6 +275,7 @@ export default function OfficeHoursEditorsPage() {
     }
   };
 
+  const ALL_TIME_START = "2015-01-01";
   const PRESETS: Array<{ id: string; label: string; apply: () => void }> = [
     {
       id: "today",
@@ -284,6 +303,15 @@ export default function OfficeHoursEditorsPage() {
         setTo(today);
       },
     },
+    {
+      id: "all",
+      label: "All time",
+      apply: () => {
+        setMode("range");
+        setFrom(ALL_TIME_START);
+        setTo(today);
+      },
+    },
   ];
   const activePresetId =
     mode === "day" && day === today
@@ -292,6 +320,8 @@ export default function OfficeHoursEditorsPage() {
       ? "7d"
       : mode === "range" && to === today && from === monthStart
       ? "month"
+      : mode === "range" && to === today && from === ALL_TIME_START
+      ? "all"
       : "custom";
 
   // Data states
@@ -450,7 +480,11 @@ export default function OfficeHoursEditorsPage() {
     totalReviewsInWindow + totalCommentsInWindow + totalMergesInWindow;
 
   const rangeLabel =
-    mode === "day" ? prettyDate(day) : `${prettyDate(from)} – ${prettyDate(to)}`;
+    activePresetId === "all"
+      ? "All time"
+      : mode === "day"
+      ? prettyDate(day)
+      : `${prettyDate(from)} – ${prettyDate(to)}`;
 
   // Activity trend option for Velocity & Trends tab
   const activityTrendOption = useMemo(() => {

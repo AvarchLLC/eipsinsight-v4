@@ -215,14 +215,32 @@ export function EditorialActivityDashboard({
 
   useEffect(() => {
     const m = urlParam("mode");
-    if (m === "range" || m === "day") setMode(m);
-    const d = urlParam("day");
-    if (d) setDay(d);
-    if (m === "day" && d && meetings.some((x) => x.dateISO === d)) setFilterMode("meeting");
-    const f = urlParam("from");
-    if (f) setFrom(f);
-    const t = urlParam("to");
-    if (t) setTo(t);
+    const preset = urlParam("preset") || urlParam("range");
+    if (preset === "all") {
+      setMode("range");
+      setFrom(ALL_TIME_START);
+      setTo(today);
+    } else if (preset === "month") {
+      setMode("range");
+      setFrom(monthStart);
+      setTo(today);
+    } else if (preset === "7d") {
+      setMode("range");
+      setFrom(addDays(today, -6));
+      setTo(today);
+    } else if (preset === "today") {
+      setMode("day");
+      setDay(today);
+    } else {
+      if (m === "range" || m === "day") setMode(m);
+      const d = urlParam("day");
+      if (d) setDay(d);
+      if (m === "day" && d && meetings.some((x) => x.dateISO === d)) setFilterMode("meeting");
+      const f = urlParam("from");
+      if (f) setFrom(f);
+      const t = urlParam("to");
+      if (t) setTo(t);
+    }
     const r = urlParam("repos");
     if (r) {
       const set = new Set<RepoKey>(r.split(",").filter((x): x is RepoKey => (REPO_KEYS as readonly string[]).includes(x)));
@@ -260,15 +278,18 @@ export function EditorialActivityDashboard({
   const [filterMode, setFilterMode] = useState<"custom" | "meeting">("custom");
   const goCustom = () => { setFilterMode("custom"); setMode("range"); setFrom(monthStart); setTo(today); setCustomOpen(false); setMeetingOpen(false); };
   const goMeeting = () => { setFilterMode("meeting"); setCustomOpen(false); setMeetingOpen(false); if (!selectedMeeting && latestPastMeeting) { setMode("day"); setDay(latestPastMeeting.dateISO); } };
+  const ALL_TIME_START = "2015-01-01";
   const PRESETS: Array<{ id: string; label: string; apply: () => void }> = [
     { id: "today", label: "Today", apply: () => { setMode("day"); setDay(today); } },
     { id: "7d", label: "7d", apply: () => { setMode("range"); setFrom(addDays(today, -6)); setTo(today); } },
     { id: "month", label: "This month", apply: () => { setMode("range"); setFrom(monthStart); setTo(today); } },
+    { id: "all", label: "All time", apply: () => { setMode("range"); setFrom(ALL_TIME_START); setTo(today); } },
   ];
   const activePresetId =
     mode === "day" && day === today ? "today"
     : mode === "range" && to === today && from === addDays(today, -6) ? "7d"
     : mode === "range" && to === today && from === monthStart ? "month"
+    : mode === "range" && to === today && from === ALL_TIME_START ? "all"
     : "custom";
 
   const [leaderboard, setLeaderboard] = useState<Leader[]>([]);
@@ -372,7 +393,12 @@ export function EditorialActivityDashboard({
     ];
   }, [leaderboard]);
 
-  const rangeLabel = mode === "day" ? prettyDate(day) : `${prettyDate(from)} – ${prettyDate(to)}`;
+  const rangeLabel =
+    activePresetId === "all"
+      ? "All time"
+      : mode === "day"
+      ? prettyDate(day)
+      : `${prettyDate(from)} – ${prettyDate(to)}`;
 
   const typeSeries = useMemo(() => {
     const map = new Map<string, { key: string; eips: number; ercs: number; rips: number }>();
