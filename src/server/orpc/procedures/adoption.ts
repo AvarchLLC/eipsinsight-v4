@@ -140,6 +140,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.contract_events
          WHERE topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
+        { timeoutMs: 45_000 },
       ),
       // event-standards: raw event volume in window
       clickhouseQuery<{ sid: string; events: string }>(
@@ -147,6 +148,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
+        { timeoutMs: 45_000 },
       ),
       // transfer split: active + events in window
       clickhouseQuery<{ is20: number; active: string; events: string }>(
@@ -154,6 +156,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}'
          GROUP BY is20`,
+        { timeoutMs: 45_000 },
       ),
       getAllTimeTransferSplit(),
     ])
@@ -241,10 +244,144 @@ async function getOverview(): Promise<AdoptionOverview> {
   return { available: true, totalImplementations, activeContracts30d, ...base }
 }
 
+// ── per-standard detail: metrics + contract directory ──────────────────────
+export type DirectoryRow = { address: string; events: number; lastActive: string }
+
+export type StandardDetail = {
+  available: boolean
+  found: boolean
+  ranked: boolean
+  id: string
+  window: Window
+  meta: {
+    eip: string
+    name: string
+    category: Standard['category']
+    blurb: string
+    specUrl: string
+    confidence: Standard['confidence']
+  } | null
+  deferredReason: string | null
+  metrics: { contracts: number; active: number; events: number }
+  directory: DirectoryRow[]
+  coverage: typeof COVERAGE
+  generatedAt: string
+}
+
+const DETAIL_TTL_MS = 600_000 // 10 min
+const detailCache = new Map<string, { at: number; data: StandardDetail }>()
+
+function metaOf(s: Standard) {
+  return { eip: s.eip, name: s.name, category: s.category, blurb: s.blurb, specUrl: s.specUrl, confidence: s.confidence }
+}
+
+async function getStandardDetail(id: string, window: Window): Promise<StandardDetail> {
+  const ranked = STANDARDS.find((s) => s.id === id)
+  const deferred = DEFERRED.find((s) => s.id === id)
+  const s = ranked ?? deferred
+  const baseShell = {
+    window,
+    coverage: COVERAGE,
+    generatedAt: new Date().toISOString(),
+    metrics: { contracts: 0, active: 0, events: 0 },
+    directory: [] as DirectoryRow[],
+  }
+
+  if (!s) {
+    return { available: true, found: false, ranked: false, id, meta: null, deferredReason: null, ...baseShell }
+  }
+  if (!ranked) {
+    // tracked but not yet detectable from events
+    const reason = deferred && deferred.detect.kind === 'deferred' ? deferred.detect.reason : null
+    return { available: true, found: true, ranked: false, id, meta: metaOf(s), deferredReason: reason, ...baseShell }
+  }
+  if (!clickhouseConfigured()) {
+    return { available: false, found: true, ranked: true, id, meta: metaOf(s), deferredReason: null, ...baseShell }
+  }
+
+  const cacheKey = `${id}|${window}`
+  const hit = detailCache.get(cacheKey)
+  if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.data
+
+  try {
+    const interval = WINDOW_SQL[window]
+    let metrics = { contracts: 0, active: 0, events: 0 }
+    let directory: DirectoryRow[] = []
+
+    if (ranked.detect.kind === 'transfer') {
+      const cond = ranked.detect.side === 'erc20' ? 'topic3 IS NULL' : 'topic3 IS NOT NULL'
+      const [winRows, allTime, dirRows] = await Promise.all([
+        clickhouseQuery<{ active: string; events: string }>(
+          `SELECT uniqExact(address) AS active, count() AS events
+           FROM ethereum.logs
+           WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}' AND ${cond}`,
+          { timeoutMs: 45_000 },
+        ),
+        getAllTimeTransferSplit(),
+        clickhouseQuery<{ address: string; events: string; last: string }>(
+          `SELECT address, count() AS events, max(block_timestamp) AS last
+           FROM ethereum.logs
+           WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}' AND ${cond}
+           GROUP BY address ORDER BY events DESC LIMIT 25`,
+          { timeoutMs: 45_000 },
+        ),
+      ])
+      metrics = {
+        contracts: ranked.detect.side === 'erc20' ? allTime.erc20 : allTime.erc721,
+        active: N(winRows[0]?.active),
+        events: N(winRows[0]?.events),
+      }
+      directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
+    } else if (ranked.detect.kind === 'event') {
+      const topics = ranked.detect.topics
+      const [ceRows, logRows, dirRows] = await Promise.all([
+        clickhouseQuery<{ contracts: string; active: string }>(
+          `SELECT uniqExact(address) AS contracts, uniqExactIf(address, last_seen >= now() - ${interval}) AS active
+           FROM ethereum.contract_events WHERE topic0 IN (${quote(topics)})`,
+        ),
+        clickhouseQuery<{ events: string }>(
+          `SELECT count() AS events FROM ethereum.logs
+           WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})`,
+        ),
+        clickhouseQuery<{ address: string; events: string; last: string }>(
+          `SELECT address, count() AS events, max(block_timestamp) AS last
+           FROM ethereum.logs
+           WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})
+           GROUP BY address ORDER BY events DESC LIMIT 25`,
+        ),
+      ])
+      metrics = { contracts: N(ceRows[0]?.contracts), active: N(ceRows[0]?.active), events: N(logRows[0]?.events) }
+      directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
+    }
+
+    const data: StandardDetail = {
+      available: true,
+      found: true,
+      ranked: true,
+      id,
+      window,
+      meta: metaOf(ranked),
+      deferredReason: null,
+      metrics,
+      directory,
+      coverage: COVERAGE,
+      generatedAt: new Date().toISOString(),
+    }
+    detailCache.set(cacheKey, { at: Date.now(), data })
+    return data
+  } catch {
+    return { available: false, found: true, ranked: true, id, meta: metaOf(ranked), deferredReason: null, ...baseShell }
+  }
+}
+
 export const adoptionProcedures = {
   overview: optionalAuthProcedure.handler(async (): Promise<AdoptionOverview> => getOverview()),
 
   leaderboard: optionalAuthProcedure
     .input(z.object({ window: z.enum(['24h', '7d', '30d']).default('30d') }).optional())
     .handler(async ({ input }): Promise<AdoptionLeaderboard> => getLeaderboard(input?.window ?? '30d')),
+
+  standard: optionalAuthProcedure
+    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d']).default('30d') }))
+    .handler(async ({ input }): Promise<StandardDetail> => getStandardDetail(input.id, input.window)),
 }

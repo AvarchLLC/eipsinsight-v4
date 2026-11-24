@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink, ArrowRight } from 'lucide-react';
 import {
   Bar,
   BarChart,
@@ -49,6 +50,41 @@ function SectionHead({ n, title }: { n: string; title: string }) {
         <span className="mono text-sm font-semibold text-[var(--brand-strong)]">{n}</span>
         <h2 className="text-[1.9rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)] sm:text-[2.3rem]">{title}</h2>
       </div>
+    </div>
+  );
+}
+
+function SearchJump({ catalog }: { catalog: AdoptionOverview['catalog'] }) {
+  const [q, setQ] = useState('');
+  const matches = useMemo(() => {
+    const t = q.trim().toLowerCase();
+    if (!t) return [];
+    return catalog
+      .filter((c) => c.eip.toLowerCase().includes(t) || c.name.toLowerCase().includes(t) || c.id.includes(t))
+      .slice(0, 6);
+  }, [q, catalog]);
+  return (
+    <div className="relative max-w-[32rem]">
+      <input
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Search a standard — e.g. ERC-4626, vault, 721"
+        className="w-full rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-[14px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)]"
+      />
+      {matches.length > 0 ? (
+        <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--paper)] shadow-lg">
+          {matches.map((m) => (
+            <Link
+              key={m.id}
+              href={`/adoption/${m.id}`}
+              className="flex items-center justify-between gap-2 px-4 py-2.5 text-[14px] hover:bg-[var(--surface-2)]"
+            >
+              <span className="font-medium text-[var(--ink)]">{m.eip} <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">{m.name}</span></span>
+              {m.ranked ? <ArrowRight className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> : <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">soon</span>}
+            </Link>
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -200,6 +236,10 @@ export function AdoptionDashboard({
         <section className="mt-16">
           <SectionHead n="02" title="Top standards on-chain" />
 
+          <div className="mb-6">
+            <SearchJump catalog={overview.catalog} />
+          </div>
+
           {/* window toggle */}
           <div className="mb-6 flex items-center gap-2">
             <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">Active window</span>
@@ -241,9 +281,9 @@ export function AdoptionDashboard({
                     <tr key={r.id} className="border-t border-[var(--border)]/60">
                       <td className="px-3 py-2.5 mono text-[12px] tabular-nums text-[var(--ink-faint)]">{i + 1}</td>
                       <td className="px-3 py-2.5">
-                        <a href={r.specUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-medium text-[var(--ink)] hover:text-[var(--brand-strong)] hover:underline">
-                          {r.eip}<ExternalLink className="h-3 w-3 opacity-50" />
-                        </a>
+                        <Link href={`/adoption/${r.id}`} className="inline-flex items-center gap-1 font-medium text-[var(--ink)] hover:text-[var(--brand-strong)] hover:underline">
+                          {r.eip}<ArrowRight className="h-3 w-3 opacity-50" />
+                        </Link>
                         <div className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">{r.name}</div>
                       </td>
                       <td className="px-3 py-2.5 mono tabular-nums text-right text-[var(--ink-muted)]">{compact(r.contracts)}</td>

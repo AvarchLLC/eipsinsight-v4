@@ -24,6 +24,7 @@ import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { ChartWatermark } from "@/components/chart-watermark";
+import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 
 const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
@@ -78,6 +79,52 @@ const STATUS_COLORS: Record<string, string> = {
 function editorAvatar(actor: string) {
   return `https://avatars.githubusercontent.com/${encodeURIComponent(actor)}?s=96&d=identicon`;
 }
+
+interface CanonicalEditorParticipation {
+  displayName: string;
+  github: string;
+  eipipAttended: number;
+  officeHoursHosted: number;
+  prReviews: number;
+}
+
+const CANONICAL_EDITOR_PARTICIPATION: CanonicalEditorParticipation[] = [
+  {
+    displayName: "Jochem B.",
+    github: "jochem-brouwer",
+    eipipAttended: 8,
+    officeHoursHosted: 10,
+    prReviews: 368,
+  },
+  {
+    displayName: "Sam Wilson",
+    github: "SamWilsn",
+    eipipAttended: 8,
+    officeHoursHosted: 18,
+    prReviews: 300,
+  },
+  {
+    displayName: "Gajinder Singh",
+    github: "g11tech",
+    eipipAttended: 1,
+    officeHoursHosted: 3,
+    prReviews: 119,
+  },
+  {
+    displayName: "Matt",
+    github: "lightclient",
+    eipipAttended: 1,
+    officeHoursHosted: 0,
+    prReviews: 100,
+  },
+  {
+    displayName: "Victor",
+    github: "xinbenlv",
+    eipipAttended: 2,
+    officeHoursHosted: 1,
+    prReviews: 63,
+  },
+];
 function iso(d: Date) {
   return d.toISOString().slice(0, 10);
 }
@@ -279,6 +326,52 @@ export function EditorialActivityDashboard({
     statusTotal: statusChanges.reduce((s, c) => s + c.count, 0),
   }), [leaderboard, statusChanges]);
 
+  const activeCanonicalCount = useMemo(() => {
+    const activeSet = new Set(
+      leaderboard
+        .filter((e) => (e.totalEvents ?? 0) > 0 || (e.prsReviewed ?? 0) > 0 || (e.reviews ?? 0) > 0)
+        .map((e) => e.editor.toLowerCase())
+    );
+    return CANONICAL_EIP_EDITORS.filter((c) => activeSet.has(c.toLowerCase())).length;
+  }, [leaderboard]);
+
+  const displayLeaderboard = useMemo(() => {
+    const activeMap = new Map<string, Leader>();
+    for (const item of leaderboard) {
+      activeMap.set(item.editor.toLowerCase(), item);
+    }
+
+    const active = leaderboard.filter(
+      (e) => (e.totalEvents ?? 0) > 0 || (e.prsReviewed ?? 0) > 0 || (e.reviews ?? 0) > 0
+    );
+
+    const inactive: Array<Leader & { isInactive?: boolean }> = [];
+    for (const canon of CANONICAL_EIP_EDITORS) {
+      const existing = activeMap.get(canon.toLowerCase());
+      const hasActivity =
+        existing &&
+        ((existing.totalEvents ?? 0) > 0 ||
+          (existing.prsReviewed ?? 0) > 0 ||
+          (existing.reviews ?? 0) > 0);
+      if (!hasActivity) {
+        inactive.push({
+          editor: canon,
+          prsReviewed: 0,
+          totalEvents: 0,
+          reviews: 0,
+          comments: 0,
+          merges: 0,
+          isInactive: true,
+        });
+      }
+    }
+
+    return [
+      ...active.map((e) => ({ ...e, isInactive: false })),
+      ...inactive,
+    ];
+  }, [leaderboard]);
+
   const rangeLabel = mode === "day" ? prettyDate(day) : `${prettyDate(from)} – ${prettyDate(to)}`;
 
   const typeSeries = useMemo(() => {
@@ -375,7 +468,7 @@ export function EditorialActivityDashboard({
     }))));
   };
   const exportEditors = () => {
-    downloadCsv(`${csvPrefix}-editors-${winFrom}_${winTo}.csv`, toCsv(leaderboard.map((e) => ({
+    downloadCsv(`${csvPrefix}-editors-${winFrom}_${winTo}.csv`, toCsv(displayLeaderboard.map((e) => ({
       editor: e.editor, prs_reviewed: e.prsReviewed, total_events: e.totalEvents,
       reviews: e.reviews, comments: e.comments, merges: e.merges,
     }))));
@@ -497,16 +590,91 @@ export function EditorialActivityDashboard({
         <div className="rounded-xl border border-border bg-card/60 py-16"><InlineBrandLoader size="md" label="Loading editorial activity…" /></div>
       ) : (
         <>
-          <section className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <Kpi icon={Users} accent="text-violet-500" label="Active editors" value={kpis.editors} />
-            <Kpi icon={GitPullRequest} accent="text-emerald-500" label="PRs touched" value={totalPRs} />
-            <Kpi icon={Eye} accent="text-blue-500" label="Review actions" value={kpis.reviews} />
-            <Kpi icon={Shuffle} accent="text-amber-500" label="Status changes" value={kpis.statusTotal} />
+          <section className="grid grid-cols-1 gap-3 lg:grid-cols-12">
+            {/* Left: 4 KPI Cards in a 2x2 grid */}
+            <div className="grid grid-cols-2 gap-3 lg:col-span-5">
+              <Kpi
+                icon={Users}
+                accent="text-violet-500"
+                label="Active editors"
+                value={`${activeCanonicalCount}/${CANONICAL_EIP_EDITORS.length}`}
+              />
+              <Kpi
+                icon={GitPullRequest}
+                accent="text-emerald-500"
+                label="PRs touched"
+                value={totalPRs}
+              />
+              <Kpi
+                icon={Eye}
+                accent="text-blue-500"
+                label="Review actions"
+                value={kpis.reviews}
+              />
+              <Kpi
+                icon={Shuffle}
+                accent="text-amber-500"
+                label="Status changes"
+                value={kpis.statusTotal}
+              />
+            </div>
+
+            {/* Right: Canonical editor participation breakdown table matching screenshot */}
+            <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3 sm:p-3.5 lg:col-span-7">
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[460px] text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border/80 text-[11px] font-semibold text-muted-foreground">
+                      <th className="py-1.5 pl-1 pr-2 font-semibold">Editor (GitHub)</th>
+                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">EIPIP (of 8)</th>
+                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">Office Hours hosted (of 32)</th>
+                      <th className="py-1.5 pl-2 pr-1 text-right font-semibold whitespace-nowrap">PR reviews, Jan–Sep</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/40">
+                    {CANONICAL_EDITOR_PARTICIPATION.map((item) => (
+                      <tr key={item.github} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-1.5 pl-1 pr-2 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            <Image
+                              src={editorAvatar(item.github)}
+                              alt={item.displayName}
+                              width={22}
+                              height={22}
+                              unoptimized
+                              className="h-5.5 w-5.5 rounded-full object-cover ring-1 ring-border"
+                            />
+                            <Link
+                              href={`/user/${item.github}`}
+                              className="font-medium text-foreground hover:text-primary transition-colors text-xs"
+                            >
+                              {item.displayName}{" "}
+                              <span className="text-muted-foreground font-mono text-[11px]">
+                                ({item.github})
+                              </span>
+                            </Link>
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-foreground/90">
+                          {item.eipipAttended}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-foreground/90">
+                          {item.officeHoursHosted}
+                        </td>
+                        <td className="py-1.5 pl-2 pr-1 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
+                          {item.prReviews.toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </section>
 
           <div className="grid gap-3 lg:grid-cols-3">
             <Card title="Editor leaderboard" icon={<Users className="h-4 w-4 text-primary" />} right={<span className="text-[11px] text-muted-foreground">{rangeLabel}</span>}>
-              {leaderboard.length === 0 ? (
+              {displayLeaderboard.length === 0 ? (
                 <Empty label="No editor activity in this window." />
               ) : (
                 <>
@@ -516,27 +684,77 @@ export function EditorialActivityDashboard({
                     <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-sm bg-emerald-500" /> Merges</span>
                   </div>
                   <ul className="h-[300px] space-y-2 overflow-y-auto pr-1">
-                    {leaderboard.slice(0, 12).map((e, i) => {
+                    {displayLeaderboard.slice(0, 12).map((e, i) => {
                       const total = Math.max(e.reviews + e.comments + e.merges, 1);
-                      const medal = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : null;
+                      const isInactive = Boolean(e.isInactive);
+                      const medal = !isInactive && i === 0 ? "🥇" : !isInactive && i === 1 ? "🥈" : !isInactive && i === 2 ? "🥉" : null;
                       return (
-                        <li key={e.editor} className="flex items-center gap-2.5">
+                        <li
+                          key={e.editor}
+                          className={cn(
+                            "flex items-center gap-2.5 transition-opacity",
+                            isInactive ? "opacity-45 hover:opacity-75" : "opacity-100"
+                          )}
+                        >
                           <div className="relative shrink-0">
-                            <Image src={editorAvatar(e.editor)} alt={e.editor} width={28} height={28} unoptimized className={cn("h-7 w-7 rounded-full object-cover ring-2", i === 0 ? "ring-amber-400/60" : "ring-border")} />
+                            <Image
+                              src={editorAvatar(e.editor)}
+                              alt={e.editor}
+                              width={28}
+                              height={28}
+                              unoptimized
+                              className={cn(
+                                "h-7 w-7 rounded-full object-cover ring-2",
+                                isInactive ? "ring-border/40 grayscale" : i === 0 ? "ring-amber-400/60" : "ring-border"
+                              )}
+                            />
                             {medal && <span className="absolute -bottom-1 -right-1 text-[11px] leading-none">{medal}</span>}
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
-                              <Link href={`/user/${e.editor}`} className="truncate text-sm font-medium text-foreground hover:text-primary">{e.editor}</Link>
-                              <span className="shrink-0 text-[11px] text-muted-foreground"><Eye className="mr-0.5 inline h-3 w-3" />{e.reviews} <MessageSquare className="ml-1 mr-0.5 inline h-3 w-3" />{e.comments}{e.merges > 0 && <> <GitMerge className="ml-1 mr-0.5 inline h-3 w-3 text-emerald-500" />{e.merges}</>}</span>
+                              <div className="flex items-center gap-1.5 truncate">
+                                <Link
+                                  href={`/user/${e.editor}`}
+                                  className={cn(
+                                    "truncate text-sm font-medium hover:text-primary transition-colors",
+                                    isInactive ? "text-muted-foreground" : "text-foreground"
+                                  )}
+                                >
+                                  {e.editor}
+                                </Link>
+                                {isInactive && (
+                                  <span className="rounded bg-muted/60 px-1 py-0.5 text-[9px] font-medium tracking-wide text-muted-foreground">
+                                    Inactive
+                                  </span>
+                                )}
+                              </div>
+                              <span className="shrink-0 text-[11px] text-muted-foreground">
+                                <Eye className="mr-0.5 inline h-3 w-3" />{e.reviews}{" "}
+                                <MessageSquare className="ml-1 mr-0.5 inline h-3 w-3" />{e.comments}
+                                {e.merges > 0 && (
+                                  <> <GitMerge className="ml-1 mr-0.5 inline h-3 w-3 text-emerald-500" />{e.merges}</>
+                                )}
+                              </span>
                             </div>
                             <div className="mt-1 flex h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                              <div className="h-full bg-blue-500" style={{ width: `${(e.reviews / total) * 100}%` }} />
-                              <div className="h-full bg-violet-500" style={{ width: `${(e.comments / total) * 100}%` }} />
-                              <div className="h-full bg-emerald-500" style={{ width: `${(e.merges / total) * 100}%` }} />
+                              {!isInactive && (e.reviews + e.comments + e.merges > 0) ? (
+                                <>
+                                  <div className="h-full bg-blue-500" style={{ width: `${(e.reviews / total) * 100}%` }} />
+                                  <div className="h-full bg-violet-500" style={{ width: `${(e.comments / total) * 100}%` }} />
+                                  <div className="h-full bg-emerald-500" style={{ width: `${(e.merges / total) * 100}%` }} />
+                                </>
+                              ) : (
+                                <div className="h-full w-full bg-muted-foreground/10" />
+                              )}
                             </div>
                           </div>
-                          <span className="w-12 shrink-0 text-right text-xs font-semibold text-foreground">{e.prsReviewed}<span className="ml-0.5 text-[10px] font-normal text-muted-foreground">PRs</span></span>
+                          <span className={cn(
+                            "w-12 shrink-0 text-right text-xs font-semibold tabular-nums",
+                            isInactive ? "text-muted-foreground" : "text-foreground"
+                          )}>
+                            {e.prsReviewed}
+                            <span className="ml-0.5 text-[10px] font-normal text-muted-foreground">PRs</span>
+                          </span>
                         </li>
                       );
                     })}
@@ -745,12 +963,35 @@ function Empty({ label }: { label: string }) {
   return <p className="py-8 text-center text-sm text-muted-foreground">{label}</p>;
 }
 
-function Kpi({ icon: Icon, accent, label, value }: { icon: React.ComponentType<{ className?: string }>; accent: string; label: string; value: number }) {
+function Kpi({
+  icon: Icon,
+  accent,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  accent: string;
+  label: string;
+  value: number | string;
+}) {
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-3.5">
+    <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3.5">
       <Icon className={cn("h-4 w-4", accent)} />
-      <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground">{value.toLocaleString()}</p>
-      <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <div>
+        <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground font-mono">
+          {typeof value === "number" ? (
+            value.toLocaleString()
+          ) : typeof value === "string" && value.includes("/") ? (
+            <>
+              <span>{value.split("/")[0]}</span>
+              <span className="text-muted-foreground font-normal text-lg">/{value.split("/")[1]}</span>
+            </>
+          ) : (
+            value
+          )}
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</p>
+      </div>
     </div>
   );
 }
