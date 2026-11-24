@@ -34,6 +34,17 @@ interface ProposalSearchResult {
   score: number;
 }
 
+interface AuthorSearchResult {
+  kind: 'author';
+  name: string;
+  role: string | null;
+  contributionCount: number;
+  eipCount?: number;
+  prCount?: number;
+  issueCount?: number;
+  reviewCount?: number;
+}
+
 const POPULAR_SEARCHES = ['1559', '4844', '7702', 'ERC-20', 'ERC-4337', 'ERC-721', 'RIP-7560', 'blobs'];
 
 const QUICK_JUMPS = [
@@ -71,11 +82,12 @@ export function CommandPalette() {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ProposalSearchResult[]>([]);
+  const [peopleResults, setPeopleResults] = useState<AuthorSearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const cacheRef = useRef<Map<string, ProposalSearchResult[]>>(new Map());
+  const cacheRef = useRef<Map<string, { proposals: ProposalSearchResult[]; people: AuthorSearchResult[] }>>(new Map());
   const reqIdRef = useRef(0);
 
   const term = query.trim();
@@ -161,6 +173,7 @@ export function CommandPalette() {
       document.body.style.overflow = '';
       setQuery('');
       setResults([]);
+      setPeopleResults([]);
       setSelectedIndex(0);
     }
     return () => {
@@ -173,6 +186,7 @@ export function CommandPalette() {
   useEffect(() => {
     if (!open || !term) {
       setResults([]);
+      setPeopleResults([]);
       setLoading(false);
       return;
     }
@@ -182,7 +196,8 @@ export function CommandPalette() {
 
     const cached = cacheRef.current.get(key);
     if (cached) {
-      setResults(cached);
+      setResults(cached.proposals);
+      setPeopleResults(cached.people);
       setLoading(false);
       return;
     }
@@ -192,10 +207,21 @@ export function CommandPalette() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = (await client.search.searchProposals({ query: term, limit: 8 })) as ProposalSearchResult[];
-        cacheRef.current.set(key, res);
+        const [proposalsRes, authorsRes] = await Promise.allSettled([
+          client.search.searchProposals({ query: term, limit: 6 }),
+          client.search.searchAuthors({ query: term, limit: 4 }),
+        ]);
+
         if (myId !== reqIdRef.current) return;
-        setResults(res);
+
+        const proposals =
+          proposalsRes.status === 'fulfilled' ? (proposalsRes.value as ProposalSearchResult[]) : [];
+        const people =
+          authorsRes.status === 'fulfilled' ? (authorsRes.value as AuthorSearchResult[]) : [];
+
+        cacheRef.current.set(key, { proposals, people });
+        setResults(proposals);
+        setPeopleResults(people);
       } catch (err) {
         if (myId === reqIdRef.current) console.error('Failed search in palette:', err);
       } finally {
@@ -218,9 +244,10 @@ export function CommandPalette() {
   const flatDestinations = useMemo(() => {
     const list: string[] = [];
     if (swoop) list.push(swoop.url);
+    peopleResults.forEach((p) => list.push(`/user/${encodeURIComponent(p.name)}`));
     results.forEach((r) => list.push(`/${r.repo}/${r.number}`));
     return list;
-  }, [swoop, results]);
+  }, [swoop, peopleResults, results]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -388,6 +415,81 @@ export function CommandPalette() {
               </button>
             )}
 
+            {/* People (Authors / Editors) List */}
+            {peopleResults.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">
+                  <Users className="h-3 w-3" />
+                  <span>People &amp; Editors · {peopleResults.length}</span>
+                </div>
+                {peopleResults.map((p, i) => {
+                  const targetIdx = (swoop ? 1 : 0) + i;
+                  const isSelected = selectedIndex === targetIdx;
+                  const url = `/user/${encodeURIComponent(p.name)}`;
+                  const roleLabel = p.role || 'Contributor';
+                  const roleBadgeClass =
+                    roleLabel === 'EDITOR'
+                      ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                      : roleLabel === 'REVIEWER'
+                      ? 'border-blue-500/30 bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                      : roleLabel === 'AUTHOR'
+                      ? 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                      : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)]';
+
+                  const statsText =
+                    [
+                      p.eipCount ? `${p.eipCount} EIPs` : null,
+                      p.reviewCount ? `${p.reviewCount} reviews` : null,
+                      p.prCount ? `${p.prCount} PRs` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(' · ') || `${p.contributionCount} contributions`;
+
+                  return (
+                    <button
+                      key={`people-${p.name}`}
+                      type="button"
+                      data-idx={targetIdx}
+                      onClick={() => navigateTo(url)}
+                      onMouseEnter={() => setSelectedIndex(targetIdx)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-3 rounded-[var(--l-radius-control)] px-3 py-2 text-left transition-colors cursor-pointer',
+                        isSelected ? 'bg-[var(--surface-2)]' : 'hover:bg-[var(--surface-2)]'
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] font-mono text-xs font-semibold text-[var(--ink)]">
+                          {p.name.slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="truncate text-xs font-semibold sm:text-sm text-[var(--ink)]">
+                              {p.name}
+                            </span>
+                            <span className={cn('rounded px-1.5 py-0.2 font-mono text-[10px] font-semibold border', roleBadgeClass)}>
+                              {roleLabel}
+                            </span>
+                          </div>
+                          <p className="truncate text-[11px] font-mono text-[var(--ink-faint)]">
+                            {statsText}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-2">
+                        <ArrowRight
+                          className={cn(
+                            'h-3.5 w-3.5 transition-opacity',
+                            isSelected ? 'text-[var(--brand-strong)] opacity-100' : 'opacity-0'
+                          )}
+                        />
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Results List */}
             {results.length > 0 && (
               <div className="mt-1 space-y-0.5">
@@ -395,7 +497,7 @@ export function CommandPalette() {
                   Proposals · {results.length}
                 </div>
                 {results.map((r, i) => {
-                  const targetIdx = swoop ? i + 1 : i;
+                  const targetIdx = (swoop ? 1 : 0) + peopleResults.length + i;
                   const isSelected = selectedIndex === targetIdx;
                   const url = `/${r.repo}/${r.number}`;
                   const meta = [r.category, r.type].filter(Boolean).join(' · ');
@@ -440,11 +542,11 @@ export function CommandPalette() {
             )}
 
             {/* Empty State */}
-            {!loading && results.length === 0 && !swoop && (
+            {!loading && results.length === 0 && peopleResults.length === 0 && !swoop && (
               <div className="px-5 py-8 text-center">
                 <p className="text-sm font-medium text-[var(--ink)]">No results found for “{term}”</p>
                 <p className="mt-1 text-xs text-[var(--ink-muted)]">
-                  Try a proposal number (e.g. 1559, 4844), an ERC (ERC-20), or a keyword.
+                  Try an author or editor name (e.g. Vitalik, lightclient), an EIP number (1559, 4844), or a topic.
                 </p>
               </div>
             )}

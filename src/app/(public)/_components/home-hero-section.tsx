@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'motion/react';
@@ -39,6 +39,17 @@ interface ProposalSearchResult {
   type: string | null;
   author: string | null;
   score: number;
+}
+
+interface AuthorSearchResult {
+  kind: 'author';
+  name: string;
+  role: string | null;
+  contributionCount: number;
+  eipCount?: number;
+  prCount?: number;
+  issueCount?: number;
+  reviewCount?: number;
 }
 
 interface KnownStandardInfo {
@@ -119,13 +130,14 @@ export function HomeHeroSection() {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
   const searchboxRef = useRef<HTMLDivElement>(null);
-  const cacheRef = useRef<Map<string, ProposalSearchResult[]>>(new Map());
+  const cacheRef = useRef<Map<string, { proposals: ProposalSearchResult[]; people: AuthorSearchResult[] }>>(new Map());
   const reqIdRef = useRef(0);
 
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ProposalSearchResult[]>([]);
+  const [peopleResults, setPeopleResults] = useState<AuthorSearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [example, setExample] = useState(EXAMPLES[0]);
   const [showInfoDrawer, setShowInfoDrawer] = useState(false);
@@ -338,7 +350,8 @@ export function HomeHeroSection() {
     // Instant cache hit — no spinner, no network.
     const cached = cacheRef.current.get(key);
     if (cached) {
-      setResults(cached);
+      setResults(cached.proposals);
+      setPeopleResults(cached.people);
       setLoading(false);
       return;
     }
@@ -348,12 +361,21 @@ export function HomeHeroSection() {
 
     const timer = setTimeout(async () => {
       try {
-        const res = (await client.search.searchProposals({ query: trimmed, limit: 8 })) as ProposalSearchResult[];
-        cacheRef.current.set(key, res);
+        const [proposalsRes, authorsRes] = await Promise.allSettled([
+          client.search.searchProposals({ query: trimmed, limit: 6 }),
+          client.search.searchAuthors({ query: trimmed, limit: 4 }),
+        ]);
+
         if (myId !== reqIdRef.current) return;
-        setResults(res);
+
+        const proposals = proposalsRes.status === 'fulfilled' ? (proposalsRes.value as ProposalSearchResult[]) : [];
+        const people = authorsRes.status === 'fulfilled' ? (authorsRes.value as AuthorSearchResult[]) : [];
+
+        cacheRef.current.set(key, { proposals, people });
+        setResults(proposals);
+        setPeopleResults(people);
       } catch (err) {
-        if (myId === reqIdRef.current) console.error('Failed to search proposals:', err);
+        if (myId === reqIdRef.current) console.error('Failed to search:', err);
       } finally {
         if (myId === reqIdRef.current) setLoading(false);
       }
@@ -381,6 +403,12 @@ export function HomeHeroSection() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen]);
 
+  const allDestinations = useMemo(() => {
+    const list: string[] = [];
+    peopleResults.forEach((p) => list.push(`/user/${encodeURIComponent(p.name)}`));
+    results.forEach((r) => list.push(`/${r.repo}/${r.number}`));
+    return list;
+  }, [peopleResults, results]);
 
   // Swoop action handler
   const handleSwoop = useCallback(
@@ -421,15 +449,14 @@ export function HomeHeroSection() {
     if (e.key === 'ArrowDown') {
       e.preventDefault();
       setIsOpen(true);
-      setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : prev));
+      setSelectedIndex((prev) => (prev < allDestinations.length - 1 ? prev + 1 : prev));
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
       setSelectedIndex((prev) => (prev > -1 ? prev - 1 : -1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      if (selectedIndex >= 0 && results[selectedIndex]) {
-        const item = results[selectedIndex];
-        handleSwoop(`/${item.repo}/${item.number}`);
+      if (selectedIndex >= 0 && allDestinations[selectedIndex]) {
+        handleSwoop(allDestinations[selectedIndex]);
       } else {
         handleSwoop();
       }
@@ -442,6 +469,7 @@ export function HomeHeroSection() {
   const clearQuery = () => {
     setQuery('');
     setResults([]);
+    setPeopleResults([]);
     inputRef.current?.focus();
   };
 
@@ -706,6 +734,78 @@ export function HomeHeroSection() {
                           </div>
                         )}
 
+                        {/* Matching People / Editors */}
+                        {peopleResults.length > 0 && (
+                          <div className="border-b border-[var(--border)] p-1.5">
+                            <div className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider text-[var(--ink-faint)]">
+                              <Users className="h-3 w-3" />
+                              <span>People &amp; Editors · {peopleResults.length}</span>
+                            </div>
+                            {peopleResults.map((p, index) => {
+                              const targetPath = `/user/${encodeURIComponent(p.name)}`;
+                              const isSelected = index === selectedIndex;
+                              const roleLabel = p.role || 'Contributor';
+                              const roleBadgeClass =
+                                roleLabel === 'EDITOR'
+                                  ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                                  : roleLabel === 'REVIEWER'
+                                  ? 'border-blue-500/30 bg-blue-500/15 text-blue-600 dark:text-blue-400'
+                                  : roleLabel === 'AUTHOR'
+                                  ? 'border-amber-500/30 bg-amber-500/15 text-amber-600 dark:text-amber-400'
+                                  : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)]';
+
+                              const statsText =
+                                [
+                                  p.eipCount ? `${p.eipCount} EIPs` : null,
+                                  p.reviewCount ? `${p.reviewCount} reviews` : null,
+                                  p.prCount ? `${p.prCount} PRs` : null,
+                                ]
+                                  .filter(Boolean)
+                                  .join(' · ') || `${p.contributionCount} contributions`;
+
+                              return (
+                                <div
+                                  key={`hero-person-${p.name}`}
+                                  onClick={() => handleSwoop(targetPath)}
+                                  onMouseEnter={() => setSelectedIndex(index)}
+                                  className={cn(
+                                    'flex cursor-pointer items-center justify-between gap-2 rounded-[var(--l-radius-control)] px-3 py-2 transition-colors',
+                                    isSelected ? 'bg-[var(--surface-2)] text-[var(--ink)]' : 'hover:bg-[var(--surface-2)]'
+                                  )}
+                                >
+                                  <div className="flex min-w-0 items-center gap-2.5">
+                                    <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface-2)] font-mono text-xs font-semibold text-[var(--ink)]">
+                                      {p.name.slice(0, 2).toUpperCase()}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="truncate text-xs font-semibold sm:text-sm text-[var(--ink)]">
+                                          {p.name}
+                                        </span>
+                                        <span className={cn('rounded px-1.5 py-0.2 font-mono text-[10px] font-semibold border', roleBadgeClass)}>
+                                          {roleLabel}
+                                        </span>
+                                      </div>
+                                      <p className="truncate text-[11px] font-mono text-[var(--ink-faint)]">
+                                        {statsText}
+                                      </p>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex shrink-0 items-center gap-1.5 pl-2">
+                                    <ArrowRight
+                                      className={cn(
+                                        'h-3.5 w-3.5 transition-opacity',
+                                        isSelected ? 'text-[var(--brand-strong)] opacity-100' : 'opacity-0'
+                                      )}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
                         {/* Matching Proposals */}
                         {results.length > 0 && (
                           <div className="max-h-80 overflow-y-auto p-1.5">
@@ -715,14 +815,14 @@ export function HomeHeroSection() {
                             {results.map((item, index) => {
                               const repoKey = item.repo;
                               const targetPath = `/${repoKey}/${item.number}`;
-                              const isSelected = index === selectedIndex;
+                              const isSelected = (peopleResults.length + index) === selectedIndex;
                               const meta = [item.category, item.type].filter(Boolean).join(' · ');
 
                               return (
                                 <div
                                   key={`${item.repo}-${item.number}`}
                                   onClick={() => handleSwoop(targetPath)}
-                                  onMouseEnter={() => setSelectedIndex(index)}
+                                  onMouseEnter={() => setSelectedIndex(peopleResults.length + index)}
                                   className={cn(
                                     'flex cursor-pointer items-center justify-between gap-2 rounded-[var(--l-radius-control)] px-3 py-2.5 transition-colors',
                                     isSelected ? 'bg-[var(--surface-2)] text-[var(--ink)]' : 'hover:bg-[var(--surface-2)]'
@@ -754,10 +854,10 @@ export function HomeHeroSection() {
                         )}
 
                         {/* Empty state */}
-                        {!loading && results.length === 0 && !sanityCheck && (
+                        {!loading && results.length === 0 && peopleResults.length === 0 && !sanityCheck && (
                           <div className="px-4 py-6 text-center">
-                            <p className="text-sm font-medium text-[var(--ink)]">No proposals match “{query.trim()}”</p>
-                            <p className="mt-1 text-xs text-[var(--ink-muted)]">Try a number (1559), a repo tag (ERC-20), or a keyword.</p>
+                            <p className="text-sm font-medium text-[var(--ink)]">No results match “{query.trim()}”</p>
+                            <p className="mt-1 text-xs text-[var(--ink-muted)]">Try an author or editor (e.g. Vitalik, lightclient), a number (1559), or an upgrade.</p>
                           </div>
                         )}
 

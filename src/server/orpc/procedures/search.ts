@@ -2,6 +2,7 @@ import { optionalAuthProcedure, type Ctx, ORPCError } from './types'
 import { prisma } from '@/lib/prisma'
 import { env } from '@/env'
 import * as z from 'zod'
+import { CANONICAL_EIP_EDITORS, CANONICAL_EIP_REVIEWERS, isExcludedEditor } from '@/data/eip-contributor-roles'
 
 type SiteGuide = {
   title: string
@@ -1087,9 +1088,52 @@ const searchTerm = `%${input.query}%`;
       limit: z.number().optional().default(50),
     }))
     .handler(async ({ context, input }) => {
-const searchTerm = `%${input.query}%`;
+      const qTrim = input.query.trim();
+      const qLower = qTrim.toLowerCase();
+      const searchTerm = `%${qTrim}%`;
+      const isEditorQuery = /\beditor(s)?\b/i.test(qTrim);
+      const isReviewerQuery = /\breviewer(s)?\b/i.test(qTrim);
 
-      // Get actors from PRs, Issues, and contributor_activity - simplified without EIP matching for now
+      // 1. If searching for author real names (like "Vitalik", "Tim Beiko", "Gavin"), check eips.author
+      // and extract matching handles.
+      const eipAuthorRows = await prisma.$queryRawUnsafe<Array<{ author: string }>>(`
+        SELECT DISTINCT author
+        FROM eips
+        WHERE author IS NOT NULL AND author ILIKE $1
+        LIMIT 50;
+      `, searchTerm);
+
+      const extractedHandles = new Set<string>();
+      for (const row of eipAuthorRows) {
+        if (!row.author) continue;
+        const chunks = row.author.split(",");
+        for (const chunk of chunks) {
+          if (chunk.toLowerCase().includes(qLower)) {
+            // Match @handle but not email addresses like <user@domain.com>
+            const match = chunk.match(/(?:^|[^\w])@([a-zA-Z0-9_-]+)(?!\.[a-zA-Z])/);
+            if (match && match[1]) {
+              extractedHandles.add(match[1]);
+            }
+          }
+        }
+      }
+
+      // Include canonical editors if query asks for "editor"
+      if (isEditorQuery) {
+        for (const ed of CANONICAL_EIP_EDITORS) {
+          extractedHandles.add(ed);
+        }
+      }
+      // Include canonical reviewers if query asks for "reviewer"
+      if (isReviewerQuery) {
+        for (const rev of CANONICAL_EIP_REVIEWERS) {
+          extractedHandles.add(rev);
+        }
+      }
+
+      const handleList = Array.from(extractedHandles);
+
+      // Query actors matching searchTerm, extractedHandles, or matching role
       const results = await prisma.$queryRawUnsafe<Array<{
         actor: string;
         role: string | null;
@@ -1099,29 +1143,34 @@ const searchTerm = `%${input.query}%`;
         review_count: bigint;
         last_activity: Date | null;
       }>>(`
-        WITH all_actors AS (
-          SELECT DISTINCT author AS actor
-          FROM pull_requests
-          WHERE author IS NOT NULL AND author != '' AND author ILIKE $1
+        WITH candidate_actors AS (
+          SELECT DISTINCT author AS actor FROM pull_requests WHERE author IS NOT NULL AND author != '' AND author ILIKE $1
           UNION
-          SELECT DISTINCT author AS actor
-          FROM issues
-          WHERE author IS NOT NULL AND author != '' AND author ILIKE $1
+          SELECT DISTINCT author AS actor FROM issues WHERE author IS NOT NULL AND author != '' AND author ILIKE $1
           UNION
-          SELECT DISTINCT actor
-          FROM contributor_activity
-          WHERE actor IS NOT NULL AND actor != '' AND actor ILIKE $1
+          SELECT DISTINCT actor FROM contributor_activity WHERE actor IS NOT NULL AND actor != '' AND actor ILIKE $1
+          UNION
+          SELECT DISTINCT actor FROM contributor_scores WHERE actor IS NOT NULL AND actor != '' AND actor ILIKE $1
+          UNION
+          SELECT unnest($3::text[]) AS actor
+          UNION
+          SELECT DISTINCT actor FROM contributor_activity 
+          WHERE ($4::boolean = true AND UPPER(role) = 'EDITOR')
+             OR ($5::boolean = true AND UPPER(role) = 'REVIEWER')
+        ),
+        valid_actors AS (
+          SELECT DISTINCT actor FROM candidate_actors WHERE actor IS NOT NULL AND actor != ''
         ),
         pr_counts AS (
           SELECT author AS actor, COUNT(*)::bigint AS pr_count
           FROM pull_requests
-          WHERE author IS NOT NULL AND author ILIKE $1
+          WHERE author IN (SELECT actor FROM valid_actors)
           GROUP BY author
         ),
         issue_counts AS (
           SELECT author AS actor, COUNT(*)::bigint AS issue_count
           FROM issues
-          WHERE author IS NOT NULL AND author ILIKE $1
+          WHERE author IN (SELECT actor FROM valid_actors)
           GROUP BY author
         ),
         activity_stats AS (
@@ -1131,53 +1180,72 @@ const searchTerm = `%${input.query}%`;
             MAX(occurred_at) AS last_activity,
             MAX(role) AS role
           FROM contributor_activity
-          WHERE actor IS NOT NULL AND actor ILIKE $1
+          WHERE actor IN (SELECT actor FROM valid_actors)
           GROUP BY actor
         ),
         eip_counts AS (
           SELECT
-            aa.actor,
+            va.actor,
             COUNT(*)::bigint AS eip_count
-          FROM all_actors aa
-          JOIN eips e ON e.author ILIKE '%' || aa.actor || '%'
-          GROUP BY aa.actor
+          FROM valid_actors va
+          JOIN eips e ON e.author ILIKE '%(@' || va.actor || ')%' OR e.author ILIKE '%@' || va.actor || '%'
+          GROUP BY va.actor
         )
         SELECT
-          aa.actor,
+          va.actor,
           act.role,
           COALESCE(ec.eip_count, 0)::bigint AS eip_count,
           COALESCE(pc.pr_count, 0)::bigint AS pr_count,
           COALESCE(ic.issue_count, 0)::bigint AS issue_count,
           COALESCE(act.review_count, 0)::bigint AS review_count,
           act.last_activity
-        FROM all_actors aa
-        LEFT JOIN pr_counts pc ON pc.actor = aa.actor
-        LEFT JOIN issue_counts ic ON ic.actor = aa.actor
-        LEFT JOIN activity_stats act ON act.actor = aa.actor
-        LEFT JOIN eip_counts ec ON ec.actor = aa.actor
+        FROM valid_actors va
+        LEFT JOIN pr_counts pc ON pc.actor = va.actor
+        LEFT JOIN issue_counts ic ON ic.actor = va.actor
+        LEFT JOIN activity_stats act ON act.actor = va.actor
+        LEFT JOIN eip_counts ec ON ec.actor = va.actor
         WHERE COALESCE(ec.eip_count, 0) > 0 
            OR COALESCE(pc.pr_count, 0) > 0 
            OR COALESCE(ic.issue_count, 0) > 0 
            OR COALESCE(act.review_count, 0) > 0
         ORDER BY (
-          COALESCE(ec.eip_count, 0) +
+          COALESCE(ec.eip_count, 0) * 3 +
           COALESCE(pc.pr_count, 0) +
           COALESCE(ic.issue_count, 0) +
-          COALESCE(act.review_count, 0)
-        ) DESC, aa.actor ASC
+          COALESCE(act.review_count, 0) * 2
+        ) DESC, va.actor ASC
         LIMIT $2
-      `, searchTerm, input.limit);
+      `, searchTerm, input.limit, handleList, isEditorQuery, isReviewerQuery);
 
-      return results.map(r => ({
-        kind: 'author' as const,
-        name: r.actor,
-        role: r.role || null,
-        eipCount: Number(r.eip_count),
-        prCount: Number(r.pr_count),
-        issueCount: Number(r.issue_count),
-        reviewCount: Number(r.review_count),
-        lastActivity: r.last_activity?.toISOString() || null,
-      }));
+      const canonicalEditorsLower = new Set(CANONICAL_EIP_EDITORS.map(e => e.toLowerCase()));
+      const canonicalReviewersLower = new Set(CANONICAL_EIP_REVIEWERS.map(r => r.toLowerCase()));
+
+      return results
+        .filter(r => !isExcludedEditor(r.actor) && !r.actor.includes('@'))
+        .map(r => {
+          const lower = r.actor.toLowerCase();
+          let assignedRole = r.role || null;
+          if (canonicalEditorsLower.has(lower)) {
+            assignedRole = 'EDITOR';
+          } else if (canonicalReviewersLower.has(lower)) {
+            assignedRole = 'REVIEWER';
+          } else if (!assignedRole) {
+            if (Number(r.eip_count) > 0) assignedRole = 'AUTHOR';
+            else assignedRole = 'CONTRIBUTOR';
+          }
+
+          return {
+            kind: 'author' as const,
+            name: r.actor,
+            role: assignedRole,
+            eipCount: Number(r.eip_count),
+            prCount: Number(r.pr_count),
+            issueCount: Number(r.issue_count),
+            reviewCount: Number(r.review_count),
+            contributionCount: Number(r.eip_count) + Number(r.pr_count) + Number(r.issue_count) + Number(r.review_count),
+            lastActivity: r.last_activity?.toISOString() || null,
+          };
+        });
     }),
 
   // Search pull requests
