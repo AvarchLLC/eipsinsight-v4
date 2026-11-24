@@ -258,13 +258,12 @@ export default function Navbar() {
 
             {/* Profile / Auth */}
             {!session?.user ? (
-              <Button
-                size="sm"
-                className="h-8 rounded-lg persona-gradient px-3 text-xs text-primary-foreground hover:opacity-90"
-                asChild
+              <Link
+                href="/login"
+                className="h-8 px-3.5 rounded-lg text-xs font-sans font-medium inline-flex items-center justify-center bg-[var(--ink)] text-[var(--paper)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs shrink-0"
               >
-                <Link href="/login">Sign in</Link>
-              </Button>
+                Sign in
+              </Link>
             ) : (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -474,13 +473,12 @@ export default function Navbar() {
 
               {/* Auth */}
               {!session?.user ? (
-                <Button
-                  size="sm"
-                  className="h-8 rounded-lg persona-gradient px-3 text-xs text-primary-foreground hover:opacity-90"
-                  asChild
+                <Link
+                  href="/login"
+                  className="h-8 px-3.5 rounded-lg text-xs font-sans font-medium inline-flex items-center justify-center bg-[var(--ink)] text-[var(--paper)] hover:opacity-90 transition-opacity cursor-pointer shadow-xs"
                 >
-                  <Link href="/login">Sign in</Link>
-                </Button>
+                  Sign in
+                </Link>
               ) : (
                 <div className="flex items-center gap-2">
                   <Link href="/profile" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">

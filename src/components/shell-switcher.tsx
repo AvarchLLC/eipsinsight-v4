@@ -1,13 +1,25 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { MainAppShell } from '@/components/main-app-shell';
 
 /**
- * Every route uses the standard shell (navbar + sidebar). The /upgrade tree previously had its
- * own minimal chrome (UpgradeShell) with a bespoke sub-navbar; that navigation now lives in the
- * sidebar's Upgrades and "Calls & Decisions" trees, so upgrade pages get the same chrome as the
- * rest of the app rather than a parallel one.
+ * Shell switcher:
+ * Auth routes (/login, /verify-request) render without the main app shell
+ * (no app sidebar, no main navbar, no floating feedback, no footer).
+ * All standard app routes render inside MainAppShell.
  */
 export function ShellSwitcher({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const isAuthRoute =
+    pathname === '/login' ||
+    pathname.startsWith('/login/') ||
+    pathname === '/verify-request' ||
+    pathname.startsWith('/verify-request/');
+
+  if (isAuthRoute) {
+    return <>{children}</>;
+  }
+
   return <MainAppShell>{children}</MainAppShell>;
 }

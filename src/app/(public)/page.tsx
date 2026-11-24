@@ -1890,7 +1890,7 @@ export default function EIPsHomePage() {
 
   return (
     <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
-      <div className="wrap space-y-16 sm:space-y-20 py-6 sm:py-10">
+      <div className="wrap space-y-16 sm:space-y-20 pt-6 sm:pt-10 pb-4">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
           <HomeHeroSection />
         </motion.div>

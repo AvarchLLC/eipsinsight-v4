@@ -33,6 +33,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { callSeriesShort } from '@/data/call-series';
+import { isExcludedEditor } from '@/data/eip-contributor-roles';
 
 type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
 
@@ -223,6 +224,7 @@ export default function DedicatedRecapPage() {
 
     // 4. Editor Actions
     const filteredEditorActions = (data.editorActions || []).filter((ea) => {
+      if (isExcludedEditor(ea.editor)) return false;
       if (filter !== 'all' && filter !== 'editor_activity') return false;
       const cat = ea.repoName?.includes('erc') ? 'erc' : ea.repoName?.includes('rip') ? 'rip' : 'eip';
       if (!matchesRepo(cat)) return false;
@@ -423,7 +425,9 @@ export default function DedicatedRecapPage() {
 
     // Editor Actions
     if (data.editorActions) {
-      data.editorActions.forEach((ea) => {
+      data.editorActions
+        .filter((ea) => !isExcludedEditor(ea.editor))
+        .forEach((ea) => {
         const cat = ea.repoName?.includes('erc') ? 'erc' : ea.repoName?.includes('rip') ? 'rip' : 'eip';
         const repoPath = normalizeRepoSegment(ea.repoName);
         list.push({
@@ -540,7 +544,9 @@ export default function DedicatedRecapPage() {
   const totalNew = data?.newProposals.length ?? 0;
   const totalChanges = data?.statusChanges.length ?? 0;
   const totalPRs = data?.mergedPRs.length ?? 0;
-  const totalEditorActions = data?.editorActions?.length ?? 0;
+  const totalEditorActions = (data?.editorActions ?? []).filter(
+    (ea) => !isExcludedEditor(ea.editor)
+  ).length;
   const totalCalls = (data?.recentCalls.length ?? 0) + (data?.devnets.length ?? 0);
 
   return (

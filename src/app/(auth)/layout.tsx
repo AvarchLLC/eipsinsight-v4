@@ -1,4 +1,7 @@
 import type { Metadata } from "next";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { buildMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = buildMetadata({
@@ -14,18 +17,46 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="relative min-h-screen w-full overflow-hidden bg-background">
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-x-0 top-0 h-44 bg-gradient-to-b from-primary/10 via-primary/0 to-transparent" />
-        <div className="absolute left-1/4 top-0 h-[360px] w-[360px] rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute right-1/4 top-1/3 h-[300px] w-[300px] rounded-full bg-primary/10 blur-[120px]" />
-      </div>
+    <div
+      data-ledger
+      className="min-h-screen w-full bg-[var(--paper)] text-[var(--ink)] flex flex-col justify-between selection:bg-[var(--brand)] selection:text-[var(--paper)]"
+    >
+      {/* Top Header */}
+      <header className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex items-center justify-between">
+        <Link
+          href="/"
+          className="inline-flex items-center gap-2 text-xs font-mono text-[var(--ink-muted)] hover:text-[var(--ink)] px-3 py-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] hover:bg-[var(--surface-2)] transition-colors cursor-pointer group shadow-2xs"
+        >
+          <ArrowLeft className="h-3.5 w-3.5 text-[var(--ink-faint)] group-hover:text-[var(--ink)] group-hover:-translate-x-0.5 transition-transform" />
+          <span>Return to index</span>
+        </Link>
 
-      <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,hsl(var(--border)/0.35)_1px,transparent_1px),linear-gradient(to_bottom,hsl(var(--border)/0.35)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_110%)] opacity-25" />
+        <div className="flex items-center gap-2">
+          <ThemeToggle variant="switch" />
+        </div>
+      </header>
 
-      <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-8 sm:px-6 lg:px-8">
+      {/* Main Content Area */}
+      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:px-6">
         {children}
-      </div>
+      </main>
+
+      {/* Subtle Footer */}
+      <footer className="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs font-mono text-[var(--ink-faint)] flex flex-col sm:flex-row items-center justify-between gap-2 border-t border-[var(--border)]/60">
+        <span>© {new Date().getFullYear()} EIPsInsight. Open Ethereum Standards Observatory.</span>
+        <div className="flex items-center gap-4 text-xs font-sans text-[var(--ink-muted)]">
+          <Link href="/terms" className="hover:text-[var(--ink)] transition-colors">Terms</Link>
+          <Link href="/privacy-policy" className="hover:text-[var(--ink)] transition-colors">Privacy</Link>
+          <a
+            href="https://github.com/AvarchLLC/eipsinsight-v4"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-[var(--ink)] transition-colors"
+          >
+            GitHub
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }

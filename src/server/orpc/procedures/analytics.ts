@@ -1782,6 +1782,7 @@ export const analyticsProcedures = {
           ON pr.pr_number = pe.pr_number
          AND pr.repository_id = pe.repository_id
         WHERE pe.actor_role = 'EDITOR'
+          AND LOWER(pe.actor) NOT IN ('abcoathup', 'eip-review-bot')
           AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
           AND ($2::boolean = FALSE OR pr.state = 'open')
         ORDER BY pe.created_at DESC
@@ -7092,6 +7093,7 @@ export const analyticsProcedures = {
           JOIN repositories r ON pe.repository_id = r.id
           LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
           WHERE pe.actor_role = 'EDITOR'
+            AND LOWER(pe.actor) NOT IN ('abcoathup', 'eip-review-bot')
             AND pe.created_at >= NOW() - INTERVAL '7 days'
             AND ($1::text IS NULL OR LOWER(SPLIT_PART(r.name, '/', 2)) = LOWER($1))
         )

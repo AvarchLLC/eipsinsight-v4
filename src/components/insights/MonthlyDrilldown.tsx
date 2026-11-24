@@ -291,7 +291,9 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
 
         setData(drilldown);
         setSummaryRows(summaryDrilldown.rows);
-        setEditors(editorRows.items.map((row) => ({
+        setEditors(editorRows.items
+          .filter((row) => row.actor.toLowerCase() !== 'abcoathup' && row.actor.toLowerCase() !== 'eip-review-bot')
+          .map((row) => ({
           editor: row.actor,
           totalActions: row.totalActions,
           prsTouched: row.prsTouched,
@@ -1074,11 +1076,7 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                           {editors.slice(0, 8).map((ed, idx) => (
                             <div
                               key={ed.editor}
-                              className={`flex items-center gap-2.5 rounded-lg border px-2.5 py-2 ${
-                                ed.editor.toLowerCase() === "abcoathup"
-                                  ? "border-amber-500/40 bg-amber-500/10"
-                                  : "border-border bg-background/60"
-                              }`}
+                              className="flex items-center gap-2.5 rounded-lg border border-border bg-background/60 px-2.5 py-2"
                             >
                               <span className="w-5 text-right text-xs font-semibold text-muted-foreground">{idx + 1}</span>
                               <img
@@ -1092,11 +1090,6 @@ export function MonthlyDrilldown({ initialMonth, basePath = "/insights" }: Month
                               <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-2">
                                   <p className="truncate text-sm font-medium text-foreground">{ed.editor}</p>
-                                  {ed.editor.toLowerCase() === "abcoathup" && (
-                                    <span className="rounded-full border border-amber-500/40 bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
-                                      Associate Editor
-                                    </span>
-                                  )}
                                 </div>
                                 <p className="text-[11px] text-muted-foreground">{ed.totalActions} actions · {ed.prsTouched} PRs touched</p>
                               </div>

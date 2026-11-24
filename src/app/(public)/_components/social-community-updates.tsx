@@ -120,7 +120,7 @@ type UpcomingEvent = {
 const communityChannels = [
   {
     name: 'Ethereum Magicians',
-    description: 'Primary forum for EIP proposal discussions and community feedback.',
+    description: 'Primary forum for EIP proposal discussions and feedback.',
     meta: 'Forum',
     url: 'https://ethereum-magicians.org/c/eips/14',
     icon: Hash,
@@ -138,6 +138,38 @@ const communityChannels = [
     meta: 'Agendas',
     url: 'https://github.com/ethereum/pm/issues',
     icon: Github,
+  },
+];
+
+const watchlistTopics = [
+  { label: 'Account Abstraction', url: 'https://ethresear.ch/t/account-abstraction-roadmap/' },
+  { label: 'Rollup Standards (RIP/RRC)', url: 'https://ethereum-magicians.org/' },
+  { label: 'Pectra Follow-ups', url: 'https://github.com/ethereum/pm/issues/' },
+  { label: 'EIP Process & Tooling', url: 'https://ethereum-magicians.org/c/eips/14' },
+  { label: 'Verkle Trees & State Expiry', url: 'https://ethresear.ch/' },
+  { label: 'Calldata & Gas Economics', url: 'https://ethereum-magicians.org/c/eips/14' },
+];
+
+const communityResources = [
+  {
+    name: 'Official EIPs Website',
+    desc: 'Standard specifications & index',
+    url: 'https://eips.ethereum.org/',
+  },
+  {
+    name: 'EIPs GitHub Repository',
+    desc: 'Core specifications repository',
+    url: 'https://github.com/ethereum/EIPs',
+  },
+  {
+    name: 'Ethereum PM Repository',
+    desc: 'Meeting coordination & agendas',
+    url: 'https://github.com/ethereum/pm',
+  },
+  {
+    name: 'Ethereum Research',
+    desc: 'Protocol cryptoeconomics & proposals',
+    url: 'https://ethresear.ch/',
   },
 ];
 
@@ -239,7 +271,7 @@ export default function SocialCommunityUpdates({
   }, []);
 
   return (
-    <section className="mb-12 pt-2 scroll-mt-24" id="community">
+    <section className="pt-2 scroll-mt-24" id="community">
       <SectionHead
         index="10"
         eyebrow="Ecosystem engagement"
@@ -306,20 +338,21 @@ export default function SocialCommunityUpdates({
         })}
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[1.75fr_1.25fr]">
-        {/* Left Column: Active Discussions & Watchlist Topics */}
-        <div className="space-y-4">
+      {/* Main Feeds Grid: Side-by-Side (Active Discussions + Protocol Meetings) */}
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        {/* Left Column: Active Discussions */}
+        <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
               Active Discussions
             </h3>
             <span className="text-[11px] font-mono text-[var(--ink-faint)]">
-              {sortedDiscussions.length} curated threads
+              Curated forum threads
             </span>
           </div>
 
           <div className="space-y-2.5">
-            {sortedDiscussions.map((discussion) => {
+            {sortedDiscussions.slice(0, 5).map((discussion) => {
               const catClass =
                 categoryBadges[discussion.category] ||
                 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)]';
@@ -373,247 +406,219 @@ export default function SocialCommunityUpdates({
               );
             })}
           </div>
-
-          {/* Watchlist Topics */}
-          <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
-            <h4 className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
-              Watchlist Topics
-            </h4>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {[
-                { label: 'Account Abstraction', url: 'https://ethresear.ch/t/account-abstraction-roadmap/' },
-                { label: 'Rollup Standards (RIP/RRC)', url: 'https://ethereum-magicians.org/' },
-                { label: 'Pectra Follow-ups', url: 'https://github.com/ethereum/pm/issues/' },
-                { label: 'EIP Process & Tooling', url: 'https://ethereum-magicians.org/c/eips/14' },
-              ].map((topic) => (
-                <a
-                  key={topic.label}
-                  href={topic.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="group flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs font-sans font-medium text-[var(--ink)] transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--surface)]"
-                >
-                  <span className="group-hover:text-[var(--brand-strong)] transition-colors">
-                    {topic.label}
-                  </span>
-                  <ArrowUpRight className="h-3 w-3 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                </a>
-              ))}
-            </div>
-          </div>
         </div>
 
-        {/* Right Column: Protocol Meetings, Channels, Resources */}
-        <div className="space-y-4">
-          {/* Protocol Meetings */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
-                Protocol Meetings
-              </h3>
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand)]/30 bg-[var(--brand-muted)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--brand-strong)]">
-                <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] animate-pulse" />
-                Live GitHub PM
-              </span>
-            </div>
-
-            {/* Shared Protocol Calendar Card */}
-            <a
-              href="https://calendar.google.com/calendar/embed?src=c_upaofong8mgrmrkegn7ic7hk5s%40group.calendar.google.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="group flex items-start gap-3 rounded-xl border border-[var(--brand)]/30 bg-[var(--brand-muted)]/20 p-3.5 transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--brand-muted)]/30"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--brand)]/30 bg-[var(--surface)] text-[var(--brand-strong)]">
-                <Calendar className="h-4 w-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
-                  Upcoming Protocol Calendar
-                </p>
-                <p className="mt-1 text-xs font-sans text-[var(--ink-muted)] leading-relaxed">
-                  Track ACD, breakout rooms, and execution calls from the official shared calendar.
-                </p>
-              </div>
-              <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-            </a>
-
-            {eventsSyncedAt ? (
-              <div className="flex items-center justify-between text-[11px] font-mono text-[var(--ink-faint)] px-1">
-                <span>
-                  Last synced{' '}
-                  {new Date(eventsSyncedAt).toLocaleString('en-US', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </span>
-                <a
-                  href="https://github.com/ethereum/pm/issues"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-[var(--ink)] inline-flex items-center gap-1"
-                >
-                  View All <ArrowUpRight className="h-3 w-3" />
-                </a>
-              </div>
-            ) : null}
-
-            {eventsLoading ? (
-              <div className="space-y-2.5">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div
-                    key={`upcoming-event-skeleton-${i}`}
-                    className="h-16 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]"
-                  />
-                ))}
-              </div>
-            ) : upcomingEvents.length === 0 ? (
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-center text-xs font-sans text-[var(--ink-muted)]">
-                No upcoming meeting agendas found right now. Check the full PM issue list.
-              </div>
-            ) : (
-              <div className="space-y-2.5">
-                {upcomingEvents.map((event) => {
-                  const dateParts = parseDateParts(event.date);
-                  const badgeClass =
-                    typeBadges[event.type] ||
-                    'border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)]';
-                  return (
-                    <a
-                      key={event.id}
-                      href={event.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--surface-2)]"
-                    >
-                      <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-center">
-                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--brand-strong)] leading-none">
-                          {dateParts.month}
-                        </span>
-                        <span className="text-sm font-sans font-bold leading-tight text-[var(--ink)] tabular-nums">
-                          {dateParts.day}
-                        </span>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={cn(
-                              'rounded-full border px-1.5 py-0.2 text-[10px] font-mono font-semibold',
-                              badgeClass,
-                            )}
-                          >
-                            {event.type}
-                          </span>
-                          <span className="text-[11px] font-mono text-[var(--ink-faint)]">
-                            {event.time}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-xs font-sans font-medium text-[var(--ink)] line-clamp-2 group-hover:text-[var(--brand-strong)] transition-colors">
-                          {event.title}
-                        </p>
-                      </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] opacity-0 group-hover:opacity-100 group-hover:text-[var(--brand-strong)] transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                    </a>
-                  );
-                })}
-              </div>
-            )}
+        {/* Right Column: Protocol Meetings */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
+              Protocol Meetings
+            </h3>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[var(--brand)]/30 bg-[var(--brand-muted)] px-2.5 py-0.5 text-[11px] font-mono text-[var(--brand-strong)]">
+              <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)] animate-pulse" />
+              Live GitHub PM
+            </span>
           </div>
 
-          {/* Community Channels */}
-          <div className="space-y-3 pt-2">
-            <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
-              Community Channels
-            </h3>
+          {/* Shared Protocol Calendar Card */}
+          <a
+            href="https://calendar.google.com/calendar/embed?src=c_upaofong8mgrmrkegn7ic7hk5s%40group.calendar.google.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group flex items-start gap-3 rounded-xl border border-[var(--brand)]/30 bg-[var(--brand-muted)]/20 p-3.5 transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--brand-muted)]/30"
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--brand)]/30 bg-[var(--surface)] text-[var(--brand-strong)]">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
+                Upcoming Protocol Calendar
+              </p>
+              <p className="mt-1 text-xs font-sans text-[var(--ink-muted)] leading-relaxed">
+                Track ACD, breakout rooms, and execution calls from the official shared calendar.
+              </p>
+            </div>
+            <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+          </a>
+
+          {eventsSyncedAt ? (
+            <div className="flex items-center justify-between text-[11px] font-mono text-[var(--ink-faint)] px-1">
+              <span>
+                Last synced{' '}
+                {new Date(eventsSyncedAt).toLocaleString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </span>
+              <a
+                href="https://github.com/ethereum/pm/issues"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hover:text-[var(--ink)] inline-flex items-center gap-1"
+              >
+                View All Issues <ArrowUpRight className="h-3 w-3" />
+              </a>
+            </div>
+          ) : null}
+
+          {eventsLoading ? (
             <div className="space-y-2.5">
-              {communityChannels.map((channel) => {
-                const Icon = channel.icon;
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={`upcoming-event-skeleton-${i}`}
+                  className="h-16 animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+                />
+              ))}
+            </div>
+          ) : upcomingEvents.length === 0 ? (
+            <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-center text-xs font-sans text-[var(--ink-muted)]">
+              No upcoming meeting agendas found right now. Check the full PM issue list.
+            </div>
+          ) : (
+            <div className="space-y-2.5">
+              {upcomingEvents.slice(0, 4).map((event) => {
+                const dateParts = parseDateParts(event.date);
+                const badgeClass =
+                  typeBadges[event.type] ||
+                  'border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)]';
                 return (
                   <a
-                    key={channel.name}
-                    href={channel.url}
+                    key={event.id}
+                    href={event.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3.5 transition-all duration-200 hover:border-[var(--brand)]/50 hover:bg-[var(--surface-2)]"
+                    className="group flex items-start gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--surface-2)]"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-[var(--ink-muted)] group-hover:border-[var(--brand)]/40 group-hover:text-[var(--brand-strong)] transition-colors">
-                      <Icon className="h-4 w-4" />
+                    <div className="flex h-11 w-11 shrink-0 flex-col items-center justify-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-center">
+                      <span className="text-[9px] font-mono font-bold uppercase tracking-wider text-[var(--brand-strong)] leading-none">
+                        {dateParts.month}
+                      </span>
+                      <span className="text-sm font-sans font-bold leading-tight text-[var(--ink)] tabular-nums">
+                        {dateParts.day}
+                      </span>
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
-                          {channel.name}
-                        </p>
-                        <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 text-[10px] font-mono text-[var(--ink-muted)]">
-                          {channel.meta}
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={cn(
+                            'rounded-full border px-1.5 py-0.2 text-[10px] font-mono font-semibold',
+                            badgeClass,
+                          )}
+                        >
+                          {event.type}
+                        </span>
+                        <span className="text-[11px] font-mono text-[var(--ink-faint)]">
+                          {event.time}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs font-sans text-[var(--ink-muted)] leading-relaxed">
-                        {channel.description}
+                      <p className="mt-1 text-xs font-sans font-medium text-[var(--ink)] line-clamp-2 group-hover:text-[var(--brand-strong)] transition-colors">
+                        {event.title}
                       </p>
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                    <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] opacity-0 group-hover:opacity-100 group-hover:text-[var(--brand-strong)] transition-all group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
                   </a>
                 );
               })}
             </div>
-          </div>
-
-          {/* Community Resources */}
-          {showCommunityResources && (
-            <div className="space-y-3 pt-2">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
-                Community Resources
-              </h3>
-              <div className="rounded-xl border border-[var(--border)] bg-[var(--surface)] p-2">
-                <div className="divide-y divide-[var(--border)]">
-                  {[
-                    {
-                      name: 'Official EIPs Website',
-                      desc: 'Standard specifications & index',
-                      url: 'https://eips.ethereum.org/',
-                    },
-                    {
-                      name: 'EIPs GitHub Repository',
-                      desc: 'Core specifications repository',
-                      url: 'https://github.com/ethereum/EIPs',
-                    },
-                    {
-                      name: 'Ethereum PM Repository',
-                      desc: 'Meeting coordination & agendas',
-                      url: 'https://github.com/ethereum/pm',
-                    },
-                    {
-                      name: 'Ethereum Research',
-                      desc: 'Protocol cryptoeconomics & proposals',
-                      url: 'https://ethresear.ch/',
-                    },
-                  ].map((res) => (
-                    <a
-                      key={res.name}
-                      href={res.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="group flex items-center justify-between p-2.5 rounded-lg transition-colors hover:bg-[var(--surface-2)]"
-                    >
-                      <div>
-                        <p className="text-xs font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
-                          {res.name}
-                        </p>
-                        <p className="text-[11px] font-sans text-[var(--ink-faint)]">
-                          {res.desc}
-                        </p>
-                      </div>
-                      <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            </div>
           )}
         </div>
+      </div>
+
+      {/* Balanced Directory Grid: 3 Equal Columns Below */}
+      <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Col 1: Watchlist Topics */}
+        <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h4 className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
+            Watchlist Topics
+          </h4>
+          <div className="grid gap-2 sm:grid-cols-2 flex-1 content-start">
+            {watchlistTopics.map((topic) => (
+              <a
+                key={topic.label}
+                href={topic.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-2 text-xs font-sans font-medium text-[var(--ink)] transition-all hover:border-[var(--brand)]/50 hover:bg-[var(--surface)]"
+              >
+                <span className="truncate group-hover:text-[var(--brand-strong)] transition-colors">
+                  {topic.label}
+                </span>
+                <ArrowUpRight className="h-3 w-3 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ml-1" />
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Col 2: Community Channels */}
+        <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+          <h4 className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
+            Community Channels
+          </h4>
+          <div className="space-y-2.5 flex-1 content-start">
+            {communityChannels.map((channel) => {
+              const Icon = channel.icon;
+              return (
+                <a
+                  key={channel.name}
+                  href={channel.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-start gap-2.5 rounded-lg border border-[var(--border)] bg-[var(--surface-2)] p-2.5 transition-all duration-200 hover:border-[var(--brand)]/50 hover:bg-[var(--surface)]"
+                >
+                  <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] group-hover:border-[var(--brand)]/40 group-hover:text-[var(--brand-strong)] transition-colors">
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors truncate">
+                        {channel.name}
+                      </p>
+                      <span className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.2 text-[9px] font-mono text-[var(--ink-muted)]">
+                        {channel.meta}
+                      </span>
+                    </div>
+                    <p className="mt-0.5 text-[11px] font-sans text-[var(--ink-muted)] line-clamp-1 leading-normal">
+                      {channel.description}
+                    </p>
+                  </div>
+                  <ArrowUpRight className="h-3 w-3 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
+                </a>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Col 3: Community Resources */}
+        {showCommunityResources && (
+          <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4">
+            <h4 className="mb-3 text-xs font-mono uppercase tracking-wider text-[var(--ink-muted)]">
+              Community Resources
+            </h4>
+            <div className="divide-y divide-[var(--border)] flex-1 content-start">
+              {communityResources.map((res) => (
+                <a
+                  key={res.name}
+                  href={res.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group flex items-center justify-between py-2 transition-colors hover:text-[var(--brand-strong)]"
+                >
+                  <div className="min-w-0">
+                    <p className="text-xs font-sans font-semibold text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors truncate">
+                      {res.name}
+                    </p>
+                    <p className="text-[11px] font-sans text-[var(--ink-faint)] truncate">
+                      {res.desc}
+                    </p>
+                  </div>
+                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-[var(--ink-faint)] group-hover:text-[var(--brand-strong)] transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ml-2" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

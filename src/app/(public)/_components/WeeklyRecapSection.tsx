@@ -32,6 +32,7 @@ import { client } from '@/lib/orpc';
 import { SectionHead } from '@/components/ledger/section-head';
 import { LedgerBadge } from '@/components/ledger/badge';
 import { callSeriesShort } from '@/data/call-series';
+import { isExcludedEditor } from '@/data/eip-contributor-roles';
 import { cn } from '@/lib/utils';
 
 type WeeklyData = Awaited<ReturnType<typeof client.dashboard.getWeeklyRecap>>;
@@ -190,21 +191,23 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
 
     // Editor Actions
     if (data.editorActions) {
-      data.editorActions.forEach((ea) => {
-        const repoPath = normalizeRepoSegment(ea.repoName);
-        list.push({
-          id: `editor-${ea.repoName}-${ea.number}-${ea.editor}-${ea.actedAt}`,
-          kind: 'editor_activity',
-          title: `PR #${ea.number}: ${ea.title || 'Editor Activity'}`,
-          subtitle: `Editor @${ea.editor} (${ea.eventType}) in ${ea.repoName}`,
-          actor: ea.editor,
-          badgeText: `Editor ${ea.eventType}`,
-          badgeVariant: 'indigo',
-          dateIso: ea.actedAt,
-          href: `/pr/${repoPath}/${ea.number}`,
-          externalHref: ea.eventUrl || undefined,
+      data.editorActions
+        .filter((ea) => !isExcludedEditor(ea.editor))
+        .forEach((ea) => {
+          const repoPath = normalizeRepoSegment(ea.repoName);
+          list.push({
+            id: `editor-${ea.repoName}-${ea.number}-${ea.editor}-${ea.actedAt}`,
+            kind: 'editor_activity',
+            title: `PR #${ea.number}: ${ea.title || 'Editor Activity'}`,
+            subtitle: `Editor @${ea.editor} (${ea.eventType}) in ${ea.repoName}`,
+            actor: ea.editor,
+            badgeText: `Editor ${ea.eventType}`,
+            badgeVariant: 'indigo',
+            dateIso: ea.actedAt,
+            href: `/pr/${repoPath}/${ea.number}`,
+            externalHref: ea.eventUrl || undefined,
+          });
         });
-      });
     }
 
     // Recent calls
@@ -297,7 +300,9 @@ export function WeeklyRecapSection({ sectionTitleClass, sectionSubtitleClass }: 
   const totalNew = data?.newProposals.length ?? 0;
   const totalChanges = data?.statusChanges.length ?? 0;
   const totalPRs = data?.mergedPRs.length ?? 0;
-  const totalEditorActions = data?.editorActions?.length ?? 0;
+  const totalEditorActions = (data?.editorActions ?? []).filter(
+    (ea) => !isExcludedEditor(ea.editor)
+  ).length;
   const filteredDevnetsCount = (data?.devnets || []).filter((d) => {
     const series = (d.series || '').toLowerCase();
     const title = (d.title || '').toLowerCase();
