@@ -25,6 +25,7 @@ import {
   Lock,
   Database,
   FlaskConical,
+  Trophy,
   type LucideIcon,
 } from "lucide-react";
 import { useSidebarStore } from "@/stores/sidebarStore";
@@ -105,26 +106,14 @@ const sidebarSections: SidebarSection[] = [
     label: "Explore",
     items: [
       {
-        title: "Standards",
-        icon: Layers,
-        href: "/standards",
-        items: [
-          { title: "All Standards", href: "/standards" },
-          { title: "EIPs", href: "/standards?repo=eips" },
-          { title: "ERCs", href: "/standards?repo=ercs" },
-          { title: "RIPs", href: "/standards?repo=rips" },
-        ],
-      },
-      {
-        title: "Explore",
+        title: "Explore Standards",
         icon: Compass,
         href: "/explore",
         items: [
-          { title: "Explore Hub", href: "/explore" },
-          { title: "By Year", href: "/explore/years" },
-          { title: "By Status", href: "/explore/status" },
-          { title: "By Role", href: "/explore/roles" },
-          { title: "Trending", href: "/explore/trending" },
+          { title: "All Proposals", href: "/explore?tab=proposals" },
+          { title: "By Year", href: "/explore?tab=years" },
+          { title: "By Role", href: "/explore?tab=roles" },
+          { title: "Trending", href: "/explore?tab=trending" },
         ],
       },
       {
@@ -136,6 +125,17 @@ const sidebarSections: SidebarSection[] = [
         title: "Standards Adoption",
         icon: Boxes,
         href: "/adoption",
+      },
+    ],
+  },
+  {
+    id: "leaderboard",
+    label: "Leaderboard",
+    items: [
+      {
+        title: "Leaderboard",
+        icon: Trophy,
+        href: "/leaderboard",
       },
     ],
   },

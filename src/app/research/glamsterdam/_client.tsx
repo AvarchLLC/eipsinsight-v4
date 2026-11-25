@@ -2,8 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, Plus, ArrowRight } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowRight, Check, Link2 } from 'lucide-react';
 import { PageHead } from '@/components/ledger/page-head';
 import { META, SCAN, FLAGGED, NEWACCT, SCANNED, COMPOSITION } from './_data';
 import {
@@ -18,39 +17,82 @@ import {
   CompositionOverTime,
   StateGasPerDayChart,
   DeltaHistogram,
+  classify,
 } from './_charts';
+import { ContractsTable, type ContractRow } from './_contracts-table';
 
-const addrUrl = (a: string) => `https://etherscan.io/address/${a}`;
-const short = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 const fmt = (n: number) => n.toLocaleString();
 
-/* Ledger section head: brand lead-in on an ink rule, index + serif title. */
-function SectionHead({ n, title }: { n: string; title: string }) {
+// Join: every scanned contract carries its category (Kind) and, when flagged,
+// the invariant ids it matched (looked up from the flagged set by address).
+const invByAddr = new Map(FLAGGED.map((f) => [f.addr.toLowerCase(), f.invs]));
+const SCANNED_ROWS: ContractRow[] = SCANNED.map((c, i) => ({
+  rank: i + 1,
+  name: c.n,
+  addr: c.a,
+  txs: c.t,
+  kind: classify(c.n || ''),
+  flagged: c.f,
+  invs: invByAddr.get(c.a.toLowerCase()) ?? [],
+}));
+const FLAGGED_ROWS: ContractRow[] = FLAGGED.map((c, i) => ({
+  rank: i + 1,
+  name: c.name,
+  addr: c.addr,
+  txs: c.txs,
+  kind: classify(c.name),
+  flagged: true,
+  invs: c.invs,
+}));
+
+/* Ledger section head: brand lead-in on an ink rule, serif title, copy-link anchor. */
+function SectionHead({ id, title }: { id: string; title: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    try {
+      const url = `${window.location.origin}${window.location.pathname}#${id}`;
+      window.history.replaceState(null, '', `#${id}`);
+      navigator.clipboard?.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1400);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
   return (
-    <div className="mb-6">
+    <div id={id} className="group mb-6 scroll-mt-24">
       <div className="mb-3 flex items-center">
         <span className="h-px w-10 bg-[var(--brand)]" />
         <span className="h-px flex-1 bg-[var(--ink)]" />
       </div>
-      <div className="flex items-baseline gap-3">
-        <span className="mono text-sm font-semibold text-[var(--brand-strong)]">{n}</span>
-        <h2 className="text-[1.9rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)] sm:text-[2.3rem]">{title}</h2>
+      <div className="flex items-center gap-2.5">
+        <h2 className="text-[1.9rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)] sm:text-[2.3rem]">
+          {title}
+        </h2>
+        <button
+          type="button"
+          onClick={copy}
+          title="Copy link to this section"
+          aria-label="Copy link to this section"
+          className="opacity-0 transition-opacity focus:opacity-100 group-hover:opacity-100"
+        >
+          {copied ? (
+            <Check className="h-4 w-4 text-[var(--brand-strong)]" />
+          ) : (
+            <Link2 className="h-4 w-4 text-[var(--ink-faint)] hover:text-[var(--brand-strong)]" />
+          )}
+        </button>
       </div>
     </div>
   );
 }
 
 export function GlamsterdamResearch() {
-  const [showAll, setShowAll] = useState(false);
-  const shown = showAll ? FLAGGED : FLAGGED.slice(0, 20);
-  const [showScan, setShowScan] = useState(false);
-  const scanShown = showScan ? SCANNED : SCANNED.slice(0, 24);
-
   return (
     <div data-ledger className="min-h-screen pb-16">
       <PageHead
         eyebrow="EIPsInsight research · Gas-audit"
-        title="What Glamsterdam reprices"
+        title="What Glamsterdam Repricing changes"
         lead={
           <>
             A gas audit of <span className="font-medium text-[var(--ink)]">EIP-8037 / 8038</span> against the{' '}
@@ -65,11 +107,11 @@ export function GlamsterdamResearch() {
         <span className="mono text-xs">Updated · <span className="text-[var(--ink)]">{META.published}</span></span>
       </PageHead>
 
-      <div className="wrap py-8 sm:py-12">
-        {/* 01 — the repricing, in numbers */}
+      <div className="wrap py-6 sm:py-8">
+        {/* the repricing, in numbers */}
         <section className="mt-2">
           <Reveal>
-            <SectionHead n="01" title="The repricing, in numbers" />
+            <SectionHead id="repricing" title="The repricing, in numbers" />
           </Reveal>
           <Reveal>
             <RepricingBars />
@@ -77,13 +119,13 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 02 — how it lands on mainnet: state-impact composition */}
-        <section className="mt-16">
+        {/* how it lands on mainnet: state-impact composition */}
+        <section className="mt-12">
           <Reveal>
-            <SectionHead n="02" title="How it lands on mainnet" />
+            <SectionHead id="mainnet" title="How it lands on mainnet" />
           </Reveal>
           <Reveal>
-            <p className="mb-8 max-w-[52rem] text-[15px] leading-relaxed text-[var(--ink-muted)]">
+            <p className="mb-6 max-w-[52rem] text-[15px] leading-relaxed text-[var(--ink-muted)]">
               Classifying mainnet traffic by what EIP-8037 does to it, measured on our own node:{' '}
               <span className="font-medium text-[var(--ink)]">{COMPOSITION.pctNo}%</span> of transactions create no new state and
               are unaffected; <span className="font-medium text-[var(--ink)]">{COMPOSITION.pctState}%</span> create state and pay
@@ -92,14 +134,14 @@ export function GlamsterdamResearch() {
               the limit is signed and the shortfall is unrescuable.
             </p>
           </Reveal>
-          <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-2">
             <Reveal><CompositionDonut /></Reveal>
             <Reveal><CompositionOverTime /></Reveal>
           </div>
 
           {/* exact-day headline — every tx, no sampling */}
           <Reveal>
-            <div className="mt-10 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 sm:p-6">
+            <div className="mt-8 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 sm:p-6">
               <p className="mb-4 flex flex-wrap items-baseline gap-x-2 text-[15px] text-[var(--ink-muted)]">
                 <span className="text-[1.05rem] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">One day, every transaction.</span>
                 <span>On {COMPOSITION.exact.date} we classified all {fmt(COMPOSITION.exact.totalTx)} mainnet transactions — not a sample, no per-block cap.</span>
@@ -120,7 +162,7 @@ export function GlamsterdamResearch() {
             </div>
           </Reveal>
 
-          <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-x-10 gap-y-8 lg:grid-cols-2">
             <Reveal><StateGasPerDayChart /></Reveal>
             <Reveal><DeltaHistogram /></Reveal>
           </div>
@@ -131,13 +173,13 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 03 — live impact: new-account transfers (our node) */}
-        <section className="mt-16">
+        {/* live impact: new-account transfers (our node) */}
+        <section className="mt-12">
           <Reveal>
-            <SectionHead n="03" title="A live, measurable impact" />
+            <SectionHead id="impact" title="A live, measurable impact" />
           </Reveal>
           <Reveal>
-            <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
               <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5">
                 <div className="mono text-[2.2rem] font-bold leading-none tabular-nums text-[var(--c-review)]">~{fmt(NEWACCT.meanPerDay)}</div>
                 <div className="mt-1.5 mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">transfers/day would fail</div>
@@ -157,10 +199,10 @@ export function GlamsterdamResearch() {
           </Reveal>
         </section>
 
-        {/* 04 — the scan */}
-        <section className="mt-16">
+        {/* the scan */}
+        <section className="mt-12">
           <Reveal>
-            <SectionHead n="04" title="The scan" />
+            <SectionHead id="scan" title="The scan" />
           </Reveal>
 
           {/* funnel */}
@@ -173,13 +215,9 @@ export function GlamsterdamResearch() {
               ].map((s, i) => (
                 <div
                   key={s.k}
-                  className={cn(
-                    'flex flex-col justify-center rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5',
-                    s.w,
-                    i > 0 && 'sm:ml-3',
-                  )}
+                  className={`flex flex-col justify-center rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 ${s.w} ${i > 0 ? 'sm:ml-3' : ''}`}
                 >
-                  <div className={cn('mono text-[2rem] font-bold leading-none tabular-nums', s.warn ? 'text-[var(--c-review)]' : 'text-[var(--ink)]')}>{fmt(s.v)}</div>
+                  <div className={`mono text-[2rem] font-bold leading-none tabular-nums ${s.warn ? 'text-[var(--c-review)]' : 'text-[var(--ink)]'}`}>{fmt(s.v)}</div>
                   <div className="mt-1.5 mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">{s.k}</div>
                 </div>
               ))}
@@ -187,7 +225,7 @@ export function GlamsterdamResearch() {
           </Reveal>
 
           {/* charts */}
-          <div className="mt-10 grid grid-cols-1 gap-x-10 gap-y-12 lg:grid-cols-2">
+          <div className="mt-8 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
             <Reveal><InvariantChart /></Reveal>
             <Reveal><CategoryChart /></Reveal>
             <Reveal className="lg:col-span-2"><DensityChart /></Reveal>
@@ -195,61 +233,20 @@ export function GlamsterdamResearch() {
 
           {/* the scanned universe — full traceability for the 300 */}
           <Reveal>
-            <p className="mt-12 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
+            <p className="mt-10 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
               The full scanned set: the <span className="font-medium text-[var(--ink)]">300 busiest mainnet contracts</span> over
-              the scan window, ranked by activity, each on Etherscan so anyone can check. Rows marked{' '}
-              <span className="mono text-[10px] uppercase tracking-wider text-[var(--c-review)]">flagged</span> matched one or
-              more invariant patterns (detailed in the next section).
+              the scan window, ranked by activity, each on Etherscan so anyone can check. Sort any column, or filter each one
+              independently. Rows carrying invariant ids matched one or more patterns (detailed in the next section);{' '}
+              <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">clear</span> rows did not.
             </p>
-            <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)]">
-              <table className="w-full min-w-[560px] text-[14px]">
-                <thead>
-                  <tr className="bg-[var(--surface-2)] text-left mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">
-                    <th className="w-8 px-3 py-2 font-semibold">#</th>
-                    <th className="px-3 py-2 font-semibold">Contract</th>
-                    <th className="px-3 py-2 font-semibold">Address</th>
-                    <th className="px-3 py-2 font-semibold">Txs (scan window)</th>
-                    <th className="px-3 py-2 font-semibold">Scan</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {scanShown.map((c, i) => (
-                    <tr key={c.a} className="border-t border-[var(--border)]/60">
-                      <td className="px-3 py-2.5 mono text-[12px] tabular-nums text-[var(--ink-faint)]">{i + 1}</td>
-                      <td className="px-3 py-2.5 font-medium text-[var(--ink)]">{c.n || <span className="text-[var(--ink-faint)]">(unverified source)</span>}</td>
-                      <td className="px-3 py-2.5">
-                        <a href={addrUrl(c.a)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-[12px] text-[var(--brand-strong)] hover:underline">
-                          {short(c.a)}<ExternalLink className="h-3 w-3" />
-                        </a>
-                      </td>
-                      <td className="px-3 py-2.5 mono tabular-nums text-[var(--ink-muted)]">{fmt(c.t)}</td>
-                      <td className="px-3 py-2.5">
-                        {c.f ? (
-                          <span className="mono text-[10px] uppercase tracking-wider text-[var(--c-review)]">flagged</span>
-                        ) : (
-                          <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">clear</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowScan((v) => !v)}
-              className="mt-3 inline-flex items-center gap-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
-            >
-              <Plus className={cn('h-3.5 w-3.5 transition-transform', showScan && 'rotate-45')} />
-              {showScan ? 'Show fewer' : `Show all ${SCANNED.length}`}
-            </button>
+            <ContractsTable rows={SCANNED_ROWS} showScan pageSize={10} />
           </Reveal>
         </section>
 
-        {/* 05 — the flagged contracts */}
-        <section className="mt-16">
+        {/* the flagged contracts */}
+        <section className="mt-12">
           <Reveal>
-            <SectionHead n="05" title="The flagged contracts" />
+            <SectionHead id="flagged" title="The flagged contracts" />
           </Reveal>
 
           <Reveal>
@@ -257,44 +254,12 @@ export function GlamsterdamResearch() {
           </Reveal>
 
           <Reveal>
-            <div className="mt-10 overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)]">
-              <table className="w-full min-w-[560px] text-[14px]">
-                <thead>
-                  <tr className="bg-[var(--surface-2)] text-left mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">
-                    <th className="w-8 px-3 py-2 font-semibold">#</th>
-                    <th className="px-3 py-2 font-semibold">Contract</th>
-                    <th className="px-3 py-2 font-semibold">Address</th>
-                    <th className="px-3 py-2 font-semibold">Txs (scan window)</th>
-                    <th className="px-3 py-2 font-semibold">Invariants</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {shown.map((c, i) => (
-                    <tr key={c.addr} className="border-t border-[var(--border)]/60">
-                      <td className="px-3 py-2.5 mono text-[12px] tabular-nums text-[var(--ink-faint)]">{i + 1}</td>
-                      <td className="px-3 py-2.5 font-medium text-[var(--ink)]">{c.name || <span className="text-[var(--ink-muted)]">(verified, unnamed)</span>}</td>
-                      <td className="px-3 py-2.5">
-                        <a href={addrUrl(c.addr)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-[12px] text-[var(--brand-strong)] hover:underline">
-                          {short(c.addr)}<ExternalLink className="h-3 w-3" />
-                        </a>
-                      </td>
-                      <td className="px-3 py-2.5 mono tabular-nums text-[var(--ink-muted)]">{fmt(c.txs)}</td>
-                      <td className="px-3 py-2.5 mono text-[12px] text-[var(--ink-muted)]">{c.invs.join(' ')}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {FLAGGED.length > 20 ? (
-              <button
-                type="button"
-                onClick={() => setShowAll((v) => !v)}
-                className="mt-3 inline-flex items-center gap-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
-              >
-                <Plus className={cn('h-3.5 w-3.5 transition-transform', showAll && 'rotate-45')} />
-                {showAll ? 'Show fewer' : `Show all ${SCAN.flagged}`}
-              </button>
-            ) : null}
+            <p className="mt-8 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
+              All <span className="font-medium text-[var(--ink)]">{SCAN.flagged} flagged contracts</span>, by match density.
+              Sort or filter any column, or page through. Each shows the invariant patterns its source matched: a candidate for
+              review, not a confirmed break.
+            </p>
+            <ContractsTable rows={FLAGGED_ROWS} pageSize={10} />
           </Reveal>
 
           {/* report footer link */}
