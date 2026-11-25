@@ -17,7 +17,9 @@ import {
   callDisplayName,
   callSeriesBadgeClass,
   callSeriesShort,
+  callSeriesToken,
 } from '@/data/call-series';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
@@ -162,10 +164,9 @@ export default async function ProtocolCallPage({ params }: Props) {
 
           {/* Eyebrow badge */}
           <div className="flex items-center gap-2.5 mb-2.5">
-            <span className="inline-block h-[7px] w-[7px] rounded-[1px] bg-[var(--brand)]" />
-            <span className="font-mono text-xs uppercase tracking-wider text-[var(--brand-strong)] font-semibold">
+            <LedgerBadge token={callSeriesToken(call.series)}>
               {callSeriesShort(call.series)}
-            </span>
+            </LedgerBadge>
             <span className="text-[var(--ink-faint)]">/</span>
             <span className="font-mono text-xs text-[var(--ink-muted)]">
               #{call.number ?? number}

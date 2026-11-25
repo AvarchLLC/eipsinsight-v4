@@ -18,8 +18,6 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  Check,
-  Link2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LedgerBadge } from "@/components/ledger/badge";
@@ -111,7 +109,7 @@ function Seek({
         href={href}
         target="_blank"
         rel="noreferrer"
-        className="inline-flex shrink-0 items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--ink-muted)] hover:border-[var(--brand-strong)]/40 hover:text-[var(--brand-strong)] transition-colors"
+        className="inline-flex shrink-0 items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] transition-colors"
         aria-label={`Watch at ${m.stamp}`}
       >
         <Clock className="h-3 w-3" /> {m.stamp}
@@ -122,7 +120,7 @@ function Seek({
     <button
       type="button"
       onClick={() => onSeek(m.seconds!)}
-      className="inline-flex shrink-0 items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--ink-muted)] hover:border-[var(--brand-strong)]/40 hover:text-[var(--brand-strong)] transition-colors cursor-pointer"
+      className="inline-flex shrink-0 items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 font-mono text-[11px] text-[var(--ink-muted)] hover:border-[var(--ink)] hover:text-[var(--ink)] transition-colors cursor-pointer"
       aria-label={`Jump to ${m.stamp}`}
     >
       <Clock className="h-3 w-3" /> {m.stamp}
@@ -403,7 +401,7 @@ export function CallWorkspace({
                   href={call.videoUrl}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex aspect-video items-center justify-center gap-2.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--brand-strong)]/40 transition-colors shadow-xs"
+                  className="flex aspect-video items-center justify-center gap-2.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink)] hover:border-[var(--ink)] transition-colors shadow-xs"
                 >
                   <Youtube className="h-6 w-6 text-red-500" /> Watch recording on YouTube
                 </a>
@@ -417,7 +415,7 @@ export function CallWorkspace({
                     href={call.videoUrl}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 font-sans font-medium text-[var(--ink)] hover:bg-[var(--surface-2)] hover:border-[var(--ink-muted)] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 font-sans font-medium text-[var(--ink)] hover:bg-[var(--surface-2)] hover:border-[var(--ink)] transition-colors"
                   >
                     <Youtube className="h-4 w-4 text-red-500" /> YouTube
                   </a>
@@ -427,7 +425,7 @@ export function CallWorkspace({
                     href={`https://github.com/ethereum/pm/issues/${call.issueNumber}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 font-sans font-medium text-[var(--ink)] hover:bg-[var(--surface-2)] hover:border-[var(--ink-muted)] transition-colors"
+                    className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 font-sans font-medium text-[var(--ink)] hover:bg-[var(--surface-2)] hover:border-[var(--ink)] transition-colors"
                   >
                     <MessageSquare className="h-4 w-4 text-[var(--brand-strong)]" /> Agenda issue #{call.issueNumber}
                   </a>
@@ -436,8 +434,8 @@ export function CallWorkspace({
 
               {embed && (
                 <span className="font-mono text-[11px] text-[var(--ink-muted)] flex items-center gap-1.5">
-                  <span className="h-2 w-2 rounded-full bg-[var(--brand-strong)] animate-pulse" />
-                  <span className="text-[var(--brand-strong)] font-semibold">{fmt(now)}</span> · Click any timestamp to seek
+                  <span className="h-2 w-2 rounded-full bg-[var(--brand)]" />
+                  <span className="text-[var(--ink)] font-semibold">{fmt(now)}</span> · Click any timestamp to seek
                 </span>
               )}
             </div>
@@ -445,19 +443,15 @@ export function CallWorkspace({
 
           {/* Right Column (5 cols): Interactive Companion Panel (Live Transcript or Key Outcomes) */}
           <div className="lg:col-span-5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-3.5">
-            {/* Header Switcher: Live Transcript vs Key Outcomes */}
+            {/* Header Switcher: Live Transcript vs Key Outcomes (Solid Ledger Chips) */}
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-1.5">
                 {transcript && transcript.length > 0 && (
                   <button
                     type="button"
                     onClick={() => setHeroSideTab("transcript")}
-                    className={cn(
-                      "inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                      heroSideTab === "transcript"
-                        ? "bg-[var(--brand-soft)]/40 border border-[var(--brand-strong)]/40 text-[var(--brand-strong)] font-semibold"
-                        : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]"
-                    )}
+                    data-active={heroSideTab === "transcript"}
+                    className="chip cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <FileText className="h-3.5 w-3.5" />
                     <span>Live Transcript</span>
@@ -467,12 +461,8 @@ export function CallWorkspace({
                 <button
                   type="button"
                   onClick={() => setHeroSideTab("decisions")}
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer",
-                    heroSideTab === "decisions"
-                      ? "bg-[var(--brand-soft)]/40 border border-[var(--brand-strong)]/40 text-[var(--brand-strong)] font-semibold"
-                      : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]"
-                  )}
+                  data-active={heroSideTab === "decisions"}
+                  className="chip cursor-pointer whitespace-nowrap shrink-0"
                 >
                   <ListChecks className="h-3.5 w-3.5" />
                   <span>Key Outcomes</span>
@@ -488,14 +478,14 @@ export function CallWorkspace({
                     type="checkbox"
                     checked={heroFollowAlong}
                     onChange={(e) => setHeroFollowAlong(e.target.checked)}
-                    className="h-3 w-3 rounded accent-[var(--brand)]"
+                    className="h-3 w-3 rounded accent-[var(--ink)]"
                   />
                   Follow
                 </label>
               )}
             </div>
 
-            {/* View A: Live Transcript in Hero Side Panel (v5 style) */}
+            {/* View A: Live Transcript in Hero Side Panel (Solid, non-translucent) */}
             {heroSideTab === "transcript" && transcript && (
               <div className="space-y-2">
                 <div className="relative">
@@ -504,7 +494,7 @@ export function CallWorkspace({
                     value={heroSearch}
                     onChange={(e) => setHeroSearch(e.target.value)}
                     placeholder="Search spoken words…"
-                    className="h-7.5 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] pl-8 pr-7 text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand-strong)] transition-colors"
+                    className="h-7.5 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] pl-8 pr-7 text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--ink)] transition-colors"
                   />
                   {heroSearch && (
                     <button
@@ -519,7 +509,7 @@ export function CallWorkspace({
 
                 <ul
                   ref={heroListRef}
-                  className="max-h-[17.5rem] overflow-y-auto divide-y divide-[var(--border)] rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)]/40 scrollbar-thin"
+                  className="max-h-[17.5rem] overflow-y-auto divide-y divide-[var(--border)] rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] scrollbar-thin"
                 >
                   {heroFilteredTranscript.map((c, i) => {
                     const active = Math.abs(now - c.seconds) < 3;
@@ -529,14 +519,16 @@ export function CallWorkspace({
                           type="button"
                           onClick={() => seek(c.seconds)}
                           className={cn(
-                            "flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors hover:bg-[var(--surface-2)] cursor-pointer text-xs",
-                            active && "bg-[var(--brand-soft)]/35 text-[var(--ink)] font-medium border-l-2 border-[var(--brand-strong)]"
+                            "flex w-full items-start gap-2.5 px-3 py-2 text-left transition-colors cursor-pointer text-xs",
+                            active
+                              ? "bg-[var(--surface-3)] text-[var(--ink)] font-medium border-l-2 border-[var(--brand)]"
+                              : "text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
                           )}
                         >
-                          <span className="w-11 shrink-0 pt-0.5 font-mono text-[10px] text-[var(--brand-strong)]">
+                          <span className="w-11 shrink-0 pt-0.5 font-mono text-[10px] text-[var(--brand-strong)] font-semibold">
                             {c.stamp.replace(/\.\d+$/, "")}
                           </span>
-                          <span className="min-w-0 flex-1 leading-relaxed text-[var(--ink)]">
+                          <span className="min-w-0 flex-1 leading-relaxed">
                             {c.speaker && (
                               <span className="font-semibold text-[var(--ink)] mr-1">
                                 {c.speaker}:
@@ -554,11 +546,11 @@ export function CallWorkspace({
               </div>
             )}
 
-            {/* View B: Key Outcomes & Decisions in Hero Side Panel */}
+            {/* View B: Key Outcomes & Decisions in Hero Side Panel (Solid, non-translucent) */}
             {heroSideTab === "decisions" && (
               <div className="space-y-3">
                 {call.summary && (
-                  <div className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)]/60 p-3 text-xs leading-relaxed text-[var(--ink)]">
+                  <div className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-3 text-xs leading-relaxed text-[var(--ink)]">
                     <p className="line-clamp-3 font-normal">{call.summary}</p>
                   </div>
                 )}
@@ -569,8 +561,10 @@ export function CallWorkspace({
                       <div
                         key={i}
                         className={cn(
-                          "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-2.5 transition-colors",
-                          isActive(d.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/25"
+                          "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border p-2.5 transition-colors",
+                          isActive(d.seconds)
+                            ? "border-[var(--brand)] bg-[var(--surface-3)]"
+                            : "border-[var(--border)] bg-[var(--surface-2)]"
                         )}
                       >
                         <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
@@ -597,8 +591,10 @@ export function CallWorkspace({
                         <div
                           key={i}
                           className={cn(
-                            "flex items-center justify-between gap-2 rounded-md p-1.5 text-xs text-[var(--ink-muted)] transition-colors",
-                            isActive(t.seconds) && "bg-[var(--brand-soft)]/20 text-[var(--ink)] font-medium"
+                            "flex items-center justify-between gap-2 rounded-md p-1.5 text-xs transition-colors",
+                            isActive(t.seconds)
+                              ? "bg-[var(--surface-3)] text-[var(--ink)] font-medium"
+                              : "text-[var(--ink-muted)] hover:bg-[var(--surface-2)]"
                           )}
                         >
                           <span className="truncate">• {t.text}</span>
@@ -615,11 +611,11 @@ export function CallWorkspace({
       </section>
 
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 2. TAB NAVIGATION BAR (Natural Flow, Non-Sticky)             */}
+      {/* 2. TAB NAVIGATION BAR (Solid Ledger Chips, Non-Sticky)      */}
       {/* ─────────────────────────────────────────────────────────── */}
       <nav
         aria-label="Call sections"
-        className="border-y border-[var(--border)] py-2 bg-[var(--surface-2)]/40"
+        className="border-y border-[var(--border)] py-2.5 bg-[var(--surface)]"
       >
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
           {tabs.map((tab) => {
@@ -630,12 +626,8 @@ export function CallWorkspace({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
-                className={cn(
-                  "inline-flex items-center gap-2 rounded-[var(--l-radius-control)] px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors cursor-pointer",
-                  active
-                    ? "bg-[var(--brand-soft)]/35 text-[var(--brand-strong)] border border-[var(--brand-strong)]/40 font-semibold shadow-xs"
-                    : "text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)] border border-transparent"
-                )}
+                data-active={active}
+                className="chip h-8 px-3.5 text-xs font-sans whitespace-nowrap cursor-pointer transition-colors"
               >
                 <Icon className="h-3.5 w-3.5" />
                 <span>{tab.label}</span>
@@ -644,7 +636,7 @@ export function CallWorkspace({
                     className={cn(
                       "rounded-full px-1.5 py-0.2 font-mono text-[10px]",
                       active
-                        ? "bg-[var(--brand-strong)]/20 text-[var(--brand-strong)] font-semibold"
+                        ? "bg-[var(--paper)] text-[var(--ink)] font-semibold"
                         : "bg-[var(--surface-2)] text-[var(--ink-muted)]"
                     )}
                   >
@@ -680,7 +672,7 @@ export function CallWorkspace({
 
           {call.highlights.length > 0 && (
             <section className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div className="space-y-3">
                 <div className="flex items-center gap-2.5">
                   <Sparkles className="h-5 w-5 text-[var(--brand-strong)]" />
                   <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
@@ -688,34 +680,26 @@ export function CallWorkspace({
                   </h3>
                 </div>
 
-                {/* Topic quick filter pills */}
+                {/* Topic quick filter pills: Solid Ledger Chips */}
                 {call.highlights.length > 1 && (
-                  <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none pb-1 text-xs">
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
                     <button
                       type="button"
                       onClick={() => setSelectedTopic("all")}
-                      className={cn(
-                        "rounded-full px-2.5 py-1 transition-colors cursor-pointer text-xs font-sans",
-                        selectedTopic === "all"
-                          ? "border border-[var(--brand-strong)]/40 bg-[var(--brand-soft)]/30 text-[var(--brand-strong)] font-medium"
-                          : "border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                      )}
+                      data-active={selectedTopic === "all"}
+                      className="chip cursor-pointer whitespace-nowrap shrink-0"
                     >
-                      All ({call.highlights.reduce((n, h) => n + h.items.length, 0)})
+                      All <span className="font-mono text-[10px] opacity-75">({call.highlights.reduce((n, h) => n + h.items.length, 0)})</span>
                     </button>
                     {call.highlights.map((h) => (
                       <button
                         key={h.topic}
                         type="button"
                         onClick={() => setSelectedTopic(h.topic)}
-                        className={cn(
-                          "rounded-full px-2.5 py-1 whitespace-nowrap transition-colors cursor-pointer text-xs font-sans",
-                          selectedTopic === h.topic
-                            ? "border border-[var(--brand-strong)]/40 bg-[var(--brand-soft)]/30 text-[var(--brand-strong)] font-medium"
-                            : "border border-[var(--border)] bg-[var(--surface)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                        )}
+                        data-active={selectedTopic === h.topic}
+                        className="chip cursor-pointer whitespace-nowrap shrink-0"
                       >
-                        {h.topic} ({h.items.length})
+                        {h.topic} <span className="font-mono text-[10px] opacity-75">({h.items.length})</span>
                       </button>
                     ))}
                   </div>
@@ -742,8 +726,10 @@ export function CallWorkspace({
                           <li
                             key={i}
                             className={cn(
-                              "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border border-[var(--border)]/60 bg-[var(--surface-2)]/60 p-2.5 transition-colors",
-                              isActive(h.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/25"
+                              "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border p-2.5 transition-colors",
+                              isActive(h.seconds)
+                                ? "border-[var(--brand)] bg-[var(--surface-3)]"
+                                : "border-[var(--border)] bg-[var(--surface-2)]"
                             )}
                           >
                             <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
@@ -776,7 +762,7 @@ export function CallWorkspace({
               </p>
             </div>
 
-            {/* Filter toolbar */}
+            {/* Filter toolbar: Solid Ledger Chips */}
             <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-full sm:w-60">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[var(--ink-faint)]" />
@@ -784,7 +770,7 @@ export function CallWorkspace({
                   value={eipSearch}
                   onChange={(e) => setEipSearch(e.target.value)}
                   placeholder="Search EIP# or keyword…"
-                  className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-3 text-xs text-[var(--ink)] outline-none focus:border-[var(--brand-strong)] transition-colors placeholder:text-[var(--ink-faint)]"
+                  className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-3 text-xs text-[var(--ink)] outline-none focus:border-[var(--ink)] transition-colors placeholder:text-[var(--ink-faint)]"
                 />
                 {eipSearch && (
                   <button
@@ -796,34 +782,28 @@ export function CallWorkspace({
                 )}
               </div>
 
-              <div className="inline-flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5 text-xs">
+              <div className="flex items-center gap-1.5">
                 <button
                   type="button"
                   onClick={() => setEipFilter("all")}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 font-medium transition-colors cursor-pointer",
-                    eipFilter === "all" ? "bg-[var(--surface)] text-[var(--ink)] shadow-xs" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                  )}
+                  data-active={eipFilter === "all"}
+                  className="chip cursor-pointer whitespace-nowrap shrink-0"
                 >
-                  All ({call.eipMentions.length})
+                  All <span className="font-mono text-[10px] opacity-75">({call.eipMentions.length})</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setEipFilter("discussed")}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 font-medium transition-colors cursor-pointer",
-                    eipFilter === "discussed" ? "bg-[var(--surface)] text-[var(--ink)] shadow-xs" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                  )}
+                  data-active={eipFilter === "discussed"}
+                  className="chip cursor-pointer whitespace-nowrap shrink-0"
                 >
                   Discussed
                 </button>
                 <button
                   type="button"
                   onClick={() => setEipFilter("agenda")}
-                  className={cn(
-                    "rounded-md px-2.5 py-1 font-medium transition-colors cursor-pointer",
-                    eipFilter === "agenda" ? "bg-[var(--surface)] text-[var(--ink)] shadow-xs" : "text-[var(--ink-muted)] hover:text-[var(--ink)]"
-                  )}
+                  data-active={eipFilter === "agenda"}
+                  className="chip cursor-pointer whitespace-nowrap shrink-0"
                 >
                   On agenda
                 </button>
@@ -840,25 +820,31 @@ export function CallWorkspace({
               {filteredEips.map((e) => (
                 <div
                   key={`${e.kind}-${e.number}`}
-                  className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col justify-between hover:border-[var(--brand-strong)]/40 transition-colors"
+                  className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col justify-between hover:border-[var(--ink)] transition-colors"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
-                      <Link
-                        href={`/${e.kind}/${e.number}`}
-                        className="font-mono text-sm font-semibold text-[var(--ink)] hover:text-[var(--brand-strong)] transition-colors"
-                      >
-                        {e.kind.toUpperCase()}-{e.number}
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/${e.kind}/${e.number}`}
+                          className="font-mono text-sm font-semibold text-[var(--ink)] hover:text-[var(--brand-strong)] transition-colors"
+                        >
+                          {e.kind.toUpperCase()}-{e.number}
+                        </Link>
+                        <LedgerBadge
+                          token={e.kind === 'erc' ? 'erc' : e.kind === 'rip' ? 'rip' : 'core'}
+                          className="text-[10px] uppercase font-bold"
+                        >
+                          {e.kind}
+                        </LedgerBadge>
+                      </div>
                       <div className="flex items-center gap-1.5">
                         <LedgerBadge
                           token={e.discussed ? "final" : "draft"}
                           label={e.discussed ? "Discussed" : "Mentioned"}
                         />
                         {e.onAgenda && (
-                          <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] text-[var(--ink-muted)]">
-                            On agenda
-                          </span>
+                          <LedgerBadge token="interface" label="On agenda" />
                         )}
                       </div>
                     </div>
@@ -875,8 +861,10 @@ export function CallWorkspace({
                           <li
                             key={i}
                             className={cn(
-                              "rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] p-2.5 transition-colors text-xs",
-                              isActive(m.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/25"
+                              "rounded-[var(--l-radius-control)] border p-2.5 transition-colors text-xs",
+                              isActive(m.seconds)
+                                ? "border-[var(--brand)] bg-[var(--surface-3)]"
+                                : "border-[var(--border)] bg-[var(--surface-2)]"
                             )}
                           >
                             <div className="flex items-center justify-between gap-2 mb-1">
@@ -912,9 +900,9 @@ export function CallWorkspace({
                   Consensus Decisions
                 </h3>
               </div>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] font-semibold text-[var(--brand-strong)]">
+              <LedgerBadge token="final">
                 {call.decisions.length}
-              </span>
+              </LedgerBadge>
             </div>
 
             {call.decisions.length === 0 ? (
@@ -927,8 +915,10 @@ export function CallWorkspace({
                   <div
                     key={i}
                     className={cn(
-                      "flex items-start gap-3 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors shadow-xs",
-                      isActive(d.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/20"
+                      "flex items-start gap-3 rounded-[var(--l-radius)] border bg-[var(--surface)] p-4 transition-colors shadow-xs",
+                      isActive(d.seconds)
+                        ? "border-[var(--brand)] bg-[var(--surface-2)]"
+                        : "border-[var(--border)]"
                     )}
                   >
                     <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-[var(--brand)]" />
@@ -954,9 +944,9 @@ export function CallWorkspace({
                     Action Items
                   </h3>
                 </div>
-                <span className="rounded-full border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] font-semibold text-[var(--ink-muted)]">
+                <LedgerBadge token="lastcall">
                   {call.actionItems.length}
-                </span>
+                </LedgerBadge>
               </div>
 
               {call.actionItems.length === 0 ? (
@@ -969,8 +959,10 @@ export function CallWorkspace({
                     <div
                       key={i}
                       className={cn(
-                        "rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors shadow-xs",
-                        isActive(a.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/20"
+                        "rounded-[var(--l-radius)] border bg-[var(--surface)] p-4 transition-colors shadow-xs",
+                        isActive(a.seconds)
+                          ? "border-[var(--brand)] bg-[var(--surface-2)]"
+                          : "border-[var(--border)]"
                       )}
                     >
                       <div className="flex items-center justify-between gap-2 mb-1.5">
@@ -1005,11 +997,13 @@ export function CallWorkspace({
                     <div
                       key={i}
                       className={cn(
-                        "flex items-center justify-between gap-3 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs transition-colors",
-                        isActive(t.seconds) && "border-[var(--brand-strong)]/60 bg-[var(--brand-soft)]/20"
+                        "flex items-center justify-between gap-3 rounded-[var(--l-radius-control)] border bg-[var(--surface)] px-3 py-2 text-xs transition-colors",
+                        isActive(t.seconds)
+                          ? "border-[var(--brand)] bg-[var(--surface-2)] text-[var(--ink)] font-medium"
+                          : "border-[var(--border)] text-[var(--ink)]"
                       )}
                     >
-                      <span className="text-[var(--ink)]">{t.text}</span>
+                      <span>{t.text}</span>
                       <Seek m={t} onSeek={seek} href={hrefFor(t.seconds)} />
                     </div>
                   ))}
@@ -1041,13 +1035,18 @@ export function CallWorkspace({
               {call.agenda.map((a) => (
                 <div
                   key={`${a.kind}-${a.number}`}
-                  className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] flex items-start gap-4 p-4 shadow-xs hover:border-[var(--brand-strong)]/40 transition-colors"
+                  className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] flex items-start gap-4 p-4 shadow-xs hover:border-[var(--ink)] transition-colors"
                 >
                   <Link
                     href={`/${a.kind}/${a.number}`}
-                    className="shrink-0 font-mono text-xs font-semibold text-[var(--brand-strong)] hover:underline transition-colors px-2 py-1 rounded-[var(--l-radius-control)] bg-[var(--surface-2)] border border-[var(--border)]"
+                    className="shrink-0 transition-opacity hover:opacity-80"
                   >
-                    {a.kind.toUpperCase()}-{a.number}
+                    <LedgerBadge
+                      token={a.kind === 'erc' ? 'erc' : a.kind === 'rip' ? 'rip' : 'core'}
+                      className="text-xs font-semibold"
+                    >
+                      {a.kind.toUpperCase()}-{a.number}
+                    </LedgerBadge>
                   </Link>
                   <div className="min-w-0 flex-1">
                     {a.title && (
@@ -1100,7 +1099,7 @@ export function CallWorkspace({
                   type="checkbox"
                   checked={followAlong}
                   onChange={(e) => setFollowAlong(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-[var(--brand)] rounded"
+                  className="h-3.5 w-3.5 accent-[var(--ink)] rounded"
                 />
                 Follow along with video
               </label>
@@ -1111,7 +1110,7 @@ export function CallWorkspace({
                   value={transcriptSearch}
                   onChange={(e) => setTranscriptSearch(e.target.value)}
                   placeholder="Search transcript lines…"
-                  className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-7 text-xs text-[var(--ink)] outline-none focus:border-[var(--brand-strong)] transition-colors placeholder:text-[var(--ink-faint)]"
+                  className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-7 text-xs text-[var(--ink)] outline-none focus:border-[var(--ink)] transition-colors placeholder:text-[var(--ink-faint)]"
                 />
                 {transcriptSearch && (
                   <button
@@ -1138,8 +1137,10 @@ export function CallWorkspace({
                       type="button"
                       onClick={() => seek(c.seconds)}
                       className={cn(
-                        "flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors hover:bg-[var(--surface-2)] cursor-pointer",
-                        active && "bg-[var(--brand-soft)]/30 border-l-2 border-[var(--brand-strong)]"
+                        "flex w-full items-start gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer",
+                        active
+                          ? "bg-[var(--surface-2)] border-l-2 border-[var(--brand)] text-[var(--ink)]"
+                          : "hover:bg-[var(--surface-2)] text-[var(--ink-muted)] hover:text-[var(--ink)]"
                       )}
                     >
                       <span className="w-14 shrink-0 pt-0.5 font-mono text-[10px] text-[var(--brand-strong)] font-semibold">
@@ -1183,7 +1184,7 @@ export function CallWorkspace({
                 value={chatSearch}
                 onChange={(e) => setChatSearch(e.target.value)}
                 placeholder="Search chat messages…"
-                className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-7 text-xs text-[var(--ink)] outline-none focus:border-[var(--brand-strong)] transition-colors placeholder:text-[var(--ink-faint)]"
+                className="h-8 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-8 pr-7 text-xs text-[var(--ink)] outline-none focus:border-[var(--ink)] transition-colors placeholder:text-[var(--ink-faint)]"
               />
               {chatSearch && (
                 <button

@@ -53,6 +53,45 @@ export type OhRecap = {
 export const OFFICE_HOUR_RECAPS: OhRecap[] = [
   {
     series: "eipoh",
+    meeting: 120,
+    dateISO: "2026-11-24",
+    displayDate: "Nov 24, 2026",
+    title: "EIP Editing Office Hour (EIP + ERC) #120",
+    youtube: "https://www.youtube.com/watch?v=JppKHbUdwBw",
+    issueUrl: "https://github.com/ethereum/pm/issues/2307",
+    summary:
+      "A lighter session built around status-change PRs and two new proposals, with Sam running the review solo and dropping early for a noon call. The headline was ERC-8001, an ENS-based trust registry for agent coordination, which moved to Last Call: it defines a trust registry that lets agents establish and query transitive trust relationships using ENS names as identifiers, expressing trust across four levels that propagate along certification paths in the style of the OpenPGP web of trust. Path verification checks a single path against a minimum per-edge trust level and does not accumulate marginal associations. At roughly 2,329 lines it drew a running joke for being the third-longest EIP by line count. Review of ERC-7962, which proposes two token-operation interfaces, was only started before Sam had to leave, so its full review carries to a future call. On process, editors agreed that agenda comments should be handled in text unless an author has a specific question for the call, and that older proposals should be prioritized to stay fair to contributors who cannot attend. Sam still owes a reply on the EIP coordinator PR.",
+    prs: [
+      {
+        repo: "ercs",
+        pr: 1375,
+        title: "Update ERC-8001: Move to Last Call",
+        author: "KBryan",
+        status: "MERGED",
+        note: "ENS trust registry for agent coordination: a web-of-trust registry using ENS names for multi-party coordination. Approved to Last Call. At ~2,329 lines, the third-longest EIP by line count.",
+      },
+      {
+        repo: "ercs",
+        pr: 2063,
+        title: "Update ERC-7962: Move to Last Call",
+        author: "dugubuyan",
+        status: "WAITING_ON_EDITOR",
+        note: "Proposes two token-operation transfer interfaces. Review was cut short when Sam had to leave early; full review continues in a future meeting.",
+      },
+    ],
+    decisions: [
+      "ERC-8001 (ENS trust registry for agent coordination) is approved to move to Last Call.",
+      "Agenda comments should be addressed in text unless authors have a specific question for the call.",
+      "Older proposals should be prioritized for review to stay fair to contributors who do not attend the calls.",
+    ],
+    actionItems: [
+      "Sam: review and address the EIP coordinator call-for-input PR.",
+      "Sam: continue the review of ERC-7962, which was interrupted.",
+    ],
+    nextMeeting: "Meeting #121, Dec 1, 2026",
+  },
+  {
+    series: "eipoh",
     meeting: 119,
     dateISO: "2026-11-10",
     displayDate: "Nov 10, 2026",

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Check, Link2, Pause, Play, Search, Video, X } from 'lucide-react';
+import { Check, Link2, Pause, Play, Search, SkipForward, Video, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { TranscriptCue } from '@/components/upgrade/call-transcript';
 
@@ -76,6 +76,12 @@ export function CallPlayer({
   const [autoScroll, setAutoScroll] = useState(true);
 
   const cueStarts = useMemo(() => cues.map((c) => toSeconds(c.start)), [cues]);
+
+  // When the recording opens with a long intro/title sequence, the first spoken
+  // line sits well into the video. Offer a "Skip intro" jump to it. Hidden for
+  // calls that start at 0:00 (threshold: 30s).
+  const introEnd = cueStarts[0] ?? 0;
+  const hasIntro = introEnd > 30;
 
   const seekTo = useCallback((seconds: number) => {
     const p = playerRef.current;
@@ -175,6 +181,15 @@ export function CallPlayer({
         <div className="lg:sticky lg:top-20">
           <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-border/50 bg-black shadow-lg">
             <div ref={mountRef} className="absolute inset-0 h-full w-full" />
+            {ready && hasIntro && currentTime < introEnd - 1 && (
+              <button
+                onClick={() => seekTo(introEnd)}
+                className="absolute bottom-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-lg bg-black/75 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm transition-colors hover:bg-black/90"
+                title={`Skip to ${fmt(introEnd)}`}
+              >
+                Skip intro <SkipForward className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
           {ready && (
             // On lg this floats just under the video instead of adding to the column's

@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Github, Video, ArrowRightLeft, Server, Star, Circle, Search, FileText, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
+import { callDisplayName, callSeriesBadgeClass, callSeriesShort, callSeriesToken } from '@/data/call-series';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { EipLinkedText, DecisionTypeMarker, type KeyDecision } from '@/components/upgrade/key-decisions';
 import {
   SeriesFilter,
@@ -221,14 +222,9 @@ export function DecisionsBrowser({ calls }: { calls: DecisionCall[] }) {
             <section key={`${call.series}-${call.call_id}`}>
               {/* Meeting header */}
               <div className="mb-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-                <span
-                  className={cn(
-                    'inline-flex shrink-0 items-center justify-center self-center rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-                    callSeriesBadgeClass(call.series)
-                  )}
-                >
+                <LedgerBadge token={callSeriesToken(call.series)} className="text-[10px]">
                   {callSeriesShort(call.series)}
-                </span>
+                </LedgerBadge>
                 <h2 className="text-sm font-semibold text-foreground hover:text-primary transition-colors">
                   <Link href={`/calls/${call.series}/${call.call_number ?? call.call_id}`} className="hover:underline">
                     {callDisplayName(call)}

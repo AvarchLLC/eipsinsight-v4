@@ -91,49 +91,107 @@ function urlParam(key: string): string | null {
   return new URLSearchParams(window.location.search).get(key);
 }
 
-interface CanonicalEditorParticipation {
+interface OfficeHourEditorParticipation {
   displayName: string;
   github: string;
-  eipipAttended: number;
   officeHoursHosted: number;
-  prReviews: number;
+  prReviewsDuringOH: number;
+  prsMerged: number;
+  prsClosed: number;
 }
 
-const CANONICAL_EDITOR_PARTICIPATION: CanonicalEditorParticipation[] = [
-  {
-    displayName: "Jochem B.",
-    github: "jochem-brouwer",
-    eipipAttended: 8,
-    officeHoursHosted: 10,
-    prReviews: 368,
-  },
+const OH_EDITOR_PARTICIPATION: OfficeHourEditorParticipation[] = [
   {
     displayName: "Sam Wilson",
     github: "SamWilsn",
-    eipipAttended: 8,
-    officeHoursHosted: 18,
-    prReviews: 300,
+    officeHoursHosted: 22,
+    prReviewsDuringOH: 345,
+    prsMerged: 84,
+    prsClosed: 19,
+  },
+  {
+    displayName: "Jochem B.",
+    github: "jochem-brouwer",
+    officeHoursHosted: 12,
+    prReviewsDuringOH: 412,
+    prsMerged: 96,
+    prsClosed: 26,
   },
   {
     displayName: "Gajinder Singh",
     github: "g11tech",
-    eipipAttended: 1,
-    officeHoursHosted: 3,
-    prReviews: 119,
+    officeHoursHosted: 4,
+    prReviewsDuringOH: 128,
+    prsMerged: 15,
+    prsClosed: 7,
+  },
+  {
+    displayName: "Victor",
+    github: "xinbenlv",
+    officeHoursHosted: 1,
+    prReviewsDuringOH: 63,
+    prsMerged: 8,
+    prsClosed: 3,
   },
   {
     displayName: "Matt",
     github: "lightclient",
-    eipipAttended: 1,
     officeHoursHosted: 0,
-    prReviews: 100,
+    prReviewsDuringOH: 0,
+    prsMerged: 0,
+    prsClosed: 0,
+  },
+];
+
+interface EipipEditorParticipation {
+  displayName: string;
+  github: string;
+  eipipAttended: number;
+  attendanceRate: string;
+  octNovAttended: string;
+  role: string;
+}
+
+const EIPIP_EDITOR_PARTICIPATION: EipipEditorParticipation[] = [
+  {
+    displayName: "Jochem B.",
+    github: "jochem-brouwer",
+    eipipAttended: 10,
+    attendanceRate: "100%",
+    octNovAttended: "Attended Oct (#131) & Nov (#132)",
+    role: "Active Editor",
+  },
+  {
+    displayName: "Sam Wilson",
+    github: "SamWilsn",
+    eipipAttended: 10,
+    attendanceRate: "100%",
+    octNovAttended: "Attended Oct (#131) & Nov (#132)",
+    role: "Keeper of Consensus",
   },
   {
     displayName: "Victor",
     github: "xinbenlv",
     eipipAttended: 2,
-    officeHoursHosted: 1,
-    prReviews: 63,
+    attendanceRate: "20%",
+    octNovAttended: "Absent Oct & Nov",
+    role: "Contributing Editor",
+  },
+  {
+    displayName: "Gajinder Singh",
+    github: "g11tech",
+    eipipAttended: 1,
+    attendanceRate: "10%",
+    octNovAttended: "Absent Oct & Nov",
+    role: "Associate Editor",
+  },
+  {
+    displayName: "Matt",
+    github: "lightclient",
+    eipipAttended: 1,
+    attendanceRate: "10%",
+    octNovAttended: "Absent Oct & Nov",
+    role: "Core Editor",
   },
 ];
 
@@ -1152,17 +1210,17 @@ export default function OfficeHoursEditorsPage() {
             <div className="space-y-4">
               <EditorAttendanceMatrix />
 
-              {/* Canonical Editor Benchmark Participation Table */}
+              {/* 1. Office Hours Editorial Benchmark Table (Jan-Nov 2026) */}
               <section className="rounded-xl border border-border bg-card/60 p-4">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <CalendarClock className="h-4 w-4 text-primary" />
                     <h3 className="text-sm font-semibold text-foreground">
-                      Canonical Editor Benchmark Participation & Attendance
+                      Office Hours Editorial Benchmark
                     </h3>
                   </div>
                   <span className="font-mono text-[10px] text-muted-foreground">
-                    Jan–Sep Historical Records
+                    Jan–Nov 2026 · 38 Sessions
                   </span>
                 </div>
                 <div className="overflow-x-auto">
@@ -1171,18 +1229,21 @@ export default function OfficeHoursEditorsPage() {
                       <tr className="border-b border-border/80 text-[11px] font-semibold text-muted-foreground">
                         <th className="py-2 pl-2 pr-3 font-semibold">Editor (GitHub)</th>
                         <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                          EIPIP (of 8)
+                          Office Hours hosted (of 38)
                         </th>
                         <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">
-                          Office Hours hosted (of 32)
+                          PR reviews (in call)
+                        </th>
+                        <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                          PRs merged
                         </th>
                         <th className="py-2 pl-3 pr-2 text-right font-semibold whitespace-nowrap">
-                          PR reviews, Jan–Sep
+                          PRs closed
                         </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-border/40">
-                      {CANONICAL_EDITOR_PARTICIPATION.map((item) => (
+                      {OH_EDITOR_PARTICIPATION.map((item) => (
                         <tr key={item.github} className="hover:bg-muted/30 transition-colors">
                           <td className="py-2 pl-2 pr-3 whitespace-nowrap">
                             <div className="flex items-center gap-2">
@@ -1206,13 +1267,103 @@ export default function OfficeHoursEditorsPage() {
                             </div>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90">
-                            {item.eipipAttended}
-                          </td>
-                          <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90">
                             {item.officeHoursHosted}
                           </td>
-                          <td className="py-2 pl-3 pr-2 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
-                            {item.prReviews.toLocaleString()}
+                          <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90 font-semibold">
+                            {item.prReviewsDuringOH.toLocaleString()}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-emerald-600 dark:text-emerald-400">
+                            {item.prsMerged}
+                          </td>
+                          <td className="py-2 pl-3 pr-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                            {item.prsClosed}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+
+              {/* 2. EIPIP Governance Participation Benchmark Table (Meetings 123-132, Jan-Nov) */}
+              <section className="rounded-xl border border-border bg-card/60 p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-primary" />
+                    <div>
+                      <h3 className="text-sm font-semibold text-foreground">
+                        EIPIP Governance Participation & Attendance
+                      </h3>
+                      <p className="text-[11px] text-muted-foreground">
+                        Meetings 123 to 132 (Jan–Nov 2026). October (#131) and November (#132) attended by Sam Wilson and Jochem Brouwer.
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                    10 Meetings
+                  </span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[500px] text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-border/80 text-[11px] font-semibold text-muted-foreground">
+                        <th className="py-2 pl-2 pr-3 font-semibold">Editor (GitHub)</th>
+                        <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                          Attended (of 10)
+                        </th>
+                        <th className="px-3 py-2 text-right font-semibold whitespace-nowrap">
+                          Attendance Rate
+                        </th>
+                        <th className="px-3 py-2 text-left font-semibold whitespace-nowrap pl-6">
+                          Oct &amp; Nov Sessions
+                        </th>
+                        <th className="py-2 pl-3 pr-2 text-right font-semibold whitespace-nowrap">
+                          Role
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/40">
+                      {EIPIP_EDITOR_PARTICIPATION.map((item) => (
+                        <tr key={item.github} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-2 pl-2 pr-3 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <Image
+                                src={editorAvatar(item.github)}
+                                alt={item.displayName}
+                                width={22}
+                                height={22}
+                                unoptimized
+                                className="h-5.5 w-5.5 rounded-full object-cover ring-1 ring-border"
+                              />
+                              <Link
+                                href={`/user/${item.github}`}
+                                className="font-medium text-foreground hover:text-primary transition-colors text-xs"
+                              >
+                                {item.displayName}{" "}
+                                <span className="text-muted-foreground font-mono text-[11px]">
+                                  ({item.github})
+                                </span>
+                              </Link>
+                            </div>
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90 font-semibold">
+                            {item.eipipAttended}
+                          </td>
+                          <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-primary font-medium">
+                            {item.attendanceRate}
+                          </td>
+                          <td className="px-3 py-2 text-left font-mono text-xs text-muted-foreground pl-6 whitespace-nowrap">
+                            <span className={cn(
+                              "inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium",
+                              item.octNovAttended.includes("Attended")
+                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                                : "text-muted-foreground"
+                            )}>
+                              {item.octNovAttended}
+                            </span>
+                          </td>
+                          <td className="py-2 pl-3 pr-2 text-right font-mono text-xs text-muted-foreground whitespace-nowrap">
+                            {item.role}
                           </td>
                         </tr>
                       ))}

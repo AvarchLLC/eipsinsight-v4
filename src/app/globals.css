@@ -670,20 +670,21 @@ html, body, #__next {
     align-items: center;
     gap: 0.375rem;
     height: 1.9rem;
-    padding-inline: 0.7rem;
+    padding-inline: 0.75rem;
     border-radius: var(--l-radius-control);
     border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-2);
     color: var(--ink-muted);
     font-size: 0.82rem;
     font-weight: 500;
     transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
   }
-  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip:hover { border-color: var(--ink); background: var(--surface-3); color: var(--ink); }
   .chip[data-active="true"] {
     background: var(--ink);
     border-color: var(--ink);
     color: var(--paper);
+    font-weight: 600;
   }
 
   /* ── Searchbox (Ledger Hero Search) ── */
@@ -852,38 +853,39 @@ html, body, #__next {
 }
 
 /* ── data-token mappings ── */
-[data-token="draft"] { --token: var(--c-draft); }
-[data-token="review"] { --token: var(--c-review); }
-[data-token="lastcall"], [data-token="last-call"], [data-token="last_call"] { --token: var(--c-lastcall); }
-[data-token="final"] { --token: var(--c-final); }
-[data-token="living"] { --token: var(--c-living); }
-[data-token="stagnant"] { --token: var(--c-stagnant); }
-[data-token="withdrawn"] { --token: var(--c-withdrawn); }
-[data-token="moved"] { --token: var(--c-moved); }
-[data-token="core"] { --token: var(--c-core); }
-[data-token="networking"] { --token: var(--c-networking); }
-[data-token="interface"] { --token: var(--c-interface); }
-[data-token="erc"] { --token: var(--c-erc); }
-[data-token="rip"] { --token: var(--c-rip); }
-[data-token="meta"] { --token: var(--c-meta); }
-[data-token="informational"] { --token: var(--c-informational); }
-[data-token="standards"] { --token: var(--c-standards); }
-[data-token="editor"] { --token: var(--c-editor); }
-[data-token="reviewer"] { --token: var(--c-reviewer); }
+[data-token="draft"] { --token: var(--c-draft); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="review"] { --token: var(--c-review); --token-bg: #b45309; --token-fg: #ffffff; }
+[data-token="lastcall"], [data-token="last-call"], [data-token="last_call"] { --token: var(--c-lastcall); --token-bg: #c2410c; --token-fg: #ffffff; }
+[data-token="final"] { --token: var(--c-final); --token-bg: #15803d; --token-fg: #ffffff; }
+[data-token="living"] { --token: var(--c-living); --token-bg: #0f766e; --token-fg: #ffffff; }
+[data-token="stagnant"] { --token: var(--c-stagnant); --token-bg: #be123c; --token-fg: #ffffff; }
+[data-token="withdrawn"] { --token: var(--c-withdrawn); --token-bg: #b91c1c; --token-fg: #ffffff; }
+[data-token="moved"] { --token: var(--c-moved); --token-bg: #7e22ce; --token-fg: #ffffff; }
+[data-token="core"] { --token: var(--c-core); --token-bg: #4338ca; --token-fg: #ffffff; }
+[data-token="networking"] { --token: var(--c-networking); --token-bg: #0369a1; --token-fg: #ffffff; }
+[data-token="interface"] { --token: var(--c-interface); --token-bg: #0e7490; --token-fg: #ffffff; }
+[data-token="erc"] { --token: var(--c-erc); --token-bg: #047857; --token-fg: #ffffff; }
+[data-token="rip"] { --token: var(--c-rip); --token-bg: #b45309; --token-fg: #ffffff; }
+[data-token="meta"] { --token: var(--c-meta); --token-bg: #6d28d9; --token-fg: #ffffff; }
+[data-token="informational"] { --token: var(--c-informational); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="standards"] { --token: var(--c-standards); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="editor"] { --token: var(--c-editor); --token-bg: #047857; --token-fg: #ffffff; }
+[data-token="reviewer"] { --token: var(--c-reviewer); --token-bg: #0e7490; --token-fg: #ffffff; }
 
 /* ── Ledger Badge Primitive (docs/DESIGN.md §5) ── */
 .l-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.15rem 0.5rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 4px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.72rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
-  background: color-mix(in oklch, var(--token, var(--brand)) 10%, transparent);
-  color: var(--token, var(--brand-strong));
-  border: 1px solid color-mix(in oklch, var(--token, var(--brand)) 25%, transparent);
+  background: var(--token-bg, #334155);
+  color: var(--token-fg, #ffffff) !important;
+  border: 1px solid var(--token-bg, #334155);
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }

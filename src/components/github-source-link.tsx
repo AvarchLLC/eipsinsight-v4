@@ -46,7 +46,7 @@ export function GithubSourceLink() {
       rel="noopener noreferrer"
       aria-label="View this page's source on GitHub"
       title="View this page's source on GitHub"
-      className="fixed bottom-4 right-28 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card/80 text-foreground shadow-[0_8px_20px_rgba(0,0,0,0.18)] backdrop-blur-xl transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+      className="fixed bottom-4 right-28 z-40 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border bg-card text-foreground shadow-md transition-all hover:border-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
     >
       <Github className="h-[18px] w-[18px]" />
     </a>

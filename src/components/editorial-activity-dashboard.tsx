@@ -80,49 +80,55 @@ function editorAvatar(actor: string) {
   return `https://avatars.githubusercontent.com/${encodeURIComponent(actor)}?s=96&d=identicon`;
 }
 
-interface CanonicalEditorParticipation {
+interface OfficeHourEditorParticipation {
   displayName: string;
   github: string;
-  eipipAttended: number;
   officeHoursHosted: number;
-  prReviews: number;
+  prReviewsDuringOH: number;
+  prsMerged: number;
+  prsClosed: number;
 }
 
-const CANONICAL_EDITOR_PARTICIPATION: CanonicalEditorParticipation[] = [
-  {
-    displayName: "Jochem B.",
-    github: "jochem-brouwer",
-    eipipAttended: 8,
-    officeHoursHosted: 10,
-    prReviews: 368,
-  },
+const OH_EDITOR_PARTICIPATION: OfficeHourEditorParticipation[] = [
   {
     displayName: "Sam Wilson",
     github: "SamWilsn",
-    eipipAttended: 8,
-    officeHoursHosted: 18,
-    prReviews: 300,
+    officeHoursHosted: 22,
+    prReviewsDuringOH: 345,
+    prsMerged: 84,
+    prsClosed: 19,
+  },
+  {
+    displayName: "Jochem B.",
+    github: "jochem-brouwer",
+    officeHoursHosted: 12,
+    prReviewsDuringOH: 412,
+    prsMerged: 96,
+    prsClosed: 26,
   },
   {
     displayName: "Gajinder Singh",
     github: "g11tech",
-    eipipAttended: 1,
-    officeHoursHosted: 3,
-    prReviews: 119,
-  },
-  {
-    displayName: "Matt",
-    github: "lightclient",
-    eipipAttended: 1,
-    officeHoursHosted: 0,
-    prReviews: 100,
+    officeHoursHosted: 4,
+    prReviewsDuringOH: 128,
+    prsMerged: 15,
+    prsClosed: 7,
   },
   {
     displayName: "Victor",
     github: "xinbenlv",
-    eipipAttended: 2,
     officeHoursHosted: 1,
-    prReviews: 63,
+    prReviewsDuringOH: 63,
+    prsMerged: 8,
+    prsClosed: 3,
+  },
+  {
+    displayName: "Matt",
+    github: "lightclient",
+    officeHoursHosted: 0,
+    prReviewsDuringOH: 0,
+    prsMerged: 0,
+    prsClosed: 0,
   },
 ];
 function iso(d: Date) {
@@ -684,20 +690,29 @@ export function EditorialActivityDashboard({
               />
             </div>
 
-            {/* Right: Canonical editor participation breakdown table matching screenshot */}
+            {/* Right: Office Hours Canonical editor participation breakdown (OH only) */}
             <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3 sm:p-3.5 lg:col-span-7">
+              <div className="mb-2 flex items-center justify-between">
+                <span className="text-xs font-semibold text-foreground">
+                  Office Hours Editorial Benchmark (Jan–Nov 2026)
+                </span>
+                <span className="font-mono text-[10px] text-muted-foreground">
+                  38 Sessions
+                </span>
+              </div>
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[460px] text-left text-xs">
+                <table className="w-full min-w-[480px] text-left text-xs">
                   <thead>
                     <tr className="border-b border-border/80 text-[11px] font-semibold text-muted-foreground">
                       <th className="py-1.5 pl-1 pr-2 font-semibold">Editor (GitHub)</th>
-                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">EIPIP (of 8)</th>
-                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">Office Hours hosted (of 32)</th>
-                      <th className="py-1.5 pl-2 pr-1 text-right font-semibold whitespace-nowrap">PR reviews, Jan–Sep</th>
+                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">Hosted (of 38)</th>
+                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">PR reviews (in call)</th>
+                      <th className="px-2 py-1.5 text-right font-semibold whitespace-nowrap">PRs merged</th>
+                      <th className="py-1.5 pl-2 pr-1 text-right font-semibold whitespace-nowrap">PRs closed</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/40">
-                    {CANONICAL_EDITOR_PARTICIPATION.map((item) => (
+                    {OH_EDITOR_PARTICIPATION.map((item) => (
                       <tr key={item.github} className="hover:bg-muted/30 transition-colors">
                         <td className="py-1.5 pl-1 pr-2 whitespace-nowrap">
                           <div className="flex items-center gap-2">
@@ -721,13 +736,16 @@ export function EditorialActivityDashboard({
                           </div>
                         </td>
                         <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-foreground/90">
-                          {item.eipipAttended}
-                        </td>
-                        <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-foreground/90">
                           {item.officeHoursHosted}
                         </td>
-                        <td className="py-1.5 pl-2 pr-1 text-right font-mono text-xs font-semibold tabular-nums text-foreground">
-                          {item.prReviews.toLocaleString()}
+                        <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-foreground/90 font-semibold">
+                          {item.prReviewsDuringOH.toLocaleString()}
+                        </td>
+                        <td className="px-2 py-1.5 text-right font-mono text-xs tabular-nums text-emerald-600 dark:text-emerald-400">
+                          {item.prsMerged}
+                        </td>
+                        <td className="py-1.5 pl-2 pr-1 text-right font-mono text-xs tabular-nums text-muted-foreground">
+                          {item.prsClosed}
                         </td>
                       </tr>
                     ))}

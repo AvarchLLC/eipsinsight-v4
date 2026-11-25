@@ -14,7 +14,8 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
+import { callDisplayName, callSeriesBadgeClass, callSeriesShort, callSeriesToken } from '@/data/call-series';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { CallTldr } from '@/components/upgrade/call-tldr';
 import {
   SeriesFilter,
@@ -45,15 +46,14 @@ export interface UpcomingCall {
 }
 
 function SeriesBadge({ series }: { series: string | null }) {
+  const short = series ? callSeriesShort(series) : '—';
   return (
-    <span
-      className={cn(
-        'inline-flex w-16 shrink-0 items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-        series ? callSeriesBadgeClass(series) : 'border-border bg-muted text-muted-foreground'
-      )}
+    <LedgerBadge
+      token={callSeriesToken(series)}
+      className="w-16 shrink-0 justify-center text-[10px]"
     >
-      {series ? callSeriesShort(series) : '—'}
-    </span>
+      {short}
+    </LedgerBadge>
   );
 }
 
@@ -203,7 +203,7 @@ export function CallsBrowser({
             value={search}
             onChange={(e) => changeSearch(e.target.value)}
             placeholder="Search calls…"
-            className="h-9 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none transition-colors focus:border-[var(--brand-strong)] focus:ring-1 focus:ring-[var(--brand-strong)]/30"
+            className="h-9 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none transition-colors focus:border-[var(--ink)]"
           />
         </div>
       </div>
@@ -290,7 +290,7 @@ export function CallsBrowser({
             return (
               <div
                 key={key}
-                className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--brand-strong)]/40 hover:bg-[var(--surface-2)]/40 shadow-xs"
+                className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--ink)] hover:bg-[var(--surface-2)] shadow-xs"
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   {/* Expander first, so every card's disclosure control lines up. It's
@@ -365,10 +365,10 @@ export function CallsBrowser({
             <button
               type="button"
               onClick={() => setVisibleCount((c) => c + STEP)}
-              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-2.5 text-sm font-medium text-[var(--ink-muted)] transition-colors hover:border-[var(--brand-strong)]/40 hover:text-[var(--brand-strong)] cursor-pointer"
+              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-sm font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink)] hover:bg-[var(--surface-3)] cursor-pointer"
             >
               Show {Math.min(STEP, remaining)} more
-              <span className="font-mono text-xs text-[var(--ink-faint)]">({remaining} remaining)</span>
+              <span className="font-mono text-xs text-[var(--ink-muted)]">({remaining} remaining)</span>
               <ChevronDown className="h-4 w-4" />
             </button>
           )}

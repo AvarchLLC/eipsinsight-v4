@@ -15,7 +15,8 @@ import {
   getCallSeriesOverview,
   type SeriesOverviewRow,
 } from '@/server/calls';
-import { callSeriesShort } from '@/data/call-series';
+import { callSeriesShort, callSeriesToken } from '@/data/call-series';
+import { LedgerBadge } from '@/components/ledger/badge';
 
 export const revalidate = 300;
 
@@ -85,18 +86,18 @@ function SeriesCard({ s }: { s: SeriesOverviewRow }) {
   return (
     <Link
       href={`/calls?series=${s.series}`}
-      className="group flex min-w-0 flex-col rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--brand-strong)]/50 hover:bg-[var(--surface-2)]"
+      className="group flex min-w-0 flex-col rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs transition-all hover:border-[var(--ink)] hover:bg-[var(--surface-2)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <span className="inline-flex items-center rounded-md border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] text-[var(--brand-strong)] font-semibold">
+          <LedgerBadge token={callSeriesToken(s.series)} className="text-[10px]">
             {s.short}
-          </span>
+          </LedgerBadge>
           <h3 className="mt-2.5 truncate font-serif text-lg font-bold tracking-tight text-[var(--ink)] group-hover:text-[var(--brand-strong)] transition-colors">
             {s.label}
           </h3>
         </div>
-        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-[var(--ink-faint)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[var(--brand-strong)]" />
+        <ArrowUpRight className="mt-1 h-4 w-4 shrink-0 text-[var(--ink-faint)] transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-[var(--ink)]" />
       </div>
 
       <p className="mt-1.5 font-mono text-xs text-[var(--ink-muted)]">
@@ -178,7 +179,7 @@ export default async function ProtocolCallsPage() {
               <div>
                 <div className="mb-3 flex items-center">
                   <span className="h-px w-10 bg-[var(--brand)]" />
-                  <span className="h-px flex-1 bg-[var(--ink)]" />
+                  <span className="h-px flex-1 bg-[var(--border)]" />
                 </div>
                 <div>
                   <span className="text-[11px] font-mono uppercase tracking-wider text-[var(--brand-strong)] font-semibold">

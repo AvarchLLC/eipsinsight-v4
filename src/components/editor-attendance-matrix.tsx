@@ -160,6 +160,34 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
       lightclient: false,
     },
   },
+  {
+    meeting: 131,
+    dateLabel: "Oct 21",
+    fullDate: "October 21, 2026",
+    editorsPresent: 2,
+    highlight: true,
+    attendance: {
+      SamWilsn: true,
+      "jochem-brouwer": true,
+      xinbenlv: false,
+      g11tech: false,
+      lightclient: false,
+    },
+  },
+  {
+    meeting: 132,
+    dateLabel: "Nov 18",
+    fullDate: "November 18, 2026",
+    editorsPresent: 2,
+    highlight: true,
+    attendance: {
+      SamWilsn: true,
+      "jochem-brouwer": true,
+      xinbenlv: false,
+      g11tech: false,
+      lightclient: false,
+    },
+  },
 ];
 
 // EIP Editing Office Hours recent attendance (meetings 105 to 112)
@@ -291,7 +319,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
           <p className="mt-1 text-xs text-muted-foreground">
             Filled dot = attended · Dim dot = absent ·{" "}
             {series === "eipip"
-              ? "EIPIP meetings 123 to 130, 2026."
+              ? "EIPIP meetings 123 to 132, 2026 (Jan–Nov)."
               : "Office Hour meetings 105 to 112, 2026."}
           </p>
         </div>
@@ -307,7 +335,7 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            EIPIP (123–130)
+            EIPIP (123–132)
           </button>
           <button
             onClick={() => setSeries("eipoh")}

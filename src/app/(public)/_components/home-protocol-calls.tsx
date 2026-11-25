@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import { cn } from '@/lib/utils';
-import { callSeriesShort } from '@/data/call-series';
+import { callSeriesShort, callSeriesToken } from '@/data/call-series';
 import { SectionHead } from '@/components/ledger/section-head';
 import { LedgerBadge } from '@/components/ledger/badge';
 
@@ -43,14 +43,14 @@ interface RecentCall {
 
 function SeriesBadge({ series }: { series: string | null }) {
   const short = series ? callSeriesShort(series) : '—';
-  const token = series
-    ? series.toLowerCase().includes('acde')
-      ? 'core'
-      : series.toLowerCase().includes('acdc')
-        ? 'networking'
-        : 'standards'
-    : 'standards';
-  return <LedgerBadge token={token} label={short} />;
+  return (
+    <LedgerBadge
+      token={callSeriesToken(series)}
+      className="w-16 shrink-0 justify-center text-[10px]"
+    >
+      {short}
+    </LedgerBadge>
+  );
 }
 
 function formatCallTime(occursAt: string | null, occursOn: string | null) {
