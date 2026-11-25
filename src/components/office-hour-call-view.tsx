@@ -10,6 +10,7 @@ import { OfficeHourRecap } from "@/components/office-hour-recap";
 import type { OhRecap } from "@/data/office-hour-recaps";
 import type { TranscriptCue } from "@/lib/call-artifacts";
 import cues111 from "@/data/office-hour-111-transcript.json";
+import cues120 from "@/data/office-hour-120-transcript.json";
 import cuesEthproofs009 from "@/data/ethproofs-009-transcript.json";
 import cuesEthproofs010 from "@/data/ethproofs-010-transcript.json";
 import cuesEipip132 from "@/data/eipip-132-transcript.json";
@@ -20,6 +21,7 @@ import { KeyDecisionsList } from "@/components/upgrade/key-decisions";
 // Add EIPIP / future office-hour transcripts here until the artifact pipeline covers them.
 const TRANSCRIPTS: Record<string, TranscriptCue[]> = {
   "eipoh-111": cues111 as TranscriptCue[],
+  "eipoh-120": cues120 as TranscriptCue[],
   "ethproofs-9": cuesEthproofs009 as TranscriptCue[],
   "ethproofs-10": cuesEthproofs010 as TranscriptCue[],
   "eipip-132": cuesEipip132 as TranscriptCue[],

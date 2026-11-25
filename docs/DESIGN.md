@@ -58,7 +58,7 @@ greys sit comfortably beside the emerald.
 | `--border` | `0.905 0.005 165` | `0.275 0.007 165` | Hairlines |
 | `--border-strong` | `0.8 0.008 165` | `0.38 0.01 165` | Input borders, inactive tracks |
 
-### Brand
+### Brand (Emerald)
 
 | Token | Light | Dark | Use |
 | --- | --- | --- | --- |
@@ -67,27 +67,36 @@ greys sit comfortably beside the emerald.
 | `--brand-soft` | `0.955 0.035 162` | `0.27 0.05 162` | Tinted wash behind brand text |
 | `--brand-ink` | `0.18 0.04 162` | `0.16 0.03 162` | Text on a `--brand` fill |
 
-Text is never set in `--brand` (it fails contrast in light mode). Use `text-brand-strong`.
+Text is never set in raw `--brand` (it fails contrast in light mode). Use `text-brand-strong` or CSS `var(--brand-strong)`.
 
 ### Semantic constants
 
-Used through `<Badge>` and `data-token`. Each has a lighter dark-mode twin in
-`globals.css`.
+Used through `<Badge>` and `data-token="..."`. Each has an exact light and lighter dark-mode twin in `globals.css`:
 
-| Meaning | Token | Hue |
-| --- | --- | --- |
-| Draft | `--c-draft` | slate |
-| Review | `--c-review` | amber |
-| Last Call | `--c-lastcall` | orange |
-| Final | `--c-final` | green |
-| Living | `--c-living` | teal |
-| Stagnant | `--c-stagnant` | dusty rose |
-| Withdrawn | `--c-withdrawn` | red |
-| Moved | `--c-moved` | violet |
-| Core / Networking / Interface / ERC / RIP | `--c-core` … `--c-rip` | indigo, blue, cyan, emerald, gold |
-| Meta / Informational / Standards Track | `--c-meta`, `--c-informational`, `--c-standards` | violet, slate, slate |
-| Execution / Consensus layer | `--c-el`, `--c-cl` | blue, violet |
-| Editor / Author / Reviewer / Contributor | `--c-editor` … | emerald, violet, cyan, slate |
+| Meaning | Token | Light OKLCH | Dark OKLCH | Hue / Family |
+| --- | --- | --- | --- | --- |
+| Draft | `--c-draft` | `0.60 0.02 255` | `0.72 0.02 255` | Slate |
+| Review | `--c-review` | `0.72 0.14 75` | `0.80 0.13 75` | Amber |
+| Last Call | `--c-lastcall` | `0.68 0.16 50` | `0.77 0.15 50` | Orange |
+| Final | `--c-final` | `0.60 0.13 150` | `0.75 0.14 150` | Green |
+| Living | `--c-living` | `0.65 0.10 190` | `0.76 0.10 190` | Teal |
+| Stagnant | `--c-stagnant` | `0.62 0.08 10` | `0.74 0.08 10` | Dusty rose |
+| Withdrawn | `--c-withdrawn` | `0.58 0.20 25` | `0.70 0.19 25` | Red |
+| Moved | `--c-moved` | `0.55 0.18 300` | `0.72 0.16 300` | Violet |
+| Core | `--c-core` | `0.58 0.16 270` | `0.74 0.15 270` | Indigo |
+| Networking | `--c-networking` | `0.60 0.14 240` | `0.75 0.13 240` | Blue |
+| Interface | `--c-interface` | `0.64 0.12 210` | `0.78 0.11 210` | Cyan |
+| ERC | `--c-erc` | `0.60 0.14 160` | `0.76 0.14 160` | Emerald |
+| RIP | `--c-rip` | `0.68 0.15 85` | `0.80 0.14 85` | Gold |
+| Meta | `--c-meta` | `0.60 0.15 310` | `0.75 0.14 310` | Violet |
+| Informational | `--c-informational` | `0.62 0.03 250` | `0.74 0.03 250` | Slate |
+| Standards | `--c-standards` | `0.62 0.03 250` | `0.74 0.03 250` | Slate |
+| Execution Layer (EL) | `--c-el` | `0.60 0.14 240` | `0.75 0.13 240` | Blue |
+| Consensus Layer (CL) | `--c-cl` | `0.58 0.16 280` | `0.74 0.15 280` | Violet |
+| Editor | `--c-editor` | `0.62 0.14 162` | `0.78 0.14 162` | Emerald |
+| Author | `--c-author` | `0.58 0.16 290` | `0.74 0.15 290` | Violet |
+| Reviewer | `--c-reviewer` | `0.64 0.12 210` | `0.78 0.11 210` | Cyan |
+| Contributor | `--c-contributor` | `0.62 0.03 250` | `0.74 0.03 250` | Slate |
 
 Pull request and issue states borrow the status colour that means the same thing: Open
 and Approved are Final green, Merged is Moved violet, Closed and Changes requested are
@@ -102,33 +111,42 @@ Badges, ledger spines, mosaic cells and meters all read `--token`.
 
 ## 3. Typography
 
-| Family | Variable | Role |
+The typographic hierarchy follows the Ledger design system — pairing EIPsInsight's signature editorial serif **Advercase** with modern grotesque body sans and technical monospace:
+
+| Family | CSS Variable / Source | Role |
 | --- | --- | --- |
-| Fraunces (optical size axis, 600, italic 400) | `--font-fraunces` | Titles, figures, the logo wordmark |
-| Geist | `--font-geist` | Body and interface text |
-| Geist Mono | `--font-geist-mono` | Identifiers, dates, counts, eyebrows, keyboard hints |
+| **Advercase** | `--font-advercase` (`public/fonts/Advercase-*.woff2`) | **Headings, titles & section headers (`h1`–`h6`, `.t-display`, `.t-h1`, `.t-h2`, `.t-h3`, `.dec-title`)**: Signature retro Apple-Garamond editorial serif for page mastheads, section headers, card titles, and figures. |
+| **Plus Jakarta Sans** / **Inter** / **Geist** | `--font-plus-jakarta` / `--font-inter` / `--font-geist` | **Interface controls & body copy**: Clean grotesque sans for controls, chips, table content, badges, tooltips, and descriptions. |
+| **Fraunces** | `--font-fraunces` (Google Font) | **Optical fallback & accents**: Optical-size variable serif fallback for Advercase, italic flourishing accents (`.accent`). |
+| **Geist Mono** | `--font-geist-mono` | **Technical citations**: Identifiers (`EIP-4844`, `#12423`), dates, tabular metrics, badges, keyboard hints (`.kbd`), and eyebrows (`.eyebrow`). |
 
-Root size is 17px (`html { font-size: 106.25% }`) so the site reads at
-reference-document size. Reference the font variables directly in CSS, since Tailwind's
-`@theme inline` does not emit mapped font variables.
+### Font Stacks in CSS
 
-| Class | Size | Use |
-| --- | --- | --- |
-| `.t-display` | `clamp(2.7rem, 6.4vw, 5.2rem)` / 0.98 | Home hero only |
-| `.t-h1` | `clamp(2.1rem, 4.4vw, 3.3rem)` / 1.04 | One per page, in the masthead |
-| `.t-h2` | `clamp(1.65rem, 2.8vw, 2.2rem)` / 1.1 | Section titles |
-| `.t-h3` | `1.25rem` / 1.25 | Card titles, sub-section titles |
-| `.t-lead` | `1.15rem` / 1.55, muted | The sentence under a title |
-| `.t-figure` | `clamp(2.4rem, 4.6vw, 3.5rem)` | Big numbers |
-| `.eyebrow` | `0.68rem` mono, uppercase, 0.12em tracking | Names a region or a column |
-| body | `1rem` / 1.6 | Default |
+- **Headings & Serif Stack:** `var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;`
+- **Interface Body Stack:** `var(--font-plus-jakarta), var(--font-inter), var(--font-geist), ui-sans-serif, system-ui, sans-serif;`
+- **Technical Monospace Stack:** `var(--font-geist-mono), ui-monospace, monospace;`
 
-Rules of use:
+### Typographic Classes
 
-- Serif is for titles and numbers. Body copy and controls are always Geist.
-- Anything a reader might cite or copy is mono: `EIP-4844`, `#12594`, `Mar 2024`, counts.
+| Class | Size / Line Height | Font Family & Weight | Use |
+| --- | --- | --- | --- |
+| `.t-display` | `clamp(2.5rem, 5.2vw, 4.2rem)` / 1.02 | Advercase 700, tracking -0.025em | Home hero display headline |
+| `.t-h1` | `clamp(2.1rem, 4.4vw, 3.3rem)` / 1.04 | Advercase 700, tracking -0.02em | One per page in masthead (main title) |
+| `.t-h2` | `clamp(1.4rem, 2.4vw, 1.85rem)` / 1.15 | Advercase 700, tracking -0.02em | Major section headings |
+| `.t-h3` | `1.125rem` / 1.35 | Advercase 700, tracking -0.015em | Card titles, sub-section heads |
+| `.dec-title` | `1.125rem`–`1.25rem` / 1.15 | Advercase 700, tracking -0.02em | Standard section headings |
+| `.t-lead` | `1.15rem` / 1.55 | Sans, muted ink | Lead sentence beneath a title |
+| `.t-figure` | `clamp(2.2rem, 4.0vw, 3.2rem)` / 1.0 | Advercase 700, tabular-nums | KPI figures and big hero numbers |
+| `.eyebrow` | `0.68rem` / 1.2 | Geist Mono, uppercase, tracking 0.12em | Section or column label |
+| body | `1rem` (16px/17px) / 1.6 | Inter / Geist, normal | Default prose |
+
+### Rules of Use
+
+- **All headings use Advercase**: From the primary `h1` down through section headings (`h2`, `h3`, `h4`, `.dec-title`), headers use `Advercase` for the unified Ledger editorial aesthetic.
+- **Body & UI controls use sans**: Buttons, form inputs, filter chips, navigation links, and descriptive text use clean regular sans (`Plus Jakarta Sans` / `Inter` / `Geist`).
+- Anything a reader might cite, verify, or copy is monospace: `EIP-4844`, `#12423`, `2026-11-24`, metric counts.
 - `.accent` (italic serif in `--brand-strong`) is the single flourish. One per page at most.
-- Sentence case everywhere. Only eyebrows are uppercase.
+- Sentence case everywhere. Only eyebrows are uppercase. Avoid ALL-CAPS body or button copy.
 
 ## 4. Layout and spacing
 
@@ -160,7 +178,13 @@ Rules of use:
    the `h1`, a lead, and page-level facts. Index pages use `PageHead`.
 4. **Sections:** each opens with `SectionHead` (ink rule, mono eyebrow with an optional
    index number, serif title, optional description and action).
-5. **Footer** (`SiteFooter`): opens with an ink rule, three columns, a mono colophon.
+5. **Footer** (`SiteFooter`): opens with a hairline border, minimal 4-column aesthetic
+   layout:
+   - **Col 1 (Brand)**: Logo with trend glyph, "Build With ❤️ by Avarch", version badge (`v4.1`).
+   - **Col 2 (Links)**: All, Status, Monthly Insights, About Us, Resources, Events, Testimonials, Branding Assets (`/assets`).
+   - **Col 3 (Support)**: Found a bug?, Donate, Feedback, Want to use our data?
+   - **Col 4 (Follow Us)**: YouTube, LinkedIn, X, EtherWorld.
+   - **Colophon**: Single bottom strip with copyright (`© 2026 EIPs Insight. Governance and standards intelligence for Ethereum.`). Never include server diagnostics or clutter like "All systems nominal" in the footer.
 6. **Phone tab bar** (`TabBar`): fixed to the bottom below `sm` with Home, Proposals,
    Upgrades, Contributors, Search. The footer pads itself so the bar never covers it.
    The desktop nav carries one more destination (Calls) that the phone bar has no room
@@ -190,8 +214,11 @@ Do not add rails or crop marks to other pages. They mark the front page.
 | `.ledger` + `.ledger-row` | CSS | The list primitive. Rows are split by hairlines. Hover fills the row and shows a 2px spine in `--token` (the status colour, or brand by default). `data-active="true"` gives the same state for keyboard selection. |
 | `ProposalRow` | `proposal-row.tsx` | One proposal as a ledger line: mono call number, title, optional meta, status badge. Used everywhere a proposal is listed. |
 | `HitBody` | `hit-row.tsx` | The inside of a search result line, shared by the hero bar, the palette and `/search`. |
-| `Badge` | `badge.tsx` | The semantic constant. Squared, tinted with `--token`, explains itself on hover unless `tip={false}` (always off inside rows). |
+| `Badge` | `badge.tsx` / `.l-badge` | The semantic constant. Squared, tinted with `--token`, explains itself on hover unless `tip={false}` (always off inside rows). |
 | `.chip` | CSS | A filter or suggestion. `data-active="true"` inverts it to ink. `.chip-n` is its count. |
+| `DatePresetFilterBar` | office hours & analytics | Standardized segmented date pills: `[Today] [7d] [This month] [All time] [Date range]` with full historical window support (`2015-01-01` to today) and repo checkboxes (`EIPs`, `ERCs`, `RIPs`). |
+| `EditorAttendanceMatrix` | `editor-attendance-matrix.tsx` | Meeting attendance dot matrix across canonical editors. Uses neutral, objective titles and clean uniform dots without editorialized callouts or arbitrary shaded columns. |
+| `BenchmarkTable` | `editorial-activity-dashboard.tsx` | Canonical Editor Participation Benchmark comparing EIPIP meetings, Office Hours hosted, and PR reviews. |
 | `.btn` `.btn-primary` `.btn-outline` | CSS | 40px controls. One primary action per view at most. |
 | `.icon-btn` | CSS | 36px square icon control. |
 | `.field` | CSS | Search input shell. Focus darkens the border and adds the ring. |
@@ -380,18 +407,17 @@ The Office Hours hub (`/officehours`) coordinates EIP editing calls, the review 
 and maintainer activity across six tabs: `Overview`, `Board`, `PR Analytics`, `Editors`,
 `Reviewers`, and `Calls`.
 
-- **Embedded analytics:** `/officehours/editors` and `/officehours/reviewers` mount
-  `AnalyticsLayout embedded`, reusing the shared time-range and repository controls while
-  staying synchronized with `/analytics/editors` and `/analytics/reviewers`.
-- **Unified leaderboard:** rankings are presented inside a single ruled container. Never
-  stack redundant podium cards or duplicate view switchers above the graph. The card
-  header houses the metric selector (`Reviews`, `PRs Touched`, `Turnaround`), the view
-  switcher (`Graph` or `Table`), and CSV export. Top reviewers and editors carry medal
-  glyphs (`🥇`, `🥈`, `🥉`) directly on the chart Y-axis.
-- **Category specialization:** proposal tracks use canonical naming (`ERC`, `Core`,
-  `Interface`, `Networking`, `Meta`, `Informational`, `RIP`) and fixed track colors.
-  Category workload is explored through normalized 100% share bars, distinct PR review
-  volume, or raw event counts.
+- **Executive Split (Overview):** the top section splits into two balanced halves:
+  - **Left (2x2 KPI Grid):** Four executive cards displaying `Active Editors` (expressed as a ratio of active to canonical maintainers, e.g. `3/5`), `PRs Touched`, `Review Actions`, and `Status Changes`.
+  - **Right (Benchmark Table):** Canonical Editor Participation Benchmark comparing all canonical editors across EIPIP calls attended, Office Hours hosted, and PR reviews.
+- **Accountability Leaderboard:** rankings display all 5 canonical EIP editors (`SamWilsn`, `jochem-brouwer`, `g11tech`, `lightclient`, `xinbenlv`) to maintain complete transparency. Inactive editors in the selected window are not hidden; they are displayed with `0` counts and muted opacity (`opacity-45`) with clear inactive indicators.
+- **Dedicated Editors Experience (`/officehours/editors`):** structured into 4 focused sub-tabs:
+  1. **`Leaderboard` (Default):** Ranked editor performance with category distribution bars, activity shares, search, and CSV export.
+  2. **`Meeting Attendance`:** The `EditorAttendanceMatrix` dot matrix showing attendance across historical EIPIP and Office Hours calls. Uses neutral, objective titles and clean uniform dots without editorialized commentary or arbitrary highlighted columns.
+  3. **`PR & Action Explorer`:** Filterable table of every indexed review, comment, and merge action without redundant outer wrapper cards or duplicate headers.
+  4. **`Velocity & Trends`:** Daily activity stacked charts and throughput metrics over time.
+- **Unified Date Presets:** both Overview and Editors use the standard preset pill row: `[Today] [7d] [This month] [All time] [Date range]`. Selecting "All time" queries the full historical window (`2015-01-01` to today) and displays `"Showing All time"`.
+- **Category Specialization:** proposal tracks use canonical naming (`ERC`, `Core`, `Interface`, `Networking`, `Meta`, `Informational`, `RIP`) and fixed track colors. Workload is explored through normalized share bars and distinct PR counts.
 
 ## 14. Post-quantum security
 

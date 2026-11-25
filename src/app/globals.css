@@ -39,6 +39,7 @@ html.persona-theme-transition *::after {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+  --font-serif: var(--font-advercase), var(--font-fraunces), Georgia, serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -178,19 +179,11 @@ html.persona-theme-transition *::after {
   --chart-6: oklch(0.62 0.25 300);
   --chart-7: oklch(0.65 0.24 25);
   --chart-8: oklch(0.7 0.03 260);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: var(--persona-primary);
-  --sidebar-primary-foreground: var(--persona-primary-foreground);
-  --sidebar-accent: var(--persona-accent);
-  --sidebar-accent-foreground: var(--persona-accent-foreground);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --page-bg: oklch(0.09 0 0);
-  --card-bg: oklch(0.18 0 0);
-  --card-border: oklch(0.3 0 0);
-  --nav-bg: oklch(0.09 0 0 / 0.95);
-  --nav-border: oklch(0.4 0.05 195);
+  --page-bg: oklch(0.155 0.004 165);
+  --card-bg: oklch(0.19 0.005 165);
+  --card-border: oklch(0.275 0.007 165);
+  --nav-bg: oklch(0.155 0.004 165 / 0.95);
+  --nav-border: oklch(0.275 0.007 165);
 }
 
 :root[data-persona="developer"] {
@@ -309,8 +302,10 @@ html, body, #__next {
 }
 
 .dec-title {
-  font-family: var(--font-libre-baskerville);
-  line-height: 1.2;
+  font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   padding-top: 0;
   padding-bottom: 0;
 }
@@ -492,10 +487,11 @@ html, body, #__next {
   .wrap-narrow { max-width: 50rem; }
 
   /* ── Typography (docs/DESIGN.md §3) ── */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-plus-jakarta), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  }
-  .font-serif, .font-display {
+  /* Document headings & display titles: Advercase editorial serif */
+  h1, h2, h3, h4, h5, h6, .t-display, .t-h1, .t-h2, .t-h3, .font-serif, .font-display,
+  [data-ledger] h1, [data-ledger] h2, [data-ledger] h3, [data-ledger] h4, [data-ledger] h5, [data-ledger] h6,
+  [data-ledger] .t-display, [data-ledger] .t-h1, [data-ledger] .t-h2, [data-ledger] .t-h3,
+  [data-ledger] .dec-title, [data-ledger] .font-serif, [data-ledger] .font-display {
     font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
     letter-spacing: -0.02em;
   }
@@ -520,18 +516,18 @@ html, body, #__next {
   .t-h2 {
     font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
     font-weight: 700;
-    font-size: clamp(1.65rem, 2.8vw, 2.2rem);
-    line-height: 1.1;
-    letter-spacing: -0.015em;
+    font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     color: var(--ink);
     text-wrap: balance;
   }
   .t-h3 {
-    font-family: var(--font-plus-jakarta), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 600;
+    font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
+    font-weight: 700;
     font-size: 1.125rem;
     line-height: 1.35;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     color: var(--ink);
   }
   .t-lead {
@@ -674,20 +670,21 @@ html, body, #__next {
     align-items: center;
     gap: 0.375rem;
     height: 1.9rem;
-    padding-inline: 0.7rem;
+    padding-inline: 0.75rem;
     border-radius: var(--l-radius-control);
     border: 1px solid var(--border);
-    background: var(--surface);
+    background: var(--surface-2);
     color: var(--ink-muted);
     font-size: 0.82rem;
     font-weight: 500;
     transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease;
   }
-  .chip:hover { border-color: var(--ink); color: var(--ink); }
+  .chip:hover { border-color: var(--ink); background: var(--surface-3); color: var(--ink); }
   .chip[data-active="true"] {
     background: var(--ink);
     border-color: var(--ink);
     color: var(--paper);
+    font-weight: 600;
   }
 
   /* ── Searchbox (Ledger Hero Search) ── */
@@ -856,38 +853,39 @@ html, body, #__next {
 }
 
 /* ── data-token mappings ── */
-[data-token="draft"] { --token: var(--c-draft); }
-[data-token="review"] { --token: var(--c-review); }
-[data-token="lastcall"], [data-token="last-call"], [data-token="last_call"] { --token: var(--c-lastcall); }
-[data-token="final"] { --token: var(--c-final); }
-[data-token="living"] { --token: var(--c-living); }
-[data-token="stagnant"] { --token: var(--c-stagnant); }
-[data-token="withdrawn"] { --token: var(--c-withdrawn); }
-[data-token="moved"] { --token: var(--c-moved); }
-[data-token="core"] { --token: var(--c-core); }
-[data-token="networking"] { --token: var(--c-networking); }
-[data-token="interface"] { --token: var(--c-interface); }
-[data-token="erc"] { --token: var(--c-erc); }
-[data-token="rip"] { --token: var(--c-rip); }
-[data-token="meta"] { --token: var(--c-meta); }
-[data-token="informational"] { --token: var(--c-informational); }
-[data-token="standards"] { --token: var(--c-standards); }
-[data-token="editor"] { --token: var(--c-editor); }
-[data-token="reviewer"] { --token: var(--c-reviewer); }
+[data-token="draft"] { --token: var(--c-draft); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="review"] { --token: var(--c-review); --token-bg: #b45309; --token-fg: #ffffff; }
+[data-token="lastcall"], [data-token="last-call"], [data-token="last_call"] { --token: var(--c-lastcall); --token-bg: #c2410c; --token-fg: #ffffff; }
+[data-token="final"] { --token: var(--c-final); --token-bg: #15803d; --token-fg: #ffffff; }
+[data-token="living"] { --token: var(--c-living); --token-bg: #0f766e; --token-fg: #ffffff; }
+[data-token="stagnant"] { --token: var(--c-stagnant); --token-bg: #be123c; --token-fg: #ffffff; }
+[data-token="withdrawn"] { --token: var(--c-withdrawn); --token-bg: #b91c1c; --token-fg: #ffffff; }
+[data-token="moved"] { --token: var(--c-moved); --token-bg: #7e22ce; --token-fg: #ffffff; }
+[data-token="core"] { --token: var(--c-core); --token-bg: #4338ca; --token-fg: #ffffff; }
+[data-token="networking"] { --token: var(--c-networking); --token-bg: #0369a1; --token-fg: #ffffff; }
+[data-token="interface"] { --token: var(--c-interface); --token-bg: #0e7490; --token-fg: #ffffff; }
+[data-token="erc"] { --token: var(--c-erc); --token-bg: #047857; --token-fg: #ffffff; }
+[data-token="rip"] { --token: var(--c-rip); --token-bg: #b45309; --token-fg: #ffffff; }
+[data-token="meta"] { --token: var(--c-meta); --token-bg: #6d28d9; --token-fg: #ffffff; }
+[data-token="informational"] { --token: var(--c-informational); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="standards"] { --token: var(--c-standards); --token-bg: #475569; --token-fg: #ffffff; }
+[data-token="editor"] { --token: var(--c-editor); --token-bg: #047857; --token-fg: #ffffff; }
+[data-token="reviewer"] { --token: var(--c-reviewer); --token-bg: #0e7490; --token-fg: #ffffff; }
 
 /* ── Ledger Badge Primitive (docs/DESIGN.md §5) ── */
 .l-badge {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.15rem 0.5rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 4px;
   font-family: var(--font-geist-mono), ui-monospace, monospace;
   font-size: 0.72rem;
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.35;
-  background: color-mix(in oklch, var(--token, var(--brand)) 10%, transparent);
-  color: var(--token, var(--brand-strong));
-  border: 1px solid color-mix(in oklch, var(--token, var(--brand)) 25%, transparent);
+  background: var(--token-bg, #334155);
+  color: var(--token-fg, #ffffff) !important;
+  border: 1px solid var(--token-bg, #334155);
   white-space: nowrap;
+  letter-spacing: 0.02em;
 }

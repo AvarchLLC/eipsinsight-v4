@@ -1,0 +1,427 @@
+[
+  {
+    "start": "00:03:40",
+    "end": "00:03:58",
+    "text": "Pooja Ranjan: Awesome, thank you so much. Welcome to EIP Editing Office Hour, meeting number 120. Today is November 24th, and the agenda is added to Ethereum slash PM GitHub repository, uh, with the issue number 2307. On agenda, we have…"
+  },
+  {
+    "start": "00:03:59",
+    "end": "00:04:13",
+    "text": "Pooja Ranjan: mostly PRs, which are related to status change, and some of them are the new proposal. Any author on the call, if you have any question, please feel free to add it on the comment section, the chat box, so we will take it as we go."
+  },
+  {
+    "start": "00:04:13",
+    "end": "00:04:20",
+    "text": "Pooja Ranjan: Welcome, Sam, and thank you for joining this call. So maybe we can get started with the first one."
+  },
+  {
+    "start": "00:04:17",
+    "end": "00:04:18",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:04:21",
+    "end": "00:04:25",
+    "text": "Pooja Ranjan: Oh, you are already started. Thanks."
+  },
+  {
+    "start": "00:04:23",
+    "end": "00:04:27",
+    "text": "Sam: Yeah, I'm just replying to the comments on the agenda here."
+  },
+  {
+    "start": "00:04:26",
+    "end": "00:04:26",
+    "text": "Pooja Ranjan: Yes."
+  },
+  {
+    "start": "00:04:50",
+    "end": "00:04:57",
+    "text": "Sam: Cool. All right. So moving on to the status changes. What are we doing today?"
+  },
+  {
+    "start": "00:04:57",
+    "end": "00:05:00",
+    "text": "Sam: This is…"
+  },
+  {
+    "start": "00:05:04",
+    "end": "00:05:06",
+    "text": "Sam: No, this one. Okay."
+  },
+  {
+    "start": "00:05:08",
+    "end": "00:05:10",
+    "text": "Sam: And…"
+  },
+  {
+    "start": "00:06:08",
+    "end": "00:06:09",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:06:16",
+    "end": "00:06:20",
+    "text": "Sam: Let's do something for fun here."
+  },
+  {
+    "start": "00:06:22",
+    "end": "00:06:24",
+    "text": "Sam: your scenes."
+  },
+  {
+    "start": "00:06:39",
+    "end": "00:06:43",
+    "text": "Sam: Okay. And then how long is this one?"
+  },
+  {
+    "start": "00:06:56",
+    "end": "00:07:01",
+    "text": "Sam: So 2,329 lines, and the longest one."
+  },
+  {
+    "start": "00:07:03",
+    "end": "00:07:04",
+    "text": "Sam: Yeah, so that makes us the…"
+  },
+  {
+    "start": "00:07:04",
+    "end": "00:07:11",
+    "text": "Sam: Third longest EIP by line count. That's funny."
+  },
+  {
+    "start": "00:07:40",
+    "end": "00:07:45",
+    "text": "Sam: Okay, so going back over here, let's go and…"
+  },
+  {
+    "start": "00:07:49",
+    "end": "00:07:51",
+    "text": "Sam: So…"
+  },
+  {
+    "start": "00:08:47",
+    "end": "00:08:48",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:09:00",
+    "end": "00:09:01",
+    "text": "Sam: And…"
+  },
+  {
+    "start": "00:09:38",
+    "end": "00:09:40",
+    "text": "Sam: Guess we're in for a nice long read today."
+  },
+  {
+    "start": "00:09:41",
+    "end": "00:09:52",
+    "text": "Sam: All right, ENS trust registry for agent coordination. Web of trust validation using ENS names for ERC-8001 multi-party coordination by Kwame Byron."
+  },
+  {
+    "start": "00:09:52",
+    "end": "00:09:53",
+    "text": "Sam: Okay…"
+  },
+  {
+    "start": "00:09:53",
+    "end": "00:10:07",
+    "text": "Sam: So, this ERC defines a trust registry that enables agents to establish and query transitive trust relationships using ENS names as identifiers. Trust is expressed to four levels, and propagates along certification paths, adopting the trust levels and path model of the OpenPGP web of trust described in the docs."
+  },
+  {
+    "start": "00:10:07",
+    "end": "00:10:14",
+    "text": "Sam: All right, I like OpenPGP. Path verification checks a single path against a minimum per edge trust level and doesn't accumulate marginal associations. Okay."
+  },
+  {
+    "start": "00:10:20",
+    "end": "00:10:20",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:10:20",
+    "end": "00:10:22",
+    "text": "Sam: And."
+  },
+  {
+    "start": "00:10:31",
+    "end": "00:10:33",
+    "text": "premm.eth: Let's see."
+  },
+  {
+    "start": "00:11:24",
+    "end": "00:11:25",
+    "text": "Sam: Mm-hmm."
+  },
+  {
+    "start": "00:12:01",
+    "end": "00:12:04",
+    "text": "Sam: Relationship, um…"
+  },
+  {
+    "start": "00:12:18",
+    "end": "00:12:18",
+    "text": "premm.eth: That's what it's saying."
+  },
+  {
+    "start": "00:12:20",
+    "end": "00:12:28",
+    "text": "Sam: So, ERC-8001 defines minimal parameters for multi-party agent coordination and delegates cryptographic repudiation to modules."
+  },
+  {
+    "start": "00:12:31",
+    "end": "00:12:32",
+    "text": "Sam: So."
+  },
+  {
+    "start": "00:12:37",
+    "end": "00:12:42",
+    "text": "premm.eth: Ross Chan Klein gave it to her. Ross Chan Klein."
+  },
+  {
+    "start": "00:12:53",
+    "end": "00:12:55",
+    "text": "Sam: So that's the."
+  },
+  {
+    "start": "00:13:12",
+    "end": "00:13:14",
+    "text": "Sam: Okay…"
+  },
+  {
+    "start": "00:13:30",
+    "end": "00:13:33",
+    "text": "Sam: OK, got that. What's this?"
+  },
+  {
+    "start": "00:16:15",
+    "end": "00:16:20",
+    "text": "Sam: Okay, so let's duplicate this tab."
+  },
+  {
+    "start": "00:16:38",
+    "end": "00:16:39",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:18:25",
+    "end": "00:18:27",
+    "text": "Sam: Can you revert with that?"
+  },
+  {
+    "start": "00:19:47",
+    "end": "00:19:52",
+    "text": "Sam: Yeah, yeah, nice name, not to keep behind you, so don't need to have that."
+  },
+  {
+    "start": "00:20:19",
+    "end": "00:20:23",
+    "text": "Sam: The subscription carry short expires and it is not going to be carried."
+  },
+  {
+    "start": "00:22:34",
+    "end": "00:22:36",
+    "text": "Sam: No, I didn't."
+  },
+  {
+    "start": "00:24:38",
+    "end": "00:24:44",
+    "text": "Sam: Where you're going to show the algorithm, which is you're supposed to follow."
+  },
+  {
+    "start": "00:25:23",
+    "end": "00:25:28",
+    "text": "Sam: Okay. Okay."
+  },
+  {
+    "start": "00:25:37",
+    "end": "00:25:42",
+    "text": "Sam: 5, 2, 7, 6. Wait, I said it was 5, 2, 6, 7."
+  },
+  {
+    "start": "00:25:44",
+    "end": "00:25:46",
+    "text": "Sam: It's too far."
+  },
+  {
+    "start": "00:25:47",
+    "end": "00:25:49",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:25:52",
+    "end": "00:25:54",
+    "text": "Sam: Nope, that was the right one, okay."
+  },
+  {
+    "start": "00:25:54",
+    "end": "00:26:01",
+    "text": "Pooja Ranjan: Sam, just to let you know, there are two authors on the call. I don't know if they have any specific question."
+  },
+  {
+    "start": "00:26:00",
+    "end": "00:26:04",
+    "text": "Sam: Yeah, if you have any questions, just feel free to interrupt me. Yeah."
+  },
+  {
+    "start": "00:26:02",
+    "end": "00:26:04",
+    "text": "Pooja Ranjan: Drop it."
+  },
+  {
+    "start": "00:26:04",
+    "end": "00:26:04",
+    "text": "Pooja Ranjan: Yeah."
+  },
+  {
+    "start": "00:28:04",
+    "end": "00:28:06",
+    "text": "Sam: Um…"
+  },
+  {
+    "start": "00:29:02",
+    "end": "00:29:04",
+    "text": "Sam: Much preferred in the order of F."
+  },
+  {
+    "start": "00:29:29",
+    "end": "00:29:31",
+    "text": "Sam: Hmm, tete-tete."
+  },
+  {
+    "start": "00:37:35",
+    "end": "00:37:38",
+    "text": "Sam: Hey, Prem. Yeah, um…"
+  },
+  {
+    "start": "00:37:38",
+    "end": "00:37:39",
+    "text": "Sam: I'll be…"
+  },
+  {
+    "start": "00:37:39",
+    "end": "00:37:43",
+    "text": "Sam: Try to get to it when I can get to it, but there is a huge backlog."
+  },
+  {
+    "start": "00:37:43",
+    "end": "00:37:47",
+    "text": "Sam: And it takes a while, as you can see, to review these. So yeah."
+  },
+  {
+    "start": "00:38:36",
+    "end": "00:38:38",
+    "text": "Sam: movement."
+  },
+  {
+    "start": "00:41:45",
+    "end": "00:41:56",
+    "text": "Sam: Okay. And then if you go all the way back up, what is this going into? Is this going into draft? This is going into last call. So, okay."
+  },
+  {
+    "start": "00:42:05",
+    "end": "00:42:07",
+    "text": "Sam: Alright, well, that was…"
+  },
+  {
+    "start": "00:42:07",
+    "end": "00:42:09",
+    "text": "Sam: Fun. Um…"
+  },
+  {
+    "start": "00:42:10",
+    "end": "00:42:13",
+    "text": "Sam: Where are we off to next? We're moving off to 7962."
+  },
+  {
+    "start": "00:42:12",
+    "end": "00:42:14",
+    "text": "Pooja Ranjan: A long one, too."
+  },
+  {
+    "start": "00:42:14",
+    "end": "00:42:15",
+    "text": "Sam: Yeah."
+  },
+  {
+    "start": "00:42:14",
+    "end": "00:42:15",
+    "text": "Pooja Ranjan: Yeah."
+  },
+  {
+    "start": "00:42:15",
+    "end": "00:42:19",
+    "text": "Sam: Yeah, seven, nine, six, two, dah, dah, dah, dah."
+  },
+  {
+    "start": "00:42:21",
+    "end": "00:42:23",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:43:04",
+    "end": "00:43:06",
+    "text": "Sam: Let's repeat."
+  },
+  {
+    "start": "00:43:06",
+    "end": "00:43:06",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:43:09",
+    "end": "00:43:10",
+    "text": "Sam: 8."
+  },
+  {
+    "start": "00:43:23",
+    "end": "00:43:29",
+    "text": "Sam: Okay, so let's give this a read. Okay, the ERC proposes…"
+  },
+  {
+    "start": "00:43:45",
+    "end": "00:43:46",
+    "text": "Sam: Two interfaces."
+  },
+  {
+    "start": "00:43:46",
+    "end": "00:43:48",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:44:32",
+    "end": "00:44:39",
+    "text": "Sam: Token operation transfer with the orange key and uncompressed data."
+  },
+  {
+    "start": "00:44:41",
+    "end": "00:44:49",
+    "text": "Sam: 7:21, 7:21, wait, 7:21."
+  },
+  {
+    "start": "00:45:05",
+    "end": "00:45:06",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:45:32",
+    "end": "00:45:34",
+    "text": "Sam: Okay."
+  },
+  {
+    "start": "00:47:27",
+    "end": "00:47:28",
+    "text": "Sam: to…"
+  },
+  {
+    "start": "00:47:31",
+    "end": "00:47:40",
+    "text": "Sam: OK, cool. I have to drop a bit early because I have another call at noon. So thanks, everybody, for coming out."
+  },
+  {
+    "start": "00:47:42",
+    "end": "00:47:48",
+    "text": "Pooja Ranjan: Thank you so much, Sam, for taking our time today, and we look forward to have everyone next week."
+  }
+]

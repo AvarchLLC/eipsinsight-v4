@@ -132,6 +132,11 @@ const sidebarSections: SidebarSection[] = [
         icon: LineChart,
         href: "/analytics/eips",
       },
+      {
+        title: "Standards Adoption",
+        icon: Boxes,
+        href: "/adoption",
+      },
     ],
   },
   {
@@ -805,8 +810,8 @@ function AppSidebarContent() {
                 className={cn(
                   "rounded-md py-1.5 motion-safe:transition-all motion-safe:duration-300",
                   "border border-transparent hover:border-border hover:bg-muted/60",
-                  "data-[active=true]:bg-primary/15! data-[active=true]:text-foreground!",
-                  isActive && "bg-primary/10 text-foreground font-medium border-primary/30"
+                  "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
+                  isActive && "bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-sidebar-border"
                 )}
               >
                 <span className="inline-flex w-full items-center justify-between text-xs">
@@ -834,9 +839,9 @@ function AppSidebarContent() {
             "rounded-md py-1.5 motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
             "hover:bg-muted/60 hover:text-foreground motion-safe:hover:translate-x-0.5",
             "border border-transparent hover:border-border",
-            "data-[active=true]:bg-primary/15! data-[active=true]:text-foreground!",
+            "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
             isActive &&
-              "bg-primary/10 text-foreground font-medium border-primary/30 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]"
+              "bg-sidebar-accent text-sidebar-accent-foreground font-semibold border-sidebar-border"
           )}
         >
           <Link
@@ -1013,9 +1018,9 @@ function AppSidebarContent() {
                   "group relative overflow-hidden rounded-lg motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
                   "hover:bg-muted/60 motion-safe:hover:translate-x-0.5",
                   "border border-transparent",
-                  "data-[active=true]:bg-primary/15! data-[active=true]:text-foreground!",
+                  "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
                   (isItemOpen || isHighlighted) &&
-                    "bg-primary/10 border-primary/30 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]",
+                    "bg-sidebar-accent border-sidebar-border font-medium text-sidebar-accent-foreground",
                   state === "collapsed" &&
                     "w-11 h-11 p-0 flex items-center justify-center"
                 )}
@@ -1112,9 +1117,9 @@ function AppSidebarContent() {
             "group relative overflow-hidden rounded-lg motion-safe:transition-all motion-safe:duration-300 motion-safe:ease-[cubic-bezier(0.22,1,0.36,1)]",
             "hover:bg-muted/60 motion-safe:hover:translate-x-0.5",
             "border border-transparent",
-            "data-[active=true]:bg-primary/15! data-[active=true]:text-foreground!",
+            "data-[active=true]:bg-sidebar-accent data-[active=true]:text-sidebar-accent-foreground",
             isActive &&
-              "bg-primary/10 border-primary/40 shadow-[0_0_0_1px_rgb(var(--persona-accent-rgb)/0.16)]",
+              "bg-sidebar-accent border-sidebar-border font-medium text-sidebar-accent-foreground",
             state === "collapsed" &&
               "w-11 h-11 p-0 flex items-center justify-center"
           )}

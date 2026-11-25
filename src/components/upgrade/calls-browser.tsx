@@ -14,7 +14,8 @@ import {
   History,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { callDisplayName, callSeriesBadgeClass, callSeriesShort } from '@/data/call-series';
+import { callDisplayName, callSeriesBadgeClass, callSeriesShort, callSeriesToken } from '@/data/call-series';
+import { LedgerBadge } from '@/components/ledger/badge';
 import { CallTldr } from '@/components/upgrade/call-tldr';
 import {
   SeriesFilter,
@@ -45,15 +46,14 @@ export interface UpcomingCall {
 }
 
 function SeriesBadge({ series }: { series: string | null }) {
+  const short = series ? callSeriesShort(series) : '—';
   return (
-    <span
-      className={cn(
-        'inline-flex w-16 shrink-0 items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-        series ? callSeriesBadgeClass(series) : 'border-border bg-muted text-muted-foreground'
-      )}
+    <LedgerBadge
+      token={callSeriesToken(series)}
+      className="w-16 shrink-0 justify-center text-[10px]"
     >
-      {series ? callSeriesShort(series) : '—'}
-    </span>
+      {short}
+    </LedgerBadge>
   );
 }
 
@@ -193,45 +193,51 @@ export function CallsBrowser({
   const remaining = filtered.length - visible.length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* Search + grouped series filter */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <SeriesFilter value={series} onChange={changeSeries} counts={counts} />
         <div className="relative w-full sm:max-w-xs">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--ink-faint)]" />
           <input
             value={search}
             onChange={(e) => changeSearch(e.target.value)}
             placeholder="Search calls…"
-            className="h-9 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm text-foreground outline-none transition-colors focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="h-9 w-full rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none transition-colors focus:border-[var(--ink)]"
           />
         </div>
       </div>
 
       {upcoming && (
-        <div>
-          <div className="h-px w-full bg-border/60" aria-hidden />
-          <section id="upcoming" className="scroll-mt-24 pt-5">
-            <div className="mb-3 flex items-center gap-2">
-              <CalendarClock className="h-5 w-5 shrink-0 text-primary" />
-              <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                Upcoming
-              </h2>
+        <div className="space-y-12">
+          <section id="upcoming" className="scroll-mt-24 space-y-4">
+            <div>
+              <div className="mb-3 flex items-center">
+                <span className="h-px w-10 bg-[var(--brand)]" />
+                <span className="h-px flex-1 bg-[var(--ink)]" />
+              </div>
+              <div className="flex items-center gap-2.5">
+                <CalendarClock className="h-5 w-5 shrink-0 text-[var(--brand-strong)]" />
+                <h2 className="t-h2 font-serif text-2xl font-bold tracking-tight text-[var(--ink)] sm:text-3xl">
+                  Upcoming Calls
+                </h2>
+              </div>
+              <p className="mt-1 text-xs text-[var(--ink-muted)] max-w-4xl leading-relaxed">
+                Parsed from open agenda issues on ethereum/pm.
+              </p>
             </div>
-            <p className="mb-3 max-w-4xl text-sm leading-relaxed text-muted-foreground">
-              Parsed from open agenda issues on ethereum/pm.
-            </p>
+
             {upcomingFiltered.length === 0 ? (
-              <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-                No upcoming calls {series.group === 'all' && !search.trim() ? 'right now' : 'match this filter'} - check back after the next scheduler sync.
+              <p className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] px-5 py-6 text-sm text-[var(--ink-muted)]">
+                No upcoming calls {series.group === 'all' && !search.trim() ? 'right now' : 'match this filter'} — check back after the next scheduler sync.
               </p>
             ) : (
-              <div className="overflow-hidden rounded-xl border border-border bg-card/60">
-                <ul className="divide-y divide-border/60">
+              <div className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] shadow-xs">
+                <ul className="divide-y divide-[var(--border)]">
                   {upcomingFiltered.map((call) => (
                     <li
                       key={`${call.issue_number}-${call.title}`}
-                      className="flex flex-wrap items-center gap-x-3 gap-y-1.5 px-4 py-3"
+                      className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 transition-colors hover:bg-[var(--surface-2)]"
                     >
                       <SeriesBadge series={call.series ?? (upcomingSeries(call) === 'unknown' ? null : upcomingSeries(call))} />
                       <div className="min-w-0 flex-1">
@@ -239,13 +245,13 @@ export function CallsBrowser({
                           href={call.issue_url ?? '#'}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+                          className="text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brand-strong)]"
                         >
                           {call.title}
                         </a>
                       </div>
-                      <span className="inline-flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
-                        <CalendarClock className="h-3.5 w-3.5" />
+                      <span className="inline-flex shrink-0 items-center gap-1.5 font-mono text-xs text-[var(--ink-muted)]">
+                        <CalendarClock className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
                         {formatUpcoming(call)}
                       </span>
                     </li>
@@ -255,19 +261,24 @@ export function CallsBrowser({
             )}
           </section>
 
-          <div className="mt-6 h-px w-full bg-border/60" aria-hidden />
-          <div className="mb-3 mt-5 flex items-center gap-2">
-            <History className="h-5 w-5 shrink-0 text-primary" />
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              Recent calls
-            </h2>
+          <div className="mb-4">
+            <div className="mb-3 flex items-center">
+              <span className="h-px w-10 bg-[var(--brand)]" />
+              <span className="h-px flex-1 bg-[var(--ink)]" />
+            </div>
+            <div className="flex items-center gap-2.5">
+              <History className="h-5 w-5 shrink-0 text-[var(--brand-strong)]" />
+              <h2 className="t-h2 font-serif text-2xl font-bold tracking-tight text-[var(--ink)] sm:text-3xl">
+                Recent Calls
+              </h2>
+            </div>
           </div>
         </div>
       )}
 
       {/* Call list — collapsed cards, revealed a batch at a time. */}
       {filtered.length === 0 ? (
-        <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
+        <p className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-6 text-sm text-[var(--ink-muted)]">
           No calls in this series yet.
         </p>
       ) : (
@@ -279,7 +290,7 @@ export function CallsBrowser({
             return (
               <div
                 key={key}
-                className="rounded-xl border border-border bg-card/60 p-4 transition-colors hover:border-primary/40"
+                className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--ink)] hover:bg-[var(--surface-2)] shadow-xs"
               >
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
                   {/* Expander first, so every card's disclosure control lines up. It's
@@ -290,7 +301,7 @@ export function CallsBrowser({
                       onClick={() => toggle(key)}
                       aria-expanded={isOpen}
                       aria-label={isOpen ? 'Collapse summary' : 'Expand summary'}
-                      className="shrink-0 rounded p-0.5 text-muted-foreground transition-colors hover:text-primary"
+                      className="shrink-0 rounded p-0.5 text-[var(--ink-muted)] transition-colors hover:text-[var(--brand-strong)] cursor-pointer"
                     >
                       <ChevronRight
                         className={cn('h-4 w-4 transition-transform', isOpen && 'rotate-90')}
@@ -302,11 +313,11 @@ export function CallsBrowser({
                   <SeriesBadge series={call.series} />
                   <Link
                     href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
-                    className="min-w-0 flex-1 text-sm font-medium text-foreground transition-colors hover:text-primary hover:underline"
+                    className="min-w-0 flex-1 text-sm font-medium text-[var(--ink)] transition-colors hover:text-[var(--brand-strong)] hover:underline"
                   >
                     {callDisplayName(call)}
                   </Link>
-                  <span className="text-xs text-muted-foreground">{call.occurred_on}</span>
+                  <span className="font-mono text-xs text-[var(--ink-muted)]">{call.occurred_on}</span>
                   <div className="flex items-center gap-3">
                     {call.video_url && (
                       <a
@@ -314,7 +325,7 @@ export function CallsBrowser({
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Recording"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                        className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[var(--brand-strong)] hover:underline"
                       >
                         <Video className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Recording</span>
@@ -326,7 +337,7 @@ export function CallsBrowser({
                         target="_blank"
                         rel="noopener noreferrer"
                         title="Agenda"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                        className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--brand-strong)]"
                       >
                         <Github className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Agenda</span>
@@ -336,7 +347,7 @@ export function CallsBrowser({
                       <Link
                         href={`/calls/${call.series}/${call.call_number ?? call.call_id}`}
                         title="Transcript"
-                        className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+                        className="inline-flex items-center gap-1 font-mono text-xs font-medium text-[var(--ink-muted)] transition-colors hover:text-[var(--brand-strong)]"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Transcript</span>
@@ -354,10 +365,10 @@ export function CallsBrowser({
             <button
               type="button"
               onClick={() => setVisibleCount((c) => c + STEP)}
-              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card/60 px-4 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 text-sm font-medium text-[var(--ink)] transition-colors hover:border-[var(--ink)] hover:bg-[var(--surface-3)] cursor-pointer"
             >
               Show {Math.min(STEP, remaining)} more
-              <span className="text-xs text-muted-foreground/70">({remaining} remaining)</span>
+              <span className="font-mono text-xs text-[var(--ink-muted)]">({remaining} remaining)</span>
               <ChevronDown className="h-4 w-4" />
             </button>
           )}

@@ -243,7 +243,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event("open-command-palette"))}
-              className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-border bg-muted/50 px-4 text-xs text-muted-foreground transition-all hover:border-foreground/30 hover:bg-muted/80 hover:text-foreground cursor-pointer shadow-2xs"
+              className="flex h-9 w-full max-w-md items-center gap-2.5 rounded-full border border-border bg-[var(--surface-2)] px-4 text-xs text-muted-foreground transition-all hover:border-foreground/30 hover:text-foreground cursor-pointer shadow-2xs"
               aria-label="Search proposals, people and upgrades (⌘K)"
             >
               <Search className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />

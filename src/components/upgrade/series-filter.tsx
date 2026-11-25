@@ -48,56 +48,62 @@ export function SeriesFilter({
   const eipohTotal = counts['eipoh'] ?? 0;
   const breakoutTotal = total - acdTotal - ethproofsTotal - eipipTotal - eipohTotal;
 
-  const pill = (selected: boolean) =>
-    cn(
-      'inline-flex h-7 items-center gap-1.5 rounded-full border px-3 text-xs font-semibold transition-all',
-      selected
-        ? 'border-primary/50 bg-primary/10 text-primary'
-        : 'border-border bg-transparent text-muted-foreground hover:text-foreground'
-    );
-
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <button type="button" onClick={() => onChange({ group: 'all', acd: 'all' })} className={pill(value.group === 'all')}>
-        All <span className="text-[10px] opacity-70">{total}</span>
+      <button
+        type="button"
+        onClick={() => onChange({ group: 'all', acd: 'all' })}
+        data-active={value.group === 'all'}
+        className="chip cursor-pointer"
+      >
+        All <span className="font-mono text-[10px] opacity-75">{total}</span>
       </button>
-      <button type="button" onClick={() => onChange({ group: 'acd', acd: 'all' })} className={pill(value.group === 'acd')}>
-        ACD <span className="text-[10px] opacity-70">{acdTotal}</span>
+      <button
+        type="button"
+        onClick={() => onChange({ group: 'acd', acd: 'all' })}
+        data-active={value.group === 'acd'}
+        className="chip cursor-pointer"
+      >
+        ACD <span className="font-mono text-[10px] opacity-75">{acdTotal}</span>
       </button>
       <button
         type="button"
         onClick={() => onChange({ group: 'breakouts', acd: 'all' })}
-        className={pill(value.group === 'breakouts')}
+        data-active={value.group === 'breakouts'}
+        className="chip cursor-pointer"
       >
-        Breakouts <span className="text-[10px] opacity-70">{breakoutTotal}</span>
+        Breakouts <span className="font-mono text-[10px] opacity-75">{breakoutTotal}</span>
       </button>
       <button
         type="button"
         onClick={() => onChange({ group: 'ethproofs', acd: 'all' })}
-        className={pill(value.group === 'ethproofs')}
+        data-active={value.group === 'ethproofs'}
+        className="chip cursor-pointer"
       >
-        EthProof <span className="text-[10px] opacity-70">{ethproofsTotal}</span>
+        EthProof <span className="font-mono text-[10px] opacity-75">{ethproofsTotal}</span>
       </button>
       <button
         type="button"
         onClick={() => onChange({ group: 'eipip', acd: 'all' })}
-        className={pill(value.group === 'eipip')}
+        data-active={value.group === 'eipip'}
+        className="chip cursor-pointer"
       >
-        EIPIP <span className="text-[10px] opacity-70">{eipipTotal}</span>
+        EIPIP <span className="font-mono text-[10px] opacity-75">{eipipTotal}</span>
       </button>
       <button
         type="button"
         onClick={() => onChange({ group: 'eipoh', acd: 'all' })}
-        className={pill(value.group === 'eipoh')}
+        data-active={value.group === 'eipoh'}
+        className="chip cursor-pointer"
       >
-        EIP OH <span className="text-[10px] opacity-70">{eipohTotal}</span>
+        EIP OH <span className="font-mono text-[10px] opacity-75">{eipohTotal}</span>
       </button>
 
       {value.group === 'acd' && (
         <select
           value={value.acd}
           onChange={(e) => onChange({ group: 'acd', acd: e.target.value })}
-          className="h-7 rounded-full border border-primary/40 bg-background px-2.5 text-xs font-medium text-foreground outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/30"
+          className="h-[1.9rem] rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 text-xs font-medium text-[var(--ink)] outline-none hover:border-[var(--ink)] focus:border-[var(--ink)] cursor-pointer"
           aria-label="Filter AllCoreDevs series"
         >
           <option value="all">All ACD</option>

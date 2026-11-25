@@ -1,7 +1,27 @@
 import { z } from 'zod'
 import { optionalAuthProcedure } from './types'
 import { clickhouseConfigured, clickhouseQuery } from '@/lib/clickhouse'
+import { prisma } from '@/lib/prisma'
 import { STANDARDS, DEFERRED, COVERAGE, SIG, type Standard } from '@/data/adoption-standards'
+
+// Max age of a scheduler-precomputed snapshot we will still trust before falling
+// back to a live (expensive) ClickHouse compute. The scheduler refreshes every
+// 6h, so a healthy snapshot is always well inside this; this only guards against
+// a stalled scheduler serving very old numbers.
+const SNAPSHOT_MAX_AGE_MS = 24 * 3_600_000
+
+async function readSnapshot<T>(key: string): Promise<T | null> {
+  try {
+    const rows = await prisma.$queryRaw<{ payload: unknown; updated_at: Date }[]>`
+      SELECT payload, updated_at FROM adoption_snapshots WHERE key = ${key} LIMIT 1`
+    const row = rows[0]
+    if (!row) return null
+    if (Date.now() - new Date(row.updated_at).getTime() > SNAPSHOT_MAX_AGE_MS) return null
+    return row.payload as T
+  } catch {
+    return null // table missing / db error → caller falls back to live ClickHouse
+  }
+}
 
 /**
  * EIP / ERC on-chain adoption metrics for the /adoption dashboard.
@@ -103,6 +123,12 @@ function topicToStandardSql(): string {
 let allTimeTransfer: { at: number; erc20: number; erc721: number } | null = null
 async function getAllTimeTransferSplit(): Promise<{ erc20: number; erc721: number }> {
   if (allTimeTransfer && Date.now() - allTimeTransfer.at < ALLTIME_TTL_MS) {
+    return { erc20: allTimeTransfer.erc20, erc721: allTimeTransfer.erc721 }
+  }
+  // Prefer the scheduler-precomputed snapshot (instant) over the ~20s live scan.
+  const snap = await readSnapshot<{ erc20: number; erc721: number }>('alltime_transfer_split')
+  if (snap) {
+    allTimeTransfer = { at: Date.now(), erc20: N(snap.erc20), erc721: N(snap.erc721) }
     return { erc20: allTimeTransfer.erc20, erc721: allTimeTransfer.erc721 }
   }
   const rows = await clickhouseQuery<{ erc20: string; erc721: string }>(
@@ -338,16 +364,19 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
         clickhouseQuery<{ contracts: string; active: string }>(
           `SELECT uniqExact(address) AS contracts, uniqExactIf(address, last_seen >= now() - ${interval}) AS active
            FROM ethereum.contract_events WHERE topic0 IN (${quote(topics)})`,
+          { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ events: string }>(
           `SELECT count() AS events FROM ethereum.logs
            WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})`,
+          { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.logs
            WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})
            GROUP BY address ORDER BY events DESC LIMIT 25`,
+          { timeoutMs: 30_000 },
         ),
       ])
       metrics = { contracts: N(ceRows[0]?.contracts), active: N(ceRows[0]?.active), events: N(logRows[0]?.events) }
@@ -374,8 +403,251 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
   }
 }
 
+// ── reverse lookup: address -> implemented standards ───────────────────────
+export type AddressMatch = {
+  id: string
+  eip: string
+  name: string
+  category: Standard['category']
+  confidence: Standard['confidence']
+  evidence: string
+  specUrl: string
+  events: number // total events of this standard emitted by the address (within coverage)
+  lastActive: string
+}
+
+export type AddressLookup = {
+  available: boolean
+  address: string
+  isContract: boolean // emitted any indexed event within coverage
+  matches: AddressMatch[]
+  otherSignatures: number // distinct emitted signatures not mapped to a tracked standard
+  coverage: typeof COVERAGE
+  generatedAt: string
+}
+
+const ADDRESS_TTL_MS = 600_000 // 10 min
+const addressCache = new Map<string, { at: number; data: AddressLookup }>()
+
+const emptyAddress = (address: string, available: boolean): AddressLookup => ({
+  available,
+  address,
+  isContract: false,
+  matches: [],
+  otherSignatures: 0,
+  coverage: COVERAGE,
+  generatedAt: new Date().toISOString(),
+})
+
+async function getAddressLookup(addressRaw: string): Promise<AddressLookup> {
+  const address = addressRaw.trim().toLowerCase()
+  if (!clickhouseConfigured()) return emptyAddress(address, false)
+
+  const hit = addressCache.get(address)
+  if (hit && Date.now() - hit.at < ADDRESS_TTL_MS) return hit.data
+
+  try {
+    // Every event signature this address has emitted, within coverage.
+    const sigRows = await clickhouseQuery<{ topic0: string; events: string; last: string }>(
+      `SELECT topic0, sum(event_count) AS events, max(last_seen) AS last
+       FROM ethereum.contract_events WHERE address = '${address}'
+       GROUP BY topic0`,
+      { timeoutMs: 20_000 },
+    )
+    const emitted = new Map<string, { events: number; last: string }>()
+    for (const r of sigRows) emitted.set(r.topic0, { events: N(r.events), last: r.last })
+
+    if (emitted.size === 0) {
+      const data = emptyAddress(address, true)
+      addressCache.set(address, { at: Date.now(), data })
+      return data
+    }
+
+    const matches: AddressMatch[] = []
+    const mappedTopics = new Set<string>()
+
+    // event-kind standards: any declared topic present ⇒ matched
+    for (const s of EVENT_STANDARDS) {
+      const present = s.detect.topics.filter((t) => emitted.has(t))
+      if (present.length === 0) continue
+      let events = 0
+      let last = ''
+      for (const t of present) {
+        const e = emitted.get(t)!
+        events += e.events
+        if (e.last > last) last = e.last
+        mappedTopics.add(t)
+      }
+      matches.push({
+        id: s.id, eip: s.eip, name: s.name, category: s.category, confidence: s.confidence,
+        evidence: s.evidence, specUrl: s.specUrl, events, lastActive: last,
+      })
+    }
+
+    // shared Transfer signature: split this address into ERC-20 vs ERC-721 by
+    // sampling its most recent Transfer logs for an indexed tokenId (topic3).
+    if (emitted.has(SIG.TRANSFER)) {
+      mappedTopics.add(SIG.TRANSFER)
+      const splitRows = await clickhouseQuery<{ as20: string; as721: string }>(
+        `SELECT countIf(topic3 IS NULL) AS as20, countIf(topic3 IS NOT NULL) AS as721
+         FROM (SELECT topic3 FROM ethereum.logs
+               WHERE address = '${address}' AND topic0 = '${SIG.TRANSFER}'
+               ORDER BY block_number DESC LIMIT 2000)`,
+        { timeoutMs: 20_000 },
+      )
+      const as20 = N(splitRows[0]?.as20)
+      const as721 = N(splitRows[0]?.as721)
+      const sideId = as721 > as20 ? 'erc-721' : 'erc-20'
+      const s = STANDARDS.find((x) => x.id === sideId)
+      const e = emitted.get(SIG.TRANSFER)!
+      if (s) {
+        matches.push({
+          id: s.id, eip: s.eip, name: s.name, category: s.category, confidence: s.confidence,
+          evidence: s.evidence, specUrl: s.specUrl, events: e.events, lastActive: e.last,
+        })
+      }
+    }
+
+    matches.sort((a, b) => b.events - a.events)
+    const otherSignatures = Math.max(0, emitted.size - mappedTopics.size)
+
+    const data: AddressLookup = {
+      available: true,
+      address,
+      isContract: true,
+      matches,
+      otherSignatures,
+      coverage: COVERAGE,
+      generatedAt: new Date().toISOString(),
+    }
+    addressCache.set(address, { at: Date.now(), data })
+    return data
+  } catch {
+    return emptyAddress(address, false)
+  }
+}
+
+// ── adoption over time: monthly series per standard ────────────────────────
+export type TrendPoint = { month: string; active: number; events: number }
+export type AdoptionTrend = {
+  available: boolean
+  id: string
+  series: TrendPoint[]
+  coverage: typeof COVERAGE
+  generatedAt: string
+}
+
+const TREND_TTL_MS = 6 * 3_600_000 // 6 h — monthly history is heavy for ERC-20/721
+const trendCache = new Map<string, { at: number; data: AdoptionTrend }>()
+
+const emptyTrend = (id: string, available: boolean): AdoptionTrend => ({
+  available,
+  id,
+  series: [],
+  coverage: COVERAGE,
+  generatedAt: new Date().toISOString(),
+})
+
+async function getTrend(id: string): Promise<AdoptionTrend> {
+  const s = STANDARDS.find((x) => x.id === id)
+  if (!s) return emptyTrend(id, true)
+
+  const hit = trendCache.get(id)
+  if (hit && Date.now() - hit.at < TREND_TTL_MS) return hit.data
+
+  // Prefer the scheduler-precomputed snapshot (instant) over the ~30s live scan.
+  const snap = await readSnapshot<{ series: TrendPoint[] }>(`trend:${id}`)
+  if (snap && Array.isArray(snap.series)) {
+    const data: AdoptionTrend = {
+      available: true,
+      id,
+      series: snap.series.map((p) => ({ month: p.month, active: N(p.active), events: N(p.events) })),
+      coverage: COVERAGE,
+      generatedAt: new Date().toISOString(),
+    }
+    trendCache.set(id, { at: Date.now(), data })
+    return data
+  }
+
+  if (!clickhouseConfigured()) return emptyTrend(id, false)
+
+  try {
+    const where =
+      s.detect.kind === 'transfer'
+        ? `topic0 = '${SIG.TRANSFER}' AND ${s.detect.side === 'erc20' ? 'topic3 IS NULL' : 'topic3 IS NOT NULL'}`
+        : `topic0 IN (${quote((s.detect as { topics: string[] }).topics)})`
+
+    const rows = await clickhouseQuery<{ m: string; active: string; events: string }>(
+      `SELECT toStartOfMonth(block_timestamp) AS m, uniqExact(address) AS active, count() AS events
+       FROM ethereum.logs WHERE ${where}
+       GROUP BY m ORDER BY m`,
+      { timeoutMs: 60_000 },
+    )
+    const series: TrendPoint[] = rows.map((r) => ({
+      month: r.m.slice(0, 7), // YYYY-MM
+      active: N(r.active),
+      events: N(r.events),
+    }))
+    const data: AdoptionTrend = { available: true, id, series, coverage: COVERAGE, generatedAt: new Date().toISOString() }
+    trendCache.set(id, { at: Date.now(), data })
+    return data
+  } catch {
+    return emptyTrend(id, false)
+  }
+}
+
+// ── directory export: a larger contract list for downloadable reports ──────
+export type DirectoryExport = {
+  available: boolean
+  id: string
+  window: Window
+  rows: DirectoryRow[]
+  coverage: typeof COVERAGE
+  generatedAt: string
+}
+
+function logsWhereFor(s: Standard): string {
+  if (s.detect.kind === 'transfer') {
+    return `topic0 = '${SIG.TRANSFER}' AND ${s.detect.side === 'erc20' ? 'topic3 IS NULL' : 'topic3 IS NOT NULL'}`
+  }
+  if (s.detect.kind === 'event') return `topic0 IN (${quote(s.detect.topics)})`
+  return '0'
+}
+
+async function getDirectory(id: string, window: Window, limit: number): Promise<DirectoryExport> {
+  const s = STANDARDS.find((x) => x.id === id)
+  const base = { id, window, coverage: COVERAGE, generatedAt: new Date().toISOString() }
+  if (!s) return { available: true, rows: [], ...base }
+  if (!clickhouseConfigured()) return { available: false, rows: [], ...base }
+  try {
+    const interval = WINDOW_SQL[window]
+    const rows = await clickhouseQuery<{ address: string; events: string; last: string }>(
+      `SELECT address, count() AS events, max(block_timestamp) AS last
+       FROM ethereum.logs
+       WHERE block_timestamp >= now() - ${interval} AND ${logsWhereFor(s)}
+       GROUP BY address ORDER BY events DESC LIMIT ${limit}`,
+      { timeoutMs: 45_000 },
+    )
+    return {
+      available: true,
+      rows: rows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last })),
+      ...base,
+    }
+  } catch {
+    return { available: false, rows: [], ...base }
+  }
+}
+
 export const adoptionProcedures = {
   overview: optionalAuthProcedure.handler(async (): Promise<AdoptionOverview> => getOverview()),
+
+  trend: optionalAuthProcedure
+    .input(z.object({ id: z.string().min(1) }))
+    .handler(async ({ input }): Promise<AdoptionTrend> => getTrend(input.id)),
+
+  directory: optionalAuthProcedure
+    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d']).default('30d'), limit: z.number().int().min(1).max(1000).default(500) }))
+    .handler(async ({ input }): Promise<DirectoryExport> => getDirectory(input.id, input.window, input.limit)),
 
   leaderboard: optionalAuthProcedure
     .input(z.object({ window: z.enum(['24h', '7d', '30d']).default('30d') }).optional())
@@ -384,4 +656,8 @@ export const adoptionProcedures = {
   standard: optionalAuthProcedure
     .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d']).default('30d') }))
     .handler(async ({ input }): Promise<StandardDetail> => getStandardDetail(input.id, input.window)),
+
+  contract: optionalAuthProcedure
+    .input(z.object({ address: z.string().regex(/^0x[0-9a-fA-F]{40}$/, 'Enter a valid 0x… contract address') }))
+    .handler(async ({ input }): Promise<AddressLookup> => getAddressLookup(input.address)),
 }

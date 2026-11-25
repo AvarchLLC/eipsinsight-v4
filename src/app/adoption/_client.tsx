@@ -16,7 +16,7 @@ import {
 import { cn } from '@/lib/utils';
 import { PageHead } from '@/components/ledger/page-head';
 import { client } from '@/lib/orpc';
-import type { AdoptionOverview, AdoptionLeaderboard, AdoptionRow, Window } from '@/server/orpc/procedures/adoption';
+import type { AdoptionOverview, AdoptionLeaderboard, AdoptionRow, AddressLookup, Window } from '@/server/orpc/procedures/adoption';
 
 const MONO = 'var(--font-mono, ui-monospace, monospace)';
 
@@ -83,6 +83,100 @@ function SearchJump({ catalog }: { catalog: AdoptionOverview['catalog'] }) {
               {m.ranked ? <ArrowRight className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> : <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">soon</span>}
             </Link>
           ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const ADDR_RE = /^0x[0-9a-fA-F]{40}$/;
+const short = (a: string) => `${a.slice(0, 8)}…${a.slice(-6)}`;
+const whenLabel = (s: string) => (s ? s.slice(0, 10) : '—');
+
+function ContractLookup() {
+  const [addr, setAddr] = useState('');
+  const [res, setRes] = useState<AddressLookup | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const run = () => {
+    const a = addr.trim();
+    if (!ADDR_RE.test(a)) {
+      setErr('Enter a valid 0x… address (42 characters).');
+      setRes(null);
+      return;
+    }
+    setErr(null);
+    setLoading(true);
+    client.adoption
+      .contract({ address: a })
+      .then((r) => setRes(r))
+      .catch(() => setErr('Lookup failed. Try again.'))
+      .finally(() => setLoading(false));
+  };
+
+  return (
+    <div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          value={addr}
+          onChange={(e) => setAddr(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && run()}
+          placeholder="Paste a contract address — 0x…"
+          spellCheck={false}
+          className="w-full rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-4 py-2.5 mono text-[13px] text-[var(--ink)] placeholder:text-[var(--ink-faint)] outline-none focus:border-[var(--brand)]"
+        />
+        <button
+          type="button"
+          onClick={run}
+          disabled={loading}
+          className="shrink-0 rounded-[var(--l-radius)] bg-[var(--brand)] px-5 py-2.5 mono text-[13px] font-semibold text-[var(--brand-ink)] hover:opacity-90 disabled:opacity-60"
+        >
+          {loading ? 'Checking…' : 'Detect standards'}
+        </button>
+      </div>
+      {err ? <p className="mt-2 mono text-[12px] text-[var(--c-withdrawn)]">{err}</p> : null}
+
+      {res ? (
+        <div className="mt-5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--paper)] p-5">
+          <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+            <a href={`https://etherscan.io/address/${res.address}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-[13px] text-[var(--brand-strong)] hover:underline">
+              {short(res.address)}<ExternalLink className="h-3 w-3" />
+            </a>
+            {res.available && res.isContract ? (
+              <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">
+                {res.matches.length} standard{res.matches.length === 1 ? '' : 's'} detected
+                {res.otherSignatures > 0 ? ` · ${res.otherSignatures} other signature${res.otherSignatures === 1 ? '' : 's'}` : ''}
+              </span>
+            ) : null}
+          </div>
+
+          {!res.available ? (
+            <p className="text-[14px] text-[var(--ink-muted)]">Live on-chain data is loading. Try again in a moment.</p>
+          ) : !res.isContract ? (
+            <p className="text-[14px] text-[var(--ink-muted)]">No on-chain event activity found for this address within coverage. It may be an externally-owned account, or inactive since Dencun.</p>
+          ) : res.matches.length === 0 ? (
+            <p className="text-[14px] text-[var(--ink-muted)]">This contract is active but implements none of the tracked standards (it emitted {res.otherSignatures} other event signature{res.otherSignatures === 1 ? '' : 's'}).</p>
+          ) : (
+            <div className="divide-y divide-[var(--border)]/60">
+              {res.matches.map((m) => (
+                <div key={m.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div className="min-w-0">
+                    <Link href={`/adoption/${m.id}`} className="inline-flex items-center gap-1 font-medium text-[var(--ink)] hover:text-[var(--brand-strong)] hover:underline">
+                      {m.eip} <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">{m.name}</span>
+                    </Link>
+                    <div className="mono text-[11px] text-[var(--ink-faint)]">last active {whenLabel(m.lastActive)}</div>
+                  </div>
+                  <span
+                    className="shrink-0 rounded-full px-2.5 py-0.5 mono text-[10px] font-semibold uppercase tracking-wider"
+                    style={{ background: 'var(--brand-soft)', color: 'var(--brand-ink)' }}
+                  >
+                    {m.confidence === 'high' ? 'confirmed' : 'detected'}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : null}
     </div>
@@ -300,9 +394,18 @@ export function AdoptionDashboard({
           </p>
         </section>
 
-        {/* 03 — tracked catalog */}
+        {/* 03 — explore by contract (reverse lookup) */}
         <section className="mt-16">
-          <SectionHead n="03" title="Tracked standards" />
+          <SectionHead n="03" title="Explore by contract" />
+          <p className="mb-6 max-w-[52rem] text-[15px] leading-relaxed text-[var(--ink-muted)]">
+            Paste any contract address to see which standards it implements, detected from its on-chain activity.
+          </p>
+          <ContractLookup />
+        </section>
+
+        {/* 04 — tracked catalog */}
+        <section className="mt-16">
+          <SectionHead n="04" title="Tracked standards" />
           <p className="mb-6 max-w-[52rem] text-[15px] leading-relaxed text-[var(--ink-muted)]">
             The {overview.standardsRanked} standards above are ranked from on-chain activity. These are also tracked and will be added
             to the ranking as coverage expands.
