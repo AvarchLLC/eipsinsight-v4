@@ -28,20 +28,20 @@ type Resp = {
 
 const ACTION_LABEL: Record<string, string> = { review: 'Review', comment: 'Comment', commit: 'Commit', other: 'Other' };
 const ACTION_CLASS: Record<string, string> = {
-  review: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  comment: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300',
-  commit: 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300',
+  review: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  comment: 'border-violet-500/30 bg-violet-500/10 text-violet-400',
+  commit: 'border-amber-500/30 bg-amber-500/10 text-amber-400',
   other: 'border-border bg-muted/50 text-muted-foreground',
 };
 const STATE_CLASS: Record<string, string> = {
-  open: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300',
-  merged: 'border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300',
-  closed: 'border-rose-500/30 bg-rose-500/10 text-rose-700 dark:text-rose-300',
+  open: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400',
+  merged: 'border-violet-500/30 bg-violet-500/10 text-violet-400',
+  closed: 'border-rose-500/30 bg-rose-500/10 text-rose-400',
 };
 const CATEGORIES = ['core', 'erc', 'networking', 'interface', 'meta', 'informational'] as const;
 
 const selectCls =
-  'rounded-md border border-border bg-background/60 px-2 py-1 text-xs text-foreground focus:border-primary/50 focus:outline-none';
+  'rounded-lg border border-border bg-card/80 px-2.5 py-1.5 text-xs text-foreground focus:border-emerald-500/50 focus:outline-none transition-colors cursor-pointer hover:bg-muted/40';
 
 export function EditorActionsExplorer({
   repo,
@@ -128,19 +128,26 @@ export function EditorActionsExplorer({
   return (
     <section id="editor-actions-explorer" className="space-y-3">
       {!hideHeader && (
-        <div className="flex flex-col gap-1">
-          <div className="inline-flex items-center gap-2">
-            <SlidersHorizontal className="h-5 w-5 text-primary" />
-            <h2 className="dec-title text-base font-semibold tracking-tight text-foreground sm:text-lg">PR &amp; Action Explorer</h2>
+        <div className="flex flex-col gap-2 mb-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2.5">
+              <SlidersHorizontal className="h-5 w-5 text-emerald-500" />
+              <h2 className="font-serif text-xl sm:text-2xl font-normal tracking-tight text-foreground">
+                PR &amp; Action Explorer
+              </h2>
+            </div>
+            <span className="text-xs text-muted-foreground hidden sm:inline">
+              Filterable editorial reviews, comments &amp; commits
+            </span>
           </div>
-          <p className="text-xs text-muted-foreground">
+          <p className="text-xs leading-relaxed text-muted-foreground max-w-3xl">
             Query every indexed editor action like a GitHub search — scoped to the date range and repository selected above, with
             further filters below. Counts both total actions and distinct PRs.
           </p>
         </div>
       )}
 
-      <div className="rounded-xl border border-border/70 bg-card/60 p-4 sm:p-5 backdrop-blur-sm shadow-sm">
+      <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5 shadow-sm">
         {/* Filter bar */}
         <div className="flex flex-wrap items-center gap-2">
           <select
@@ -181,92 +188,96 @@ export function EditorActionsExplorer({
             <option value="oldest">Oldest first</option>
           </select>
           <div className="relative ml-auto">
-            <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
             <input
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
               placeholder="PR # or title…"
-              className="w-48 rounded-md border border-border bg-background/60 py-1 pl-7 pr-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary/50 focus:outline-none"
+              className="w-52 rounded-lg border border-border bg-card/80 py-1.5 pl-8 pr-2.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-emerald-500/50 focus:outline-none"
             />
           </div>
         </div>
 
         {/* Summary */}
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+        <div className="mt-3 flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
           <span>
             <strong className="text-foreground tabular-nums">{(data?.totalActions ?? 0).toLocaleString()}</strong> actions
           </span>
+          <span>·</span>
           <span>
             <strong className="text-foreground tabular-nums">{(data?.distinctPrs ?? 0).toLocaleString()}</strong> distinct PRs
           </span>
           {hasFilters && (
-            <button
-              type="button"
-              onClick={() => {
-                setActor('');
-                setActionType('');
-                setCategory('');
-                setState('');
-                setSearchInput('');
-                setSearch('');
-                onActorChange?.('');
-              }}
-              className="inline-flex items-center text-primary hover:underline cursor-pointer font-medium"
-            >
-              Reset filters
-            </button>
+            <>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setActor('');
+                  setActionType('');
+                  setCategory('');
+                  setState('');
+                  setSearchInput('');
+                  setSearch('');
+                  onActorChange?.('');
+                }}
+                className="inline-flex items-center text-emerald-500 hover:underline cursor-pointer font-medium"
+              >
+                Reset filters
+              </button>
+            </>
           )}
-          {loading && <span className="animate-pulse">loading…</span>}
+          {loading && <span className="ml-2 animate-pulse text-muted-foreground">loading…</span>}
         </div>
 
         {/* Table */}
-        <div className="mt-3 overflow-x-auto rounded-lg border border-border/70">
+        <div className="mt-3 overflow-x-auto rounded-lg border border-border/80">
           <table className="w-full min-w-[720px] border-collapse text-xs">
             <thead>
-              <tr className="border-b border-border/70 bg-muted/30 text-left text-[10px] uppercase tracking-wide text-muted-foreground">
-                <th className="px-3 py-2 font-semibold">PR</th>
-                <th className="px-3 py-2 font-semibold">Title</th>
-                <th className="px-3 py-2 font-semibold">Editor</th>
-                <th className="px-3 py-2 font-semibold">Action</th>
-                <th className="px-3 py-2 font-semibold">Category</th>
-                <th className="px-3 py-2 font-semibold">State</th>
-                <th className="px-3 py-2 font-semibold whitespace-nowrap">Date</th>
+              <tr className="border-b border-border/80 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <th className="px-3 py-2.5 font-semibold">PR</th>
+                <th className="px-3 py-2.5 font-semibold">Title</th>
+                <th className="px-3 py-2.5 font-semibold">Editor</th>
+                <th className="px-3 py-2.5 font-semibold">Action</th>
+                <th className="px-3 py-2.5 font-semibold">Category</th>
+                <th className="px-3 py-2.5 font-semibold">State</th>
+                <th className="px-3 py-2.5 font-semibold whitespace-nowrap">Date</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-border/40">
               {data && data.rows.length === 0 && (
                 <tr>
                   <td colSpan={7} className="px-3 py-8 text-center text-muted-foreground">No actions match these filters.</td>
                 </tr>
               )}
               {data?.rows.map((r, i) => (
-                <tr key={`${r.prNumber}-${r.actor}-${r.eventType}-${r.actedAt}-${i}`} className="border-b border-border/40 hover:bg-muted/20">
-                  <td className="px-3 py-2 align-top">
+                <tr key={`${r.prNumber}-${r.actor}-${r.eventType}-${r.actedAt}-${i}`} className="hover:bg-muted/30 transition-colors">
+                  <td className="px-3 py-2.5 align-top">
                     {r.url ? (
-                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono font-semibold text-primary hover:underline">
-                        #{r.prNumber} <ExternalLink className="h-3 w-3" />
+                      <a href={r.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-mono font-semibold text-emerald-500 hover:text-emerald-400 hover:underline">
+                        #{r.prNumber} <ExternalLink className="h-3 w-3 opacity-70" />
                       </a>
                     ) : (
-                      <span className="font-mono font-semibold">#{r.prNumber}</span>
+                      <span className="font-mono font-semibold text-emerald-500">#{r.prNumber}</span>
                     )}
-                    <div className="mt-0.5 text-[9px] uppercase text-muted-foreground">{r.repoShort}</div>
+                    <div className="mt-0.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground">{r.repoShort}</div>
                   </td>
-                  <td className="px-3 py-2 align-top max-w-[320px]">
-                    <span className="line-clamp-2 text-foreground">{r.title || '—'}</span>
+                  <td className="px-3 py-2.5 align-top max-w-[340px]">
+                    <span className="line-clamp-2 text-foreground font-normal">{r.title || '—'}</span>
                   </td>
-                  <td className="px-3 py-2 align-top whitespace-nowrap font-medium text-foreground">{r.actor}</td>
-                  <td className="px-3 py-2 align-top">
-                    <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold ${ACTION_CLASS[r.actionType] ?? ACTION_CLASS.other}`}>
+                  <td className="px-3 py-2.5 align-top whitespace-nowrap font-medium text-foreground">{r.actor}</td>
+                  <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-medium ${ACTION_CLASS[r.actionType] ?? ACTION_CLASS.other}`}>
                       {ACTION_LABEL[r.actionType] ?? r.eventType}
                     </span>
                   </td>
-                  <td className="px-3 py-2 align-top capitalize text-muted-foreground">{r.category ?? '—'}</td>
-                  <td className="px-3 py-2 align-top">
-                    <span className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold capitalize ${STATE_CLASS[r.state] ?? 'border-border bg-muted/50 text-muted-foreground'}`}>
+                  <td className="px-3 py-2.5 align-top capitalize text-muted-foreground">{r.category ?? '—'}</td>
+                  <td className="px-3 py-2.5 align-top whitespace-nowrap">
+                    <span className={`inline-block rounded-full border px-2.5 py-0.5 text-[10px] font-medium capitalize ${STATE_CLASS[r.state] ?? 'border-border bg-muted/50 text-muted-foreground'}`}>
                       {r.state}
                     </span>
                   </td>
-                  <td className="px-3 py-2 align-top whitespace-nowrap font-mono text-[10px] text-muted-foreground">{r.actedAt?.slice(0, 10)}</td>
+                  <td className="px-3 py-2.5 align-top whitespace-nowrap font-mono text-[11px] text-muted-foreground">{r.actedAt?.slice(0, 10)}</td>
                 </tr>
               ))}
             </tbody>

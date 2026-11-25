@@ -19,6 +19,7 @@ import {
   MessageSquare,
   RefreshCw,
   Search,
+  Shuffle,
   SlidersHorizontal,
   TrendingUp,
   Users,
@@ -639,9 +640,9 @@ export default function OfficeHoursEditorsPage() {
                     setCustomOpen(false);
                   }}
                   className={cn(
-                    "rounded-full border px-2.5 py-1",
+                    "rounded-full border px-2.5 py-1 transition-colors",
                     activePresetId === p.id && !customOpen
-                      ? "border-primary/50 bg-primary/10 text-primary"
+                      ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -654,9 +655,9 @@ export default function OfficeHoursEditorsPage() {
                   setCustomOpen(true);
                 }}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1",
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition-colors",
                   customOpen || activePresetId === "custom"
-                    ? "border-primary/50 bg-primary/10 text-primary"
+                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium"
                     : "border-border text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -758,21 +759,21 @@ export default function OfficeHoursEditorsPage() {
                   key={r}
                   onClick={() => toggleRepo(r)}
                   className={cn(
-                    "inline-flex items-center gap-1.5 rounded-md border px-2 py-1",
+                    "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors",
                     on
-                      ? "border-primary/50 bg-primary/10 text-primary"
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-medium"
                       : "border-border text-muted-foreground hover:text-foreground"
                   )}
                 >
                   <span
                     className={cn(
-                      "flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border",
+                      "flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border transition-colors",
                       on
-                        ? "border-primary bg-primary text-primary-foreground"
+                        ? "border-emerald-500 bg-emerald-500 text-black dark:text-black font-bold"
                         : "border-border"
                     )}
                   >
-                    {on && <Check className="h-2.5 w-2.5" />}
+                    {on && <Check className="h-2.5 w-2.5 stroke-[3]" />}
                   </span>
                   {REPO_LABEL[r]}
                 </button>
@@ -846,15 +847,10 @@ export default function OfficeHoursEditorsPage() {
           {/* TAB 1: LEADERBOARD FIRST */}
           {activeTab === "leaderboard" && (
             <div className="space-y-4">
-              {/* Executive Metrics Overview */}
+              {/* Executive Metrics Overview - Matching Screenshot 1 */}
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <Users className="h-4 w-4 text-violet-500" />
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                      Canonical
-                    </span>
-                  </div>
+                  <Users className="h-4 w-4 text-violet-500" />
                   <div>
                     <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground font-mono">
                       <span>{activeCanonicalCount}</span>
@@ -869,12 +865,7 @@ export default function OfficeHoursEditorsPage() {
                 </div>
 
                 <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <GitPullRequest className="h-4 w-4 text-emerald-500" />
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                      Window
-                    </span>
-                  </div>
+                  <GitPullRequest className="h-4 w-4 text-emerald-500" />
                   <div>
                     <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground font-mono">
                       {totalPRs.toLocaleString()}
@@ -886,35 +877,25 @@ export default function OfficeHoursEditorsPage() {
                 </div>
 
                 <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <Eye className="h-4 w-4 text-blue-500" />
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                      Total
-                    </span>
-                  </div>
+                  <Eye className="h-4 w-4 text-blue-500" />
                   <div>
                     <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground font-mono">
                       {totalReviewsInWindow.toLocaleString()}
                     </p>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Reviews
+                      Review Actions
                     </p>
                   </div>
                 </div>
 
                 <div className="flex flex-col justify-between rounded-xl border border-border bg-card/60 p-3.5">
-                  <div className="flex items-center justify-between">
-                    <Activity className="h-4 w-4 text-amber-500" />
-                    <span className="text-[10px] uppercase font-mono tracking-wider text-muted-foreground">
-                      Actions
-                    </span>
-                  </div>
+                  <Shuffle className="h-4 w-4 text-amber-500" />
                   <div>
                     <p className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground font-mono">
-                      {totalActionsInWindow.toLocaleString()}
+                      {statusChanges.length.toLocaleString()}
                     </p>
                     <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Total Events
+                      Status Changes
                     </p>
                   </div>
                 </div>
@@ -1250,7 +1231,6 @@ export default function OfficeHoursEditorsPage() {
               actors={CANONICAL_EIP_EDITORS as unknown as string[]}
               selectedActor={selectedActorForExplorer}
               onActorChange={setSelectedActorForExplorer}
-              hideHeader
             />
           )}
 

@@ -90,6 +90,7 @@ export const ROUTE_SOURCES: RouteSource[] = [
   { pattern: "/upgrade/:slug", source: "src/app/upgrade/[slug]/page.tsx" },
   { pattern: "/testimonials", source: "src/app/(public)/testimonials/page.tsx" },
   { pattern: "/dependencies", source: "src/app/(tools)/dependencies/page.tsx" },
+  { pattern: "/adoption/:id", source: "src/app/adoption/[id]/page.tsx" },
   { pattern: "/eip-builder", source: "src/app/(tools)/eip-builder/page.tsx" },
   { pattern: "/officehours", source: "src/app/officehours/page.tsx" },
   { pattern: "/user/:actor", source: "src/app/user/[actor]/page.tsx" },

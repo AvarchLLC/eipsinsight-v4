@@ -82,6 +82,7 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Apr 15",
     fullDate: "April 15, 2026",
     editorsPresent: 2,
+    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -95,6 +96,7 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "May 27",
     fullDate: "May 27, 2026",
     editorsPresent: 2,
+    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -108,6 +110,7 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Jun 3",
     fullDate: "June 03, 2026",
     editorsPresent: 2,
+    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -121,6 +124,7 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Jul 8",
     fullDate: "July 08, 2026",
     editorsPresent: 2,
+    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -134,6 +138,7 @@ const EIPIP_ATTENDANCE: AttendanceColumn[] = [
     dateLabel: "Aug 12",
     fullDate: "August 12, 2026",
     editorsPresent: 2,
+    highlight: true,
     attendance: {
       SamWilsn: true,
       "jochem-brouwer": true,
@@ -331,7 +336,10 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <th
                     key={`present-${col.meeting}`}
-                    className="px-3 py-2 text-center font-mono font-semibold text-foreground tabular-nums"
+                    className={cn(
+                      "px-3 py-2 text-center font-mono font-semibold text-foreground tabular-nums",
+                      col.highlight && "bg-muted/40 dark:bg-muted/20"
+                    )}
                   >
                     {col.editorsPresent}
                   </th>
@@ -346,7 +354,10 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <th
                     key={`meeting-${col.meeting}`}
-                    className="px-3 py-2.5 text-center font-mono font-semibold text-foreground tabular-nums"
+                    className={cn(
+                      "px-3 py-2.5 text-center font-mono font-semibold text-foreground tabular-nums",
+                      col.highlight && "bg-muted/40 dark:bg-muted/20"
+                    )}
                   >
                     <Link
                       href={
@@ -392,7 +403,10 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                     return (
                       <td
                         key={`${editor.handle}-${col.meeting}`}
-                        className="px-3 py-3 text-center align-middle"
+                        className={cn(
+                          "px-3 py-3 text-center align-middle",
+                          col.highlight && "bg-muted/40 dark:bg-muted/20"
+                        )}
                         title={`${editor.displayName}: ${attended ? "Attended" : "Absent"} (Meeting #${col.meeting}, ${col.fullDate})`}
                       >
                         <div className="flex items-center justify-center">
@@ -414,12 +428,39 @@ export function EditorAttendanceMatrix({ className }: { className?: string }) {
                 {columns.map((col) => (
                   <td
                     key={`date-${col.meeting}`}
-                    className="px-3 py-2.5 text-center font-mono tabular-nums whitespace-nowrap"
+                    className={cn(
+                      "px-3 py-2.5 text-center font-mono tabular-nums whitespace-nowrap",
+                      col.highlight && "bg-muted/40 dark:bg-muted/20"
+                    )}
                   >
                     {col.dateLabel}
                   </td>
                 ))}
               </tr>
+
+              {/* Highlight summary row for EIPIP (Sam and Jochem only) */}
+              {series === "eipip" && (
+                <tr className="text-[11px] text-muted-foreground">
+                  <td className="py-2 pr-4 font-normal"></td>
+                  {columns.map((col) => {
+                    if (col.meeting === 125) {
+                      return (
+                        <td
+                          key="highlight-legend"
+                          colSpan={5}
+                          className="py-1.5 text-center font-mono text-[11px] font-medium text-foreground/80 bg-muted/40 dark:bg-muted/20 rounded-b-lg border-b border-x border-border/40"
+                        >
+                          Sam and Jochem only
+                        </td>
+                      );
+                    }
+                    if (col.meeting > 125 && col.meeting <= 129) {
+                      return null;
+                    }
+                    return <td key={`empty-${col.meeting}`} className="px-3 py-1.5" />;
+                  })}
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

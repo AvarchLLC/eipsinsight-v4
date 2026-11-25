@@ -39,6 +39,7 @@ html.persona-theme-transition *::after {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter);
+  --font-serif: var(--font-advercase), var(--font-fraunces), Georgia, serif;
   --font-mono: var(--font-geist-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -178,19 +179,11 @@ html.persona-theme-transition *::after {
   --chart-6: oklch(0.62 0.25 300);
   --chart-7: oklch(0.65 0.24 25);
   --chart-8: oklch(0.7 0.03 260);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: var(--persona-primary);
-  --sidebar-primary-foreground: var(--persona-primary-foreground);
-  --sidebar-accent: var(--persona-accent);
-  --sidebar-accent-foreground: var(--persona-accent-foreground);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-  --page-bg: oklch(0.09 0 0);
-  --card-bg: oklch(0.18 0 0);
-  --card-border: oklch(0.3 0 0);
-  --nav-bg: oklch(0.09 0 0 / 0.95);
-  --nav-border: oklch(0.4 0.05 195);
+  --page-bg: oklch(0.155 0.004 165);
+  --card-bg: oklch(0.19 0.005 165);
+  --card-border: oklch(0.275 0.007 165);
+  --nav-bg: oklch(0.155 0.004 165 / 0.95);
+  --nav-border: oklch(0.275 0.007 165);
 }
 
 :root[data-persona="developer"] {
@@ -309,8 +302,10 @@ html, body, #__next {
 }
 
 .dec-title {
-  font-family: var(--font-libre-baskerville);
-  line-height: 1.2;
+  font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   padding-top: 0;
   padding-bottom: 0;
 }
@@ -492,10 +487,11 @@ html, body, #__next {
   .wrap-narrow { max-width: 50rem; }
 
   /* ── Typography (docs/DESIGN.md §3) ── */
-  h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-plus-jakarta), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  }
-  .font-serif, .font-display {
+  /* Document headings & display titles: Advercase editorial serif */
+  h1, h2, h3, h4, h5, h6, .t-display, .t-h1, .t-h2, .t-h3, .font-serif, .font-display,
+  [data-ledger] h1, [data-ledger] h2, [data-ledger] h3, [data-ledger] h4, [data-ledger] h5, [data-ledger] h6,
+  [data-ledger] .t-display, [data-ledger] .t-h1, [data-ledger] .t-h2, [data-ledger] .t-h3,
+  [data-ledger] .dec-title, [data-ledger] .font-serif, [data-ledger] .font-display {
     font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
     letter-spacing: -0.02em;
   }
@@ -520,18 +516,18 @@ html, body, #__next {
   .t-h2 {
     font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
     font-weight: 700;
-    font-size: clamp(1.65rem, 2.8vw, 2.2rem);
-    line-height: 1.1;
-    letter-spacing: -0.015em;
+    font-size: clamp(1.4rem, 2.4vw, 1.85rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
     color: var(--ink);
     text-wrap: balance;
   }
   .t-h3 {
-    font-family: var(--font-plus-jakarta), var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-    font-weight: 600;
+    font-family: var(--font-advercase), var(--font-fraunces), Georgia, "Times New Roman", serif;
+    font-weight: 700;
     font-size: 1.125rem;
     line-height: 1.35;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
     color: var(--ink);
   }
   .t-lead {

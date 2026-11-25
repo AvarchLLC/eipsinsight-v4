@@ -4,461 +4,217 @@ import { notFound } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
+  Boxes,
   CalendarDays,
-  Github,
-  Video,
-  Gavel,
   FileText,
-  ListChecks,
+  Gavel,
 } from 'lucide-react';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { buildMetadata } from '@/lib/seo';
-import {
-  getCachedCall,
-  getCachedCallNeighbors,
-  getCachedRecentCalls,
-} from '@/lib/upgrade-data.server';
+import { getCachedCallNeighbors } from '@/lib/upgrade-data.server';
 import {
   callDisplayName,
   callSeriesBadgeClass,
   callSeriesShort,
 } from '@/data/call-series';
-import { CallSummary } from '@/components/upgrade/call-summary';
-import { MarkdownRenderer } from '@/components/markdown-renderer';
-import { normalizeForGrounding } from '@/lib/date-grounding';
-import { OFFICE_HOUR_SERIES, findOfficeHourRecap } from '@/data/office-hour-recaps';
+import { findOfficeHourRecap } from '@/data/office-hour-recaps';
 import { OfficeHourCallView } from '@/components/office-hour-call-view';
 import { findProvisionalCallRecap } from '@/data/provisional-call-recaps';
 import { ProvisionalCallView } from '@/components/provisional-call-view';
 import { ShareButtons } from '@/components/share-buttons';
-import { classifyProposalRef, proposalRefHref, proposalRefLabel } from '@/lib/proposal-ref';
-import { KeyDecisionsList, type KeyDecision } from '@/components/upgrade/key-decisions';
-import { CallPlayer, CallVideoFallback } from '@/components/upgrade/call-player';
-import { CallChat } from '@/components/upgrade/call-chat';
-import { CallAskAi } from '@/components/upgrade/call-ask-ai';
-import { FEATURES } from '@/lib/features';
-import {
-  fetchTranscriptCues,
-  fetchChatMessages,
-  parseVtt,
-} from '@/lib/call-artifacts';
+import { fetchTranscriptCues, fetchChatMessages } from '@/lib/call-artifacts';
+import { getCallDetail } from '@/server/calls';
+import { CallWorkspace } from '@/components/calls/call-workspace';
 
 export const revalidate = 300;
 
 type Props = { params: Promise<{ series: string; number: string }> };
 
-function getYoutubeId(url: string | null): string | null {
-  if (!url) return null;
-  const match = url.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/i
-  );
-  return match ? match[1] : null;
-}
-
-async function getTranscriptCues(series: string, callId: string) {
-  return fetchTranscriptCues(series, callId);
-}
-
-/** Pull the Agenda section out of an ethereum/pm issue body. */
-function extractAgenda(body: string): string | null {
-  const norm = body.replace(/\r\n/g, '\n');
-  const heading = norm.match(/^#{1,6}\s*Agenda\s*$/im);
-  if (!heading || heading.index === undefined) return null;
-  // Drop the "Agenda" heading line itself; the UI renders its own heading.
-  let section = norm.slice(heading.index).replace(/^#{1,6}\s*Agenda\s*$\n?/im, '');
-  // Trim trailing issue boilerplate (call series, autopilot, zoom resources).
-  const cutMarkers = [
-    /^#{1,6}\s*Call Series/im,
-    /Autopilot Mode/i,
-    /Meeting Configuration/i,
-    /Protocol Call Resources/i,
-  ];
-  let cutAt = section.length;
-  for (const re of cutMarkers) {
-    const i = section.search(re);
-    if (i !== -1) cutAt = Math.min(cutAt, i);
-  }
-  const out = section.slice(0, cutAt).trim();
-  return out.length > 0 ? out : null;
-}
-
-/** Fetch and extract the agenda for a call's GitHub issue (cached via ISR). */
-async function getCallAgenda(issueNumber: number): Promise<string | null> {
-  try {
-    const res = await fetch(
-      `https://api.github.com/repos/ethereum/pm/issues/${issueNumber}`,
-      { headers: { Accept: 'application/vnd.github+json' }, next: { revalidate: 300 } },
-    );
-    if (!res.ok) return null;
-    const data = (await res.json()) as { body?: string | null };
-    return data.body ? extractAgenda(data.body) : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = await params;
-  const call = await getCachedCall(resolvedParams.series, resolvedParams.number);
+  const { series, number } = await params;
+  const call = await getCallDetail(series, number);
   if (!call) {
-    if (OFFICE_HOUR_SERIES.has(resolvedParams.series)) {
-      const recap = findOfficeHourRecap(resolvedParams.series, resolvedParams.number);
-      return recap
-        ? buildMetadata({ title: recap.title, description: `Recording, summary, decisions, and transcript for ${recap.title}.`, path: `/calls/${recap.series}/${recap.meeting}`, image: null })
-        : {};
-    }
-    const provisional = findProvisionalCallRecap(resolvedParams.series, resolvedParams.number);
-    if (provisional) {
+    const recap = findOfficeHourRecap(series, number);
+    if (recap) {
       return buildMetadata({
-        title: provisional.title,
-        description: `Early summary and key decisions for ${provisional.title}.`,
-        path: `/calls/${provisional.series}/${provisional.number}`,
-        image: null,
+        title: `${recap.title} · Ethereum Protocol Calls`,
+        description: recap.summary.slice(0, 160),
+        path: `/calls/${series}/${number}`,
       });
     }
-    return {};
+    const provisional = findProvisionalCallRecap(series, number);
+    if (provisional) {
+      return buildMetadata({
+        title: `${provisional.title} · Ethereum Protocol Calls`,
+        description: provisional.summary.slice(0, 160),
+        path: `/calls/${series}/${number}`,
+      });
+    }
+    return buildMetadata({
+      title: 'Protocol Call Not Found',
+      description: 'The requested protocol call recap could not be found.',
+      path: `/calls/${series}/${number}`,
+    });
   }
+
+  const desc =
+    call.summary ||
+    (call.decisions.length > 0 ? call.decisions[0].text : 'Protocol call recording and recap.');
+
   return buildMetadata({
-    title: callDisplayName(call),
-    description: `Recording, summary, decisions, and transcript for ${callDisplayName(call)}.`,
-    path: `/calls/${resolvedParams.series}/${resolvedParams.number}`,
-    // null so the generated opengraph-image.tsx card is used instead of the
-    // static site logo — that's what puts real call content in a shared post.
-    image: null,
+    title: `${call.title} · Ethereum Protocol Calls`,
+    description: desc.slice(0, 160),
+    path: `/calls/${series}/${number}`,
   });
 }
 
-export async function generateStaticParams() {
-  const calls = await getCachedRecentCalls(20);
-  return calls.map((call) => ({
-    series: call.series,
-    number: call.call_number ?? call.call_id,
-  }));
-}
-
-export default async function CallDetailPage({ params }: Props) {
+export default async function ProtocolCallPage({ params }: Props) {
   const { series, number } = await params;
-
-  // DB-first: once the scheduler ingests a call (e.g. ethproofs, with an inline
-  // transcript), the full DB-backed view below takes over. Static office-hour /
-  // EIPIP recaps are only the fallback for calls not yet in the pipeline.
-  const call = await getCachedCall(series, number);
+  const call = await getCallDetail(series, number);
 
   if (!call) {
-    if (OFFICE_HOUR_SERIES.has(series)) {
-      const recap = findOfficeHourRecap(series, number);
-      if (recap) return <OfficeHourCallView recap={recap} />;
-    }
-    // Stop-gap for a call not yet ingested by the ACDbot pipeline. Once the
-    // scheduler indexes it into protocol_calls, getCachedCall returns a row and
-    // the DB-backed view above replaces this automatically.
+    // Check fallback recaps for office hours / provisional calls
+    const recap = findOfficeHourRecap(series, number);
+    if (recap) return <OfficeHourCallView recap={recap} />;
     const provisional = findProvisionalCallRecap(series, number);
     if (provisional) return <ProvisionalCallView recap={provisional} />;
     notFound();
   }
 
-  const youtubeId = getYoutubeId(call.video_url);
-
-  const [transcriptCues, chatMessages] = await Promise.all([
-    // Self-indexed series carry the transcript inline (transcript_vtt); ACDbot
-    // series are fetched from GitHub. Either way we end up with parsed cues.
-    call.transcript_vtt
-      ? Promise.resolve(parseVtt(call.transcript_vtt))
-      : call.has_transcript
-        ? getTranscriptCues(call.series, call.call_id)
-        : Promise.resolve(null),
-    call.has_chat ? fetchChatMessages(call.series, call.call_id) : Promise.resolve(null),
+  const artifactId = call.callId || (call.date ? `${call.date}_${call.number ?? number}` : number);
+  const [rawTranscript, chatMessages] = await Promise.all([
+    call.hasTranscript ? fetchTranscriptCues(call.series, artifactId) : Promise.resolve(null),
+    call.hasChat ? fetchChatMessages(call.series, artifactId) : Promise.resolve(null),
   ]);
 
-  const payload = call.key_decisions as
-    | KeyDecision[]
-    | { key_decisions?: KeyDecision[] }
-    | null;
-  const decisions: KeyDecision[] = Array.isArray(payload)
-    ? payload
-    : (payload?.key_decisions ?? []);
+  const transcriptCues = rawTranscript
+    ? rawTranscript.map((c) => {
+        const parts = c.start.split(':').map(Number);
+        let seconds = 0;
+        if (parts.length === 3) seconds = parts[0] * 3600 + parts[1] * 60 + parts[2];
+        else if (parts.length === 2) seconds = parts[0] * 60 + parts[1];
+        else if (parts.length === 1) seconds = parts[0];
 
-  const neighbors = await getCachedCallNeighbors(call.series, call.occurred_on);
+        let speaker: string | null = null;
+        let text = c.text;
+        const speakerMatch = c.text.match(/^([A-Za-z0-9_\-\s]+?):\s*(.*)$/);
+        if (speakerMatch && speakerMatch[1].length < 30) {
+          speaker = speakerMatch[1];
+          text = speakerMatch[2];
+        }
 
-  const agenda = call.issue_number ? await getCallAgenda(call.issue_number) : null;
-
-  // Normalized transcript text powers the date-grounding guard: summary lines
-  // that name a month/year absent from the transcript get a "verify" flag.
-  const transcriptText = transcriptCues
-    ? normalizeForGrounding(transcriptCues.map((c) => c.text).join(' '))
+        return {
+          seconds,
+          stamp: c.start,
+          speaker,
+          text,
+        };
+      })
     : null;
 
-  // Series tag (ACDT/ACDE/…) first, matching how the account tags its posts.
+  const neighbors = call.date
+    ? await getCachedCallNeighbors(call.series, call.date)
+    : { prev: null, next: null };
+
+  // Social sharing snippets
   const shareHashtags = [callSeriesShort(call.series).replace(/[^A-Za-z0-9]/g, ''), 'Ethereum'];
-
-  // X allows 280, counts any link as 23 regardless of its real length, and weights
-  // emoji as 2. Everything below is fitted to that budget so the composer never
-  // opens already over the limit.
-  const TWEET_LIMIT = 280;
-  const LINK_COST = 23;
-  const weigh = (s: string) =>
-    [...s].reduce((n, ch) => n + (ch.codePointAt(0)! > 0xffff ? 2 : 1), 0);
-  const tweetBudget =
-    TWEET_LIMIT - LINK_COST - shareHashtags.reduce((n, t) => n + t.length + 2, 0) - 2;
-
-  /** Trim to a word boundary so a decision never ends mid-word. */
-  const clip = (text: string, max: number) => {
-    const clean = text.replace(/\s+/g, ' ').trim();
-    if (clean.length <= max) return clean;
-    const cut = clean.slice(0, max - 1);
-    return `${cut.slice(0, cut.lastIndexOf(' ')) || cut}…`;
-  };
-
-  const shareOpener = `${callDisplayName(call)} is now live on @EIPsInsight.`;
-
-  // The decisions ARE the story — "4 key decisions" only states a count. Quote as
-  // many as the budget allows, then spend whatever is left on the artifact line.
-  const decisionLines = decisions
-    .map((d) => clip(d.original_text ?? '', 105))
-    .filter((d) => d.length > 20)
-    .map((d) => `→ ${d}`);
-
-  const artifactLine = [
-    call.video_url ? '🎥 Recording' : null,
-    call.tldr ? '📝 Summary' : null,
-    transcriptCues ? `🔍 ${transcriptCues.length}-line transcript` : null,
-    chatMessages && chatMessages.length > 0 ? '💬 Chat' : null,
-  ]
-    .filter(Boolean)
-    .join(' · ');
-
-  // Greedily add decisions while they fit, reserving room for the artifact line.
-  const chosen: string[] = [];
-  for (const line of decisionLines) {
-    const candidate = [shareOpener, [...chosen, line].join('\n'), artifactLine]
-      .filter(Boolean)
-      .join('\n\n');
-    if (weigh(candidate) > tweetBudget) break;
-    chosen.push(line);
-  }
-
-  const shareText =
-    chosen.length > 0
-      ? [shareOpener, chosen.join('\n'), artifactLine].filter(Boolean).join('\n\n')
-      : // No quotable decision - fall back to naming what's on the page.
-        [shareOpener, artifactLine].filter(Boolean).join('\n\n');
-
-  // EIPs discussed: union of every EIP referenced across the decisions.
-  const discussedEips = Array.from(
-    new Set(decisions.flatMap((d) => (Array.isArray(d.eips) ? d.eips : [])))
-  ).sort((a, b) => a - b);
+  const shareOpener = `${call.title} is now live on @EIPsInsight.`;
+  const shareText = call.decisions.length > 0
+    ? `${shareOpener}\n\n→ ${call.decisions[0].text}`
+    : shareOpener;
 
   return (
-    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 pb-12 pt-8 sm:px-6">
-      {/* Back + prev/next */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/calls"
-          className="group inline-flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-primary"
-        >
-          <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-0.5" />
-          All protocol calls
-        </Link>
-        <div className="flex items-center gap-1.5">
-          {neighbors.prev && (
+    <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      {/* ── Masthead: Ledger surface band with engineering-paper grid ── */}
+      <header className="masthead border-b border-[var(--border)] bg-[var(--surface)]">
+        <div className="wrap py-6 sm:py-8">
+          {/* Breadcrumb + Previous / Next */}
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
             <Link
-              href={`/calls/${neighbors.prev.series}/${neighbors.prev.number}`}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-              title={neighbors.prev.name ?? undefined}
+              href="/calls"
+              className="group inline-flex items-center gap-1.5 font-mono text-xs text-[var(--ink-muted)] transition-colors hover:text-[var(--brand-strong)]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> Previous
+              <ArrowLeft className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
+              <span>All protocol calls</span>
             </Link>
-          )}
-          {neighbors.next && (
-            <Link
-              href={`/calls/${neighbors.next.series}/${neighbors.next.number}`}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card/60 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
-              title={neighbors.next.name ?? undefined}
-            >
-              Next <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
-          )}
-        </div>
-      </div>
+            <div className="flex items-center gap-2">
+              {neighbors.prev && (
+                <Link
+                  href={`/calls/${neighbors.prev.series}/${neighbors.prev.number}`}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--ink-muted)] transition-colors hover:border-[var(--brand-strong)]/40 hover:text-[var(--ink)]"
+                  title={neighbors.prev.name ?? undefined}
+                >
+                  <ArrowLeft className="h-3 w-3" /> Previous
+                </Link>
+              )}
+              {neighbors.next && (
+                <Link
+                  href={`/calls/${neighbors.next.series}/${neighbors.next.number}`}
+                  className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-xs text-[var(--ink-muted)] transition-colors hover:border-[var(--brand-strong)]/40 hover:text-[var(--ink)]"
+                  title={neighbors.next.name ?? undefined}
+                >
+                  Next <ArrowRight className="h-3 w-3" />
+                </Link>
+              )}
+            </div>
+          </div>
 
-      {/* Header */}
-      <header className="border-b border-border/40 pb-5">
-        <div className="flex items-center gap-2.5">
-          <span
-            className={cn(
-              'inline-flex w-16 items-center justify-center rounded-full border px-2 py-0.5 text-[10px] font-semibold',
-              callSeriesBadgeClass(call.series)
+          {/* Eyebrow badge */}
+          <div className="flex items-center gap-2.5 mb-2.5">
+            <span className="inline-block h-[7px] w-[7px] rounded-[1px] bg-[var(--brand)]" />
+            <span className="font-mono text-xs uppercase tracking-wider text-[var(--brand-strong)] font-semibold">
+              {callSeriesShort(call.series)}
+            </span>
+            <span className="text-[var(--ink-faint)]">/</span>
+            <span className="font-mono text-xs text-[var(--ink-muted)]">
+              #{call.number ?? number}
+            </span>
+          </div>
+
+          {/* Title and Share */}
+          <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
+            <h1 className="t-h1 max-w-4xl text-2xl sm:text-3xl lg:text-4xl text-[var(--ink)]">
+              {call.title}
+            </h1>
+            <ShareButtons text={shareText} hashtags={shareHashtags} />
+          </div>
+
+          {/* Metadata ledger row */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-[var(--border)] pt-3.5 text-xs text-[var(--ink-muted)]">
+            {call.date && (
+              <span className="inline-flex items-center gap-1.5">
+                <CalendarDays className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> {call.date}
+              </span>
             )}
-          >
-            {callSeriesShort(call.series)}
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">{call.call_id}</span>
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="persona-title text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {callDisplayName(call)}
-          </h1>
-          {/* Template names what's actually on the page, so a share reads as a
-              useful pointer rather than a bare link. The platform appends the URL. */}
-          <ShareButtons text={shareText} hashtags={shareHashtags} />
-        </div>
-        <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <CalendarDays className="h-4 w-4" /> {call.occurred_on}
-          </span>
-          {decisions.length > 0 && (
-            <span className="inline-flex items-center gap-1.5">
-              <Gavel className="h-4 w-4" /> {decisions.length} decision{decisions.length === 1 ? '' : 's'}
-            </span>
-          )}
-          {transcriptCues && (
-            <span className="inline-flex items-center gap-1.5">
-              <FileText className="h-4 w-4" /> {transcriptCues.length} transcript lines
-            </span>
-          )}
+            {call.decisions.length > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Gavel className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> {call.decisions.length} decision
+                {call.decisions.length === 1 ? '' : 's'}
+              </span>
+            )}
+            {call.eipMentions.length > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <Boxes className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> {call.eipMentions.length} proposal
+                {call.eipMentions.length === 1 ? '' : 's'} discussed
+              </span>
+            )}
+            {transcriptCues && transcriptCues.length > 0 && (
+              <span className="inline-flex items-center gap-1.5">
+                <FileText className="h-3.5 w-3.5 text-[var(--ink-muted)]" /> {transcriptCues.length} transcript lines
+              </span>
+            )}
+          </div>
         </div>
       </header>
 
-      {/* Synced video + transcript workspace */}
-      {youtubeId ? (
-        <CallPlayer youtubeId={youtubeId} cues={transcriptCues ?? []} />
-      ) : call.video_url ? (
-        <CallVideoFallback videoUrl={call.video_url} />
-      ) : null}
-
-      {/* Ask AI (only useful when there's summary/transcript to ground it).
-          Hidden behind a flag while it's still being tested — re-enable with
-          NEXT_PUBLIC_FEATURE_CALL_ASK_AI=true. */}
-      {FEATURES.CALL_ASK_AI && (call.tldr || transcriptCues) && (
-        <CallAskAi
-          series={call.series}
-          number={call.call_number ?? call.call_id}
-          suggestions={[
-            'What were the main decisions?',
-            'Summarize this call in 3 points',
-            ...(discussedEips.length > 0
-              ? [`What was said about ${proposalRefLabel(discussedEips[0])}?`]
-              : []),
-          ]}
+      {/* Main Call Workspace */}
+      <div className="wrap py-8 sm:py-10">
+        <CallWorkspace
+          call={call}
+          transcript={transcriptCues}
+          chat={chatMessages}
         />
-      )}
-
-      {/* Below: summary + decisions/eips/links */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        <div className="space-y-8 lg:col-span-2">
-          {/* Meeting chat sits above the summary and is collapsed by default, so the
-              always-expanded summary below it stays close to the top of the column. */}
-          {chatMessages && chatMessages.length > 0 && <CallChat messages={chatMessages} />}
-
-          {call.tldr ? (
-            <CallSummary tldr={call.tldr} transcript={transcriptText} />
-          ) : (
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-                <FileText className="h-4 w-4 text-muted-foreground" />
-                Summary
-              </h2>
-              <p className="rounded-xl border border-border bg-card/60 px-4 py-6 text-sm text-muted-foreground">
-                No summary synced for this call yet.
-              </p>
-            </section>
-          )}
-
-          {agenda && (
-            <section className="space-y-3">
-              <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-                <ListChecks className="h-4 w-4 text-muted-foreground" />
-                Agenda
-              </h2>
-              <details className="group rounded-xl border border-border bg-card/60 px-4 py-3" open>
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium text-muted-foreground">
-                  <span>From the call issue{call.issue_number ? ` #${call.issue_number}` : ''}</span>
-                  <span className="text-xs text-primary group-open:hidden">Show</span>
-                  <span className="hidden text-xs text-primary group-open:inline">Hide</span>
-                </summary>
-                <div className="mt-3 border-t border-border/50 pt-3 text-sm">
-                  <MarkdownRenderer content={agenda} />
-                </div>
-              </details>
-            </section>
-          )}
-
-        </div>
-
-        <div className="space-y-6 lg:col-span-1">
-          <section className="space-y-3">
-            <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight text-foreground">
-              <Gavel className="h-4 w-4 text-muted-foreground" />
-              Key decisions
-            </h2>
-            {decisions.length > 0 ? (
-              <KeyDecisionsList decisions={decisions} seekable={Boolean(youtubeId)} />
-            ) : (
-              <div className="rounded-xl border border-border bg-card/60 px-4 py-6 text-center text-sm text-muted-foreground">
-                No key decisions recorded for this call.
-              </div>
-            )}
-          </section>
-
-          {discussedEips.length > 0 && (
-            <section className="space-y-2">
-              <h3 className="text-sm font-semibold text-foreground">EIPs discussed</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {discussedEips.map((eip) => {
-                  // A too-large number is a PR the summary mislabeled as an EIP
-                  // (e.g. 11905). Link it to the PR and label it as one.
-                  const isPr = classifyProposalRef(eip) === 'pr';
-                  return (
-                    <Link
-                      key={eip}
-                      href={proposalRefHref(eip)}
-                      title={isPr ? `${eip} is a GitHub PR number, not an EIP.` : undefined}
-                      className="rounded-md border border-border bg-card/60 px-2 py-0.5 font-mono text-xs font-semibold text-primary transition-colors hover:border-primary/40 hover:bg-primary/5"
-                    >
-                      {isPr ? `PR-${eip}` : `EIP-${eip}`}
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          <div className="space-y-3 rounded-xl border border-border bg-card/60 p-4">
-            <h3 className="text-sm font-semibold text-foreground">Links</h3>
-            <ul className="space-y-2 text-xs">
-              {call.issue_number && (
-                <li>
-                  <a
-                    href={`https://github.com/ethereum/pm/issues/${call.issue_number}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <Github className="h-4 w-4" />
-                    Agenda issue #{call.issue_number}
-                  </a>
-                </li>
-              )}
-              {call.video_url && (
-                <li>
-                  <a
-                    href={call.video_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-primary"
-                  >
-                    <Video className="h-4 w-4" />
-                    Watch on YouTube
-                  </a>
-                </li>
-              )}
-              {/* The raw ACDbot artifact links (chat log / all artifacts) are
-                  intentionally omitted: the meeting chat and transcript are
-                  surfaced on-page, and we don't advertise the upstream source. */}
-            </ul>
-          </div>
-        </div>
       </div>
     </div>
   );

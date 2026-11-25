@@ -531,9 +531,30 @@ export function EditorialActivityDashboard({
           {filterMode === "custom" ? (
             <div className="flex flex-wrap items-center gap-2">
               {PRESETS.map((p) => (
-                <button key={p.id} onClick={() => { p.apply(); setCustomOpen(false); }} className={cn("rounded-full border px-2.5 py-1", activePresetId === p.id && !customOpen ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>{p.label}</button>
+                <button
+                  key={p.id}
+                  onClick={() => { p.apply(); setCustomOpen(false); }}
+                  className={cn(
+                    "rounded-full border px-2.5 py-1 transition-colors",
+                    activePresetId === p.id && !customOpen
+                      ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {p.label}
+                </button>
               ))}
-              <button onClick={() => { setMode("range"); setCustomOpen(true); }} className={cn("inline-flex items-center gap-1 rounded-full border px-2.5 py-1", customOpen || activePresetId === "custom" ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}><CalendarRange className="h-3.5 w-3.5" /> Date range</button>
+              <button
+                onClick={() => { setMode("range"); setCustomOpen(true); }}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 transition-colors",
+                  customOpen || activePresetId === "custom"
+                    ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400 font-medium"
+                    : "border-border text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <CalendarRange className="h-3.5 w-3.5" /> Date range
+              </button>
               {(customOpen || activePresetId === "custom") && (
                 <div className="flex items-center gap-1.5">
                   <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="h-8 rounded-md border border-border bg-muted/40 px-2 text-foreground" />
@@ -593,8 +614,26 @@ export function EditorialActivityDashboard({
             {REPO_KEYS.map((r) => {
               const on = repos.has(r);
               return (
-                <button key={r} onClick={() => toggleRepo(r)} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-1", on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground")}>
-                  <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>{on && <Check className="h-2.5 w-2.5" />}</span>
+                <button
+                  key={r}
+                  onClick={() => toggleRepo(r)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-md border px-2 py-1 transition-colors",
+                    on
+                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-400 font-medium"
+                      : "border-border text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border transition-colors",
+                      on
+                        ? "border-emerald-500 bg-emerald-500 text-black dark:text-black font-bold"
+                        : "border-border"
+                    )}
+                  >
+                    {on && <Check className="h-2.5 w-2.5 stroke-[3]" />}
+                  </span>
                   {REPO_LABEL[r]}
                 </button>
               );

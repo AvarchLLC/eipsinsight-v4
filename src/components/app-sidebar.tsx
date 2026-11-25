@@ -132,6 +132,11 @@ const sidebarSections: SidebarSection[] = [
         icon: LineChart,
         href: "/analytics/eips",
       },
+      {
+        title: "Standards Adoption",
+        icon: Boxes,
+        href: "/adoption",
+      },
     ],
   },
   {
