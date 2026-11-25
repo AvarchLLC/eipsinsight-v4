@@ -140,10 +140,11 @@ function CSVBtn({
       type="button"
       onClick={onClick}
       disabled={loading}
-      className="btn h-8 px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-60"
+      title={loading ? "Exporting..." : label}
+      aria-label={loading ? "Exporting..." : label}
+      className="btn btn-primary h-8 w-8 shrink-0 p-0 disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-      {loading ? "Exporting..." : label}
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
     </button>
   );
 }
@@ -1049,18 +1050,20 @@ export default function EIPsAnalyticsPage() {
           title="Composition & Status Matrix"
           description="Explore how Ethereum standards break down by category, lifecycle status, and specification type."
           action={
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(["category", "status", "type"] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  data-active={dimTab === t}
-                  onClick={() => setDimTab(t)}
-                  className="chip capitalize"
-                >
-                  By {t}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <label htmlFor="eips-dim-select" className="eyebrow shrink-0">
+                View:
+              </label>
+              <select
+                id="eips-dim-select"
+                value={dimTab}
+                onChange={(e) => setDimTab(e.target.value as "category" | "status" | "type")}
+                className="h-8 text-xs font-medium"
+              >
+                <option value="category">By Category</option>
+                <option value="status">By Status</option>
+                <option value="type">By Type</option>
+              </select>
             </div>
           }
         />
