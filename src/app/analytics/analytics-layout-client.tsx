@@ -419,12 +419,13 @@ function AnalyticsLayoutInner({
   const controls = (
     <div className="flex flex-wrap items-center gap-2.5">
       {/* Time Range */}
-      <div className="relative flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 transition-colors hover:border-[var(--ink)]">
-        <Calendar className="h-3.5 w-3.5 text-[var(--ink-muted)] shrink-0" />
+      <div className="relative flex h-8 items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-2 transition-colors hover:border-[var(--ink)]">
+        <Calendar className="h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)]" />
         <select
           value={timeRange}
           onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-          className="bg-transparent text-xs font-medium text-[var(--ink)] pl-1.5 pr-5 outline-none cursor-pointer appearance-none"
+          style={{ backgroundImage: "none", border: "none", backgroundColor: "transparent", boxShadow: "none" }}
+          className="h-full cursor-pointer appearance-none pl-1.5 pr-6 text-xs font-medium text-[var(--ink)] outline-none"
         >
           {timeRangeOptions.map((opt) => (
             <option key={opt.value} value={opt.value} className="bg-[var(--surface)] text-[var(--ink)]">
@@ -432,7 +433,7 @@ function AnalyticsLayoutInner({
             </option>
           ))}
         </select>
-        <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-[var(--ink-muted)]" />
+        <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-[var(--ink-muted)]" />
       </div>
 
       {timeRange === "custom" && (
@@ -467,12 +468,13 @@ function AnalyticsLayoutInner({
 
       {/* Repo Filter — hidden on the PR page, which owns a multi-select */}
       {!hideRepo && (
-        <div className="relative flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 transition-colors hover:border-[var(--ink)]">
-          <Database className="h-3.5 w-3.5 text-[var(--ink-muted)] shrink-0" />
+        <div className="relative flex h-8 items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-2 transition-colors hover:border-[var(--ink)]">
+          <Database className="h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)]" />
           <select
             value={repoFilter}
             onChange={(e) => setRepoFilter(e.target.value as RepoFilter)}
-            className="bg-transparent text-xs font-medium text-[var(--ink)] pl-1.5 pr-5 outline-none cursor-pointer appearance-none"
+            style={{ backgroundImage: "none", border: "none", backgroundColor: "transparent", boxShadow: "none" }}
+            className="h-full cursor-pointer appearance-none pl-1.5 pr-6 text-xs font-medium text-[var(--ink)] outline-none"
           >
             {repoOptions.map((opt) => (
               <option key={opt.value} value={opt.value} className="bg-[var(--surface)] text-[var(--ink)]">
@@ -480,7 +482,7 @@ function AnalyticsLayoutInner({
               </option>
             ))}
           </select>
-          <ChevronDown className="pointer-events-none absolute right-2 h-3 w-3 text-[var(--ink-muted)]" />
+          <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-[var(--ink-muted)]" />
         </div>
       )}
     </div>

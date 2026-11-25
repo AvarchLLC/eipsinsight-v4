@@ -1788,6 +1788,139 @@ export const exploreProcedures = {
         }));
     }),
 
+  getLeaderboard: optionalAuthProcedure
+    .input(z.object({
+      role: z.enum(['ALL', 'EDITOR', 'REVIEWER', 'CONTRIBUTOR']).default('ALL'),
+      repo: z.enum(['all', 'eips', 'ercs', 'rips']).default('all'),
+      from: z.string().optional(),
+      to: z.string().optional(),
+      sortBy: z.enum(['score', 'actions', 'reviews', 'merged', 'created', 'comments', 'prs_touched', 'recent']).default('score'),
+      sortDir: z.enum(['asc', 'desc']).default('desc'),
+      search: z.string().trim().optional(),
+      limit: z.number().min(1).max(250).default(150),
+    }))
+    .handler(async ({ input }) => {
+      const repoFilter = input.repo === 'all' ? null : input.repo;
+      const fromDate = input.from ? new Date(`${input.from}T00:00:00.000Z`) : null;
+      const toDate = input.to ? new Date(`${input.to}T23:59:59.999Z`) : null;
+      const searchFilter = input.search && input.search.length > 0 ? `%${input.search.toLowerCase()}%` : null;
+
+      const rows = await prisma.$queryRaw<Array<{
+        actor: string;
+        total_actions: bigint;
+        prs_touched: bigint;
+        prs_created: bigint;
+        prs_merged: bigint;
+        comments: bigint;
+        reviews: bigint;
+        last_activity: Date | null;
+      }>>`
+        WITH filtered AS (
+          SELECT ca.*
+          FROM contributor_activity ca
+          LEFT JOIN repositories r ON r.id = ca.repository_id
+          WHERE (${fromDate}::timestamp IS NULL OR ca.occurred_at >= ${fromDate})
+            AND (${toDate}::timestamp IS NULL OR ca.occurred_at <= ${toDate})
+            AND (${repoFilter}::text IS NULL OR LOWER(SPLIT_PART(COALESCE(r.name, ''), '/', 2)) = ${repoFilter})
+            AND (${searchFilter}::text IS NULL OR LOWER(ca.actor) LIKE ${searchFilter})
+            AND ca.actor NOT LIKE '%[bot]%'
+            AND ca.actor NOT LIKE '%-bot'
+            AND LOWER(ca.actor) NOT LIKE '%bot'
+            AND ca.actor NOT IN ('dependabot', 'github-actions', 'codecov', 'renovate', 'eth-bot', 'ethereum-bot')
+        )
+        SELECT
+          f.actor,
+          COUNT(*) AS total_actions,
+          COUNT(DISTINCT f.pr_number) AS prs_touched,
+          COUNT(DISTINCT CASE WHEN LOWER(COALESCE(f.action_type, '')) = 'opened' THEN f.pr_number END) AS prs_created,
+          COUNT(DISTINCT CASE WHEN LOWER(COALESCE(f.action_type, '')) = 'merged' THEN f.pr_number END) AS prs_merged,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(f.action_type, '')) IN ('commented', 'issue_comment')) AS comments,
+          COUNT(*) FILTER (WHERE LOWER(COALESCE(f.action_type, '')) = 'reviewed') AS reviews,
+          MAX(f.occurred_at) AS last_activity
+        FROM filtered f
+        GROUP BY f.actor
+      `;
+
+      const mapped = rows
+        .map((entry) => {
+          const canonicalRole = resolveCanonicalRole(entry.actor);
+          const totalActions = Number(entry.total_actions);
+          const prsTouched = Number(entry.prs_touched);
+          const prsReviewed = Number(entry.reviews);
+          const prsMerged = Number(entry.prs_merged);
+          const prsCreated = Number(entry.prs_created);
+          const comments = Number(entry.comments);
+          const totalScore = prsTouched + prsReviewed * 2 + prsMerged * 3 + prsCreated;
+
+          return {
+            actor: entry.actor,
+            role: canonicalRole,
+            totalScore,
+            totalActions,
+            prsTouched,
+            prsReviewed,
+            prsMerged,
+            prsCreated,
+            comments,
+            lastActivity: entry.last_activity?.toISOString() || null,
+          };
+        })
+        .filter((entry) => input.role === 'ALL' || entry.role === input.role);
+
+      mapped.sort((a, b) => {
+        const dir = input.sortDir === 'asc' ? 1 : -1;
+        switch (input.sortBy) {
+          case 'actions':
+            return (a.totalActions - b.totalActions) * dir;
+          case 'reviews':
+            return (a.prsReviewed - b.prsReviewed) * dir;
+          case 'merged':
+            return (a.prsMerged - b.prsMerged) * dir;
+          case 'created':
+            return (a.prsCreated - b.prsCreated) * dir;
+          case 'comments':
+            return (a.comments - b.comments) * dir;
+          case 'prs_touched':
+            return (a.prsTouched - b.prsTouched) * dir;
+          case 'recent': {
+            const ta = a.lastActivity ? new Date(a.lastActivity).getTime() : 0;
+            const tb = b.lastActivity ? new Date(b.lastActivity).getTime() : 0;
+            return (ta - tb) * dir;
+          }
+          case 'score':
+          default:
+            return (a.totalScore - b.totalScore) * dir;
+        }
+      });
+
+      const summary = mapped.reduce(
+        (acc, item) => {
+          acc.totalContributors += 1;
+          acc.totalActions += item.totalActions;
+          acc.totalReviews += item.prsReviewed;
+          acc.totalMerged += item.prsMerged;
+          acc.totalCreated += item.prsCreated;
+          acc.totalComments += item.comments;
+          return acc;
+        },
+        {
+          totalContributors: 0,
+          totalActions: 0,
+          totalReviews: 0,
+          totalMerged: 0,
+          totalCreated: 0,
+          totalComments: 0,
+        },
+      );
+
+      const items = mapped.slice(0, input.limit).map((item, idx) => ({
+        ...item,
+        rank: idx + 1,
+      }));
+
+      return { items, summary };
+    }),
+
   getTopActorsByRole: optionalAuthProcedure
     .input(z.object({
       role: z.enum(['EDITOR', 'REVIEWER', 'CONTRIBUTOR']),

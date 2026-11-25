@@ -66,7 +66,7 @@ export function ChartFrame({ title, sub, children }: { title: string; sub?: stri
 }
 
 /* ── Derived data from the 115 flagged contracts ── */
-function classify(name: string): string {
+export function classify(name: string): string {
   const n = name.toLowerCase();
   if (/entrypoint|4337|paymaster|walletsimple/.test(n)) return 'Account abstraction';
   if (/proxy|diamond|beacon|upgradeab/.test(n)) return 'Proxies / upgradeable';
