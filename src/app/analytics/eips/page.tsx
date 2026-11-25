@@ -29,26 +29,38 @@ import { useAnalytics, useAnalyticsExport } from "../analytics-layout-client";
 import { toast } from "sonner";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { chartTooltip } from "@/lib/chart-theme";
+import { ChartWatermark } from "@/components/chart-watermark";
+import { ChartFooter } from "@/components/chart-footer";
+import { SectionHead } from "@/components/ledger/section-head";
+import { LedgerBadge } from "@/components/ledger/badge";
 
+/* Ledger-aligned semantic palette (docs/DESIGN.md §2) */
 const STATUS_COLORS: Record<string, string> = {
-  Draft: "#22D3EE",
-  Review: "#60A5FA",
-  "Last Call": "#FBBF24",
-  Final: "#34D399",
-  Living: "#A78BFA",
-  Stagnant: "#64748B",
-  Withdrawn: "#EF4444",
+  Draft: "#64748b",
+  Review: "#f59e0b",
+  "Last Call": "#f97316",
+  Final: "#10b981",
+  Living: "#14b8a6",
+  Stagnant: "#e11d48",
+  Withdrawn: "#ef4444",
 };
 
 const CAT_COLORS: Record<string, string> = {
-  Core: "#34D399",
-  ERC: "#60A5FA",
-  Networking: "#A78BFA",
-  Interface: "#FBBF24",
-  Meta: "#C084FC",
-  Informational: "#94A3B8",
-  RIP: "#FB923C",
-  RIPs: "#FB923C",
+  Core: "#6366f1",
+  ERC: "#10b981",
+  Networking: "#0ea5e9",
+  Interface: "#06b6d4",
+  Meta: "#8b5cf6",
+  Informational: "#64748b",
+  RIP: "#eab308",
+  RIPs: "#eab308",
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  "Standards Track": "#10b981",
+  Meta: "#8b5cf6",
+  Informational: "#0ea5e9",
+  Unknown: "#64748b",
 };
 
 const STATUS_ORDER = ["Draft", "Review", "Last Call", "Final", "Living", "Stagnant", "Withdrawn"];
@@ -57,59 +69,32 @@ const STATUS_RANK: Record<string, number> = STATUS_ORDER.reduce((acc, s, i) => {
   return acc;
 }, {} as Record<string, number>);
 
-function Section({
+function ChartPanel({
   title,
-  icon,
+  eyebrow,
   children,
   action,
   className,
   subtitle,
 }: {
   title: string;
-  icon: React.ReactNode;
+  eyebrow?: string;
   children: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
   subtitle?: React.ReactNode;
 }) {
   return (
-    <section className={cn("rounded-xl border border-border bg-card/60 p-5", className)}>
-      <div className="mb-4 flex items-start justify-between gap-3">
-        <div className="flex items-start gap-2.5">
-          <span className="mt-0.5 text-primary">{icon}</span>
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h2>
-            {subtitle && <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>}
-          </div>
+    <div className={cn("rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5", className)}>
+      <div className="mb-4 flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] pb-3">
+        <div>
+          {eyebrow && <p className="eyebrow mb-1">{eyebrow}</p>}
+          <h3 className="t-h3">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-[var(--ink-muted)]">{subtitle}</p>}
         </div>
         {action}
       </div>
       {children}
-    </section>
-  );
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  sub,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  sub?: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-border bg-card/60 p-4 transition-all hover:border-primary/50 hover:bg-card/80">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{value}</p>
-          {sub && <p className="mt-1 text-[11px] leading-snug text-muted-foreground">{sub}</p>}
-        </div>
-        <div className="shrink-0 rounded-lg bg-primary/10 p-2.5 text-primary">{icon}</div>
-      </div>
     </div>
   );
 }
@@ -143,7 +128,7 @@ function downloadObjectCSV(rows: Array<Record<string, unknown>>, filename: strin
 
 function CSVBtn({
   onClick,
-  label = "Download Reports",
+  label = "Export CSV",
   loading = false,
 }: {
   onClick: () => void;
@@ -152,48 +137,14 @@ function CSVBtn({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={loading}
-      className="inline-flex h-9 items-center gap-1.5 rounded-md border border-primary/25 bg-primary/10 px-3 text-sm text-primary transition-colors hover:border-primary/40 hover:bg-primary/15 disabled:cursor-not-allowed disabled:opacity-60"
+      className="btn h-8 px-3 text-xs font-medium disabled:cursor-not-allowed disabled:opacity-60"
     >
-      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+      {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
       {loading ? "Exporting..." : label}
     </button>
-  );
-}
-
-function formatFooterDate(value: Date | null): string {
-  if (!value) return "—";
-  const dd = String(value.getDate()).padStart(2, "0");
-  const mm = String(value.getMonth() + 1).padStart(2, "0");
-  const yyyy = value.getFullYear();
-  const hh = value.toLocaleString("en-US", { hour: "2-digit", hour12: true }).slice(0, 2);
-  const min = value.toLocaleString("en-US", { minute: "2-digit" });
-  const ap = value.toLocaleString("en-US", { hour: "2-digit", hour12: true }).slice(-2).toUpperCase();
-  return `${dd}-${mm}-${yyyy} ${hh}:${min} ${ap}`;
-}
-
-function ChartFooter({ nextUpdateAt }: { nextUpdateAt: Date | null }) {
-  return (
-    <div className="mt-3 border-t border-border/70 pt-2.5">
-      <div className="flex items-center justify-between gap-3 rounded-md bg-muted/30 px-2.5 py-1.5 text-xs text-muted-foreground">
-        <span className="font-medium text-foreground/90">EIPsInsight.com</span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-1.5 w-1.5 rounded-full bg-primary/70" />
-          Next Update: {formatFooterDate(nextUpdateAt)}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ChartWatermark() {
-  return (
-    <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-      <span className="select-none text-sm font-medium tracking-[0.06em] text-foreground/12 dark:text-foreground/16 sm:text-base">
-        EIPsInsight.com
-      </span>
-    </div>
   );
 }
 
@@ -245,6 +196,7 @@ export default function EIPsAnalyticsPage() {
     draftToFinalMedian?: number;
   } | null>(null);
   const [recentChanges, setRecentChanges] = useState<RecentChangeRow[]>([]);
+  const [recentStatusFilter, setRecentStatusFilter] = useState<string>("all");
   const [exportingPipeline, setExportingPipeline] = useState(false);
   const [exportingComposition, setExportingComposition] = useState(false);
   const [exportingTransition, setExportingTransition] = useState(false);
@@ -407,9 +359,9 @@ export default function EIPsAnalyticsPage() {
           nodeAlign: "justify",
           layoutIterations: 64,
           emphasis: { focus: "adjacency" },
-          lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.55 },
+          lineStyle: { color: "gradient", curveness: 0.5, opacity: 0.5 },
           itemStyle: { borderWidth: 0 },
-          label: { color: "var(--muted-foreground)", fontSize: 11, fontWeight: 500 },
+          label: { color: "var(--ink-muted)", fontSize: 11, fontWeight: 500 },
           data: nodes,
           links: transitionFlows.map((f) => ({ source: f.from, target: f.to, value: f.value })),
         },
@@ -421,20 +373,20 @@ export default function EIPsAnalyticsPage() {
     const ordered = STATUS_ORDER.map((status) => ({ status, value: statusCountMap[status] || 0 }));
     return {
       backgroundColor: "transparent",
-      grid: { top: 14, left: 92, right: 36, bottom: 14, containLabel: false },
+      grid: { top: 14, left: 92, right: 44, bottom: 14, containLabel: false },
       tooltip: chartTooltip({ trigger: "axis", axisPointer: { type: "shadow" } }),
       xAxis: {
         type: "value",
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+        axisLabel: { color: "var(--ink-faint)", fontSize: 11 },
         axisLine: { show: false },
         axisTick: { show: false },
-        splitLine: { lineStyle: { color: "rgba(148,163,184,0.16)", type: "dashed" } },
+        splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } },
       },
       yAxis: {
         type: "category",
         data: ordered.map((d) => d.status),
         inverse: true,
-        axisLabel: { color: "var(--foreground)", fontSize: 12, fontWeight: 500 },
+        axisLabel: { color: "var(--ink)", fontSize: 12, fontWeight: 500 },
         axisLine: { show: false },
         axisTick: { show: false },
       },
@@ -442,20 +394,18 @@ export default function EIPsAnalyticsPage() {
         {
           type: "bar",
           showBackground: true,
-          backgroundStyle: { color: "rgba(148,163,184,0.08)", borderRadius: 8 },
+          backgroundStyle: { color: "var(--surface-2)", borderRadius: 4 },
           data: ordered.map((d) => ({
             value: d.value,
             itemStyle: {
               color: STATUS_COLORS[d.status] || "#64748b",
-              borderRadius: 8,
-              shadowBlur: 8,
-              shadowColor: `${STATUS_COLORS[d.status] || "#64748b"}40`,
+              borderRadius: 4,
             },
           })),
           label: {
             show: true,
             position: "right",
-            color: "var(--foreground)",
+            color: "var(--ink)",
             fontWeight: 600,
             formatter: ({ value }: { value: number }) => Number(value || 0).toLocaleString(),
           },
@@ -467,6 +417,7 @@ export default function EIPsAnalyticsPage() {
   }, [statusCountMap]);
 
   const categoryDonutOption = useMemo(() => {
+    const isDark = resolvedTheme === "dark";
     const rows = catBreakdown
       .filter((c) => c.count > 0)
       .sort((a, b) => b.count - a.count)
@@ -474,23 +425,23 @@ export default function EIPsAnalyticsPage() {
     const pctMap = new Map(rows.map((r) => [r.name, total > 0 ? ((r.value / total) * 100).toFixed(1) : "0.0"]));
     return {
       backgroundColor: "transparent",
-      // Clear any previously merged center graphics from older option versions.
       graphic: [],
       title: [
         {
           text: total.toLocaleString(),
           subtext: "Total Proposals",
           left: "34%",
-          top: "46%",
+          top: "43%",
           textAlign: "center",
           textStyle: {
-            color: "var(--foreground)",
-            fontSize: 34,
+            color: "var(--ink)",
+            fontFamily: "var(--font-advercase), Georgia, serif",
+            fontSize: 32,
             fontWeight: 700,
           },
           subtextStyle: {
-            color: "var(--muted-foreground)",
-            fontSize: 12,
+            color: "var(--ink-faint)",
+            fontSize: 11,
             fontWeight: 500,
           },
         },
@@ -508,7 +459,7 @@ export default function EIPsAnalyticsPage() {
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 12,
-        textStyle: { color: "var(--foreground)", fontSize: 12, fontWeight: 500 },
+        textStyle: { color: "var(--ink)", fontSize: 12, fontWeight: 500 },
         formatter: (name: string) => `${name}  ${pctMap.get(name)}%`,
       },
       series: [
@@ -518,21 +469,16 @@ export default function EIPsAnalyticsPage() {
           center: ["34%", "50%"],
           avoidLabelOverlap: true,
           label: { show: false },
-          itemStyle: { borderColor: "rgba(2,6,23,0.55)", borderWidth: 2 },
+          itemStyle: { borderColor: isDark ? "#1a1f1d" : "#ffffff", borderWidth: 2 },
           data: rows,
         },
       ],
     };
-  }, [catBreakdown, total]);
+  }, [catBreakdown, total, resolvedTheme]);
 
   const typeTotal = useMemo(() => typeBreakdown.reduce((s, t) => s + t.count, 0), [typeBreakdown]);
-  const TYPE_COLORS: Record<string, string> = {
-    "Standards Track": "#6366f1",
-    Meta: "#f59e0b",
-    Informational: "#10b981",
-    Unknown: "#64748b",
-  };
   const typeDonutOption = useMemo(() => {
+    const isDark = resolvedTheme === "dark";
     const rows = typeBreakdown
       .filter((t) => t.count > 0)
       .sort((a, b) => b.count - a.count)
@@ -546,10 +492,15 @@ export default function EIPsAnalyticsPage() {
           text: typeTotal.toLocaleString(),
           subtext: "Total Proposals",
           left: "34%",
-          top: "46%",
+          top: "43%",
           textAlign: "center",
-          textStyle: { color: "var(--foreground)", fontSize: 34, fontWeight: 700 },
-          subtextStyle: { color: "var(--muted-foreground)", fontSize: 12, fontWeight: 500 },
+          textStyle: {
+            color: "var(--ink)",
+            fontFamily: "var(--font-advercase), Georgia, serif",
+            fontSize: 32,
+            fontWeight: 700,
+          },
+          subtextStyle: { color: "var(--ink-faint)", fontSize: 11, fontWeight: 500 },
         },
       ],
       tooltip: chartTooltip({
@@ -565,7 +516,7 @@ export default function EIPsAnalyticsPage() {
         itemWidth: 10,
         itemHeight: 10,
         itemGap: 12,
-        textStyle: { color: "var(--foreground)", fontSize: 12, fontWeight: 500 },
+        textStyle: { color: "var(--ink)", fontSize: 12, fontWeight: 500 },
         formatter: (name: string) => `${name}  ${pctMap.get(name)}%`,
       },
       series: [
@@ -575,13 +526,12 @@ export default function EIPsAnalyticsPage() {
           center: ["34%", "50%"],
           avoidLabelOverlap: true,
           label: { show: false },
-          itemStyle: { borderColor: "rgba(2,6,23,0.55)", borderWidth: 2 },
+          itemStyle: { borderColor: isDark ? "#1a1f1d" : "#ffffff", borderWidth: 2 },
           data: rows,
         },
       ],
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [typeBreakdown, typeTotal]);
+  }, [typeBreakdown, typeTotal, resolvedTheme]);
 
   const throughputOption = useMemo(() => {
     const months = throughput.map((row) => String(row.month || ""));
@@ -590,19 +540,19 @@ export default function EIPsAnalyticsPage() {
       tooltip: chartTooltip({ trigger: "axis" }),
       legend: {
         top: 0,
-        textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+        textStyle: { color: "var(--ink-muted)", fontSize: 11 },
       },
       grid: { top: 34, left: 42, right: 20, bottom: 26 },
       xAxis: {
         type: "category",
         data: months,
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
-        axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+        axisLabel: { color: "var(--ink-faint)", fontSize: 11 },
+        axisLine: { lineStyle: { color: "var(--border)" } },
       },
       yAxis: {
         type: "value",
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
-        splitLine: { lineStyle: { color: "rgba(148,163,184,0.18)" } },
+        axisLabel: { color: "var(--ink-faint)", fontSize: 11 },
+        splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } },
       },
       dataZoom: [
         {
@@ -615,15 +565,15 @@ export default function EIPsAnalyticsPage() {
         {
           type: "slider",
           xAxisIndex: 0,
-          height: 18,
+          height: 16,
           bottom: 0,
-          borderColor: "rgba(148,163,184,0.22)",
-          backgroundColor: "rgba(148,163,184,0.08)",
-          fillerColor: "rgba(34,211,238,0.22)",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--surface-2)",
+          fillerColor: "rgba(16, 185, 129, 0.2)",
           handleSize: 10,
           handleStyle: {
-            color: "#22D3EE",
-            borderColor: "#22D3EE",
+            color: "#10b981",
+            borderColor: "#10b981",
           },
           moveHandleSize: 0,
           showDetail: false,
@@ -635,7 +585,7 @@ export default function EIPsAnalyticsPage() {
         { name: "Draft", type: "line", smooth: true, symbol: "none", data: throughput.map((r) => Number(r.draft || 0)), lineStyle: { width: 2, color: STATUS_COLORS.Draft }, areaStyle: { color: `${STATUS_COLORS.Draft}1A` } },
         { name: "Review", type: "line", smooth: true, symbol: "none", data: throughput.map((r) => Number(r.review || 0)), lineStyle: { width: 2, color: STATUS_COLORS.Review }, areaStyle: { color: `${STATUS_COLORS.Review}1A` } },
         { name: "Last Call", type: "line", smooth: true, symbol: "none", data: throughput.map((r) => Number(r.lastCall || 0)), lineStyle: { width: 2, color: STATUS_COLORS["Last Call"] }, areaStyle: { color: `${STATUS_COLORS["Last Call"]}1A` } },
-        { name: "Final", type: "line", smooth: true, symbol: "none", data: throughput.map((r) => Number(r.final || 0)), lineStyle: { width: 2, color: STATUS_COLORS.Final }, areaStyle: { color: `${STATUS_COLORS.Final}1A` } },
+        { name: "Final", type: "line", smooth: true, symbol: "none", data: throughput.map((r) => Number(r.final || 0)), lineStyle: { width: 2.5, color: STATUS_COLORS.Final }, areaStyle: { color: `${STATUS_COLORS.Final}24` } },
       ],
     };
   }, [throughput]);
@@ -667,8 +617,8 @@ export default function EIPsAnalyticsPage() {
   const matrixOption = useMemo(() => {
     const isDark = resolvedTheme === "dark";
     const visualRamp = isDark
-      ? ["#1f2937", "#334155", "#60A5FA", "#22D3EE", "#34D399"]
-      : ["#E2E8F0", "#BFDBFE", "#93C5FD", "#22D3EE", "#10B981"];
+      ? ["#1e2623", "#1b3b2f", "#047857", "#10b981", "#34d399"]
+      : ["#f1f5f3", "#d1fae5", "#6ee7b7", "#10b981", "#047857"];
     return {
       backgroundColor: "transparent",
       tooltip: chartTooltip({
@@ -679,19 +629,19 @@ export default function EIPsAnalyticsPage() {
           return `${matrixData.categories[y]} × ${STATUS_ORDER[x]}: <b>${Number(value).toLocaleString()}</b>`;
         },
       }),
-      grid: { top: 12, left: 110, right: 24, bottom: 30 },
+      grid: { top: 12, left: 110, right: 24, bottom: 32 },
       xAxis: {
         type: "category",
         data: STATUS_ORDER,
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11, interval: 0, fontWeight: 600 },
-        axisLine: { lineStyle: { color: "rgba(148,163,184,0.25)" } },
+        axisLabel: { color: "var(--ink-muted)", fontSize: 11, interval: 0, fontWeight: 600 },
+        axisLine: { lineStyle: { color: "var(--border)" } },
         axisTick: { show: false },
         splitArea: { show: false },
       },
       yAxis: {
         type: "category",
         data: matrixData.categories,
-        axisLabel: { color: "var(--foreground)", fontSize: 11, fontWeight: 500 },
+        axisLabel: { color: "var(--ink)", fontSize: 11, fontWeight: 500 },
         axisLine: { show: false },
         axisTick: { show: false },
       },
@@ -702,7 +652,7 @@ export default function EIPsAnalyticsPage() {
         orient: "horizontal",
         left: "center",
         bottom: 0,
-        textStyle: { color: "var(--muted-foreground)", fontSize: 10 },
+        textStyle: { color: "var(--ink-faint)", fontSize: 10 },
         inRange: { color: visualRamp },
       },
       series: [
@@ -710,16 +660,16 @@ export default function EIPsAnalyticsPage() {
           type: "heatmap",
           data: matrixData.heat,
           itemStyle: {
-            borderColor: isDark ? "rgba(15,23,42,0.42)" : "rgba(148,163,184,0.38)",
-            borderWidth: 1,
-            borderRadius: 4,
+            borderColor: isDark ? "#1a1f1d" : "#ffffff",
+            borderWidth: 1.5,
+            borderRadius: 3,
           },
           label: {
             show: true,
             fontSize: 10,
             rich: {
-              hi: { color: isDark ? "#e2e8f0" : "#0f172a", fontWeight: 700 },
-              lo: { color: isDark ? "#94a3b8" : "#64748b", fontWeight: 500 },
+              hi: { color: isDark ? "#052e16" : "#ffffff", fontWeight: 700 },
+              lo: { color: isDark ? "#94a3b8" : "#475569", fontWeight: 500 },
             },
             formatter: (p: { data: [number, number, number] }) => {
               const v = Number(p.data[2]);
@@ -729,10 +679,8 @@ export default function EIPsAnalyticsPage() {
           },
           emphasis: {
             itemStyle: {
-              borderColor: isDark ? "rgba(226,232,240,0.45)" : "rgba(15,23,42,0.25)",
+              borderColor: "var(--ink)",
               borderWidth: 1.5,
-              shadowBlur: 12,
-              shadowColor: isDark ? "rgba(34,211,238,0.25)" : "rgba(59,130,246,0.18)",
             },
           },
         },
@@ -943,6 +891,13 @@ export default function EIPsAnalyticsPage() {
     }
   }, [downloadRawCSV, repoParam, throughputMonths]);
 
+  const filteredRecentChanges = useMemo(() => {
+    if (recentStatusFilter === "all") return recentChanges;
+    return recentChanges.filter(
+      (r) => (r.to || "").toLowerCase() === recentStatusFilter.toLowerCase(),
+    );
+  }, [recentChanges, recentStatusFilter]);
+
   if (loading) {
     return (
       <div className="flex min-h-[420px] items-center justify-center">
@@ -951,259 +906,437 @@ export default function EIPsAnalyticsPage() {
     );
   }
 
+  const repoLabel =
+    repoFilter === "all"
+      ? "All repositories"
+      : repoFilter === "eips"
+        ? "ethereum/EIPs"
+        : repoFilter === "ercs"
+          ? "ethereum/ERCs"
+          : "ethereum/RIPs";
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-12 py-4">
       {error && (
-        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <div className="flex items-start gap-2 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--ink)]">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-[#ef4444]" />
           <span>{error}</span>
         </div>
       )}
 
-      {/* Governance snapshot: headline metric cards */}
-      <div className="space-y-3">
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatCard
-            icon={<FileText className="h-5 w-5" />}
-            label="Total Proposals"
-            value={total.toLocaleString()}
-            sub="EIPs, ERCs & RIPs tracked"
-          />
-          <StatCard
-            icon={<TrendingUp className="h-5 w-5" />}
-            label="In Pipeline"
-            value={activeCount.toLocaleString()}
-            sub={`${healthBreakdown.pipelineShare.toFixed(1)}% active · Draft, Review, Last Call`}
-          />
-          <StatCard
-            icon={<CheckCircle className="h-5 w-5" />}
-            label="Finalized"
-            value={finalizedCount.toLocaleString()}
-            sub={`${finalizationRate.toFixed(1)}% finalization rate`}
-          />
-          <StatCard
-            icon={<Pause className="h-5 w-5" />}
-            label="Stagnant"
-            value={stagnantCount.toLocaleString()}
-            sub={`${stagnantRate.toFixed(1)}% of all proposals`}
-          />
+      {/* Headline ruled KPI strip (unboxed Ledger plate) */}
+      <div>
+        <div className="grid grid-cols-2 divide-y divide-[var(--border)] border-y border-[var(--border)] bg-[var(--surface)] md:grid-cols-4 md:divide-x md:divide-y-0">
+          <div className="px-5 py-5">
+            <p className="eyebrow">Total Proposals</p>
+            <p className="t-figure mt-2">{total.toLocaleString()}</p>
+            <p className="mt-1.5 text-xs text-[var(--ink-muted)]">EIPs, ERCs &amp; RIPs tracked</p>
+          </div>
+          <div className="px-5 py-5">
+            <p className="eyebrow">In Pipeline</p>
+            <p className="t-figure mt-2">{activeCount.toLocaleString()}</p>
+            <p className="mt-1.5 text-xs text-[var(--ink-muted)]">
+              {healthBreakdown.pipelineShare.toFixed(1)}% active · Draft, Review, Last Call
+            </p>
+          </div>
+          <div className="px-5 py-5">
+            <p className="eyebrow">Finalized</p>
+            <p className="t-figure mt-2">{finalizedCount.toLocaleString()}</p>
+            <p className="mt-1.5 text-xs text-[var(--ink-muted)]">
+              {finalizationRate.toFixed(1)}% finalization rate
+            </p>
+          </div>
+          <div className="px-5 py-5">
+            <p className="eyebrow">Median Draft → Final</p>
+            <p className="t-figure mt-2">
+              {velocity?.draftToFinalMedian ? `${velocity.draftToFinalMedian}d` : "—"}
+            </p>
+            <p className="mt-1.5 text-xs text-[var(--ink-muted)]">
+              {stagnantCount.toLocaleString()} stagnant ({stagnantRate.toFixed(1)}%)
+            </p>
+          </div>
         </div>
 
-        {/* Context chips: repo scope, freshness, and the extra time-based metrics */}
-        <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
-          <span className="rounded-md border border-border bg-muted/40 px-2 py-1 font-medium text-foreground">
-            {repoFilter === "all"
-              ? "All repositories"
-              : repoFilter === "eips"
-                ? "EIPs"
-                : repoFilter === "ercs"
-                  ? "ERCs"
-                  : "RIPs"}
-          </span>
-          <span className="rounded-md border border-border bg-muted/40 px-2 py-1">
-            Snapshot as of{" "}
-            {(lastUpdatedAt ?? generatedAt).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-          <span className="rounded-md border border-border bg-muted/40 px-2 py-1">
-            Median draft → final:{" "}
-            <span className="font-medium text-foreground">
-              {velocity?.draftToFinalMedian ? `${velocity.draftToFinalMedian}d` : "computing"}
+        {/* Context & Quick Status Navigation Strip */}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2.5 border-b border-[var(--border)] px-1 py-3 text-xs text-[var(--ink-muted)]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <span className="font-mono text-[11px] font-semibold text-[var(--ink)]">{repoLabel}</span>
+            <span className="text-[var(--border-strong)]">·</span>
+            <span>
+              Snapshot:{" "}
+              <span className="font-mono text-[var(--ink)]">
+                {(lastUpdatedAt ?? generatedAt).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "short",
+                  day: "numeric",
+                })}
+              </span>
             </span>
-          </span>
-          <span className="rounded-md border border-border bg-muted/40 px-2 py-1">
-            This month:{" "}
-            <span className="font-medium text-foreground">{healthBreakdown.latestVolume.toLocaleString()}</span>{" "}
-            status changes
-            {healthBreakdown.volumeDeltaPct != null &&
-              ` (${healthBreakdown.volumeDeltaPct >= 0 ? "+" : ""}${healthBreakdown.volumeDeltaPct.toFixed(1)}%)`}
-          </span>
+            <span className="text-[var(--border-strong)]">·</span>
+            <span>
+              This month:{" "}
+              <span className="font-mono font-semibold text-[var(--ink)]">
+                {healthBreakdown.latestVolume.toLocaleString()}
+              </span>{" "}
+              changes
+              {healthBreakdown.volumeDeltaPct != null && (
+                <span
+                  className={cn(
+                    "ml-1 font-mono font-medium",
+                    healthBreakdown.volumeDeltaPct >= 0 ? "text-[#10b981]" : "text-[#f97316]",
+                  )}
+                >
+                  ({healthBreakdown.volumeDeltaPct >= 0 ? "+" : ""}
+                  {healthBreakdown.volumeDeltaPct.toFixed(1)}%)
+                </span>
+              )}
+            </span>
+          </div>
+
           {githubStats && (
-            <span className="ml-auto flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1" title="GitHub stars"><Star className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.stars.toLocaleString()}</span></span>
-              <span className="inline-flex items-center gap-1" title="Forks"><GitFork className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.forks.toLocaleString()}</span></span>
-              <span className="inline-flex items-center gap-1" title="Watchers"><Eye className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.watchers.toLocaleString()}</span></span>
-              <span className="inline-flex items-center gap-1" title="Open issues"><AlertCircle className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.openIssues.toLocaleString()}</span></span>
-              <span className="inline-flex items-center gap-1" title="Open PRs"><GitPullRequest className="h-3 w-3" /><span className="font-medium text-foreground tabular-nums">{githubStats.openPRs.toLocaleString()}</span></span>
-            </span>
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-[11px]">
+              <span className="inline-flex items-center gap-1" title="GitHub stars">
+                <Star className="h-3 w-3 text-[var(--ink-faint)]" />
+                <span className="font-semibold text-[var(--ink)] tabular-nums">{githubStats.stars.toLocaleString()}</span>
+              </span>
+              <span className="inline-flex items-center gap-1" title="Forks">
+                <GitFork className="h-3 w-3 text-[var(--ink-faint)]" />
+                <span className="font-semibold text-[var(--ink)] tabular-nums">{githubStats.forks.toLocaleString()}</span>
+              </span>
+              <span className="inline-flex items-center gap-1" title="Watchers">
+                <Eye className="h-3 w-3 text-[var(--ink-faint)]" />
+                <span className="font-semibold text-[var(--ink)] tabular-nums">{githubStats.watchers.toLocaleString()}</span>
+              </span>
+              <span className="inline-flex items-center gap-1" title="Open issues">
+                <AlertCircle className="h-3 w-3 text-[var(--ink-faint)]" />
+                <span className="font-semibold text-[var(--ink)] tabular-nums">{githubStats.openIssues.toLocaleString()}</span>
+              </span>
+              <span className="inline-flex items-center gap-1" title="Open PRs">
+                <GitPullRequest className="h-3 w-3 text-[var(--ink-faint)]" />
+                <span className="font-semibold text-[var(--ink)] tabular-nums">{githubStats.openPRs.toLocaleString()}</span>
+              </span>
+            </div>
           )}
         </div>
+
+        {/* Direct status jump strip */}
+        <div className="flex flex-wrap items-center gap-2 pt-3">
+          <span className="eyebrow mr-1">Jump to status:</span>
+          {STATUS_ORDER.map((status) => {
+            const count = statusCountMap[status] || 0;
+            if (count === 0) return null;
+            return (
+              <Link
+                key={status}
+                href={`/standards?status=${encodeURIComponent(status)}`}
+                className="inline-flex items-center gap-1.5 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs transition-colors hover:border-[var(--ink)]"
+              >
+                <LedgerBadge token={status}>{status}</LedgerBadge>
+                <span className="font-mono text-[11px] font-semibold tabular-nums text-[var(--ink)]">
+                  {count.toLocaleString()}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Consolidated distribution: Category / Status / Type (v3 /eip?view=… parity) */}
-      <div className="flex flex-wrap items-center gap-1 border-b border-border">
-        {(["category", "status", "type"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setDimTab(t)}
-            className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium capitalize transition-colors",
-              dimTab === t ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
-            )}
-          >
-            By {t}
-          </button>
-        ))}
-      </div>
-
-      {dimTab === "category" && (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Section
-            title="Proposal Composition by Category"
-            icon={<Layers className="h-4 w-4" />}
-            action={<CSVBtn onClick={exportCompositionCSV} label="Download Reports" loading={exportingComposition} />}
-          >
-            <div className="relative h-[320px] w-full">
-              <ReactECharts option={categoryDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
-              <ChartWatermark />
+      {/* Section 01: Portfolio Composition & Status Matrix */}
+      <section>
+        <SectionHead
+          index="01"
+          eyebrow="PORTFOLIO DISTRIBUTION"
+          title="Composition & Status Matrix"
+          description="Explore how Ethereum standards break down by category, lifecycle status, and specification type."
+          action={
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["category", "status", "type"] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  data-active={dimTab === t}
+                  onClick={() => setDimTab(t)}
+                  className="chip capitalize"
+                >
+                  By {t}
+                </button>
+              ))}
             </div>
-            <ChartFooter nextUpdateAt={nextUpdateAt} />
-          </Section>
-          <Section
-            title="Category × Status Heatmap"
-            icon={<Layers className="h-4 w-4" />}
-            action={<CSVBtn onClick={exportCrossTab} label="Download Reports" loading={exportingHeatmap} />}
-          >
-            {matrixData.categories.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No category/status matrix data available.</p>
+          }
+        />
+
+        {dimTab === "category" && (
+          <div className="grid gap-5 xl:grid-cols-2">
+            <ChartPanel
+              eyebrow="BREAKDOWN"
+              title="Proposal Composition by Category"
+              action={<CSVBtn onClick={exportCompositionCSV} loading={exportingComposition} />}
+            >
+              <div className="relative h-[320px] w-full">
+                <ReactECharts option={categoryDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+                <ChartWatermark />
+              </div>
+              <ChartFooter nextUpdateAt={nextUpdateAt} />
+            </ChartPanel>
+            <ChartPanel
+              eyebrow="CROSS-TABULATION"
+              title="Category × Status Heatmap"
+              action={<CSVBtn onClick={exportCrossTab} loading={exportingHeatmap} />}
+            >
+              {matrixData.categories.length === 0 ? (
+                <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No category/status matrix data available.</p>
+              ) : (
+                <div className="relative h-[400px] w-full">
+                  <ReactECharts option={matrixOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                  <ChartWatermark />
+                </div>
+              )}
+              <ChartFooter nextUpdateAt={nextUpdateAt} />
+            </ChartPanel>
+          </div>
+        )}
+
+        {dimTab === "status" && (
+          <div className="grid gap-5 xl:grid-cols-2">
+            <ChartPanel
+              eyebrow="BACKLOG & FINALITY"
+              title="Pipeline Status"
+              action={<CSVBtn onClick={exportPipelineCSV} loading={exportingPipeline} />}
+            >
+              <div className="relative h-[320px] w-full">
+                <ReactECharts option={pipelineOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <ChartWatermark />
+              </div>
+              <ChartFooter nextUpdateAt={nextUpdateAt} />
+            </ChartPanel>
+            <ChartPanel
+              eyebrow="FLOW"
+              title="Status Transition Flow"
+              action={<CSVBtn onClick={exportTransitionCSV} loading={exportingTransition} />}
+            >
+              {transitionFlows.length === 0 ? (
+                <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No transition data available.</p>
+              ) : (
+                <div className="relative h-[340px] w-full">
+                  <ReactECharts option={sankeyOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                  <ChartWatermark />
+                </div>
+              )}
+              <ChartFooter nextUpdateAt={nextUpdateAt} />
+            </ChartPanel>
+          </div>
+        )}
+
+        {dimTab === "type" && (
+          <ChartPanel eyebrow="SPECIFICATION TYPE" title="Proposal Composition by Type">
+            {typeBreakdown.length === 0 ? (
+              <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No type data available.</p>
             ) : (
-              <div className="relative h-[420px] w-full">
-                <ReactECharts option={matrixOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+              <div className="relative h-[340px] w-full">
+                <ReactECharts option={typeDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
                 <ChartWatermark />
               </div>
             )}
             <ChartFooter nextUpdateAt={nextUpdateAt} />
-          </Section>
-        </div>
-      )}
+          </ChartPanel>
+        )}
+      </section>
 
-      {dimTab === "status" && (
-        <div className="grid gap-4 xl:grid-cols-2">
-          <Section
-            title="Pipeline Status"
-            icon={<TrendingUp className="h-4 w-4" />}
-            action={<CSVBtn onClick={exportPipelineCSV} label="Download Reports" loading={exportingPipeline} />}
-          >
-            <div className="relative h-[320px] w-full">
-              <ReactECharts option={pipelineOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-              <ChartWatermark />
+      {/* Section 02: Lifecycle Conversion & Decision Velocity */}
+      <section>
+        <SectionHead
+          index="02"
+          eyebrow="LIFECYCLE & VELOCITY"
+          title="Stage Conversion & Decision Speed"
+          description="How proposals progress through the standards track and the median time spent between governance milestones."
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <CSVBtn onClick={exportLifecycleCSV} label="Funnel CSV" />
+              <CSVBtn onClick={exportDecisionSpeedCSV} label="Velocity CSV" />
             </div>
-            <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-4">
-              <div className="rounded-md border border-border px-2 py-1">Draft backlog: {(statusCountMap.Draft || 0).toLocaleString()}</div>
-              <div className="rounded-md border border-border px-2 py-1">Review backlog: {(statusCountMap.Review || 0).toLocaleString()}</div>
-              <div className="rounded-md border border-border px-2 py-1">Stagnant: {stagnantRate.toFixed(1)}%</div>
-              <div className="rounded-md border border-border px-2 py-1">Finalized: {finalizedCount.toLocaleString()}</div>
-            </div>
-            <ChartFooter nextUpdateAt={nextUpdateAt} />
-          </Section>
-          <Section
-            title="Status Transition Flow"
-            icon={<ArrowRight className="h-4 w-4" />}
-            action={<CSVBtn onClick={exportTransitionCSV} label="Download Reports" loading={exportingTransition} />}
-          >
-            {transitionFlows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No transition data available.</p>
-            ) : (
-              <div className="relative h-[360px] w-full">
-                <ReactECharts option={sankeyOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-                <ChartWatermark />
-              </div>
-            )}
-            <ChartFooter nextUpdateAt={nextUpdateAt} />
-          </Section>
-        </div>
-      )}
+          }
+        />
 
-      {dimTab === "type" && (
-        <Section title="Proposal Composition by Type" icon={<Tag className="h-4 w-4" />}>
-          {typeBreakdown.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No type data available.</p>
+        <div className="grid gap-5 lg:grid-cols-12">
+          {/* Funnel Conversion Strip (7 cols) */}
+          <div className="lg:col-span-7">
+            <div className="grid grid-cols-2 divide-y divide-[var(--border)] rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] sm:grid-cols-4 sm:divide-x sm:divide-y-0">
+              {conversionRows.map((row, idx) => (
+                <div key={row.stage} className="flex flex-col justify-between p-4">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <LedgerBadge token={row.stage}>{row.stage}</LedgerBadge>
+                      <span className="font-mono text-[10px] text-[var(--ink-faint)]">0{idx + 1}</span>
+                    </div>
+                    <p className="t-figure mt-3 text-2xl sm:text-3xl">{row.count.toLocaleString()}</p>
+                  </div>
+                  <div className="mt-3 border-t border-[var(--border)] pt-2">
+                    <p className="font-mono text-[11px] text-[var(--ink-muted)]">
+                      {idx === 0 ? "Entry stage (100%)" : `${row.conversion.toFixed(1)}% from ${conversionRows[idx - 1].stage}`}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Decision Velocity Table (5 cols) */}
+          <div className="lg:col-span-5">
+            <div className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                    <th className="px-4 py-2.5 text-left eyebrow">Transition</th>
+                    <th className="px-4 py-2.5 text-right eyebrow">Median Days</th>
+                    <th className="px-4 py-2.5 text-right eyebrow">Count</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {(velocity?.transitions || []).slice(0, 5).map((t, i) => (
+                    <tr key={`${t.from}-${t.to}-${i}`} className="hover:bg-[var(--surface-2)]">
+                      <td className="px-4 py-2.5">
+                        <div className="flex items-center gap-1.5">
+                          <LedgerBadge token={t.from} className="text-[10px]">{t.from}</LedgerBadge>
+                          <ArrowRight className="h-3 w-3 text-[var(--ink-faint)]" />
+                          <LedgerBadge token={t.to} className="text-[10px]">{t.to}</LedgerBadge>
+                        </div>
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono font-semibold tabular-nums text-[var(--ink)]">
+                        {t.medianDays != null ? `${t.medianDays}d` : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--ink-muted)]">
+                        {(t.count ?? 0).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                  {(!velocity?.transitions || velocity.transitions.length === 0) && (
+                    <tr>
+                      <td colSpan={3} className="px-4 py-6 text-center text-[var(--ink-muted)]">
+                        No transition velocity data available.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 03: Monthly Governance Throughput */}
+      <section>
+        <SectionHead
+          index="03"
+          eyebrow="THROUGHPUT"
+          title="Monthly Governance Throughput"
+          description="Monthly status transitions across Draft, Review, Last Call, and Final over time."
+          action={<CSVBtn onClick={exportThroughputCSV} loading={exportingThroughput} />}
+        />
+        <ChartPanel eyebrow="HISTORICAL VOLUME" title="Status Transitions per Month">
+          {throughput.length === 0 ? (
+            <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No monthly throughput available.</p>
           ) : (
-            <div className="relative h-[320px] w-full">
-              <ReactECharts option={typeDonutOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} notMerge />
+            <div className="relative h-[340px] w-full">
+              <ReactECharts option={throughputOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               <ChartWatermark />
             </div>
           )}
           <ChartFooter nextUpdateAt={nextUpdateAt} />
-        </Section>
-      )}
+        </ChartPanel>
+      </section>
 
-      {/* Shared across dimensions */}
-      <Section
-        title="Monthly Governance Throughput"
-        icon={<Activity className="h-4 w-4" />}
-        action={<CSVBtn onClick={exportThroughputCSV} label="Download Reports" loading={exportingThroughput} />}
-      >
-        {throughput.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No monthly throughput available.</p>
-        ) : (
-          <div className="relative h-[340px] w-full">
-            <ReactECharts option={throughputOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-            <ChartWatermark />
+      {/* Section 04: Recent Governance Activity */}
+      <section>
+        <SectionHead
+          index="04"
+          eyebrow="RECENT MOVEMENTS"
+          title="Recent Governance Activity"
+          description="Latest status transitions across tracked proposals."
+          action={
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["all", "Final", "Last Call", "Review", "Draft", "Stagnant", "Withdrawn"] as const).map((status) => (
+                <button
+                  key={status}
+                  type="button"
+                  data-active={recentStatusFilter === status}
+                  onClick={() => setRecentStatusFilter(status)}
+                  className="chip"
+                >
+                  {status === "all" ? "All" : status}
+                </button>
+              ))}
+            </div>
+          }
+        />
+
+        {filteredRecentChanges.length === 0 ? (
+          <div className="card-quiet px-5 py-8 text-center text-sm text-[var(--ink-muted)]">
+            No recent transitions match the selected filter.
           </div>
-        )}
-        <ChartFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
-
-      <Section title="Recent Governance Activity" icon={<Activity className="h-4 w-4" />}>
-        {recentChanges.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No recent changes.</p>
         ) : (
-          <div className="overflow-x-auto rounded-xl border border-border bg-card/40">
+          <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
             <table className="w-full text-xs">
               <thead>
-                <tr className="border-b border-border/70">
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Proposal</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Transition</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Actor</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">PR</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">When</th>
+                <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                  <th className="px-4 py-3 text-left eyebrow">Proposal</th>
+                  <th className="px-4 py-3 text-left eyebrow">Category</th>
+                  <th className="px-4 py-3 text-left eyebrow">Transition</th>
+                  <th className="px-4 py-3 text-left eyebrow">Actor</th>
+                  <th className="px-4 py-3 text-left eyebrow">PR</th>
+                  <th className="px-4 py-3 text-right eyebrow">When</th>
                 </tr>
               </thead>
-              <tbody>
-                {recentChanges.slice(0, 15).map((row, idx) => {
+              <tbody className="divide-y divide-[var(--border)]">
+                {filteredRecentChanges.slice(0, 15).map((row, idx) => {
+                  const from = row.from || "Unknown";
                   const to = row.to || "Draft";
-                  const color = STATUS_COLORS[to] || "#64748b";
                   const repo = String(row.repository || "").toLowerCase();
                   const repoPath = repo.includes("erc") ? "ercs" : repo.includes("rip") ? "rips" : "eips";
                   const eipNo = row.eip ? String(row.eip) : "";
                   const pfx = (row.eip_type || (repoPath === "ercs" ? "ERC" : repoPath === "rips" ? "RIP" : "EIP")).toUpperCase();
                   return (
-                    <tr key={`${row.eip || "na"}-${idx}`} className="border-b border-border/60 last:border-0 hover:bg-muted/30">
-                      <td className="px-4 py-3 text-sm text-foreground">
+                    <tr key={`${row.eip || "na"}-${idx}`} className="transition-colors hover:bg-[var(--surface-2)]">
+                      <td className="px-4 py-3 text-sm text-[var(--ink)]">
                         {eipNo ? (
-                          <Link href={`/standards/${repoPath}/${eipNo}`} className="text-primary hover:text-primary/80">
+                          <Link
+                            href={`/standards/${repoPath}/${eipNo}`}
+                            className="font-mono font-semibold text-[var(--brand-strong)] hover:underline"
+                          >
                             {pfx}-{eipNo}
                           </Link>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-[var(--ink-faint)]">—</span>
                         )}
-                        <p className="max-w-[260px] truncate text-xs text-muted-foreground">{row.title || "Untitled"}</p>
+                        <p className="mt-0.5 max-w-[280px] truncate text-xs text-[var(--ink-muted)]">
+                          {row.title || "Untitled"}
+                        </p>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{row.category || "—"}</td>
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink-muted)]">
+                        {row.category || "—"}
+                      </td>
                       <td className="px-4 py-3">
-                        <span
-                          className="inline-flex items-center rounded-md border px-2 py-0.5 text-[10px] font-medium"
-                          style={{ backgroundColor: `${color}1A`, borderColor: `${color}40`, color }}
-                        >
-                          {row.from || "Unknown"} → {row.to || "Unknown"}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <LedgerBadge token={from} className="text-[10px]">{from}</LedgerBadge>
+                          <ArrowRight className="h-3 w-3 shrink-0 text-[var(--ink-faint)]" />
+                          <LedgerBadge token={to} className="text-[10px]">{to}</LedgerBadge>
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">{row.actor || "—"}</td>
-                      <td className="px-4 py-3 text-sm text-muted-foreground">
+                      <td className="px-4 py-3 font-mono text-xs text-[var(--ink-muted)]">
+                        {row.actor || "—"}
+                      </td>
+                      <td className="px-4 py-3 font-mono text-xs">
                         {row.pr_number ? (
-                          <Link href={`/pr/${repoPath}/${row.pr_number}`} className="text-primary hover:text-primary/80">
+                          <Link
+                            href={`/pr/${repoPath}/${row.pr_number}`}
+                            className="text-[var(--brand-strong)] hover:underline"
+                          >
                             #{row.pr_number}
                           </Link>
                         ) : (
-                          "—"
+                          <span className="text-[var(--ink-faint)]">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm tabular-nums text-muted-foreground">
+                      <td className="px-4 py-3 text-right font-mono text-xs tabular-nums text-[var(--ink-muted)]">
                         {row.days === 0 ? "today" : row.days === 1 ? "1d ago" : `${row.days || 0}d ago`}
                       </td>
                     </tr>
@@ -1213,41 +1346,46 @@ export default function EIPsAnalyticsPage() {
             </table>
           </div>
         )}
-      </Section>
+      </section>
 
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Link href="/explore/status" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          Browse Status Explorer
-        </Link>
-        <Link href="/explore/trending" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          Open Trending Proposals
-        </Link>
-        <Link href="/explore/years" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          Explore Yearly Patterns
-        </Link>
-        <Link href="/insights" className="rounded-lg border border-border bg-card/60 p-3 text-sm text-foreground transition-colors hover:border-primary/40 hover:bg-primary/10">
-          View Monthly Analysis Insights
-        </Link>
-      </div>
-
-      <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 text-xs text-muted-foreground">
-        <p className="inline-flex items-center gap-1.5">
-          <Pause className="h-3.5 w-3.5" />
-          Stagnant proposals: <span className="font-semibold text-foreground">{stagnantCount.toLocaleString()}</span>
-        </p>
-        <p className="mt-1 inline-flex items-center gap-1.5">
-          <CheckCircle className="h-3.5 w-3.5" />
-          Final + Living: <span className="font-semibold text-foreground">{finalizedCount.toLocaleString()}</span>
-        </p>
-        <p className="mt-1 inline-flex items-center gap-1.5">
-          <XCircle className="h-3.5 w-3.5" />
-          Withdrawn: <span className="font-semibold text-foreground">{(statusCountMap.Withdrawn || 0).toLocaleString()}</span>
-        </p>
-        <p className="mt-1 inline-flex items-center gap-1.5">
-          <FileText className="h-3.5 w-3.5" />
-          Draft backlog: <span className="font-semibold text-foreground">{(statusCountMap.Draft || 0).toLocaleString()}</span>
-        </p>
-      </div>
+      {/* Explore Further: clean ruled tiles */}
+      <section>
+        <SectionHead
+          index="05"
+          eyebrow="EXPLORE FURTHER"
+          title="Related Views"
+        />
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Link href="/explore/status" className="tile flex items-center justify-between px-4 py-3.5">
+            <div>
+              <p className="eyebrow">Explorer</p>
+              <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">Status Explorer</p>
+            </div>
+            <ArrowRight className="tile-arrow h-4 w-4 text-[var(--ink-faint)]" />
+          </Link>
+          <Link href="/explore/trending" className="tile flex items-center justify-between px-4 py-3.5">
+            <div>
+              <p className="eyebrow">Momentum</p>
+              <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">Trending Proposals</p>
+            </div>
+            <ArrowRight className="tile-arrow h-4 w-4 text-[var(--ink-faint)]" />
+          </Link>
+          <Link href="/explore/years" className="tile flex items-center justify-between px-4 py-3.5">
+            <div>
+              <p className="eyebrow">History</p>
+              <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">Yearly Patterns</p>
+            </div>
+            <ArrowRight className="tile-arrow h-4 w-4 text-[var(--ink-faint)]" />
+          </Link>
+          <Link href="/insights" className="tile flex items-center justify-between px-4 py-3.5">
+            <div>
+              <p className="eyebrow">Editorial</p>
+              <p className="mt-0.5 text-sm font-medium text-[var(--ink)]">Monthly Insights</p>
+            </div>
+            <ArrowRight className="tile-arrow h-4 w-4 text-[var(--ink-faint)]" />
+          </Link>
+        </div>
+      </section>
     </div>
   );
 }
