@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import { GlamsterdamResearch } from './_client';
 
 export const metadata: Metadata = {
-  title: 'What Glamsterdam Repricing changes | EIPsInsight Research',
+  title: 'What Glamsterdam Repricer changes | EIPsInsight Research',
   description:
-    "Glamsterdam's EIP-8037/8038 reprice on-chain storage gas. A static scan of the busiest mainnet contracts against the repricing's invariant framework surfaces the ones worth re-checking.",
+    "Glamsterdam's EIP-8037/8038 reprice on-chain storage gas. Audited on Sepolia against the busiest mainnet contracts using the repricing invariant framework.",
   openGraph: {
-    title: 'What Glamsterdam Repricing changes',
+    title: 'What Glamsterdam Repricer changes',
     description:
       "EIP-8037/8038 reprice on-chain storage gas. We scanned the busiest mainnet contracts against the invariant framework to flag candidates for review.",
   },

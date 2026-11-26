@@ -131,8 +131,8 @@ function ContractLookup() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const run = () => {
-    const a = addr.trim();
+  const runAddress = (raw: string) => {
+    const a = raw.trim();
     if (!ADDR_RE.test(a)) {
       setErr('Enter a valid 0x… address (42 characters).');
       setRes(null);
@@ -146,6 +146,16 @@ function ContractLookup() {
       .catch(() => setErr('Lookup failed. Try again.'))
       .finally(() => setLoading(false));
   };
+
+  const run = () => runAddress(addr);
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get('address')?.trim() ?? '';
+    if (ADDR_RE.test(q)) {
+      setAddr(q);
+      runAddress(q);
+    }
+  }, []);
 
   return (
     <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5">
@@ -886,7 +896,7 @@ export function AdoptionDashboard({
         </section>
 
         {/* 02 — Explore by Contract */}
-        <section className="space-y-4">
+        <section id="lookup" className="space-y-4 scroll-mt-24">
           <SectionHead
             index="02"
             eyebrow="REVERSE LOOKUP"

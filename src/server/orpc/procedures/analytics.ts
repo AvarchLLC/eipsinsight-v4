@@ -7492,4 +7492,85 @@ export const analyticsProcedures = {
         githubUrl: `https://github.com/${r.repo_name}/pull/${r.pr_number}`,
       }));
     }),
+
+  getEditorPrDrilldown: optionalAuthProcedure
+    .input(z.object({
+      actor: z.string().optional(),
+      from: z.string(),
+      to: z.string(),
+      metric: z.enum(['all', 'reviews', 'merged', 'closed']).default('all'),
+      ohDates: z.array(z.string()).optional(),
+    }))
+    .handler(async ({ input }) => {
+      const ohDates = input.ohDates && input.ohDates.length > 0 ? input.ohDates : null;
+      const results = await prisma.$queryRawUnsafe<Array<{
+        pr_number: number;
+        repo_name: string;
+        repo_type: string;
+        title: string | null;
+        state: string | null;
+        merged_at: Date | null;
+        editors: string[];
+        reviews: bigint;
+        comments: bigint;
+        merges: bigint;
+        eip_numbers: number[];
+        last_event_at: Date;
+      }>>(
+        `
+        SELECT
+          pe.pr_number,
+          r.name AS repo_name,
+          LOWER(SPLIT_PART(r.name, '/', 2)) AS repo_type,
+          pr.title,
+          pr.state,
+          pr.merged_at,
+          ARRAY_AGG(DISTINCT pe.actor ORDER BY pe.actor) AS editors,
+          COUNT(*) FILTER (WHERE pe.event_type IN ('reviewed', 'approved', 'changes_requested'))::bigint AS reviews,
+          COUNT(*) FILTER (WHERE pe.event_type IN ('commented', 'issue_comment', 'review_comment'))::bigint AS comments,
+          COUNT(*) FILTER (WHERE pe.event_type = 'merged')::bigint AS merges,
+          COALESCE(ARRAY_AGG(DISTINCT pei.eip_number) FILTER (WHERE pei.eip_number IS NOT NULL), '{}') AS eip_numbers,
+          MAX(pe.created_at) AS last_event_at
+        FROM pr_events pe
+        JOIN repositories r ON pe.repository_id = r.id
+        LEFT JOIN pull_requests pr ON pr.pr_number = pe.pr_number AND pr.repository_id = pe.repository_id
+        LEFT JOIN pull_request_eips pei ON pei.pr_number = pe.pr_number AND pei.repository_id = pe.repository_id
+        WHERE ($1::text IS NULL OR LOWER(pe.actor) = LOWER($1))
+          AND ($1::text IS NOT NULL OR LOWER(pe.actor) = ANY($5::text[]))
+          AND pe.created_at >= $2::date
+          AND pe.created_at < $3::date + INTERVAL '1 day'
+          AND ($4::text[] IS NULL OR TO_CHAR(pe.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD') = ANY($4::text[]))
+          AND (
+            $6::text = 'all'
+            OR ($6::text = 'reviews' AND pe.event_type IN ('reviewed', 'approved', 'changes_requested', 'commented', 'issue_comment', 'review_comment'))
+            OR ($6::text = 'merged' AND (pr.merged_at IS NOT NULL OR pe.event_type = 'merged'))
+            OR ($6::text = 'closed' AND pr.state = 'closed' AND pr.merged_at IS NULL)
+          )
+        GROUP BY pe.pr_number, r.name, repo_type, pr.title, pr.state, pr.merged_at
+        ORDER BY MAX(pe.created_at) DESC
+        LIMIT 150
+        `,
+        input.actor ?? null,
+        input.from,
+        input.to,
+        ohDates,
+        CANONICAL_EIP_EDITOR_LOWER,
+        input.metric
+      );
+      return results.map((r) => ({
+        prNumber: r.pr_number,
+        repoName: r.repo_name,
+        repoType: r.repo_type,
+        title: r.title ?? `PR #${r.pr_number}`,
+        state: r.merged_at ? 'merged' : (r.state ?? 'open'),
+        mergedAt: r.merged_at?.toISOString() ?? null,
+        editors: r.editors,
+        reviews: Number(r.reviews),
+        comments: Number(r.comments),
+        merges: Number(r.merges),
+        eipNumbers: r.eip_numbers.map(Number),
+        lastEventAt: r.last_event_at.toISOString(),
+        githubUrl: `https://github.com/${r.repo_name}/pull/${r.pr_number}`,
+      }));
+    }),
 }

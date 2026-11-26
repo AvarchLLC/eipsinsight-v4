@@ -32,7 +32,7 @@ type Article = {
 const ARTICLES: Article[] = [
   {
     slug: "glamsterdam",
-    title: "What Glamsterdam reprices",
+    title: "What Glamsterdam Repricer changes",
     dek: "EIP-8037/8038 reprice on-chain storage gas. On our own archive node, ~99,000 plain ETH transfers a day go to new accounts that would fail under the new rules. A scan of the 300 busiest contracts flags 115 more candidates to re-check.",
     tags: ["Glamsterdam", "EIP-8037/8038", "Gas repricing"],
     date: "November 2026",

@@ -28,6 +28,7 @@ import { ShareButtons } from '@/components/share-buttons';
 import { fetchTranscriptCues, fetchChatMessages } from '@/lib/call-artifacts';
 import { getCallDetail } from '@/server/calls';
 import { CallWorkspace } from '@/components/calls/call-workspace';
+import { getCallResearchLinks } from '@/lib/call-research-links';
 
 export const revalidate = 300;
 
@@ -125,6 +126,13 @@ export default async function ProtocolCallPage({ params }: Props) {
   const shareText = call.decisions.length > 0
     ? `${shareOpener}\n\n→ ${call.decisions[0].text}`
     : shareOpener;
+  const researchLinks = getCallResearchLinks(
+    [
+      call.title,
+      ...call.decisions.map((d) => d.text),
+      ...call.eipMentions.map((e) => e.title ?? ''),
+    ].join(' '),
+  );
 
   return (
     <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
@@ -206,6 +214,20 @@ export default async function ProtocolCallPage({ params }: Props) {
               </span>
             )}
           </div>
+          {researchLinks.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-muted)]">
+              <span className="font-mono text-[10px] uppercase tracking-wider">Related research:</span>
+              {researchLinks.map((rl) => (
+                <Link
+                  key={rl.href}
+                  href={rl.href}
+                  className="inline-flex items-center rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-medium text-[var(--brand-strong)] hover:underline"
+                >
+                  {rl.label}
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
       </header>
 

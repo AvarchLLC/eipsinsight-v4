@@ -30,6 +30,7 @@ import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { ChartWatermark } from "@/components/chart-watermark";
 import { EditorAttendanceMatrix } from "@/components/editor-attendance-matrix";
 import { EditorActionsExplorer } from "@/components/analytics/editor-actions-explorer";
+import { OfficeHourBenchmarkDrilldown, type DrilldownFilter } from "@/components/office-hour-benchmark-drilldown";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 import { OFFICE_HOUR_MEETINGS } from "@/data/office-hour-meetings.generated";
 
@@ -223,6 +224,7 @@ export default function OfficeHoursEditorsPage() {
   // Leaderboard filters
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+  const [ohDrilldown, setOhDrilldown] = useState<DrilldownFilter | null>(null);
 
   const toggleRepo = (r: RepoKey) =>
     setRepos((prev) => {
@@ -795,7 +797,7 @@ export default function OfficeHoursEditorsPage() {
                             {prettyDate(m.dateISO)}
                           </span>
                           <span className="shrink-0 tabular-nums text-muted-foreground">
-                            {m.timeUTC ? `${m.timeUTC} UTC` : "—"}
+                            {m.timeUTC ? `${m.timeUTC} UTC` : "-"}
                           </span>
                         </button>
                       );
@@ -1267,22 +1269,49 @@ export default function OfficeHoursEditorsPage() {
                             </div>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90">
-                            {item.officeHoursHosted}
+                            <button
+                              type="button"
+                              onClick={() => setOhDrilldown({ title: `${item.displayName} - Office Hours PR Activity`, actor: item.github, from: "2026-01-01", to: "2026-11-30", metric: "all" })}
+                              className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                            >
+                              {item.officeHoursHosted}
+                            </button>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-foreground/90 font-semibold">
-                            {item.prReviewsDuringOH.toLocaleString()}
+                            <button
+                              type="button"
+                              onClick={() => setOhDrilldown({ title: `${item.displayName} - PR Reviews`, actor: item.github, from: "2026-01-01", to: "2026-11-30", metric: "reviews" })}
+                              className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                            >
+                              {item.prReviewsDuringOH.toLocaleString()}
+                            </button>
                           </td>
                           <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-emerald-600 dark:text-emerald-400">
-                            {item.prsMerged}
+                            <button
+                              type="button"
+                              onClick={() => setOhDrilldown({ title: `${item.displayName} - PRs Merged`, actor: item.github, from: "2026-01-01", to: "2026-11-30", metric: "merged" })}
+                              className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                            >
+                              {item.prsMerged}
+                            </button>
                           </td>
                           <td className="py-2 pl-3 pr-2 text-right font-mono text-xs tabular-nums text-muted-foreground">
-                            {item.prsClosed}
+                            <button
+                              type="button"
+                              onClick={() => setOhDrilldown({ title: `${item.displayName} - PRs Closed`, actor: item.github, from: "2026-01-01", to: "2026-11-30", metric: "closed" })}
+                              className="underline decoration-dotted underline-offset-2 hover:text-primary"
+                            >
+                              {item.prsClosed}
+                            </button>
                           </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
+                {ohDrilldown && (
+                  <OfficeHourBenchmarkDrilldown filter={ohDrilldown} onClose={() => setOhDrilldown(null)} />
+                )}
               </section>
 
               {/* 2. EIPIP Governance Participation Benchmark Table (Meetings 123-132, Jan-Nov) */}

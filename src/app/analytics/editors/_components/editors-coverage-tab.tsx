@@ -799,7 +799,7 @@ export function EditorsCoverageTab({
                         </div>
                       </button>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </td>
 
@@ -825,7 +825,7 @@ export function EditorsCoverageTab({
                         </div>
                       </button>
                     ) : (
-                      <span className="text-muted-foreground">—</span>
+                      <span className="text-muted-foreground">-</span>
                     )}
                   </td>
 
