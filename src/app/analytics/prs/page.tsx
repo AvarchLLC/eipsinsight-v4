@@ -24,9 +24,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CopyLinkButton } from "@/components/header";
-import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
+import { SectionHead } from "@/components/ledger/section-head";
+import { LedgerBadge } from "@/components/ledger/badge";
+import { ChartWatermark } from "@/components/chart-watermark";
+import { ChartFooter } from "@/components/chart-footer";
 
 interface PRMonthlyPoint {
   month: string;
@@ -132,23 +135,24 @@ interface OpenIssueRow {
 type CrossTabMode = "process_x_state" | "state_x_process";
 type OpenPRDistributionMode = "process" | "participants";
 
+/* Ledger-aligned semantic palette */
 const PROCESS_COLORS: Record<string, string> = {
-  "PR DRAFT": "#A78BFA",
-  Typo: "#94A3B8",
-  "New EIP": "#34D399",
-  "Status Change": "#60A5FA",
-  Website: "#8B5CF6",
-  Tooling: "#F97316",
-  "EIP-1": "#3B82F6",
-  "Content Edit": "#64748B",
-  Misc: "#71717A",
+  "PR DRAFT": "#8b5cf6",
+  Typo: "#64748b",
+  "New EIP": "#10b981",
+  "Status Change": "#0ea5e9",
+  Website: "#6366f1",
+  Tooling: "#f97316",
+  "EIP-1": "#14b8a6",
+  "Content Edit": "#94a3b8",
+  Misc: "#71717a",
 };
 
 const GOVERNANCE_COLORS: Record<string, string> = {
-  "Waiting on Editor": "#60A5FA",
-  "Waiting on Author": "#F59E0B",
-  AWAITED: "#A78BFA",
-  Uncategorized: "#64748B",
+  "Waiting on Editor": "#0ea5e9",
+  "Waiting on Author": "#f59e0b",
+  AWAITED: "#8b5cf6",
+  Uncategorized: "#64748b",
 };
 
 const getMonthWindow = rangeToMonthWindow;
@@ -261,51 +265,58 @@ function mergePrBundles(bs: PrBundle[]): PrBundle {
   };
 }
 
-function Section({ title, icon, children, action, className, id }: {
-  title: string;
-  icon: React.ReactNode;
+function ChartPanel({
+  title,
+  eyebrow,
+  children,
+  action,
+  className,
+  id,
+}: {
+  title: React.ReactNode;
+  eyebrow?: React.ReactNode;
   children: React.ReactNode;
   action?: React.ReactNode;
   className?: string;
   id?: string;
 }) {
   return (
-    <section id={id} className={cn("rounded-xl border border-border bg-card/60 p-5", className)}>
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <span className="text-primary">{icon}</span>
-          <h2 className="text-lg font-semibold tracking-tight text-foreground sm:text-xl">{title}</h2>
-          {id && (
-            <CopyLinkButton sectionId={id} className="h-7 w-7 rounded-md border border-border bg-muted/60 hover:border-primary/40 hover:bg-primary/10" />
-          )}
+    <div id={id} className={cn("flex flex-col rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5", className)}>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="min-w-0">
+            {eyebrow && <div className="eyebrow mb-0.5 truncate">{eyebrow}</div>}
+            <h3 className="t-h3 truncate">{title}</h3>
+          </div>
+          {id && <CopyLinkButton sectionId={id} className="h-7 w-7 shrink-0" />}
         </div>
-        {action}
+        {action && <div className="shrink-0">{action}</div>}
       </div>
-      {children}
-    </section>
+      <div className="flex flex-1 flex-col justify-between">{children}</div>
+    </div>
   );
 }
 
-function formatDateTime(date: Date): string {
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: true,
-  }).format(date);
-}
-
-function GraphFooter({ nextUpdateAt }: { nextUpdateAt: Date }) {
+function CSVIconBtn({
+  onClick,
+  label = "Export CSV",
+  loading = false,
+}: {
+  onClick: () => void;
+  label?: string;
+  loading?: boolean;
+}) {
   return (
-    <div className="mt-3 flex items-center justify-between rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-      <span className="font-medium text-foreground/80">EIPsInsight.com</span>
-      <span className="inline-flex items-center gap-1">
-        <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        Next Update: {formatDateTime(nextUpdateAt)}
-      </span>
-    </div>
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      title={loading ? "Exporting..." : label}
+      aria-label={loading ? "Exporting..." : label}
+      className="btn btn-primary h-8 w-8 shrink-0 p-0 disabled:cursor-not-allowed disabled:opacity-60"
+    >
+      {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+    </button>
   );
 }
 
@@ -769,57 +780,54 @@ export default function PRsAnalyticsPage() {
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
       legend: {
         top: 0,
-        textStyle: { color: "var(--muted-foreground)", fontSize: 11 },
+        left: 0,
+        itemGap: 10,
+        textStyle: { color: "var(--ink-muted)", fontSize: 11 },
         data: validSeries.map(s => s.name),
       },
-      grid: { top: 38, left: 38, right: 18, bottom: 52 },
+      grid: { top: 64, left: 42, right: 18, bottom: 52 },
       xAxis: {
         type: "category",
         data: months,
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
+        axisLabel: { color: "var(--ink-faint)", fontSize: 11 },
       },
       yAxis: {
         type: "value",
-        axisLabel: { color: "var(--muted-foreground)", fontSize: 11 },
-        splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } },
+        axisLabel: { color: "var(--ink-faint)", fontSize: 11 },
+        splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } },
       },
       dataZoom: [
         {
           type: "slider",
           show: true,
           realtime: true,
-          height: 22,
+          height: 20,
           bottom: 4,
-          borderColor: "rgba(148,163,184,0.15)",
-          backgroundColor: "rgba(148,163,184,0.03)",
-          fillerColor: "rgba(34,211,238,0.12)",
-          handleIcon: "M10.7,11.9v-1.3H9.3v1.3c-4.9,0.3-8.8,4.4-8.8,9.4c0,5,3.9,9.1,8.8,9.4v1.3h1.3v-1.3c4.9-0.3,8.8-4.4,8.8-9.4C19.5,16.3,15.6,12.2,10.7,11.9z M13.3,24.4H6.7V23h6.6V24.4z M13.3,19.6H6.7v-1.4h6.6V19.6z",
-          handleSize: "110%",
+          borderColor: "var(--border)",
+          backgroundColor: "var(--surface-2)",
+          fillerColor: "rgba(16,185,129,0.18)",
+          handleSize: "100%",
           handleStyle: {
-            color: "var(--background)",
-            borderColor: "rgba(34,211,238,0.5)",
-            borderWidth: 1.5,
-            shadowBlur: 3,
-            shadowColor: "rgba(0, 0, 0, 0.2)",
-            shadowOffsetX: 1,
-            shadowOffsetY: 1
+            color: "#10b981",
+            borderColor: "#10b981",
+            borderWidth: 1,
           },
           showDetail: true,
           start: 40,
           end: 100,
-          textStyle: { 
-            color: "var(--muted-foreground)", 
+          textStyle: {
+            color: "var(--ink-faint)",
             fontSize: 10,
             fontFamily: "inherit",
-            fontWeight: 505
+            fontWeight: 500
           },
           dataBackground: {
-            areaStyle: { color: "rgba(34,211,238,0.03)" },
-            lineStyle: { color: "rgba(34,211,238,0.1)" }
+            areaStyle: { color: "rgba(16,185,129,0.05)" },
+            lineStyle: { color: "rgba(16,185,129,0.2)" }
           },
           selectedDataBackground: {
-            areaStyle: { color: "rgba(34,211,238,0.08)" },
-            lineStyle: { color: "rgba(34,211,238,0.3)" }
+            areaStyle: { color: "rgba(16,185,129,0.12)" },
+            lineStyle: { color: "rgba(16,185,129,0.4)" }
           }
         },
         {
@@ -881,10 +889,10 @@ export default function PRsAnalyticsPage() {
       return {
         backgroundColor: "transparent",
         tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-        legend: { top: 0, textStyle: { color: "var(--muted-foreground)", fontSize: 11 } },
-        grid: { top: 36, left: 36, right: 16, bottom: 24 },
-        xAxis: { type: "category", data: processTypes, axisLabel: { color: "var(--muted-foreground)", fontSize: 11 } },
-        yAxis: { type: "value", axisLabel: { color: "var(--muted-foreground)", fontSize: 11 }, splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } } },
+        legend: { top: 0, left: 0, itemGap: 10, textStyle: { color: "var(--ink-muted)", fontSize: 11 } },
+        grid: { top: 64, left: 42, right: 16, bottom: 28 },
+        xAxis: { type: "category", data: processTypes, axisLabel: { color: "var(--ink-faint)", fontSize: 11 } },
+        yAxis: { type: "value", axisLabel: { color: "var(--ink-faint)", fontSize: 11 }, splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } } },
         series: govStates.map((state) => ({
           name: state,
           type: "bar",
@@ -898,10 +906,10 @@ export default function PRsAnalyticsPage() {
     return {
       backgroundColor: "transparent",
       tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-      legend: { top: 0, textStyle: { color: "var(--muted-foreground)", fontSize: 11 } },
-      grid: { top: 36, left: 42, right: 16, bottom: 24 },
-      xAxis: { type: "category", data: govStates, axisLabel: { color: "var(--muted-foreground)", fontSize: 11, rotate: 12 } },
-      yAxis: { type: "value", axisLabel: { color: "var(--muted-foreground)", fontSize: 11 }, splitLine: { lineStyle: { color: "rgba(148,163,184,0.15)", type: "dashed" } } },
+      legend: { top: 0, left: 0, itemGap: 10, textStyle: { color: "var(--ink-muted)", fontSize: 11 } },
+      grid: { top: 64, left: 42, right: 16, bottom: 28 },
+      xAxis: { type: "category", data: govStates, axisLabel: { color: "var(--ink-faint)", fontSize: 11, rotate: 12 } },
+      yAxis: { type: "value", axisLabel: { color: "var(--ink-faint)", fontSize: 11 }, splitLine: { lineStyle: { color: "var(--border)", type: "dashed" } } },
       series: processTypes.map((proc) => ({
         name: proc,
         type: "bar",
@@ -1128,297 +1136,259 @@ export default function PRsAnalyticsPage() {
             <span className="hidden h-4 w-px bg-border sm:block" aria-hidden />
           </div>
         )}
-        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          <Database className="h-3.5 w-3.5" /> Repos
+        <span className="eyebrow inline-flex items-center gap-1.5">
+          <Database className="h-3.5 w-3.5" /> Repos:
         </span>
         {PR_REPO_KEYS.map((r) => {
           const on = selectedRepos.has(r);
           return (
             <button
               key={r}
+              type="button"
+              data-active={on}
               onClick={() => toggleRepo(r)}
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors",
-                on ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground",
-              )}
+              className="chip"
             >
-              <span className={cn("flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border", on ? "border-primary bg-primary text-primary-foreground" : "border-border")}>
-                {on && <Check className="h-2.5 w-2.5" />}
-              </span>
+              {on && <Check className="h-3 w-3" />}
               {PR_REPO_LABEL[r]}
             </button>
           );
         })}
-        <span className="ml-1 text-[11px] text-muted-foreground">
+        <span className="ml-1 font-mono text-[11px] text-[var(--ink-faint)]">
           {allReposSelected ? "All repositories" : `Union of ${[...selectedRepos].map((r) => PR_REPO_LABEL[r]).join(" + ")}`}
         </span>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      {/* Ruled KPI Strip */}
+      <div className="grid grid-cols-2 divide-y divide-[var(--border)] border-y border-[var(--border)] bg-[var(--surface)] md:grid-cols-4 md:divide-x md:divide-y-0">
         {[
-          { label: "Open PRs (now)", value: totalOpen, sub: `Median age: ${openSummary?.medianAge != null ? `${openSummary.medianAge}d` : "–"}`, icon: <GitPullRequest className="h-5 w-5" />, filter: "open" as const },
-          { label: "Created", value: windowKpis.created, sub: windowKpis.label ? `Net ${windowKpis.net >= 0 ? "+" : ""}${windowKpis.net} · ${windowKpis.label}` : "In range", icon: <Activity className="h-5 w-5" />, filter: "created" as const },
-          { label: "Merged", value: windowKpis.merged, sub: windowKpis.label || "In range", icon: <GitPullRequest className="h-5 w-5" />, filter: "merged" as const },
-          { label: "Closed (unmerged)", value: windowKpis.closed, sub: windowKpis.label || "In range", icon: <AlertCircle className="h-5 w-5" />, filter: "closed" as const },
-        ].map((kpi) => (
-          <button
-            key={kpi.label}
-            onClick={() => {
-              setPrStateFilter(kpi.filter);
-              setPrCurrentPage(1);
-              setPrSearchFilter("");
-              // Scroll to table
-              setTimeout(() => {
-                document.getElementById("open-prs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
-              }, 100);
-            }}
-            className={cn(
-              "rounded-xl border bg-card/60 p-4 text-left transition-all hover:border-primary/50 hover:bg-card/80",
-              prStateFilter === kpi.filter ? "border-primary bg-primary/5" : "border-border"
-            )}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium text-muted-foreground">{kpi.label}</p>
-                <p className="mt-1 text-2xl font-bold tabular-nums text-foreground">{kpi.value.toLocaleString()}</p>
-                <p className="mt-1 text-[10px] text-muted-foreground">{kpi.sub}</p>
+          { label: "Open PRs (now)", value: totalOpen, sub: `Median age: ${openSummary?.medianAge != null ? `${openSummary.medianAge}d` : "—"}`, filter: "open" as const },
+          { label: "Created", value: windowKpis.created, sub: windowKpis.label ? `Net ${windowKpis.net >= 0 ? "+" : ""}${windowKpis.net} · ${windowKpis.label}` : "In range", filter: "created" as const },
+          { label: "Merged", value: windowKpis.merged, sub: windowKpis.label || "In range", filter: "merged" as const },
+          { label: "Closed (unmerged)", value: windowKpis.closed, sub: windowKpis.label || "In range", filter: "closed" as const },
+        ].map((kpi) => {
+          const active = prStateFilter === kpi.filter;
+          return (
+            <button
+              key={kpi.label}
+              type="button"
+              onClick={() => {
+                setPrStateFilter(kpi.filter);
+                setPrCurrentPage(1);
+                setPrSearchFilter("");
+                setTimeout(() => {
+                  document.getElementById("open-prs-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }, 100);
+              }}
+              className={cn(
+                "flex flex-col items-start px-5 py-4 text-left transition-colors hover:bg-[var(--surface-2)]",
+                active && "bg-[var(--surface-2)]",
+              )}
+            >
+              <div className="flex w-full items-center justify-between gap-2">
+                <span className="eyebrow">{kpi.label}</span>
+                {active && <span className="h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />}
               </div>
-              <div className={cn("rounded-lg p-2.5", prStateFilter === kpi.filter ? "bg-primary/20 text-primary" : "bg-primary/10 text-primary")}>{kpi.icon}</div>
-            </div>
-          </button>
-        ))}
+              <p className="t-figure mt-2 text-2xl sm:text-3xl">{kpi.value.toLocaleString()}</p>
+              <p className="mt-1 text-[11px] text-[var(--ink-muted)]">{kpi.sub}</p>
+            </button>
+          );
+        })}
       </div>
 
-      <Section
-        id="pr-trend"
-        title="Open PR trend by month"
-        icon={<BarChart3 className="h-4 w-4" />}
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={downloadReports}
-              disabled={exportingReports}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              {exportingReports ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              {exportingReports ? "Exporting..." : "Download Reports"}
-            </button>
-          </div>
-        }
-      >
-        {monthlySeries.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No monthly data available.</p>
-        ) : (
-          <div className="h-[380px] w-full">
-            <ReactECharts
-              option={monthlyOption}
-              style={{ height: "100%", width: "100%" }}
-              opts={{ renderer: "svg" }}
-              notMerge
-              onEvents={{
-                click: (params: { name?: string }) => {
-                  if (params?.name) setSelectedMonth(params.name);
-                },
-              }}
-            />
-          </div>
-        )}
-        <p className="mt-2 text-[11px] leading-relaxed text-muted-foreground">
-          <strong className="text-foreground">Created</strong>, <strong className="text-foreground">Merged</strong> and{" "}
-          <strong className="text-foreground">Closed</strong> count PRs by what happened to them within each month.{" "}
-          <strong className="text-foreground">Open EOM</strong> = <em>Open at End of Month</em>: the number of PRs still open on the
-          last day of that month (the running backlog), not a per-month action.
-        </p>
-        <GraphFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
-
-      <Section
-        id="pr-category-breakdown"
-        title="Category breakdown"
-        icon={<Users className="h-4 w-4" />}
-        action={
-          <div className="flex items-center gap-2">
-            <button
-              onClick={downloadCategoryBreakdownDetailedCSV}
-              className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Download CSV
-            </button>
-            <div className="inline-flex rounded-md border border-border bg-muted/60 p-0.5 text-xs">
-              <button
-                onClick={() => setCrossTabMode("process_x_state")}
-                className={cn("rounded px-2 py-1", crossTabMode === "process_x_state" ? "bg-card text-foreground" : "text-muted-foreground")}
-              >
-                X: Process
-              </button>
-              <button
-                onClick={() => setCrossTabMode("state_x_process")}
-                className={cn("rounded px-2 py-1", crossTabMode === "state_x_process" ? "bg-card text-foreground" : "text-muted-foreground")}
-              >
-                X: Participants
-              </button>
-            </div>
-          </div>
-        }
-      >
-        <p className="mb-1 text-xs font-semibold text-foreground">Process × Participants</p>
-        <p className="mb-3 text-xs text-muted-foreground">
-          X: Process. Open PRs by Process type and Participants status for {monthContext}. Choose Process or Participants on the X-axis (the other is stacked). Sum of segments = total open PRs in that month context.
-        </p>
-        <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span>Status note:</span>
-          <span className="font-medium text-foreground/90">Awaited</span>
-          <TooltipProvider delayDuration={120}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="What Awaited means"
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                >
-                  <CircleHelp className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                {awaitedHelpText}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-          {!processParticipantOption ? (
-            <p className="text-sm text-muted-foreground">Not enough data for process × participants breakdown.</p>
+      {/* Section 01: Open PR Trend by Month */}
+      <section className="space-y-4">
+        <SectionHead
+          index="01"
+          eyebrow="MONTHLY TREND"
+          title="Open PR Trend by Month"
+          action={<CSVIconBtn onClick={downloadReports} loading={exportingReports} label="Download PR trend report" />}
+        />
+        <ChartPanel id="pr-trend" eyebrow="THROUGHPUT & BACKLOG" title="Created, Merged, Closed & Open EOM">
+          {monthlySeries.length === 0 ? (
+            <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No monthly data available.</p>
           ) : (
-            <div className="h-[320px] w-full">
-              <ReactECharts option={processParticipantOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+            <div className="relative h-[360px] w-full">
+              <ReactECharts
+                option={monthlyOption}
+                style={{ height: "100%", width: "100%" }}
+                opts={{ renderer: "svg" }}
+                notMerge
+                onEvents={{
+                  click: (params: { name?: string }) => {
+                    if (params?.name) setSelectedMonth(params.name);
+                  },
+                }}
+              />
+              <ChartWatermark />
             </div>
           )}
-        <p className="mt-2 text-[10px] text-muted-foreground">Estimated breakdown based on current totals (backend cross-tab endpoint pending).</p>
-        <GraphFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
+          <ChartFooter nextUpdateAt={nextUpdateAt} />
+        </ChartPanel>
+      </section>
 
-      <Section
-        id="pr-eip-open"
-        title="EIP Open PRs"
-        icon={<Layers className="h-4 w-4" />}
-        action={
-          <button
-            onClick={downloadOpenPRsDetailedCSV}
-            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Download CSV
-          </button>
-        }
-      >
-        <p className="mb-3 text-xs text-muted-foreground">
-          Open PRs by Process type (Typo, NEW EIP, PR DRAFT) or by Participants status (Waiting on Editor, Awaited). Sum of bars = total open PRs for that month.
-        </p>
-        <div className="mb-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span>Need help with</span>
-          <span className="font-medium text-foreground/90">Awaited</span>
-          <TooltipProvider delayDuration={120}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="What Awaited means"
-                  className="inline-flex h-4 w-4 items-center justify-center rounded-full text-muted-foreground hover:text-foreground"
-                >
-                  <CircleHelp className="h-3.5 w-3.5" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent className="max-w-xs">
-                {awaitedHelpText}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-        <div className="mb-3 inline-flex rounded-md border border-border bg-muted/60 p-0.5 text-xs">
-          <button
-            onClick={() => setOpenPRDistributionMode("process")}
-            className={cn("rounded px-2 py-1", openPRDistributionMode === "process" ? "bg-card text-foreground" : "text-muted-foreground")}
-          >
-            By Process
-          </button>
-          <button
-            onClick={() => setOpenPRDistributionMode("participants")}
-            className={cn("rounded px-2 py-1", openPRDistributionMode === "participants" ? "bg-card text-foreground" : "text-muted-foreground")}
-          >
-            By Participants
-          </button>
-        </div>
-          {!backlogOption ? (
-            <p className="text-sm text-muted-foreground">No backlog state data available.</p>
-          ) : (
-            <div className="relative h-[320px] w-full">
-              <ReactECharts option={backlogOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-                <span className="select-none text-sm font-medium tracking-[0.06em] text-foreground/12 dark:text-foreground/16 sm:text-base">
-                  EIPsInsight.com
-                </span>
+      {/* Section 02: Category & Backlog Breakdown */}
+      <section className="space-y-4">
+        <SectionHead
+          index="02"
+          eyebrow="PROCESS & PARTICIPANTS"
+          title="PR Composition & Backlog"
+        />
+        <div className="grid gap-5">
+          <ChartPanel
+            id="pr-category-breakdown"
+            eyebrow={
+              <span className="inline-flex items-center gap-1.5">
+                <span>PROCESS × PARTICIPANTS · {monthContext}</span>
+                <TooltipProvider delayDuration={120}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="What Awaited means"
+                        className="inline-flex h-3.5 w-3.5 items-center justify-center text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                      >
+                        <CircleHelp className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">{awaitedHelpText}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            }
+            title="Category Breakdown"
+            action={
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    data-active={crossTabMode === "process_x_state"}
+                    onClick={() => setCrossTabMode("process_x_state")}
+                    className="chip"
+                  >
+                    X: Process
+                  </button>
+                  <button
+                    type="button"
+                    data-active={crossTabMode === "state_x_process"}
+                    onClick={() => setCrossTabMode("state_x_process")}
+                    className="chip"
+                  >
+                    X: Participants
+                  </button>
+                </div>
+                <CSVIconBtn onClick={downloadCategoryBreakdownDetailedCSV} label="Download category breakdown CSV" />
               </div>
-            </div>
-          )}
-        <p className="mt-2 text-[10px] text-muted-foreground">Each column is one month; stacked segments sum to the total open PR backlog in that month.</p>
-        <GraphFooter nextUpdateAt={nextUpdateAt} />
-      </Section>
+            }
+          >
+            {!processParticipantOption ? (
+              <p className="py-12 text-center text-sm text-[var(--ink-muted)]">Not enough data for process × participants breakdown.</p>
+            ) : (
+              <div className="relative h-[350px] w-full">
+                <ReactECharts option={processParticipantOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <ChartWatermark />
+              </div>
+            )}
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </ChartPanel>
 
-      <details className="rounded-xl border border-border bg-card/50">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-medium text-foreground">
-          Supporting metrics
-          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          <ChartPanel
+            id="pr-eip-open"
+            eyebrow="OPEN PR BACKLOG"
+            title="EIP Open PRs"
+            action={
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    data-active={openPRDistributionMode === "process"}
+                    onClick={() => setOpenPRDistributionMode("process")}
+                    className="chip"
+                  >
+                    By Process
+                  </button>
+                  <button
+                    type="button"
+                    data-active={openPRDistributionMode === "participants"}
+                    onClick={() => setOpenPRDistributionMode("participants")}
+                    className="chip"
+                  >
+                    By Participants
+                  </button>
+                </div>
+                <CSVIconBtn onClick={downloadOpenPRsDetailedCSV} label="Download open PRs CSV" />
+              </div>
+            }
+          >
+            {!backlogOption ? (
+              <p className="py-12 text-center text-sm text-[var(--ink-muted)]">No backlog state data available.</p>
+            ) : (
+              <div className="relative h-[350px] w-full">
+                <ReactECharts option={backlogOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <ChartWatermark />
+              </div>
+            )}
+            <ChartFooter nextUpdateAt={nextUpdateAt} />
+          </ChartPanel>
+        </div>
+      </section>
+
+      {/* Supporting metrics */}
+      <details className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 text-sm font-medium text-[var(--ink)]">
+          <span className="eyebrow">Supporting Metrics &amp; Decision Speed</span>
+          <ChevronDown className="h-4 w-4 text-[var(--ink-faint)]" />
         </summary>
-        <div className="border-t border-border/70 px-4 py-4">
+        <div className="border-t border-[var(--border)] px-5 py-4">
           <div className="grid gap-6 lg:grid-cols-3">
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Participant status mix</h3>
-              <div className="space-y-2">
+              <h3 className="eyebrow mb-3">Participant status mix</h3>
+              <div className="space-y-2.5">
                 {governanceStates
-                  .filter(g => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(g.state))
+                  .filter((g) => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(g.state))
                   .map((g) => {
-                  const filteredStates = governanceStates.filter(s => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(s.state));
-                  const total = filteredStates.reduce((acc, s) => acc + s.count, 0);
-                  const pct = total > 0 ? (g.count / total) * 100 : 0;
-                  const color = GOVERNANCE_COLORS[g.state] ?? "#64748b";
-                  return (
-                    <div key={g.state}>
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className="text-foreground/80">{g.label}</span>
-                        <span className="tabular-nums text-muted-foreground">{g.count} ({pct.toFixed(1)}%)</span>
+                    const filteredStates = governanceStates.filter((s) => ["Waiting on Editor", "Waiting on Author", "AWAITED"].includes(s.state));
+                    const total = filteredStates.reduce((acc, s) => acc + s.count, 0);
+                    const pct = total > 0 ? (g.count / total) * 100 : 0;
+                    const color = GOVERNANCE_COLORS[g.state] ?? "#64748b";
+                    return (
+                      <div key={g.state}>
+                        <div className="mb-1 flex items-center justify-between text-xs">
+                          <span className="text-[var(--ink)]">{g.label}</span>
+                          <span className="font-mono tabular-nums text-[var(--ink-muted)]">{g.count} ({pct.toFixed(1)}%)</span>
+                        </div>
+                        <div className="h-2 rounded-full bg-[var(--surface-2)]">
+                          <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+                        </div>
                       </div>
-                      <div className="h-2 rounded-full bg-muted">
-                        <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
               </div>
             </div>
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Decision speed</h3>
+              <h3 className="eyebrow mb-3">Decision speed</h3>
               <div className="space-y-2">
                 {timeToOutcome.map((m) => (
-                  <div key={m.metric} className="rounded-lg border border-border/50 bg-muted/40 px-3 py-2 text-xs">
-                    <div className="font-medium text-foreground">{m.metric.replaceAll("_", " ")}</div>
-                    <div className="mt-1 text-muted-foreground">p50 {m.medianDays}d • p75 {m.p75Days}d • p90 {m.p90Days}d</div>
+                  <div key={m.metric} className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs">
+                    <div className="font-medium text-[var(--ink)]">{m.metric.replaceAll("_", " ")}</div>
+                    <div className="mt-0.5 font-mono text-[11px] text-[var(--ink-muted)]">p50 {m.medianDays}d · p75 {m.p75Days}d · p90 {m.p90Days}d</div>
                   </div>
                 ))}
               </div>
             </div>
             <div>
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Labels and staleness</h3>
+              <h3 className="eyebrow mb-3">Labels &amp; staleness</h3>
               <div className="space-y-2">
                 {staleness.map((b) => (
-                  <div key={b.bucket} className="rounded-lg border border-border/50 bg-muted/40 px-3 py-2 text-xs text-foreground/90">
-                    {b.bucket}: <span className="tabular-nums font-semibold">{b.count.toLocaleString()}</span>
+                  <div key={b.bucket} className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--ink)]">
+                    {b.bucket}: <span className="font-mono font-semibold tabular-nums">{b.count.toLocaleString()}</span>
                   </div>
                 ))}
-                <div className="rounded-lg border border-border/50 bg-muted/40 px-3 py-2 text-xs">
+                <div className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--ink-muted)]">
                   Top labels: {labelStats.slice(0, 5).map((l) => `${l.label} (${l.count})`).join(", ") || "—"}
                 </div>
-                <div className="rounded-lg border border-border/50 bg-muted/40 px-3 py-2 text-xs">
-                  Lifecycle: {lifecycleStages.map((l) => `${l.stage} ${l.count}`).join(" • ") || "—"}
+                <div className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-xs text-[var(--ink-muted)]">
+                  Lifecycle: {lifecycleStages.map((l) => `${l.stage} ${l.count}`).join(" · ") || "—"}
                 </div>
               </div>
             </div>
@@ -1426,164 +1396,149 @@ export default function PRsAnalyticsPage() {
         </div>
       </details>
 
-      <Section
-        id="open-prs-section"
-        title={backlogTab === "prs" ? "Open PRs" : "Open Issues"}
-        icon={<GitPullRequest className="h-4 w-4" />}
-        action={
-          <button
-            onClick={backlogTab === "prs" ? downloadOpenPRsDetailedCSV : downloadOpenIssuesDetailedCSV}
-            className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/15"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Download CSV
-          </button>
-        }
-      >
-        {/* Tab Switcher */}
-        <div className="mb-4 flex gap-2 border-b border-border">
-          <button
-            onClick={() => {
-              setBacklogTab("prs");
-              setPrStateFilter("all");
-              setPrSearchFilter("");
-              setPrCurrentPage(1);
-            }}
-            className={cn(
-              "px-3 py-2 text-xs font-medium transition-colors border-b-2",
-              backlogTab === "prs"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Pull Requests ({openPRs.length})
-          </button>
-          <button
-            onClick={() => setBacklogTab("issues")}
-            className={cn(
-              "px-3 py-2 text-xs font-medium transition-colors border-b-2",
-              backlogTab === "issues"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            )}
-          >
-            Issues ({openIssues.length})
-          </button>
-        </div>
-
-        <p className="mb-3 text-xs text-muted-foreground">
-          {backlogTab === "prs" 
-            ? "Snapshot of currently open pull requests in selected repository scope."
-            : "Snapshot of currently open issues in selected repository scope."}
-        </p>
+      {/* Section 03: Open PRs & Open Issues Table */}
+      <section id="open-prs-section" className="space-y-4">
+        <SectionHead
+          index="03"
+          eyebrow="LIVE SNAPSHOT"
+          title={backlogTab === "prs" ? "Open PRs" : "Open Issues"}
+          action={
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                data-active={backlogTab === "prs"}
+                onClick={() => {
+                  setBacklogTab("prs");
+                  setPrStateFilter("all");
+                  setPrSearchFilter("");
+                  setPrCurrentPage(1);
+                }}
+                className="chip"
+              >
+                Pull Requests ({openPRs.length})
+              </button>
+              <button
+                type="button"
+                data-active={backlogTab === "issues"}
+                onClick={() => setBacklogTab("issues")}
+                className="chip"
+              >
+                Issues ({openIssues.length})
+              </button>
+              <CSVIconBtn
+                onClick={backlogTab === "prs" ? downloadOpenPRsDetailedCSV : downloadOpenIssuesDetailedCSV}
+                label={backlogTab === "prs" ? "Download Open PRs CSV" : "Download Open Issues CSV"}
+              />
+            </div>
+          }
+        />
 
         {/* Open PRs Table */}
         {backlogTab === "prs" && (
-          <div>
-            {/* State Filter Tabs */}
-            <div className="mb-4 border-b border-border">
-              <div className="flex gap-1">
-                {[
-                  { label: "Open", filter: "open" as const, count: totalOpen },
-                  { label: `Created (${heroMonth?.month ?? ""})`, filter: "created" as const, count: heroMonth?.newPRs ?? 0 },
-                  { label: "Merged", filter: "merged" as const, count: heroMonth?.mergedPRs ?? 0 },
-                  { label: "Closed", filter: "closed" as const, count: heroMonth?.closedUnmerged ?? 0 },
-                ].map((tab) => (
-                  <button
-                    key={tab.filter}
-                    onClick={() => {
-                      setPrStateFilter(tab.filter);
-                      setPrCurrentPage(1);
-                      setPrSearchFilter("");
-                    }}
-                    className={cn(
-                      "px-3 py-2 text-xs font-medium transition-colors border-b-2 whitespace-nowrap",
-                      prStateFilter === tab.filter
-                        ? "border-primary text-primary"
-                        : "border-transparent text-muted-foreground hover:text-foreground"
-                    )}
-                  >
-                    {tab.label} ({tab.count})
-                  </button>
-                ))}
-              </div>
-            </div>
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-2 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-3">
+              {[
+                { label: "Open", filter: "open" as const, count: totalOpen },
+                { label: `Created (${heroMonth?.month ?? ""})`, filter: "created" as const, count: heroMonth?.newPRs ?? 0 },
+                { label: "Merged", filter: "merged" as const, count: heroMonth?.mergedPRs ?? 0 },
+                { label: "Closed", filter: "closed" as const, count: heroMonth?.closedUnmerged ?? 0 },
+              ].map((tab) => (
+                <button
+                  key={tab.filter}
+                  type="button"
+                  data-active={prStateFilter === tab.filter}
+                  onClick={() => {
+                    setPrStateFilter(tab.filter);
+                    setPrCurrentPage(1);
+                    setPrSearchFilter("");
+                  }}
+                  className="chip"
+                >
+                  {tab.label} ({tab.count})
+                </button>
+              ))}
 
-            {/* Search and Filter */}
-            <div className="mb-3 flex items-center gap-2">
               <input
                 type="text"
-                placeholder="Search by PR #, title, repo, or author..."
+                placeholder="Search PR #, title, repo, or author..."
                 value={prSearchFilter}
                 onChange={(e) => {
                   setPrSearchFilter(e.target.value);
                   setPrCurrentPage(1);
                 }}
-                className="h-8 flex-1 rounded-md border border-border bg-muted/40 px-3 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="ml-auto h-8 min-w-[200px] flex-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--ink)] focus:outline-none sm:max-w-xs"
               />
               {(prStateFilter !== "all" || prSearchFilter) && (
                 <button
+                  type="button"
                   onClick={() => {
                     setPrStateFilter("all");
                     setPrSearchFilter("");
                     setPrCurrentPage(1);
                   }}
-                  className="rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/60"
+                  className="btn h-8 px-2.5 text-xs"
                 >
-                  Clear filter
+                  Clear
                 </button>
               )}
             </div>
-            <div className="overflow-x-auto">
+
+            <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">PR</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repo</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Author</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Governance</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Created</th>
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                    <th className="px-4 py-3 eyebrow">PR</th>
+                    <th className="px-4 py-3 eyebrow">Title</th>
+                    <th className="px-4 py-3 eyebrow">Repo</th>
+                    <th className="px-4 py-3 eyebrow">Author</th>
+                    <th className="px-4 py-3 eyebrow">Governance</th>
+                    <th className="px-4 py-3 text-right eyebrow">Created</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[var(--border)]">
                   {paginatedPRs.map((pr) => {
                     const [org, repoName] = pr.repo.split("/");
                     const url = `https://github.com/${org}/${repoName}/pull/${pr.prNumber}`;
                     const repoShort = repoName.toLowerCase();
+                    const gov = pr.governanceState || "NO_STATE";
+                    const govToken = gov.toLowerCase().includes("editor")
+                      ? "editor"
+                      : gov.toLowerCase().includes("author")
+                        ? "lastcall"
+                        : "draft";
                     return (
                       <tr
                         key={`${pr.repo}-${pr.prNumber}`}
                         className={cn(
-                          "border-b border-border/50 transition-colors hover:bg-muted/40",
-                          Number.isFinite(highlightedPr) && pr.prNumber === highlightedPr && "bg-primary/10",
+                          "transition-colors hover:bg-[var(--surface-2)]",
+                          Number.isFinite(highlightedPr) && pr.prNumber === highlightedPr && "bg-[var(--surface-2)]",
                         )}
                       >
-                        <td className="py-2 pr-4">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           <div className="inline-flex items-center gap-2">
-                            <Link href={`/pr/${repoShort}/${pr.prNumber}`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                            <Link href={`/pr/${repoShort}/${pr.prNumber}`} className="font-mono font-semibold text-[var(--brand-strong)] hover:underline">
                               #{pr.prNumber}
                             </Link>
-                            <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground" title="Open on GitHub">
+                            <a href={url} target="_blank" rel="noreferrer" className="text-[var(--ink-faint)] hover:text-[var(--ink)]" title="Open on GitHub">
                               <ArrowUpRight className="h-3 w-3" />
                             </a>
                           </div>
                         </td>
-                        <td className="max-w-xs truncate py-2 pr-4 text-foreground/90">{pr.title || <span className="text-muted-foreground">No title</span>}</td>
-                        <td className="py-2 pr-4 text-muted-foreground">{repoName}</td>
-                        <td className="py-2 pr-4 text-foreground/80">{pr.author || <span className="text-muted-foreground">Unknown</span>}</td>
-                        <td className="py-2 pr-4">
-                          <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 text-[10px] uppercase tracking-wide text-foreground/80">
-                            {pr.governanceState || "NO_STATE"}
-                          </span>
+                        <td className="max-w-xs truncate px-4 py-2.5 text-[var(--ink)]">{pr.title || <span className="text-[var(--ink-faint)]">No title</span>}</td>
+                        <td className="px-4 py-2.5 font-mono text-[var(--ink-muted)]">{repoName}</td>
+                        <td className="px-4 py-2.5 font-mono text-[var(--ink-muted)]">{pr.author || "Unknown"}</td>
+                        <td className="px-4 py-2.5 whitespace-nowrap">
+                          <LedgerBadge token={govToken} className="text-[10px]">
+                            {gov}
+                          </LedgerBadge>
                         </td>
-                        <td className="py-2 pr-4 tabular-nums text-muted-foreground">{pr.createdAt}</td>
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--ink-muted)]">{pr.createdAt}</td>
                       </tr>
                     );
                   })}
                   {filteredPRs.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-[var(--ink-muted)]">
                         No open PRs found for current filters.
                       </td>
                     </tr>
@@ -1591,31 +1546,46 @@ export default function PRsAnalyticsPage() {
                 </tbody>
               </table>
             </div>
-            {/* Pagination Controls */}
+
             {filteredPRs.length > PAGE_SIZE && (
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between pt-2 text-xs text-[var(--ink-muted)]">
+                <span className="font-mono">
                   Showing {filteredPRs.length === 0 ? 0 : (prCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(prCurrentPage * PAGE_SIZE, filteredPRs.length)} of {filteredPRs.length}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => setPrCurrentPage(Math.max(1, prCurrentPage - 1))}
                     disabled={prCurrentPage === 1}
-                    className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/60"
+                    className="btn h-8 px-2.5 text-xs disabled:opacity-40"
                   >
                     Previous
                   </button>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-mono text-[var(--ink)]">
                     {prCurrentPage} / {prTotalPages}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setPrCurrentPage(Math.min(prTotalPages, prCurrentPage + 1))}
                     disabled={prCurrentPage === prTotalPages}
-                    className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/60"
+                    className="btn h-8 px-2.5 text-xs disabled:opacity-40"
                   >
                     Next
                   </button>
                 </div>
+              </div>
+            )}
+
+            {openSummary?.oldestPR && (
+              <div className="flex items-center gap-2.5 border-t border-[var(--border)] pt-3 text-xs text-[var(--ink-muted)]">
+                <LedgerBadge token="lastcall" className="text-[10px]">Oldest Open PR</LedgerBadge>
+                <span>
+                  <span className="font-mono font-semibold text-[var(--ink)]">
+                    {openSummary.oldestPR.repo}#{openSummary.oldestPR.pr_number}
+                  </span>{" "}
+                  by {openSummary.oldestPR.author} — open for{" "}
+                  <strong className="font-mono text-[var(--ink)]">{openSummary.oldestPR.age_days} days</strong>
+                </span>
               </div>
             )}
           </div>
@@ -1623,9 +1593,8 @@ export default function PRsAnalyticsPage() {
 
         {/* Open Issues Table */}
         {backlogTab === "issues" && (
-          <div>
-            {/* Search */}
-            <div className="mb-3 flex items-center gap-2">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-3">
               <input
                 type="text"
                 placeholder="Search by issue #, title, repo, or author..."
@@ -1634,60 +1603,61 @@ export default function PRsAnalyticsPage() {
                   setIssuesSearchFilter(e.target.value);
                   setIssuesCurrentPage(1);
                 }}
-                className="h-8 flex-1 rounded-md border border-border bg-muted/40 px-3 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                className="h-8 flex-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs text-[var(--ink)] placeholder:text-[var(--ink-faint)] focus:border-[var(--ink)] focus:outline-none"
               />
               {issuesSearchFilter && (
                 <button
+                  type="button"
                   onClick={() => {
                     setIssuesSearchFilter("");
                     setIssuesCurrentPage(1);
                   }}
-                  className="rounded-md border border-border bg-muted/40 px-2.5 py-1 text-xs text-muted-foreground hover:bg-muted/60"
+                  className="btn h-8 px-2.5 text-xs"
                 >
-                  Clear search
+                  Clear
                 </button>
               )}
             </div>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Issue</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Title</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Repo</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Author</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Comments</th>
-                    <th className="py-2 pr-4 text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Created</th>
+                  <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                    <th className="px-4 py-3 eyebrow">Issue</th>
+                    <th className="px-4 py-3 eyebrow">Title</th>
+                    <th className="px-4 py-3 eyebrow">Repo</th>
+                    <th className="px-4 py-3 eyebrow">Author</th>
+                    <th className="px-4 py-3 text-right eyebrow">Comments</th>
+                    <th className="px-4 py-3 text-right eyebrow">Created</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[var(--border)]">
                   {paginatedIssues.map((issue) => {
                     const [org, repoName] = issue.repo.split("/");
                     const url = `https://github.com/${org}/${repoName}/issues/${issue.issueNumber}`;
                     const repoShort = repoName.toLowerCase();
                     return (
-                      <tr key={`${issue.repo}-${issue.issueNumber}`} className="border-b border-border/50 transition-colors hover:bg-muted/40">
-                        <td className="py-2 pr-4">
+                      <tr key={`${issue.repo}-${issue.issueNumber}`} className="transition-colors hover:bg-[var(--surface-2)]">
+                        <td className="px-4 py-2.5 whitespace-nowrap">
                           <div className="inline-flex items-center gap-2">
-                            <Link href={`/issue/${repoShort}/${issue.issueNumber}`} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
+                            <Link href={`/issue/${repoShort}/${issue.issueNumber}`} className="font-mono font-semibold text-[var(--brand-strong)] hover:underline">
                               #{issue.issueNumber}
                             </Link>
-                            <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground" title="Open on GitHub">
+                            <a href={url} target="_blank" rel="noreferrer" className="text-[var(--ink-faint)] hover:text-[var(--ink)]" title="Open on GitHub">
                               <ArrowUpRight className="h-3 w-3" />
                             </a>
                           </div>
                         </td>
-                        <td className="max-w-xs truncate py-2 pr-4 text-foreground/90">{issue.title || <span className="text-muted-foreground">No title</span>}</td>
-                        <td className="py-2 pr-4 text-muted-foreground">{repoName}</td>
-                        <td className="py-2 pr-4 text-foreground/80">{issue.author || <span className="text-muted-foreground">Unknown</span>}</td>
-                        <td className="py-2 pr-4 tabular-nums text-muted-foreground">{issue.numComments}</td>
-                        <td className="py-2 pr-4 tabular-nums text-muted-foreground">{issue.createdAt}</td>
+                        <td className="max-w-xs truncate px-4 py-2.5 text-[var(--ink)]">{issue.title || <span className="text-[var(--ink-faint)]">No title</span>}</td>
+                        <td className="px-4 py-2.5 font-mono text-[var(--ink-muted)]">{repoName}</td>
+                        <td className="px-4 py-2.5 font-mono text-[var(--ink-muted)]">{issue.author || "Unknown"}</td>
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--ink-muted)]">{issue.numComments}</td>
+                        <td className="px-4 py-2.5 text-right font-mono tabular-nums text-[var(--ink-muted)]">{issue.createdAt}</td>
                       </tr>
                     );
                   })}
                   {filteredIssues.length === 0 && (
                     <tr>
-                      <td colSpan={6} className="py-6 text-center text-sm text-muted-foreground">
+                      <td colSpan={6} className="py-8 text-center text-sm text-[var(--ink-muted)]">
                         No open issues found for current filters.
                       </td>
                     </tr>
@@ -1695,27 +1665,28 @@ export default function PRsAnalyticsPage() {
                 </tbody>
               </table>
             </div>
-            {/* Pagination Controls */}
             {filteredIssues.length > PAGE_SIZE && (
-              <div className="mt-4 flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
+              <div className="flex items-center justify-between pt-2 text-xs text-[var(--ink-muted)]">
+                <span className="font-mono">
                   Showing {filteredIssues.length === 0 ? 0 : (issuesCurrentPage - 1) * PAGE_SIZE + 1}–{Math.min(issuesCurrentPage * PAGE_SIZE, filteredIssues.length)} of {filteredIssues.length}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => setIssuesCurrentPage(Math.max(1, issuesCurrentPage - 1))}
                     disabled={issuesCurrentPage === 1}
-                    className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/60"
+                    className="btn h-8 px-2.5 text-xs disabled:opacity-40"
                   >
                     Previous
                   </button>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="font-mono text-[var(--ink)]">
                     {issuesCurrentPage} / {issuesTotalPages}
                   </span>
                   <button
+                    type="button"
                     onClick={() => setIssuesCurrentPage(Math.min(issuesTotalPages, issuesCurrentPage + 1))}
                     disabled={issuesCurrentPage === issuesTotalPages}
-                    className="rounded-md border border-border bg-muted/40 px-2 py-1 text-xs text-foreground disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted/60"
+                    className="btn h-8 px-2.5 text-xs disabled:opacity-40"
                   >
                     Next
                   </button>
@@ -1724,16 +1695,7 @@ export default function PRsAnalyticsPage() {
             )}
           </div>
         )}
-
-        {backlogTab === "prs" && openSummary?.oldestPR && (
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-100">
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>
-              Oldest open PR: <span className="font-semibold">{openSummary.oldestPR.repo}#{openSummary.oldestPR.pr_number}</span> by {openSummary.oldestPR.author} - open for {openSummary.oldestPR.age_days} days.
-            </span>
-          </div>
-        )}
-      </Section>
+      </section>
     </div>
   );
 }
