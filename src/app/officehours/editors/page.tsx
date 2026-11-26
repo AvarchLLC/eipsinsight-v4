@@ -30,6 +30,7 @@ import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { ChartWatermark } from "@/components/chart-watermark";
 import { EditorAttendanceMatrix } from "@/components/editor-attendance-matrix";
 import { EditorActionsExplorer } from "@/components/analytics/editor-actions-explorer";
+import { ContributorLookupPanel } from "@/components/analytics/contributor-lookup-panel";
 import { OfficeHourBenchmarkDrilldown, type DrilldownFilter } from "@/components/office-hour-benchmark-drilldown";
 import { CANONICAL_EIP_EDITORS } from "@/data/eip-contributor-roles";
 import { OFFICE_HOUR_MEETINGS } from "@/data/office-hour-meetings.generated";
@@ -204,7 +205,7 @@ const EDITOR_COLORS: Record<string, string> = {
   xinbenlv: "#ec4899",
 };
 
-type TabId = "leaderboard" | "attendance" | "explorer" | "trends";
+type TabId = "leaderboard" | "attendance" | "explorer" | "trends" | "contributors";
 
 export default function OfficeHoursEditorsPage() {
   const today = iso(new Date());
@@ -273,7 +274,7 @@ export default function OfficeHoursEditorsPage() {
       if (set.size > 0) setRepos(set);
     }
     const tab = urlParam("tab");
-    if (tab && (tab === "leaderboard" || tab === "attendance" || tab === "explorer" || tab === "trends")) {
+    if (tab && (tab === "leaderboard" || tab === "attendance" || tab === "explorer" || tab === "trends" || tab === "contributors")) {
       setActiveTab(tab as TabId);
     }
     setHydrated(true);
@@ -635,6 +636,11 @@ export default function OfficeHoursEditorsPage() {
       id: "trends" as const,
       label: "Velocity & Trends",
       icon: TrendingUp,
+    },
+    {
+      id: "contributors" as const,
+      label: "Contributor Lookup",
+      icon: Search,
     },
   ];
 
@@ -1446,6 +1452,10 @@ export default function OfficeHoursEditorsPage() {
                 )}
               </section>
             </div>
+          )}
+          {/* TAB 5: CONSOLIDATED CONTRIBUTOR LOOKUP */}
+          {activeTab === "contributors" && (
+            <ContributorLookupPanel from={winFrom} to={winTo} />
           )}
         </div>
       )}

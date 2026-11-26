@@ -9,6 +9,7 @@ import { CHART_AXIS, CHART_GRID } from "@/lib/chart-colors";
 import { LastUpdated } from "@/components/analytics/LastUpdated";
 import { ContributorHeatmap } from "@/components/analytics/ContributorHeatmap";
 import { AnalyticsAnnotation } from "@/components/analytics/AnalyticsAnnotation";
+import { ContributorLookupPanel } from "@/components/analytics/contributor-lookup-panel";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import {
   ChartContainer,
@@ -303,6 +304,9 @@ export default function ContributorsAnalyticsPage() {
         <StatCard icon={Database} accent="blue" label="Total activities" value={(kpis?.totalActivities ?? 0).toLocaleString()} sub="commits, PRs, reviews" />
         <StatCard icon={Zap} accent="amber" label="Last 24h" value={(kpis?.last24hCount ?? 0).toLocaleString()} sub="activities today" />
       </div>
+
+      {/* Universal Contributor Lookup + Per-Contributor Chart + Creative Score* */}
+      <ContributorLookupPanel from={from} to={to} />
 
       {/* Contributor Activity Heatmap */}
       <div className="rounded-xl border border-border/70 bg-card/60 p-6 backdrop-blur-sm">
