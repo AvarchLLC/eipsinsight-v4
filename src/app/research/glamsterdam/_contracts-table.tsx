@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight, ChevronsUpDown, Link2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export type ContractRow = {
@@ -14,7 +15,7 @@ export type ContractRow = {
   invs: string[];
 };
 
-const addrUrl = (a: string) => `https://etherscan.io/address/${a}`;
+const addrUrl = (a: string) => `/adoption?address=${a}#lookup`;
 const short = (h: string) => `${h.slice(0, 6)}…${h.slice(-4)}`;
 const fmt = (n: number) => n.toLocaleString();
 
@@ -158,15 +159,13 @@ export function ContractsTable({
                   </td>
                   <td className="px-3 py-2.5 mono text-[11px] text-[var(--ink-muted)]">{c.kind}</td>
                   <td className="px-3 py-2.5">
-                    <a
+                    <Link
                       href={addrUrl(c.addr)}
-                      target="_blank"
-                      rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 mono text-[12px] text-[var(--brand-strong)] hover:underline"
                     >
                       {short(c.addr)}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+                      <Link2 className="h-3 w-3" />
+                    </Link>
                   </td>
                   <td className="px-3 py-2.5 mono tabular-nums text-[var(--ink-muted)]">{fmt(c.txs)}</td>
                   <td className="px-3 py-2.5 mono text-[12px] text-[var(--ink-muted)]">
@@ -175,7 +174,7 @@ export function ContractsTable({
                     ) : showScan && !c.flagged ? (
                       <span className="text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">clear</span>
                     ) : (
-                      <span className="text-[var(--ink-faint)]">—</span>
+                      <span className="text-[var(--ink-faint)]">-</span>
                     )}
                   </td>
                 </tr>

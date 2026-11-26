@@ -91,11 +91,11 @@ export function GlamsterdamResearch() {
   return (
     <div data-ledger className="min-h-screen pb-16">
       <PageHead
-        eyebrow="EIPsInsight research · Gas-audit"
-        title="What Glamsterdam Repricing changes"
+        eyebrow="EIPsInsight research · Gas audit"
+        title="What Glamsterdam Repricer changes"
         lead={
           <>
-            A gas audit of <span className="font-medium text-[var(--ink)]">EIP-8037 / 8038</span> against the{' '}
+            EIP-8037 and EIP-8038 reprice state-creating operations. Audited on Sepolia against the{' '}
             <span className="accent">busiest mainnet contracts</span>.
           </>
         }
@@ -120,7 +120,7 @@ export function GlamsterdamResearch() {
         </section>
 
         {/* how it lands on mainnet: state-impact composition */}
-        <section className="mt-12">
+        <section className="mt-8">
           <Reveal>
             <SectionHead id="mainnet" title="How it lands on mainnet" />
           </Reveal>
@@ -144,7 +144,7 @@ export function GlamsterdamResearch() {
             <div className="mt-8 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 sm:p-6">
               <p className="mb-4 flex flex-wrap items-baseline gap-x-2 text-[15px] text-[var(--ink-muted)]">
                 <span className="text-[1.05rem] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">One day, every transaction.</span>
-                <span>On {COMPOSITION.exact.date} we classified all {fmt(COMPOSITION.exact.totalTx)} mainnet transactions — not a sample, no per-block cap.</span>
+                <span>On {COMPOSITION.exact.date} we classified all {fmt(COMPOSITION.exact.totalTx)} mainnet transactions - not a sample, no per-block cap.</span>
               </p>
               <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
                 {[
@@ -174,7 +174,7 @@ export function GlamsterdamResearch() {
         </section>
 
         {/* live impact: new-account transfers (our node) */}
-        <section className="mt-12">
+        <section className="mt-8">
           <Reveal>
             <SectionHead id="impact" title="A live, measurable impact" />
           </Reveal>
@@ -200,7 +200,7 @@ export function GlamsterdamResearch() {
         </section>
 
         {/* the scan */}
-        <section className="mt-12">
+        <section className="mt-8">
           <Reveal>
             <SectionHead id="scan" title="The scan" />
           </Reveal>
@@ -231,22 +231,32 @@ export function GlamsterdamResearch() {
             <Reveal className="lg:col-span-2"><DensityChart /></Reveal>
           </div>
 
-          {/* the scanned universe — full traceability for the 300 */}
+          {/* Contract Research: the 300 busiest mainnet contracts */}
           <Reveal>
-            <p className="mt-10 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
-              The full scanned set: the <span className="font-medium text-[var(--ink)]">300 busiest mainnet contracts</span> over
-              the scan window, ranked by activity, each on Etherscan so anyone can check. Sort any column, or filter each one
-              independently. Rows carrying invariant ids matched one or more patterns (detailed in the next section);{' '}
-              <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">clear</span> rows did not.
+            <div className="mt-8">
+              <SectionHead id="contract-research" title="Contract Research" />
+            </div>
+            <p className="mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
+              The <span className="font-medium text-[var(--ink)]">300 busiest mainnet contracts</span> over the scan window,
+              linked to the EIPsInsight contract inspector. Rows carrying invariant IDs matched patterns in{' '}
+              <a
+                href="https://github.com/ethereum/glamsterdam-gas-invariants"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--brand-strong)] hover:underline"
+              >
+                glamsterdam-gas-invariants
+              </a>
+              ; <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">clear</span> rows did not.
             </p>
             <ContractsTable rows={SCANNED_ROWS} showScan pageSize={10} />
           </Reveal>
         </section>
 
-        {/* the flagged contracts */}
-        <section className="mt-12">
+        {/* Contract Audit: the flagged contracts */}
+        <section className="mt-8">
           <Reveal>
-            <SectionHead id="flagged" title="The flagged contracts" />
+            <SectionHead id="contract-audit" title="Contract Audit" />
           </Reveal>
 
           <Reveal>
@@ -254,10 +264,18 @@ export function GlamsterdamResearch() {
           </Reveal>
 
           <Reveal>
-            <p className="mt-8 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
+            <p className="mt-6 mb-3 text-[15px] leading-relaxed text-[var(--ink-muted)]">
               All <span className="font-medium text-[var(--ink)]">{SCAN.flagged} flagged contracts</span>, by match density.
-              Sort or filter any column, or page through. Each shows the invariant patterns its source matched: a candidate for
-              review, not a confirmed break.
+              Each shows the{' '}
+              <a
+                href="https://github.com/ethereum/glamsterdam-gas-invariants"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[var(--brand-strong)] hover:underline"
+              >
+                invariant patterns
+              </a>{' '}
+              its source matched: a candidate for review, not a confirmed break.
             </p>
             <ContractsTable rows={FLAGGED_ROWS} pageSize={10} />
           </Reveal>

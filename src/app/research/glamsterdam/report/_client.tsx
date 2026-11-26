@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowLeft, ExternalLink } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Link2 } from 'lucide-react';
 import { PageHead } from '@/components/ledger/page-head';
 import { META, INVARIANTS, SCAN, NEWACCT, SELFDESTRUCT, NEWACCT_SENDERS, STATE_REPLAY, AA_STATEBREAK } from '../_data';
 import {
@@ -80,7 +80,7 @@ export function GlamsterdamReport() {
                 <span className={ink}>{SCAN.scanned} busiest mainnet contracts</span> against the repricing&apos;s
                 eight-invariant framework, flagging <span className={ink}>{SCAN.flagged} candidates</span> worth re-checking.
                 The flags are candidates for review, <span className={ink}>not confirmed breaks</span>. The headline take: the
-                repricing is real, measurable and <span className={ink}>surgical</span> — it hits state-creating operations hard
+                repricing is real, measurable and <span className={ink}>surgical</span> - it hits state-creating operations hard
                 and leaves pure execution untouched. Its single largest impact is on <span className={ink}>ERC-4337 account
                 abstraction</span>: steady-state validation is fine, but userOps that create state (wallet deployments, first
                 SSTOREs) exceed their signed gas limits and break unrescuably (§03).
@@ -342,16 +342,14 @@ export function GlamsterdamReport() {
             </p>
             <div className="flex flex-wrap gap-2">
               {NEWACCT_SENDERS.topSenders.map((a) => (
-                <a
+                <Link
                   key={a}
-                  href={`https://etherscan.io/address/${a}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href={`/adoption?address=${a}#lookup`}
                   className="inline-flex items-center gap-1 rounded border border-[var(--border)] bg-[var(--surface-2)] px-2.5 py-1 mono text-[12px] text-[var(--brand-strong)] hover:underline"
                 >
                   {a.slice(0, 8)}…{a.slice(-4)}
-                  <ExternalLink className="h-3 w-3" />
-                </a>
+                  <Link2 className="h-3 w-3" />
+                </Link>
               ))}
             </div>
           </Reveal>
@@ -362,7 +360,7 @@ export function GlamsterdamReport() {
           <Reveal><SerifSectionHead n="07" title="Compatibility & risk summary" /></Reveal>
           <div className="space-y-3">
             <Reveal>
-              <Card eyebrow="Act — highest impact" tone="--c-lastcall">
+              <Card eyebrow="Act - highest impact" tone="--c-lastcall">
                 <span className={ink}>ERC-4337 state-creating userOps (wallet deployments, first SSTOREs).</span> ~53% of
                 userOps create state; ~1 in 3 exceed the signed validation budget and break <span className={ink}>unrescuably</span>{' '}
                 (§03). The single largest impact of the repricing. Bundlers, SDKs and smart-account/factory authors must act;
@@ -414,7 +412,7 @@ export function GlamsterdamReport() {
               <li>EIP-8037 / EIP-8038 · the state-gas repricings entering Glamsterdam.</li>
               <li>
                 EIPsInsight archive node (Reth) + static scan <span className="mono text-[12px]">audit-{META.published}</span>:
-                every flagged contract is verified on Etherscan and listed on the research page.
+                every flagged contract is linked to the EIPsInsight contract inspector on the research page.
               </li>
               <li>
                 EIPsInsight archive node + transaction index: the new-account transfer census (§06), sampled{' '}

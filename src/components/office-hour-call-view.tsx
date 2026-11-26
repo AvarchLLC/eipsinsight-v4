@@ -16,6 +16,7 @@ import cuesEthproofs010 from "@/data/ethproofs-010-transcript.json";
 import cuesEipip132 from "@/data/eipip-132-transcript.json";
 import { CallTldr } from "@/components/upgrade/call-tldr";
 import { KeyDecisionsList } from "@/components/upgrade/key-decisions";
+import { getCallResearchLinks } from "@/lib/call-research-links";
 
 // Static transcripts per office-hour call, keyed "<series>-<meeting>".
 // Add EIPIP / future office-hour transcripts here until the artifact pipeline covers them.
@@ -38,6 +39,14 @@ function getYoutubeId(url: string): string | null {
 export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
   const youtubeId = getYoutubeId(recap.youtube);
   const cues = TRANSCRIPTS[`${recap.series}-${recap.meeting}`] ?? [];
+  const researchLinks = getCallResearchLinks(
+    [
+      recap.title,
+      recap.tldr ?? "",
+      ...(recap.summary ?? []),
+      ...(recap.keyDecisions ?? []).map((d) => d.text),
+    ].join(" "),
+  );
   const backHref =
     recap.series === "eipip"
       ? "/eipip/calls"
@@ -85,6 +94,20 @@ export function OfficeHourCallView({ recap }: { recap: OhRecap }) {
             </span>
           )}
         </div>
+        {researchLinks.length > 0 && (
+          <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="font-mono text-[10px] uppercase tracking-wider">Related research:</span>
+            {researchLinks.map((rl) => (
+              <Link
+                key={rl.href}
+                href={rl.href}
+                className="inline-flex items-center rounded-md border border-border bg-card/70 px-2 py-0.5 font-medium text-primary hover:underline"
+              >
+                {rl.label}
+              </Link>
+            ))}
+          </div>
+        )}
       </header>
 
       {recap.xStatusUrl ? (
