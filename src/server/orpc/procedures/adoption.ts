@@ -65,13 +65,15 @@ function growthFromSeries(series: { active: number }[]): number {
   return 0
 }
 
-export type Window = '24h' | '7d' | '30d' | '365d'
-const WINDOW_SQL: Record<Window, string> = {
+export type Window = '24h' | '7d' | '30d' | '365d' | 'all'
+const WINDOW_SQL: Record<Exclude<Window, 'all'>, string> = {
   '24h': 'INTERVAL 1 DAY',
   '7d': 'INTERVAL 7 DAY',
   '30d': 'INTERVAL 30 DAY',
   '365d': 'INTERVAL 365 DAY',
 }
+const tsFilter = (col: string, w: Window): string =>
+  w === 'all' ? '1=1' : `${col} >= now() - ${WINDOW_SQL[w]}`
 
 export type AdoptionRow = {
   id: string
@@ -201,7 +203,7 @@ async function getValueMoved(window: Window): Promise<ValueMoved> {
 
   if (!clickhouseConfigured()) return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
   try {
-    const interval = WINDOW_SQL[window];
+    const tsCond = tsFilter('block_timestamp', window);
     const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
     const dexEntries = Object.entries(dexSnap?.prices ?? {});
     const allTokens = [...ALL_PRICED, ...dexEntries.map(([t]) => t)];
@@ -219,7 +221,7 @@ async function getValueMoved(window: Window): Promise<ValueMoved> {
            0))) AS tier1_usd,
          round(sum(${tier2Expr})) AS tier2_usd
        FROM ethereum.erc20_transfers
-       WHERE block_timestamp >= now() - ${interval} AND token_address IN (${quote(allTokens)})`,
+       WHERE ${tsCond} AND token_address IN (${quote(allTokens)})`,
       { timeoutMs: 30_000 },
     );
     const tier1Usd = N(rows[0]?.tier1_usd);
@@ -237,6 +239,101 @@ async function getValueMoved(window: Window): Promise<ValueMoved> {
     return data;
   } catch {
     return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
+  }
+}
+
+// ── USD breakdown: top priced ERC-20 tokens by USD value moved in window ──
+const TIER1_LABELS: Record<string, string> = {
+  '0xdac17f958d2ee523a2206206994597c13d831ec7': 'USDT',
+  '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48': 'USDC',
+  '0x6c3ea9036406852006290770bedfcaba0e23a0e8': 'PYUSD',
+  '0x6b175474e89094c44da98b954eedeac495271d0f': 'DAI',
+  '0x4c9edd5852cd905f086c759e8383e09bff1e68b3': 'USDe',
+  '0xdc035d45d973e3ec169d2276ddab16f1e407384f': 'USDS',
+  '0xc5f0f7b66764f6ec8c8dff7ba683102295e16409': 'FDUSD',
+  '0x0000000000085d4780b73119b644ae5ecd22b376': 'TUSD',
+  '0xf939e0a03fb07f59a73314e73794be0e57ac1b4e': 'crvUSD',
+  '0x40d16fc0246ad3160ccc09b8d0d3a2cd28ae6c2f': 'GHO',
+  '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2': 'WETH',
+  '0xae7ab96520de3a18e5e111b5eaab095312d7fe84': 'stETH',
+};
+
+export type UsdBreakdownRow = {
+  address: string;
+  symbol: string;
+  tier: 1 | 2;
+  usd: number;
+  transfers: number;
+};
+
+export type UsdBreakdownResult = {
+  available: boolean;
+  window: Window;
+  totalUsd: number;
+  rows: UsdBreakdownRow[];
+  generatedAt: string;
+};
+
+const usdBreakdownCache = new Map<string, { at: number; data: UsdBreakdownResult }>();
+
+async function getUsdBreakdown(window: Window): Promise<UsdBreakdownResult> {
+  const base = { window, generatedAt: new Date().toISOString() };
+  const hit = usdBreakdownCache.get(window);
+  if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data;
+
+  const snap = await readSnapshot<UsdBreakdownResult>(`usd_breakdown:${window}`);
+  if (snap && snap.available && snap.rows.length > 0) {
+    usdBreakdownCache.set(window, { at: Date.now(), data: snap });
+    return snap;
+  }
+
+  if (!clickhouseConfigured()) return { available: false, totalUsd: 0, rows: [], ...base };
+
+  try {
+    const tsCond = tsFilter('block_timestamp', window);
+    const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
+    const dexEntries = Object.entries(dexSnap?.prices ?? {});
+    const allTokens = [...ALL_PRICED, ...dexEntries.map(([t]) => t)];
+    const tier2Arms = dexEntries.map(([tok, info]) => `token_address = '${tok}', amt * ${Number(info.usdPerRaw)}`).join(', ');
+    const tier2Expr = tier2Arms ? `multiIf(${tier2Arms}, 0)` : '0';
+
+    const rows = await clickhouseQuery<{ token_address: string; usd: string; transfers: string }>(
+      `WITH (SELECT price_usd FROM blob_lens.eth_daily_price ORDER BY date DESC LIMIT 1) AS ethp,
+            toFloat64(reinterpretAsUInt256(reverse(unhex(substring(amount_raw, 3))))) AS amt
+       SELECT
+         token_address,
+         round(sum(multiIf(
+           token_address IN (${quote(PRICED_USD_6)}), amt / 1e6,
+           token_address IN (${quote(PRICED_USD_18)}), amt / 1e18,
+           token_address IN (${quote(PRICED_ETH_18)}), amt / 1e18 * ethp,
+           ${tier2Expr}))) AS usd,
+         count() AS transfers
+       FROM ethereum.erc20_transfers
+       WHERE ${tsCond} AND token_address IN (${quote(allTokens)})
+       GROUP BY token_address
+       HAVING usd > 0
+       ORDER BY usd DESC
+       LIMIT 25`,
+      { timeoutMs: 45_000 },
+    );
+
+    const parsed: UsdBreakdownRow[] = rows.map((r) => {
+      const addr = r.token_address.toLowerCase();
+      const label = TIER1_LABELS[addr];
+      return {
+        address: addr,
+        symbol: label ?? `${addr.slice(0, 6)}…${addr.slice(-4)}`,
+        tier: label ? 1 : 2,
+        usd: N(r.usd),
+        transfers: N(r.transfers),
+      };
+    });
+    const totalUsd = parsed.reduce((acc, r) => acc + r.usd, 0);
+    const data: UsdBreakdownResult = { available: true, totalUsd, rows: parsed, ...base };
+    usdBreakdownCache.set(window, { at: Date.now(), data });
+    return data;
+  } catch {
+    return { available: false, totalUsd: 0, rows: [], ...base };
   }
 }
 
@@ -292,9 +389,10 @@ function emptyLeaderboard(window: Window): AdoptionLeaderboard {
 
 async function getCalldataMetrics(
   s: Standard & { detect: { kind: 'calldata'; selector: string } },
-  interval: string,
+  window: Window,
 ): Promise<{ contracts: number; active: number; events: number }> {
   const sel = s.detect.selector
+  const tsCond = tsFilter('block_timestamp', window)
   const [snap, winRows] = await Promise.all([
     readSnapshot<{ contracts: number }>(`alltime_calldata:${s.id}`),
     clickhouseQuery<{ active: string; events: string }>(
@@ -303,8 +401,8 @@ async function getCalldataMetrics(
        WHERE startsWith(input, '${sel}')
          AND to_address != ''
          AND is_deleted = 0
-         AND block_timestamp >= now() - ${interval}`,
-      { timeoutMs: 30_000 },
+         AND ${tsCond}`,
+      { timeoutMs: 90_000 },
     ),
   ])
   let contracts = snap ? N(snap.contracts) : 0
@@ -325,12 +423,13 @@ async function getCalldataMetrics(
 }
 
 // Distinct accounts + tx count for a transaction-type feature, in window.
-async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: number } }, interval: string): Promise<TxFeatureRow> {
+async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: number } }, window: Window): Promise<TxFeatureRow> {
+  const tsCond = tsFilter('block_timestamp', window)
   const rows = await clickhouseQuery<{ accounts: string; txs: string }>(
     `SELECT uniqExact(from_address) AS accounts, count() AS txs
      FROM ethereum.transactions
-     WHERE tx_type = ${s.detect.txType} AND block_timestamp >= now() - ${interval}`,
-    { timeoutMs: 30_000 },
+     WHERE tx_type = ${s.detect.txType} AND ${tsCond}`,
+    { timeoutMs: 90_000 },
   )
   return {
     id: s.id, eip: s.eip, name: s.name, blurb: s.blurb, specUrl: s.specUrl,
@@ -339,41 +438,49 @@ async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: nu
 }
 
 async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
-  if (!clickhouseConfigured()) return emptyLeaderboard(window)
   const hit = leaderboardCache.get(window)
   if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data
 
+  const snap = await readSnapshot<AdoptionLeaderboard>(`leaderboard:${window}`)
+  if (snap && snap.available && snap.rows.length > 0) {
+    leaderboardCache.set(window, { at: Date.now(), data: snap })
+    return snap
+  }
+
+  if (!clickhouseConfigured()) return emptyLeaderboard(window)
+
   try {
-    const interval = WINDOW_SQL[window]
+    const tsCond = tsFilter('block_timestamp', window)
+    const lastSeenCond = tsFilter('last_seen', window)
     const sidSql = topicToStandardSql()
 
     const [eventRows, eventVolRows, transferWindowRows, transferAllTime] = await Promise.all([
       // event-standards: all-time contracts + active-in-window, per standard
       clickhouseQuery<{ sid: string; contracts: string; active: string }>(
         `SELECT ${sidSql} AS sid, uniqExact(address) AS contracts,
-                uniqExactIf(address, last_seen >= now() - ${interval}) AS active
+                uniqExactIf(address, ${lastSeenCond}) AS active
          FROM ethereum.contract_events
          WHERE topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
         { timeoutMs: 45_000 },
-      ),
+      ).catch(() => []),
       // event-standards: raw event volume in window
       clickhouseQuery<{ sid: string; events: string }>(
         `SELECT ${sidSql} AS sid, count() AS events
          FROM ethereum.logs
-         WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(ALL_EVENT_TOPICS)})
+         WHERE ${tsCond} AND topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
-        { timeoutMs: 45_000 },
-      ),
+        { timeoutMs: 90_000 },
+      ).catch(() => []),
       // transfer split: active + events in window
       clickhouseQuery<{ is20: number; active: string; events: string }>(
         `SELECT (topic3 IS NULL) AS is20, uniqExact(address) AS active, count() AS events
          FROM ethereum.logs
-         WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}'
+         WHERE ${tsCond} AND topic0 = '${SIG.TRANSFER}'
          GROUP BY is20`,
-        { timeoutMs: 45_000 },
-      ),
-      getAllTimeTransferSplit(),
+        { timeoutMs: 90_000 },
+      ).catch(() => []),
+      getAllTimeTransferSplit().catch(() => ({ erc20: 0, erc721: 0 })),
     ])
 
     const contractsBy = new Map<string, number>()
@@ -398,7 +505,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     await Promise.all(
       CALLDATA_STANDARDS.map(async (s) => {
         try {
-          const m = await getCalldataMetrics(s, interval)
+          const m = await getCalldataMetrics(s, window)
           contractsBy.set(s.id, m.contracts)
           activeBy.set(s.id, m.active)
           eventsBy.set(s.id, m.events)
@@ -441,7 +548,16 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     })).sort((a, b) => b.active - a.active)
 
     // transaction features (EIP-7702, …) — ranked separately from contracts
-    const txFeatures = await Promise.all(TXTYPE_STANDARDS.map((s) => getTxFeature(s, interval)))
+    const txFeatures = (
+      await Promise.all(
+        TXTYPE_STANDARDS.map((s) =>
+          getTxFeature(s, window).catch(() => ({
+            id: s.id, eip: s.eip, name: s.name, blurb: s.blurb, specUrl: s.specUrl,
+            accounts: 0, txs: 0,
+          })),
+        ),
+      )
+    )
     txFeatures.sort((a, b) => b.accounts - a.accounts)
 
     const data: AdoptionLeaderboard = {
@@ -556,7 +672,8 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.data
 
   try {
-    const interval = WINDOW_SQL[window]
+    const tsCond = tsFilter('block_timestamp', window)
+    const lastSeenCond = tsFilter('last_seen', window)
     let metrics = { contracts: 0, active: 0, events: 0 }
     let directory: DirectoryRow[] = []
 
@@ -566,14 +683,14 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
         clickhouseQuery<{ active: string; events: string }>(
           `SELECT uniqExact(address) AS active, count() AS events
            FROM ethereum.logs
-           WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}' AND ${cond}`,
+           WHERE ${tsCond} AND topic0 = '${SIG.TRANSFER}' AND ${cond}`,
           { timeoutMs: 45_000 },
         ),
         getAllTimeTransferSplit(),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.logs
-           WHERE block_timestamp >= now() - ${interval} AND topic0 = '${SIG.TRANSFER}' AND ${cond}
+           WHERE ${tsCond} AND topic0 = '${SIG.TRANSFER}' AND ${cond}
            GROUP BY address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 45_000 },
         ),
@@ -588,19 +705,19 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
       const topics = ranked.detect.topics
       const [ceRows, logRows, dirRows] = await Promise.all([
         clickhouseQuery<{ contracts: string; active: string }>(
-          `SELECT uniqExact(address) AS contracts, uniqExactIf(address, last_seen >= now() - ${interval}) AS active
+          `SELECT uniqExact(address) AS contracts, uniqExactIf(address, ${lastSeenCond}) AS active
            FROM ethereum.contract_events WHERE topic0 IN (${quote(topics)})`,
           { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ events: string }>(
           `SELECT count() AS events FROM ethereum.logs
-           WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})`,
+           WHERE ${tsCond} AND topic0 IN (${quote(topics)})`,
           { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.logs
-           WHERE block_timestamp >= now() - ${interval} AND topic0 IN (${quote(topics)})
+           WHERE ${tsCond} AND topic0 IN (${quote(topics)})
            GROUP BY address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 30_000 },
         ),
@@ -617,12 +734,12 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
         ),
         clickhouseQuery<{ active: string; txs: string }>(
           `SELECT uniqExact(from_address) AS active, count() AS txs
-           FROM ethereum.transactions WHERE tx_type = ${t} AND block_timestamp >= now() - ${interval}`,
+           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}`,
           { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
-           FROM ethereum.transactions WHERE tx_type = ${t} AND block_timestamp >= now() - ${interval}
+           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 30_000 },
         ),
@@ -632,14 +749,14 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
     } else if (ranked.detect.kind === 'calldata') {
       const sel = ranked.detect.selector
       const [m, dirRows] = await Promise.all([
-        getCalldataMetrics(ranked as Standard & { detect: { kind: 'calldata'; selector: string } }, interval),
+        getCalldataMetrics(ranked as Standard & { detect: { kind: 'calldata'; selector: string } }, window),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT to_address AS address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.transactions
            WHERE startsWith(input, '${sel}')
              AND to_address != ''
              AND is_deleted = 0
-             AND block_timestamp >= now() - ${interval}
+             AND ${tsCond}
            GROUP BY to_address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 30_000 },
         ),
@@ -915,12 +1032,12 @@ async function getDirectory(id: string, window: Window, limit: number): Promise<
   if (!s) return { available: true, rows: [], ...base }
   if (!clickhouseConfigured()) return { available: false, rows: [], ...base }
   try {
-    const interval = WINDOW_SQL[window]
+    const tsCond = tsFilter('block_timestamp', window)
     const rows = s.detect.kind === 'txtype'
       ? await clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.transactions
-           WHERE tx_type = ${s.detect.txType} AND block_timestamp >= now() - ${interval}
+           WHERE tx_type = ${s.detect.txType} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )
@@ -931,14 +1048,14 @@ async function getDirectory(id: string, window: Window, limit: number): Promise<
              WHERE startsWith(input, '${s.detect.selector}')
                AND to_address != ''
                AND is_deleted = 0
-               AND block_timestamp >= now() - ${interval}
+               AND ${tsCond}
              GROUP BY to_address ORDER BY events DESC LIMIT ${limit}`,
             { timeoutMs: 45_000 },
           )
         : await clickhouseQuery<{ address: string; events: string; last: string }>(
             `SELECT address, count() AS events, max(block_timestamp) AS last
              FROM ethereum.logs
-             WHERE block_timestamp >= now() - ${interval} AND ${logsWhereFor(s)}
+             WHERE ${tsCond} AND ${logsWhereFor(s)}
              GROUP BY address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )
@@ -969,12 +1086,12 @@ async function getUsers(id: string, window: Window): Promise<UsersResult> {
   const hit = usersCache.get(cacheKey)
   if (hit && Date.now() - hit.at < DETAIL_TTL_MS) return hit.data
   try {
-    const interval = WINDOW_SQL[window]
+    const tsCond = tsFilter('block_timestamp', window)
     const where = logsWhereFor(s)
     const rows = await clickhouseQuery<{ users: string }>(
       `SELECT uniqExact(arrayJoin([topic1, topic2])) AS users
        FROM ethereum.logs
-       WHERE block_timestamp >= now() - ${interval} AND ${where} AND topic1 IS NOT NULL`,
+       WHERE ${tsCond} AND ${where} AND topic1 IS NOT NULL`,
       { timeoutMs: 45_000 },
     )
     const data: UsersResult = { available: true, applicable: true, users: N(rows[0]?.users), ...base }
@@ -993,23 +1110,27 @@ export const adoptionProcedures = {
     .handler(async ({ input }): Promise<AdoptionTrend> => getTrend(input.id)),
 
   users: optionalAuthProcedure
-    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d']).default('30d') }))
+    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d') }))
     .handler(async ({ input }): Promise<UsersResult> => getUsers(input.id, input.window)),
 
   valueMoved: optionalAuthProcedure
-    .input(z.object({ window: z.enum(['24h', '7d', '30d', '365d']).default('30d') }))
+    .input(z.object({ window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d') }))
     .handler(async ({ input }): Promise<ValueMoved> => getValueMoved(input.window)),
 
+  usdBreakdown: optionalAuthProcedure
+    .input(z.object({ window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d') }))
+    .handler(async ({ input }): Promise<UsdBreakdownResult> => getUsdBreakdown(input.window)),
+
   directory: optionalAuthProcedure
-    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d']).default('30d'), limit: z.number().int().min(1).max(1000).default(500) }))
+    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d'), limit: z.number().int().min(1).max(1000).default(500) }))
     .handler(async ({ input }): Promise<DirectoryExport> => getDirectory(input.id, input.window, input.limit)),
 
   leaderboard: optionalAuthProcedure
-    .input(z.object({ window: z.enum(['24h', '7d', '30d', '365d']).default('30d') }).optional())
+    .input(z.object({ window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d') }).optional())
     .handler(async ({ input }): Promise<AdoptionLeaderboard> => getLeaderboard(input?.window ?? '30d')),
 
   standard: optionalAuthProcedure
-    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d']).default('30d') }))
+    .input(z.object({ id: z.string().min(1), window: z.enum(['24h', '7d', '30d', '365d', 'all']).default('30d') }))
     .handler(async ({ input }): Promise<StandardDetail> => getStandardDetail(input.id, input.window)),
 
   contract: optionalAuthProcedure

@@ -49,7 +49,16 @@ const WINDOWS: { key: Window; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
   { key: '365d', label: '1y' },
+  { key: 'all', label: 'All' },
 ];
+
+const evidenceLabel = (id: string, isTx: boolean, kind?: string): string => {
+  if (id === 'erc-20') return 'Transfer (no tokenId)';
+  if (id === 'erc-721') return 'Transfer (indexed tokenId)';
+  if (id === 'erc-2612' || kind === 'calldata') return 'permit() calldata';
+  if (id === 'eip-7702' || isTx || kind === 'txtype') return 'tx_type = 4';
+  return 'Event signature';
+};
 
 function StandardizationPanel({ proposal }: { proposal: NonNullable<ProposalMeta> }) {
   return (
@@ -514,11 +523,12 @@ export function StandardDetailView({
               />
 
               <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
-                <table className="w-full min-w-[520px] text-xs">
+                <table className="w-full min-w-[600px] text-xs">
                   <thead>
                     <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
                       <th className="w-12 px-4 py-3 text-left eyebrow">#</th>
                       <th className="px-4 py-3 text-left eyebrow">{isTx ? 'Account' : 'Contract'}</th>
+                      <th className="px-4 py-3 text-left eyebrow">Evidence</th>
                       <th className="px-4 py-3 text-right eyebrow">Events ({window})</th>
                       <th className="px-4 py-3 text-right eyebrow">Last Active</th>
                     </tr>
@@ -538,6 +548,11 @@ export function StandardDetailView({
                             <ExternalLink className="h-3 w-3" />
                           </a>
                         </td>
+                        <td className="px-4 py-3">
+                          <LedgerBadge token={isTx ? 'eip' : 'erc'} className="font-mono text-[10px]">
+                            {evidenceLabel(initial.id, isTx, meta?.kind)}
+                          </LedgerBadge>
+                        </td>
                         <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[var(--ink)]">
                           {compact(c.events)}
                         </td>
@@ -548,7 +563,7 @@ export function StandardDetailView({
                     ))}
                     {d.available && d.directory.length === 0 && (
                       <tr>
-                        <td colSpan={4} className="py-10 text-center font-mono text-xs text-[var(--ink-faint)]">
+                        <td colSpan={5} className="py-10 text-center font-mono text-xs text-[var(--ink-faint)]">
                           No activity in this window.
                         </td>
                       </tr>
