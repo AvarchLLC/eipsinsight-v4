@@ -1,173 +1,40 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ExternalLink, ArrowLeft, Download } from 'lucide-react';
-import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import ReactECharts from 'echarts-for-react';
+import { ArrowLeft, Download, ExternalLink, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageHead } from '@/components/ledger/page-head';
+import { SectionHead } from '@/components/ledger/section-head';
+import { LedgerBadge } from '@/components/ledger/badge';
+import { ChartWatermark } from '@/components/chart-watermark';
+import { ChartFooter } from '@/components/chart-footer';
+import { chartTooltip } from '@/lib/chart-theme';
 import { client } from '@/lib/orpc';
-import type { StandardDetail, AdoptionTrend, Window } from '@/server/orpc/procedures/adoption';
+import { toast } from 'sonner';
+import type {
+  StandardDetail,
+  AdoptionTrend,
+  ValueMoved,
+  Window,
+} from '@/server/orpc/procedures/adoption';
 import type { ProposalMeta } from './page';
 
-// EIP status → ledger status colour.
-const STATUS_COLOR: Record<string, string> = {
-  Final: 'var(--c-final)',
-  Living: 'var(--c-final)',
-  'Last Call': 'var(--c-lastcall)',
-  Review: 'var(--c-review)',
-  Draft: 'var(--c-review)',
-  Stagnant: 'var(--c-withdrawn)',
-  Withdrawn: 'var(--c-withdrawn)',
-};
-
-function StandardizationPanel({ proposal }: { proposal: NonNullable<ProposalMeta> }) {
-  const color = STATUS_COLOR[proposal.status] ?? 'var(--ink-muted)';
-  const facts: { k: string; v: ReactNode }[] = [
-    { k: 'Status', v: (
-      <span className="inline-flex items-center gap-1.5">
-        <span className="h-2 w-2 rounded-full" style={{ background: color }} />
-        <span className="font-semibold" style={{ color }}>{proposal.status}</span>
-      </span>
-    ) },
-    { k: 'Created', v: proposal.created ?? '—' },
-    { k: 'Type', v: [proposal.type, proposal.category].filter(Boolean).join(' · ') || '—' },
-    { k: 'Authors', v: proposal.authors.length ? `${proposal.authors.length} author${proposal.authors.length === 1 ? '' : 's'}` : '—' },
-  ];
-  return (
-    <div className="mb-10 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5 sm:p-6">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[1.3rem] leading-tight text-[var(--ink)] [font-family:var(--font-instrument-serif)]">Standardization</h2>
-        <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">the proposal behind the adoption</span>
-      </div>
-      <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
-        {facts.map((f) => (
-          <div key={f.k}>
-            <div className="text-[15px] text-[var(--ink)]">{f.v}</div>
-            <div className="mt-1 mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">{f.k}</div>
-          </div>
-        ))}
-      </div>
-      {proposal.authors.length ? (
-        <p className="mt-4 text-[13px] leading-relaxed text-[var(--ink-muted)]">
-          <span className="mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Authors · </span>
-          {proposal.authors.join(', ')}
-        </p>
-      ) : null}
-      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-        <Link href={`/${proposal.repo}/${proposal.number}`} className="inline-flex items-center gap-1 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline">
-          Proposal on EIPsInsight <ArrowLeft className="h-3 w-3 rotate-180" />
-        </Link>
-        {proposal.discussions_to ? (
-          <a href={proposal.discussions_to} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-[11px] text-[var(--brand-strong)] hover:underline">
-            Discussion <ExternalLink className="h-3 w-3" />
-          </a>
-        ) : null}
-        {proposal.requires.length ? (
-          <span className="mono text-[11px] text-[var(--ink-muted)]">
-            Requires {proposal.requires.map((r, i) => (
-              <span key={r}>
-                {i > 0 ? ', ' : ''}
-                <a href={`/${proposal.repo}/${r}`} className="text-[var(--brand-strong)] hover:underline">{r}</a>
-              </span>
-            ))}
-          </span>
-        ) : null}
-      </div>
-    </div>
-  );
-}
-
-const MONO = 'var(--font-mono, ui-monospace, monospace)';
 const monthLabel = (m: string) => {
   const [y, mo] = m.split('-');
   const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${names[Number(mo) - 1]} '${y.slice(2)}`;
 };
-const compactAxis = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${Math.round(n / 1000)}k` : `${n}`);
+const compactAxis = (n: number) =>
+  n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1_000 ? `${Math.round(n / 1000)}k` : `${n}`;
 const compactUsd = (n: number): string => {
   if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
-  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
   if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
   if (n >= 1e3) return `$${Math.round(n / 1e3)}k`;
   return `$${Math.round(n)}`;
 };
-
-function TrendChart({ id, eip, isTx }: { id: string; eip: string; isTx: boolean }) {
-  const [trend, setTrend] = useState<AdoptionTrend | null>(null);
-  const [metric, setMetric] = useState<'active' | 'events'>('active');
-  useEffect(() => {
-    let cancelled = false;
-    client.adoption.trend({ id }).then((r) => !cancelled && setTrend(r));
-    return () => {
-      cancelled = true;
-    };
-  }, [id]);
-
-  const data = useMemo(() => (trend?.series ?? []).map((p) => ({ label: monthLabel(p.month), value: p[metric] })), [trend, metric]);
-  const loading = trend === null;
-  const empty = !loading && (!trend?.available || data.length === 0);
-
-  return (
-    <div className="mt-12">
-      <div className="mb-3 flex items-center">
-        <span className="h-px w-10 bg-[var(--brand)]" />
-        <span className="h-px flex-1 bg-[var(--ink)]" />
-      </div>
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-[1.6rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">Adoption over time</h2>
-        <div className="inline-flex rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
-          {(['active', 'events'] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setMetric(m)}
-              className={cn(
-                'rounded-[calc(var(--l-radius)-2px)] px-3 py-1 mono text-[11px] font-semibold uppercase tracking-wider transition-colors',
-                metric === m ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
-              )}
-            >
-              {m === 'active' ? (isTx ? 'Accounts' : 'Contracts') : (isTx ? 'Txs' : 'Events')}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--paper)] p-4 sm:p-5">
-        <p className="mb-4 mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">
-          {metric === 'active'
-            ? `distinct ${eip} ${isTx ? 'accounts' : 'contracts'} active each month`
-            : `${eip} ${isTx ? 'authorization txs' : 'events'} each month`}
-        </p>
-        {loading ? (
-          <div className="flex h-[240px] items-center justify-center mono text-[12px] text-[var(--ink-faint)]">building chart…</div>
-        ) : empty ? (
-          <div className="flex h-[240px] items-center justify-center mono text-[12px] text-[var(--ink-faint)]">trend data unavailable right now.</div>
-        ) : (
-          <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={data} margin={{ left: 4, right: 12, top: 8, bottom: 4 }}>
-              <defs>
-                <linearGradient id="gTrend" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="var(--brand)" stopOpacity={0.75} />
-                  <stop offset="100%" stopColor="var(--brand)" stopOpacity={0.12} />
-                </linearGradient>
-              </defs>
-              <XAxis dataKey="label" tick={{ fill: 'var(--ink-muted)', fontSize: 10, fontFamily: MONO }} axisLine={false} tickLine={false} interval="preserveStartEnd" minTickGap={24} />
-              <YAxis tick={{ fill: 'var(--ink-muted)', fontSize: 11, fontFamily: MONO }} axisLine={false} tickLine={false} tickFormatter={compactAxis} width={40} />
-              <Tooltip
-                contentStyle={{ borderRadius: 8, border: '1px solid var(--border)', background: 'var(--paper)', fontSize: 12 }}
-                labelStyle={{ color: 'var(--ink)', fontWeight: 600 }}
-                formatter={(v: number) => [v.toLocaleString(), metric === 'active' ? 'active contracts' : 'events']}
-                cursor={{ stroke: 'var(--brand)', strokeWidth: 1, opacity: 0.4 }}
-              />
-              <Area type="monotone" dataKey="value" stroke="var(--brand)" strokeWidth={2} fill="url(#gTrend)" isAnimationActive={false} />
-            </AreaChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-    </div>
-  );
-}
-
 const compact = (n: number): string => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`;
@@ -179,28 +46,255 @@ const whenLabel = (s: string) => (s ? s.slice(0, 16).replace(' ', ' · ') : '—
 
 const WINDOWS: { key: Window; label: string }[] = [
   { key: '24h', label: '24h' },
-  { key: '7d', label: '7 days' },
-  { key: '30d', label: '30 days' },
-  { key: '365d', label: '1 year' },
+  { key: '7d', label: '7d' },
+  { key: '30d', label: '30d' },
+  { key: '365d', label: '1y' },
+  { key: 'all', label: 'All' },
 ];
 
-function MetricCard({ v, k }: { v: string; k: string }) {
+const evidenceLabel = (id: string, isTx: boolean, kind?: string): string => {
+  if (id === 'erc-20') return 'Transfer (no tokenId)';
+  if (id === 'erc-721') return 'Transfer (indexed tokenId)';
+  if (id === 'erc-2612' || kind === 'calldata') return 'permit() calldata';
+  if (id === 'eip-7702' || isTx || kind === 'txtype') return 'tx_type = 4';
+  return 'Event signature';
+};
+
+function StandardizationPanel({ proposal }: { proposal: NonNullable<ProposalMeta> }) {
   return (
-    <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-5">
-      <div className="mono text-[2rem] font-bold leading-none tabular-nums text-[var(--ink)]">{v}</div>
-      <div className="mt-1.5 mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">{k}</div>
-    </div>
+    <section className="space-y-4">
+      <SectionHead
+        index="01"
+        eyebrow="SPECIFICATION"
+        title="Standardization"
+        action={
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/${proposal.repo}/${proposal.number}`}
+              className="btn h-8 px-3 text-xs font-medium"
+            >
+              View Proposal
+            </Link>
+            {proposal.discussions_to && (
+              <a
+                href={proposal.discussions_to}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="btn h-8 px-3 text-xs font-medium"
+              >
+                <span>Discussion</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            )}
+          </div>
+        }
+      />
+
+      <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5">
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-4">
+          <div>
+            <p className="eyebrow mb-2">Status</p>
+            <LedgerBadge token={proposal.status}>{proposal.status}</LedgerBadge>
+          </div>
+          <div>
+            <p className="eyebrow mb-2">Created</p>
+            <p className="font-mono text-sm font-semibold text-[var(--ink)]">{proposal.created ?? '—'}</p>
+          </div>
+          <div>
+            <p className="eyebrow mb-2">Type &amp; Category</p>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {proposal.category && (
+                <LedgerBadge token={proposal.category} className="text-[10px]">
+                  {proposal.category}
+                </LedgerBadge>
+              )}
+              {proposal.type && (
+                <span className="font-mono text-xs text-[var(--ink-muted)]">{proposal.type}</span>
+              )}
+            </div>
+          </div>
+          <div>
+            <p className="eyebrow mb-2">Authors</p>
+            <p className="font-mono text-sm font-semibold text-[var(--ink)]">
+              {proposal.authors.length ? `${proposal.authors.length} author${proposal.authors.length === 1 ? '' : 's'}` : '—'}
+            </p>
+          </div>
+        </div>
+
+        {(proposal.authors.length > 0 || proposal.requires.length > 0) && (
+          <div className="mt-4 space-y-2 border-t border-[var(--border)] pt-3.5 text-xs text-[var(--ink-muted)]">
+            {proposal.authors.length > 0 && (
+              <p className="leading-relaxed">
+                <span className="eyebrow mr-2">Authors:</span>
+                {proposal.authors.join(', ')}
+              </p>
+            )}
+            {proposal.requires.length > 0 && (
+              <p className="font-mono">
+                <span className="eyebrow mr-2">Requires:</span>
+                {proposal.requires.map((r, i) => (
+                  <span key={r}>
+                    {i > 0 ? ', ' : ''}
+                    <Link href={`/${proposal.repo}/${r}`} className="text-[var(--brand-strong)] hover:underline">
+                      #{r}
+                    </Link>
+                  </span>
+                ))}
+              </p>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
-export function StandardDetailView({ initial, proposal }: { initial: StandardDetail; proposal: ProposalMeta }) {
+function TrendChart({
+  id,
+  eip,
+  isTx,
+  index,
+}: {
+  id: string;
+  eip: string;
+  isTx: boolean;
+  index: string;
+}) {
+  const [trend, setTrend] = useState<AdoptionTrend | null>(null);
+  const [metric, setMetric] = useState<'active' | 'events'>('active');
+
+  useEffect(() => {
+    let cancelled = false;
+    client.adoption.trend({ id }).then((r) => !cancelled && setTrend(r));
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  const series = trend?.series ?? [];
+  const loading = trend === null;
+  const empty = !loading && (!trend?.available || series.length === 0);
+
+  const option = useMemo(() => {
+    const labels = series.map((p) => monthLabel(p.month));
+    const values = series.map((p) => p[metric]);
+    return {
+      backgroundColor: 'transparent',
+      tooltip: chartTooltip({
+        trigger: 'axis',
+        formatter: (params: Array<{ name: string; value: number }>) => {
+          const p = params[0];
+          if (!p) return '';
+          const unitLabel = metric === 'active' ? (isTx ? 'active accounts' : 'active contracts') : isTx ? 'txs' : 'events';
+          return `${p.name}: <b>${Number(p.value).toLocaleString()}</b> ${unitLabel}`;
+        },
+      }),
+      grid: { top: 18, left: 48, right: 20, bottom: 28 },
+      xAxis: {
+        type: 'category',
+        data: labels,
+        axisLabel: { color: 'var(--ink-faint)', fontSize: 10 },
+        axisLine: { lineStyle: { color: 'var(--border)' } },
+      },
+      yAxis: {
+        type: 'value',
+        axisLabel: {
+          color: 'var(--ink-faint)',
+          fontSize: 11,
+          formatter: (v: number) => compactAxis(v),
+        },
+        splitLine: { lineStyle: { color: 'var(--border)', type: 'dashed' } },
+      },
+      series: [
+        {
+          name: metric === 'active' ? (isTx ? 'Accounts' : 'Contracts') : isTx ? 'Txs' : 'Events',
+          type: 'line',
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: 5,
+          data: values,
+          lineStyle: { width: 2.5, color: '#10b981' },
+          itemStyle: { color: '#10b981' },
+          areaStyle: {
+            color: {
+              type: 'linear',
+              x: 0,
+              y: 0,
+              x2: 0,
+              y2: 1,
+              colorStops: [
+                { offset: 0, color: 'rgba(16, 185, 129, 0.35)' },
+                { offset: 1, color: 'rgba(16, 185, 129, 0.02)' },
+              ],
+            },
+          },
+        },
+      ],
+    };
+  }, [series, metric, isTx]);
+
+  return (
+    <section className="space-y-4">
+      <SectionHead
+        index={index}
+        eyebrow="MONTHLY SERIES"
+        title="Adoption Over Time"
+        action={
+          <div className="flex items-center gap-1.5">
+            {(['active', 'events'] as const).map((m) => (
+              <button
+                key={m}
+                type="button"
+                data-active={metric === m}
+                onClick={() => setMetric(m)}
+                className="chip"
+              >
+                {m === 'active' ? (isTx ? 'Accounts' : 'Contracts') : isTx ? 'Txs' : 'Events'}
+              </button>
+            ))}
+          </div>
+        }
+      />
+
+      <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5">
+        <p className="eyebrow mb-3">
+          {metric === 'active'
+            ? `Distinct ${eip} ${isTx ? 'accounts' : 'contracts'} active each month`
+            : `${eip} ${isTx ? 'authorization txs' : 'events'} per month`}
+        </p>
+
+        {loading ? (
+          <div className="flex h-[280px] items-center justify-center font-mono text-xs text-[var(--ink-faint)]">
+            building chart…
+          </div>
+        ) : empty ? (
+          <div className="flex h-[280px] items-center justify-center font-mono text-xs text-[var(--ink-faint)]">
+            trend data unavailable right now.
+          </div>
+        ) : (
+          <div className="relative h-[280px] w-full">
+            <ReactECharts option={option} style={{ height: '100%', width: '100%' }} opts={{ renderer: 'svg' }} notMerge />
+            <ChartWatermark />
+          </div>
+        )}
+        <ChartFooter />
+      </div>
+    </section>
+  );
+}
+
+export function StandardDetailView({
+  initial,
+  proposal,
+}: {
+  initial: StandardDetail;
+  proposal: ProposalMeta;
+}) {
   const [window, setWindow] = useState<Window>(initial.window);
   const [d, setD] = useState<StandardDetail>(initial);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Self-heal: always fetch on window change, and recover if the server
-    // payload arrived unavailable (cold start / transient blip).
     if (window === initial.window && d.available && d.window === window) return;
     let cancelled = false;
     setLoading(true);
@@ -215,26 +309,38 @@ export function StandardDetailView({ initial, proposal }: { initial: StandardDet
 
   const meta = d.meta ?? initial.meta;
   const notRanked = d.found && !d.ranked;
-  const isTx = meta?.kind === 'txtype'; // transaction feature (e.g. EIP-7702): accounts, not contracts
+  const isTx = meta?.kind === 'txtype';
   const unit = isTx ? 'accounts' : 'contracts';
-  const showValue = initial.id === 'erc-20'; // USD value moved is an ERC-20 metric
+  const showValue = initial.id === 'erc-20';
 
-  // Value moved (USD) — ba-data-only, priced tokens (stablecoins + ETH). Lazy.
-  const [value, setValue] = useState<{ usd: number | null; tokens: number; loading: boolean }>({ usd: null, tokens: 0, loading: false });
+  const [value, setValue] = useState<{
+    usd: number | null;
+    tokens: number;
+    tier?: 1 | 2;
+    loading: boolean;
+  }>({ usd: null, tokens: 0, loading: false });
+
   useEffect(() => {
     if (!showValue) return;
     let cancelled = false;
     setValue((v) => ({ ...v, loading: true }));
     client.adoption
       .valueMoved({ window })
-      .then((r) => !cancelled && setValue({ usd: r.available ? r.usd : null, tokens: r.tokens, loading: false }))
+      .then((r: ValueMoved) =>
+        !cancelled &&
+        setValue({
+          usd: r.available ? r.usd : null,
+          tokens: r.tokens,
+          tier: r.tier,
+          loading: false,
+        }),
+      )
       .catch(() => !cancelled && setValue((v) => ({ ...v, loading: false })));
     return () => {
       cancelled = true;
     };
   }, [showValue, window]);
 
-  // Unique users — lazy (heavier than the core metrics), only for contract standards.
   const [users, setUsers] = useState<{ v: number | null; loading: boolean }>({ v: null, loading: false });
   useEffect(() => {
     if (isTx || notRanked) return;
@@ -277,150 +383,201 @@ export function StandardDetailView({ initial, proposal }: { initial: StandardDet
       a.click();
       a.remove();
       URL.revokeObjectURL(href);
+      toast.success(`Exported ${exp.rows.length} ${unit}`);
     } finally {
       setDownloading(false);
     }
   };
 
+  const trendIdx = proposal ? '02' : '01';
+  const dirIdx = proposal ? '03' : '02';
+
   return (
-    <div data-ledger className="min-h-screen pb-16">
+    <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)] pb-16">
       <PageHead
-        eyebrow={`EIPsInsight · On-chain adoption${meta ? ` · ${meta.category}` : ''}`}
+        eyebrow={`ON-CHAIN ADOPTION${meta ? ` · ${meta.category.toUpperCase()}` : ''}`}
         title={meta ? `${meta.eip} — ${meta.name}` : 'Standard'}
         lead={meta ? <>{meta.blurb}</> : undefined}
       >
-        <Link href="/adoption" className="inline-flex items-center gap-1 mono text-xs text-[var(--brand-strong)] hover:underline">
-          <ArrowLeft className="h-3.5 w-3.5" /> All standards
-        </Link>
-        {meta ? (
-          <>
-            <span className="text-[var(--border-strong)]">·</span>
-            <a href={meta.specUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-xs text-[var(--brand-strong)] hover:underline">
-              Specification <ExternalLink className="h-3 w-3" />
-            </a>
-          </>
-        ) : null}
-        <span className="text-[var(--border-strong)]">·</span>
-        <span className="mono text-xs">{d.coverage.network} · since {d.coverage.fromDate}</span>
+        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 font-mono text-xs text-[var(--ink-muted)]">
+          <Link href="/adoption" className="inline-flex items-center gap-1 text-[var(--brand-strong)] hover:underline">
+            <ArrowLeft className="h-3.5 w-3.5" /> All standards
+          </Link>
+          {meta && (
+            <>
+              <span className="text-[var(--border-strong)]">·</span>
+              <a
+                href={meta.specUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-[var(--brand-strong)] hover:underline"
+              >
+                Specification <ExternalLink className="h-3 w-3" />
+              </a>
+            </>
+          )}
+          <span className="text-[var(--border-strong)]">·</span>
+          <span>
+            {d.coverage.network} · since {d.coverage.fromDate}
+          </span>
+        </div>
       </PageHead>
 
-      <div className="wrap py-8 sm:py-12">
-        {proposal ? <StandardizationPanel proposal={proposal} /> : null}
+      <div className="wrap space-y-12 py-8">
+        {proposal && <StandardizationPanel proposal={proposal} />}
+
         {notRanked ? (
-          <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-6">
-            <p className="text-[15px] leading-relaxed text-[var(--ink-muted)]">
-              <span className="font-medium text-[var(--ink)]">{meta?.eip}</span> is tracked, and on-chain adoption metrics for it are
-              coming soon. Explore the standards that are measured today on the{' '}
-              <Link href="/adoption" className="text-[var(--brand-strong)] hover:underline">adoption dashboard</Link>.
-            </p>
+          <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--ink-muted)]">
+            <span className="font-semibold text-[var(--ink)]">{meta?.eip}</span> is tracked and on-chain metrics are queued. View live ranked standards on the{' '}
+            <Link href="/adoption" className="text-[var(--brand-strong)] hover:underline">
+              adoption dashboard
+            </Link>
+            .
           </div>
         ) : (
           <>
-            {/* window toggle */}
-            <div className="mb-6 flex items-center gap-2">
-              <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">Window</span>
-              <div className="inline-flex rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-0.5">
+            {/* Window Toggle + Ruled KPI Strip */}
+            <div className="space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="eyebrow mr-1">Window:</span>
                 {WINDOWS.map((w) => (
                   <button
                     key={w.key}
                     type="button"
+                    data-active={window === w.key}
                     onClick={() => setWindow(w.key)}
-                    className={cn(
-                      'rounded-[calc(var(--l-radius)-2px)] px-3 py-1 mono text-[12px] font-semibold transition-colors',
-                      window === w.key ? 'bg-[var(--brand)] text-[var(--brand-ink)]' : 'text-[var(--ink-muted)] hover:text-[var(--ink)]',
-                    )}
+                    className="chip font-mono"
                   >
                     {w.label}
                   </button>
                 ))}
+                {loading && <span className="ml-2 font-mono text-[11px] text-[var(--ink-faint)]">updating…</span>}
               </div>
-              {loading ? <span className="mono text-[11px] text-[var(--ink-faint)]">updating…</span> : null}
+
+              <div
+                className={cn(
+                  'grid grid-cols-2 divide-y divide-[var(--border)] border-y border-[var(--border)] bg-[var(--surface)] sm:divide-x sm:divide-y-0',
+                  showValue ? 'sm:grid-cols-5' : isTx ? 'sm:grid-cols-3' : 'sm:grid-cols-4',
+                )}
+              >
+                <div className="px-5 py-4">
+                  <p className="eyebrow">{isTx ? 'Delegating Accounts' : 'Detected Contracts'}</p>
+                  <p className="t-figure mt-2 text-2xl sm:text-3xl">{d.available ? compact(d.metrics.contracts) : '—'}</p>
+                  <p className="mt-1 text-xs text-[var(--ink-muted)]">All-time within coverage</p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="eyebrow">Active {unit} ({window})</p>
+                  <p className="t-figure mt-2 text-2xl sm:text-3xl">{d.available ? compact(d.metrics.active) : '—'}</p>
+                  <p className="mt-1 text-xs text-[var(--ink-muted)]">Distinct active in window</p>
+                </div>
+                <div className="px-5 py-4">
+                  <p className="eyebrow">{isTx ? `Auth Txs (${window})` : `Events (${window})`}</p>
+                  <p className="t-figure mt-2 text-2xl sm:text-3xl">{d.available ? compact(d.metrics.events) : '—'}</p>
+                  <p className="mt-1 text-xs text-[var(--ink-muted)]">On-chain log volume</p>
+                </div>
+                {!isTx && (
+                  <div className="px-5 py-4">
+                    <p className="eyebrow">Unique Users ({window})</p>
+                    <p className="t-figure mt-2 text-2xl sm:text-3xl">
+                      {users.loading ? '…' : users.v != null ? compact(users.v) : '—'}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--ink-muted)]">Distinct EOA callers</p>
+                  </div>
+                )}
+                {showValue && (
+                  <div className="px-5 py-4">
+                    <p className="eyebrow">Value Moved ({window})</p>
+                    <p className="t-figure mt-2 text-2xl sm:text-3xl">
+                      {value.loading ? '…' : value.usd != null ? compactUsd(value.usd) : '—'}
+                    </p>
+                    <p className="mt-1 text-xs text-[var(--ink-muted)]">
+                      {value.tokens > 0 ? `${value.tokens} tokens · Tier ${value.tier ?? 1}` : 'USD volume'}
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* metrics */}
-            <div className={cn('grid grid-cols-2 gap-4', isTx ? 'sm:grid-cols-3' : 'sm:grid-cols-4')}>
-              <MetricCard v={d.available ? compact(d.metrics.contracts) : '—'} k={isTx ? 'delegating accounts (all-time)' : 'detected contracts (all-time)'} />
-              <MetricCard v={d.available ? compact(d.metrics.active) : '—'} k={`active ${unit} (${window})`} />
-              <MetricCard v={d.available ? compact(d.metrics.events) : '—'} k={isTx ? `authorization txs (${window})` : `events (${window})`} />
-              {!isTx ? (
-                <MetricCard v={users.loading ? '…' : users.v != null ? compact(users.v) : '—'} k={`unique users (${window})`} />
-              ) : null}
-            </div>
-            {!d.available ? (
-              <p className="mt-3 mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">live on-chain data is loading…</p>
-            ) : null}
+            {/* Adoption Over Time */}
+            {meta && <TrendChart id={initial.id} eip={meta.eip} isTx={isTx} index={trendIdx} />}
 
-            {/* value moved (USD) — ba-data-only, priced tokens */}
-            {showValue ? (
-              <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] p-4">
-                <span className="mono text-[1.8rem] font-bold leading-none tabular-nums text-[var(--ink)]">
-                  {value.loading ? '…' : value.usd != null ? compactUsd(value.usd) : '—'}
-                </span>
-                <span className="mono text-[11px] uppercase tracking-wider text-[var(--ink-muted)]">value moved ({window})</span>
-                <span className="mono text-[10px] text-[var(--ink-faint)]">
-                  · across {value.tokens} major priced tokens (stablecoins + ETH) · a conservative floor, long-tail tokens excluded
-                </span>
-              </div>
-            ) : null}
+            {/* Directory Table */}
+            <section className="space-y-4">
+              <SectionHead
+                index={dirIdx}
+                eyebrow="ON-CHAIN DIRECTORY"
+                title={isTx ? 'Account Directory' : 'Contract Directory'}
+                description={`Most active ${meta?.eip ?? ''} ${unit} in the selected window. Export includes up to 500 addresses.`}
+                action={
+                  <button
+                    type="button"
+                    onClick={downloadCsv}
+                    disabled={downloading || !d.available}
+                    title={downloading ? 'Preparing CSV…' : 'Export directory CSV (up to 500)'}
+                    aria-label="Export directory CSV"
+                    className="btn btn-primary h-8 w-8 shrink-0 p-0 disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {downloading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                  </button>
+                }
+              />
 
-            {/* adoption over time */}
-            {meta ? <TrendChart id={initial.id} eip={meta.eip} isTx={isTx} /> : null}
-
-            {/* directory */}
-            <div className="mt-12">
-              <div className="mb-3 flex items-center">
-                <span className="h-px w-10 bg-[var(--brand)]" />
-                <span className="h-px flex-1 bg-[var(--ink)]" />
-              </div>
-              <div className="mb-1 flex flex-wrap items-baseline justify-between gap-2">
-                <h2 className="text-[1.6rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)]">{isTx ? 'Account directory' : 'Contract directory'}</h2>
-                <button
-                  type="button"
-                  onClick={downloadCsv}
-                  disabled={downloading || !d.available}
-                  className="inline-flex items-center gap-1.5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)] px-3 py-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--ink)] hover:border-[var(--brand)] disabled:opacity-50"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  {downloading ? 'Preparing…' : 'Download CSV'}
-                </button>
-              </div>
-              <p className="mb-5 text-[14px] text-[var(--ink-muted)]">The most active {meta?.eip} {isTx ? 'accounts' : 'contracts'} in the window, each on Etherscan. The CSV export includes up to 500.</p>
-
-              <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)]">
-                <table className="w-full min-w-[520px] text-[14px]">
+              <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
+                <table className="w-full min-w-[600px] text-xs">
                   <thead>
-                    <tr className="bg-[var(--surface-2)] text-left mono text-[10px] uppercase tracking-wider text-[var(--ink-muted)]">
-                      <th className="w-8 px-3 py-2 font-semibold">#</th>
-                      <th className="px-3 py-2 font-semibold">Contract</th>
-                      <th className="px-3 py-2 font-semibold text-right">Events ({window})</th>
-                      <th className="px-3 py-2 font-semibold text-right">Last active</th>
+                    <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+                      <th className="w-12 px-4 py-3 text-left eyebrow">#</th>
+                      <th className="px-4 py-3 text-left eyebrow">{isTx ? 'Account' : 'Contract'}</th>
+                      <th className="px-4 py-3 text-left eyebrow">Evidence</th>
+                      <th className="px-4 py-3 text-right eyebrow">Events ({window})</th>
+                      <th className="px-4 py-3 text-right eyebrow">Last Active</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-[var(--border)]">
                     {d.directory.map((c, i) => (
-                      <tr key={c.address} className="border-t border-[var(--border)]/60">
-                        <td className="px-3 py-2.5 mono text-[12px] tabular-nums text-[var(--ink-faint)]">{i + 1}</td>
-                        <td className="px-3 py-2.5">
-                          <a href={addrUrl(c.address)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 mono text-[12px] text-[var(--brand-strong)] hover:underline">
-                            {short(c.address)}<ExternalLink className="h-3 w-3" />
+                      <tr key={c.address} className="transition-colors hover:bg-[var(--surface-2)]">
+                        <td className="px-4 py-3 font-mono text-[var(--ink-faint)]">#{i + 1}</td>
+                        <td className="px-4 py-3">
+                          <a
+                            href={addrUrl(c.address)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 font-mono font-semibold text-[var(--brand-strong)] hover:underline"
+                          >
+                            {short(c.address)}
+                            <ExternalLink className="h-3 w-3" />
                           </a>
                         </td>
-                        <td className="px-3 py-2.5 mono tabular-nums text-right text-[var(--ink)]">{compact(c.events)}</td>
-                        <td className="px-3 py-2.5 mono text-[12px] tabular-nums text-right text-[var(--ink-muted)]">{whenLabel(c.lastActive)}</td>
+                        <td className="px-4 py-3">
+                          <LedgerBadge token={isTx ? 'eip' : 'erc'} className="font-mono text-[10px]">
+                            {evidenceLabel(initial.id, isTx, meta?.kind)}
+                          </LedgerBadge>
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[var(--ink)]">
+                          {compact(c.events)}
+                        </td>
+                        <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--ink-muted)]">
+                          {whenLabel(c.lastActive)}
+                        </td>
                       </tr>
                     ))}
-                    {d.available && d.directory.length === 0 ? (
-                      <tr><td colSpan={4} className="px-3 py-6 text-center mono text-[12px] text-[var(--ink-faint)]">No activity in this window.</td></tr>
-                    ) : null}
+                    {d.available && d.directory.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="py-10 text-center font-mono text-xs text-[var(--ink-faint)]">
+                          No activity in this window.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            </div>
+            </section>
           </>
         )}
 
-        <p className="mt-12 mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">
-          {d.coverage.network} · since Dencun ({d.coverage.fromDate}) · updated {new Date(d.generatedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC
+        <p className="border-t border-[var(--border)] pt-4 font-mono text-[11px] text-[var(--ink-faint)]">
+          {d.coverage.network} · since Dencun ({d.coverage.fromDate}) · updated{' '}
+          {new Date(d.generatedAt).toISOString().slice(0, 16).replace('T', ' ')} UTC
         </p>
       </div>
     </div>

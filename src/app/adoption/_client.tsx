@@ -18,6 +18,7 @@ import type {
   AdoptionLeaderboard,
   AdoptionRow,
   AddressLookup,
+  UsdBreakdownResult,
   ValueMoved,
   Window,
 } from '@/server/orpc/procedures/adoption';
@@ -36,6 +37,7 @@ const WINDOWS: { key: Window; label: string }[] = [
   { key: '7d', label: '7d' },
   { key: '30d', label: '30d' },
   { key: '365d', label: '1y' },
+  { key: 'all', label: 'All' },
 ];
 
 type SortKey = 'active' | 'contracts' | 'events' | 'growthPct';
@@ -364,6 +366,139 @@ function AdoptionChart({
   );
 }
 
+function UsdBreakdownChart({
+  data,
+  loading,
+  windowLabel,
+}: {
+  data: UsdBreakdownResult | null;
+  loading: boolean;
+  windowLabel: string;
+}) {
+  const rows = data?.rows ?? [];
+  const top = rows.slice(0, 12);
+  const option = useMemo(() => {
+    const rev = [...top].reverse();
+    return {
+      grid: { left: 96, right: 24, top: 16, bottom: 28 },
+      tooltip: {
+        ...chartTooltip({ trigger: 'axis' }),
+        axisPointer: { type: 'shadow' },
+        formatter: (params: { dataIndex: number }[]) => {
+          const r = rev[params[0]?.dataIndex ?? 0];
+          if (!r) return '';
+          return `<b>${r.symbol}</b> (Tier ${r.tier})<br/>Volume: $${compact(r.usd)}<br/>Transfers: ${fmt(r.transfers)}`;
+        },
+      },
+      xAxis: {
+        type: 'value',
+        axisLabel: {
+          color: '#71717a',
+          fontSize: 10,
+          fontFamily: 'var(--font-mono)',
+          formatter: (v: number) => `$${compact(v)}`,
+        },
+        splitLine: { lineStyle: { color: 'rgba(128,128,128,0.12)' } },
+      },
+      yAxis: {
+        type: 'category',
+        data: rev.map((r) => r.symbol),
+        axisLine: { show: false },
+        axisTick: { show: false },
+        axisLabel: { color: 'var(--ink)', fontSize: 11, fontFamily: 'var(--font-mono)' },
+      },
+      series: [
+        {
+          type: 'bar',
+          data: rev.map((r) => ({
+            value: r.usd,
+            itemStyle: {
+              color: r.tier === 1 ? '#10b981' : '#0ea5e9',
+              borderRadius: [0, 3, 3, 0],
+            },
+          })),
+          barMaxWidth: 18,
+        },
+      ],
+    };
+  }, [top]);
+
+  if (loading && !data) {
+    return (
+      <div className="flex h-64 items-center justify-center rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] font-mono text-xs text-[var(--ink-faint)]">
+        Computing USD token breakdown…
+      </div>
+    );
+  }
+
+  if (!data?.available || rows.length === 0) {
+    return (
+      <div className="flex h-48 items-center justify-center rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] font-mono text-xs text-[var(--ink-faint)]">
+        No priced ERC-20 transfer volume available for this window.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="relative overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4">
+        <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+          <p className="eyebrow">Top Priced ERC-20 Tokens by USD Volume ({windowLabel})</p>
+          <p className="font-mono text-xs font-semibold text-[var(--ink)]">Total: ${compact(data.totalUsd)}</p>
+        </div>
+        <div className="relative h-72 w-full">
+          <ChartWatermark />
+          <ReactECharts option={option} style={{ height: '100%', width: '100%' }} notMerge lazyUpdate />
+        </div>
+        <ChartFooter />
+      </div>
+
+      <div className="overflow-x-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
+        <table className="w-full min-w-[500px] text-xs">
+          <thead>
+            <tr className="border-b border-[var(--border)] bg-[var(--surface-2)]">
+              <th className="w-10 px-4 py-3 text-left eyebrow">#</th>
+              <th className="px-4 py-3 text-left eyebrow">Token</th>
+              <th className="px-4 py-3 text-left eyebrow">Pricing Tier</th>
+              <th className="px-4 py-3 text-right eyebrow">USD Value Moved</th>
+              <th className="px-4 py-3 text-right eyebrow">Transfers</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[var(--border)]">
+            {rows.map((r, i) => (
+              <tr key={r.address} className="transition-colors hover:bg-[var(--surface-2)]">
+                <td className="px-4 py-3 font-mono text-[var(--ink-faint)]">{i + 1}</td>
+                <td className="px-4 py-3">
+                  <a
+                    href={`https://etherscan.io/token/${r.address}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 font-mono font-semibold text-[var(--brand-strong)] hover:underline"
+                  >
+                    {r.symbol}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                </td>
+                <td className="px-4 py-3">
+                  <LedgerBadge token={r.tier === 1 ? 'final' : 'interface'} className="text-[10px]">
+                    {r.tier === 1 ? 'Tier 1 Anchor' : 'Tier 2 DEX'}
+                  </LedgerBadge>
+                </td>
+                <td className="px-4 py-3 text-right font-mono font-semibold tabular-nums text-[var(--ink)]">
+                  ${compact(r.usd)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono tabular-nums text-[var(--ink-muted)]">
+                  {compact(r.transfers)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function AdoptionDashboard({
   overview,
   initialLeaderboard,
@@ -440,6 +575,29 @@ export function AdoptionDashboard({
   }, [window]);
 
   const [sort, setSort] = useState<SortKey>('active');
+  const [view, setView] = useState<'implementations' | 'usd'>('implementations');
+  const [usdData, setUsdData] = useState<UsdBreakdownResult | null>(null);
+  const [usdLoading, setUsdLoading] = useState(false);
+
+  useEffect(() => {
+    if (view !== 'usd') return;
+    let cancelled = false;
+    setUsdLoading(true);
+    client.adoption
+      .usdBreakdown({ window })
+      .then((res) => {
+        if (!cancelled) setUsdData(res);
+      })
+      .catch(() => {
+        if (!cancelled) setUsdData(null);
+      })
+      .finally(() => {
+        if (!cancelled) setUsdLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [view, window]);
   const rows = useMemo(() => [...lb.rows].sort((a, b) => b[sort] - a[sort]), [lb.rows, sort]);
   // Chart also includes transaction features (e.g. EIP-7702) so the graph shows
   // the full adoption landscape, not just contract standards. Mapped to the
@@ -582,24 +740,57 @@ export function AdoptionDashboard({
             <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
 
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="eyebrow mr-1">Sort:</span>
-              {SORTS.map((s) => (
-                <button
-                  key={s.key}
-                  type="button"
-                  data-active={sort === s.key}
-                  onClick={() => setSort(s.key)}
-                  className="chip"
-                >
-                  {s.label}
-                </button>
-              ))}
+              <span className="eyebrow mr-1">View:</span>
+              <button
+                type="button"
+                data-active={view === 'implementations'}
+                onClick={() => setView('implementations')}
+                className="chip"
+              >
+                Implementations
+              </button>
+              <button
+                type="button"
+                data-active={view === 'usd'}
+                onClick={() => setView('usd')}
+                className="chip"
+              >
+                USD Value
+              </button>
             </div>
 
-            {loading && <span className="ml-auto font-mono text-[11px] text-[var(--ink-faint)]">updating…</span>}
+            {view === 'implementations' && (
+              <>
+                <div className="hidden h-5 w-px bg-[var(--border)] sm:block" />
+
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="eyebrow mr-1">Sort:</span>
+                  {SORTS.map((s) => (
+                    <button
+                      key={s.key}
+                      type="button"
+                      data-active={sort === s.key}
+                      onClick={() => setSort(s.key)}
+                      className="chip"
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {(loading || usdLoading) && <span className="ml-auto font-mono text-[11px] text-[var(--ink-faint)]">updating…</span>}
           </div>
 
-          <div className="space-y-6">
+          {view === 'usd' ? (
+            <UsdBreakdownChart
+              data={usdData}
+              loading={usdLoading}
+              windowLabel={WINDOWS.find((w) => w.key === window)?.label ?? window}
+            />
+          ) : (
+            <div className="space-y-6">
             <div>
               <AdoptionChart
                 rows={chartRows}
@@ -664,6 +855,7 @@ export function AdoptionDashboard({
               </table>
             </div>
           </div>
+          )}
 
           {lb.txFeatures.length > 0 && (
             <div className="space-y-3 pt-2">
@@ -725,10 +917,13 @@ export function AdoptionDashboard({
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs font-semibold text-[var(--brand-strong)]">{c.eip}</span>
-                      <LedgerBadge token="draft" className="text-[9px]">Queued</LedgerBadge>
+                      <LedgerBadge token="draft" className="text-[9px]">
+                        {c.deferredReason ?? 'Queued'}
+                      </LedgerBadge>
                     </div>
                     <p className="mt-1 text-xs font-medium text-[var(--ink)]">{c.name}</p>
                     <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-muted)]">{c.blurb}</p>
+                    <p className="mt-2 font-mono text-[10px] text-[var(--ink-faint)]">{c.evidence}</p>
                   </div>
                   <div className="mt-3 flex items-center gap-1 font-mono text-[10px] text-[var(--ink-faint)]">
                     <span>Specification</span>
@@ -739,6 +934,57 @@ export function AdoptionDashboard({
             </div>
           </section>
         )}
+
+        {/* 04 — Methodology & FAQ */}
+        <section className="space-y-4">
+          <SectionHead
+            index="04"
+            eyebrow="METHODOLOGY & FAQ"
+            title="Why This Page"
+            description="Measuring which Ethereum standards achieve real on-chain adoption beyond specification status."
+            action={
+              <Link
+                href="/about"
+                className="btn h-8 px-3 text-xs font-medium"
+              >
+                Methodology &amp; Docs
+              </Link>
+            }
+          />
+          <div className="divide-y divide-[var(--border)] rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
+            <details className="group p-4" open>
+              <summary className="cursor-pointer list-none text-xs font-semibold text-[var(--ink)]">
+                Why measure on-chain standards adoption?
+              </summary>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--ink-muted)]">
+                Proposal status alone does not show whether a standard is actually used in production. Tracking
+                implementing contracts, active callers, transaction-type adoption, and USD volume connects Ethereum
+                governance directly to measurable mainnet usage.
+              </p>
+            </details>
+            <details className="group p-4">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-[var(--ink)]">
+                How are standards detected on-chain?
+              </summary>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--ink-muted)]">
+                Contract standards are matched by canonical event signatures (`Transfer`, `ApprovalForAll`,
+                `Deposit`, `UserOperationEvent`, `AccountCreated`) or calldata selectors (`permit()` for ERC-2612).
+                Protocol features like EIP-7702 are measured by transaction type (`tx_type = 4`) rather than contract
+                deployments.
+              </p>
+            </details>
+            <details className="group p-4">
+              <summary className="cursor-pointer list-none text-xs font-semibold text-[var(--ink)]">
+                How is ERC-20 USD value moved calculated?
+              </summary>
+              <p className="mt-2 text-xs leading-relaxed text-[var(--ink-muted)]">
+                Tier 1 anchors major USD stablecoins and ETH-pegged tokens (`USDC`, `USDT`, `DAI`, `WETH`, `stETH`,
+                etc.). Tier 2 derives median USD-per-raw-unit prices from Uniswap V2 and V3 swap pools for the top
+                500 active ERC-20 tokens.
+              </p>
+            </details>
+          </div>
+        </section>
 
         <p className="border-t border-[var(--border)] pt-4 font-mono text-[11px] text-[var(--ink-faint)]">
           {overview.coverage.network} · since Dencun ({overview.coverage.fromDate}) · updated{' '}
