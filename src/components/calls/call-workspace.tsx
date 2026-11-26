@@ -18,6 +18,8 @@ import {
   X,
   ExternalLink,
   ChevronRight,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LedgerBadge } from "@/components/ledger/badge";
@@ -86,6 +88,37 @@ function fmt(seconds: number): string {
     : `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+interface ResearchLink {
+  label: string;
+  href: string;
+}
+
+function matchResearchLinks(text: string, series?: string): ResearchLink[] {
+  const hay = `${series || ""} ${text}`.toLowerCase();
+  const links: ResearchLink[] = [];
+  const push = (label: string, href: string) => {
+    if (!links.some((l) => l.href === href)) links.push({ label, href });
+  };
+
+  if (/\b(pq|pqts|pqinterops|post[- ]?quantum|quantum|ml-dsa|falcon|dilithium|sphincs|8288|lean consensus)\b/.test(hay)) {
+    push("Post-Quantum", "/pq");
+  }
+  if (/\b(aa|account abstraction|4337|7702|7560|8141|8130|paymaster|bundler|entrypoint|frame tx)\b/.test(hay)) {
+    push("Account Abstraction", "/aa");
+  }
+  if (/\blucid\b/.test(hay)) {
+    push("LUCID", "/lucid");
+  }
+  if (/\b(glamsterdam|gas repricing|repricing|7904|8037|7981)\b/.test(hay)) {
+    push("Glamsterdam Research", "/research/glamsterdam");
+  }
+  if (/\b(peerdas|blobs?|4844|7594|das)\b/.test(hay)) {
+    push("Blobs & PeerDAS", "/blobs");
+  }
+
+  return links;
+}
+
 function Seek({
   m,
   onSeek,
@@ -149,6 +182,7 @@ export function CallWorkspace({
   );
   const [heroSearch, setHeroSearch] = useState("");
   const [heroFollowAlong, setHeroFollowAlong] = useState(true);
+  const [expandVideo, setExpandVideo] = useState(false);
   const heroListRef = useRef<HTMLUListElement>(null);
 
   // Initialize YouTube player
@@ -287,6 +321,16 @@ export function CallWorkspace({
 
   const [activeTab, setActiveTab] = useState<string>("overview");
 
+  const callResearchLinks = useMemo(() => {
+    const corpus = [
+      call.title,
+      call.summary ?? "",
+      ...call.highlights.map((h) => h.topic),
+      ...call.eipMentions.map((e) => `${e.kind}-${e.number} ${e.title ?? ""}`),
+    ].join(" ");
+    return matchResearchLinks(corpus, call.series);
+  }, [call]);
+
   // Tab 1 (Overview) State: Topic filter
   const [selectedTopic, setSelectedTopic] = useState<string>("all");
   const filteredHighlights = useMemo(() => {
@@ -383,14 +427,14 @@ export function CallWorkspace({
   }, [chat, chatSearch]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-10">
       {/* ─────────────────────────────────────────────────────────── */}
-      {/* 1. HERO ROW: Video Player (Left) + Companion Plate (Right)  */}
+      {/* 1. HERO ROW: Video Player (Left / Full) + Companion Panel   */}
       {/* ─────────────────────────────────────────────────────────── */}
-      <section id="call-player" className="scroll-mt-24">
+      <section id="call-player" className="scroll-mt-24 space-y-4">
         <div className="grid gap-6 lg:grid-cols-12 items-start">
-          {/* Left Column (7 cols): YouTube Video Player */}
-          <div className="lg:col-span-7 space-y-3">
+          {/* Video Player Column (7 cols split, or 12 cols expanded) */}
+          <div className={cn("space-y-3", expandVideo ? "lg:col-span-12" : "lg:col-span-7")}>
             {embed ? (
               <div className="aspect-video overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-black shadow-xs [&>iframe]:size-full">
                 <div ref={mount} className="size-full" />
@@ -409,7 +453,7 @@ export function CallWorkspace({
             )}
 
             <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 {call.videoUrl && (
                   <a
                     href={call.videoUrl}
@@ -430,6 +474,26 @@ export function CallWorkspace({
                     <MessageSquare className="h-4 w-4 text-[var(--brand-strong)]" /> Agenda issue #{call.issueNumber}
                   </a>
                 )}
+                {embed && (
+                  <button
+                    type="button"
+                    onClick={() => setExpandVideo((v) => !v)}
+                    data-active={expandVideo}
+                    className="chip cursor-pointer whitespace-nowrap"
+                  >
+                    {expandVideo ? (
+                      <>
+                        <PanelRightOpen className="h-3.5 w-3.5" />
+                        <span>Show Side Panel</span>
+                      </>
+                    ) : (
+                      <>
+                        <PanelRightClose className="h-3.5 w-3.5" />
+                        <span>Expand Video</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
 
               {embed && (
@@ -441,8 +505,9 @@ export function CallWorkspace({
             </div>
           </div>
 
-          {/* Right Column (5 cols): Interactive Companion Panel (Live Transcript or Key Outcomes) */}
-          <div className="lg:col-span-5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-3.5">
+          {/* Right Column (5 cols): Interactive Companion Panel (collapsible) */}
+          {!expandVideo && (
+            <div className="lg:col-span-5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5 shadow-xs space-y-3.5">
             {/* Header Switcher: Live Transcript vs Key Outcomes (Solid Ledger Chips) */}
             <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-1.5">
@@ -606,16 +671,196 @@ export function CallWorkspace({
                 )}
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* ─────────────────────────────────────────────────────────── */}
+      {/* 2. CALL BRIEF: TL;DR, Key Decisions, Topics & Proposals     */}
+      {/* ─────────────────────────────────────────────────────────── */}
+      {(call.summary || call.decisions.length > 0 || call.highlights.length > 0 || call.eipMentions.length > 0) && (
+        <section
+          aria-label="Call brief"
+          className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
+            <div>
+              <p className="eyebrow mb-1">
+                <span className="text-[var(--brand-strong)]">01</span>  CALL BRIEF · HIGHLIGHTS &amp; DECISIONS
+              </p>
+              <h2 className="t-h2 text-xl sm:text-2xl">What Happened on This Call</h2>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab("overview");
+                  document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+                className="chip cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
+                <span>Full Notes</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid divide-y divide-[var(--border)] lg:grid-cols-12 lg:divide-x lg:divide-y-0">
+            <div className="space-y-5 p-5 sm:p-6 lg:col-span-7">
+              {call.summary && (
+                <div className="space-y-1.5">
+                  <p className="eyebrow">TL;DR</p>
+                  <p className="text-sm leading-relaxed text-[var(--ink)]">{call.summary}</p>
+                </div>
+              )}
+
+              {call.decisions.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="eyebrow">Key Decisions ({call.decisions.length})</p>
+                    {call.decisions.length > 4 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab("decisions");
+                          document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className="font-mono text-[11px] font-medium text-[var(--brand-strong)] hover:underline"
+                      >
+                        View all {call.decisions.length} →
+                      </button>
+                    )}
+                  </div>
+                  <ul className="divide-y divide-[var(--border)] rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)]">
+                    {call.decisions.slice(0, 4).map((d, i) => (
+                      <li key={i} className="flex items-start gap-2.5 px-3.5 py-2.5 text-xs">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
+                        <span className="min-w-0 flex-1 leading-relaxed text-[var(--ink)]">{d.text}</span>
+                        <Seek m={d} onSeek={seek} href={hrefFor(d.seconds)} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-5 bg-[var(--surface)] p-5 sm:p-6 lg:col-span-5">
+              {call.highlights.length > 0 && (
+                <div className="space-y-2.5">
+                  <p className="eyebrow">Topics Covered ({call.highlights.length})</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {call.highlights.map((h) => (
+                      <button
+                        key={h.topic}
+                        type="button"
+                        onClick={() => {
+                          setActiveTab("overview");
+                          setSelectedTopic(h.topic);
+                          document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }}
+                        className="chip cursor-pointer whitespace-nowrap"
+                      >
+                        <span>{h.topic}</span>
+                        <span className="font-mono text-[10px] opacity-75">({h.items.length})</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {call.eipMentions.length > 0 && (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="eyebrow">Proposals Referenced ({call.eipMentions.length})</p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("eips");
+                        document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="font-mono text-[11px] font-medium text-[var(--brand-strong)] hover:underline"
+                    >
+                      Inspect all →
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {call.eipMentions.slice(0, 12).map((e) => (
+                      <Link
+                        key={`${e.kind}-${e.number}`}
+                        href={`/standards/${e.kind === "erc" ? "ercs" : e.kind === "rip" ? "rips" : "eips"}/${e.number}`}
+                        className="inline-flex items-center gap-1 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-1 font-mono text-[11px] font-semibold text-[var(--ink)] transition-colors hover:border-[var(--ink)]"
+                      >
+                        <LedgerBadge token={e.kind} className="px-1.5 py-0 text-[9px]">
+                          {e.kind.toUpperCase()}
+                        </LedgerBadge>
+                        <span>{e.number}</span>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {(call.actionItems.length > 0 || call.targets.length > 0) && (
+                <div className="flex flex-wrap items-center gap-3 border-t border-[var(--border)] pt-3 text-xs text-[var(--ink-muted)]">
+                  {call.actionItems.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("decisions");
+                        document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="inline-flex items-center gap-1.5 font-mono text-[11px] hover:text-[var(--ink)]"
+                    >
+                      <Target className="h-3.5 w-3.5 text-[#f97316]" />
+                      <span>{call.actionItems.length} action item{call.actionItems.length === 1 ? "" : "s"}</span>
+                    </button>
+                  )}
+                  {call.targets.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveTab("decisions");
+                        document.getElementById("call-workspace-tabs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }}
+                      className="inline-flex items-center gap-1.5 font-mono text-[11px] hover:text-[var(--ink)]"
+                    >
+                      <Flag className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
+                      <span>{call.targets.length} milestone target{call.targets.length === 1 ? "" : "s"}</span>
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {callResearchLinks.length > 0 && (
+                <div className="space-y-1.5 border-t border-[var(--border)] pt-3">
+                  <p className="eyebrow">Related Research</p>
+                  <div className="flex flex-wrap gap-2">
+                    {callResearchLinks.map((rl) => (
+                      <Link
+                        key={rl.href}
+                        href={rl.href}
+                        className="inline-flex items-center gap-1 font-mono text-[11px] font-medium text-[var(--brand-strong)] hover:underline"
+                      >
+                        <span>{rl.label}</span>
+                        <ExternalLink className="h-3 w-3" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ─────────────────────────────────────────────────────────── */}
       {/* 2. TAB NAVIGATION BAR (Solid Ledger Chips, Non-Sticky)      */}
       {/* ─────────────────────────────────────────────────────────── */}
       <nav
+        id="call-workspace-tabs"
         aria-label="Call sections"
-        className="border-y border-[var(--border)] py-2.5 bg-[var(--surface)]"
+        className="scroll-mt-20 border-y border-[var(--border)] py-2.5 bg-[var(--surface)]"
       >
         <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none py-0.5">
           {tabs.map((tab) => {
@@ -707,19 +952,35 @@ export function CallWorkspace({
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
-                {filteredHighlights.map((topic) => (
+                {filteredHighlights.map((topic) => {
+                  const topicLinks = matchResearchLinks(
+                    `${topic.topic} ${topic.items.map((i) => i.text).join(" ")}`,
+                  );
+                  return (
                   <div
                     key={topic.topic}
                     className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col justify-between"
                   >
                     <div>
-                      <div className="flex items-center justify-between border-b border-[var(--border)] pb-2.5 mb-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5 mb-3.5">
                         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--brand-strong)]">
                           {topic.topic}
                         </span>
-                        <span className="font-mono text-[10px] text-[var(--ink-faint)]">
-                          {topic.items.length} {topic.items.length === 1 ? "note" : "notes"}
-                        </span>
+                        <div className="flex items-center gap-2.5">
+                          {topicLinks.slice(0, 2).map((rl) => (
+                            <Link
+                              key={rl.href}
+                              href={rl.href}
+                              className="inline-flex items-center gap-1 font-mono text-[10px] font-medium text-[var(--ink-muted)] hover:text-[var(--brand-strong)] transition-colors"
+                            >
+                              <span>{rl.label}</span>
+                              <ExternalLink className="h-2.5 w-2.5" />
+                            </Link>
+                          ))}
+                          <span className="font-mono text-[10px] text-[var(--ink-faint)]">
+                            {topic.items.length} {topic.items.length === 1 ? "note" : "notes"}
+                          </span>
+                        </div>
                       </div>
                       <ul className="space-y-2.5">
                         {topic.items.map((h, i) => (
@@ -742,7 +1003,8 @@ export function CallWorkspace({
                       </ul>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </section>
           )}

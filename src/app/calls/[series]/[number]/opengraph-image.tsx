@@ -70,15 +70,31 @@ export default async function Image({ params }: Props) {
     : (payload?.key_decisions ?? []);
 
   // Two decisions is what fits without the card turning into a wall of text.
-  const rows = decisions.slice(0, 2).map((d) => {
+  // If no formal decisions were logged (e.g. breakout/PQTS calls), fall back to TL;DR lines.
+  const clip = (t: string, max: number) => {
+    const clean = String(t ?? '').replace(/\s+/g, ' ').trim();
+    if (clean.length <= max) return clean;
+    const cut = clean.slice(0, max - 1);
+    return `${cut.slice(0, cut.lastIndexOf(' ')) || cut}…`;
+  };
+
+  let rows = decisions.slice(0, 2).map((d) => {
     const text = typeof d === 'string' ? d : (d.original_text ?? '');
-    return String(text).replace(/\s+/g, ' ').trim().slice(0, 110);
+    return clip(text, 108);
   });
+
+  if (rows.length === 0 && call.tldr) {
+    const sentences = String(call.tldr)
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    rows = sentences.slice(0, 2).map((s) => clip(s, 108));
+  }
 
   const chips = [
     decisions.length > 0 ? `${decisions.length} decisions` : null,
     call.has_transcript ? 'Transcript' : null,
-    call.tldr ? 'AI summary' : null,
+    call.tldr ? 'Summary' : null,
     call.video_url ? 'Recording' : null,
   ].filter(Boolean) as string[];
 
