@@ -29,6 +29,7 @@ export type Confidence = 'high' | 'medium' | 'low';
 export type Detect =
   | { kind: 'transfer'; side: 'erc20' | 'erc721' }
   | { kind: 'event'; topics: string[] }
+  | { kind: 'txtype'; txType: number } // a transaction-type feature (e.g. EIP-7702 set-code), measured from ethereum.transactions
   | { kind: 'deferred'; reason: string };
 
 export type Standard = {
@@ -53,6 +54,12 @@ export const SIG = {
   ERC4626_WITHDRAW: '0xfbde797d201c681b91056529119e0b02407c7bb96a4a2c75c01fc9667232c8db', // Withdraw(...)
   ERC4337_USEROP: '0x49628fd1471006c1482da88028e9ce4dbb080b815c9b0344d39e5a8e6ec1419f', // UserOperationEvent
   ERC777_SENT: '0x06b541ddaa720db2b10a4d0cdac39b8d360425fc073085fac19bc82614677987', // Sent(...)
+  ERC5192_LOCKED: '0x032bc66be43dbccb7487781d168eb7bda224628a3b2c3388bdf69b532a3a1611', // Locked(uint256)
+  ERC5192_UNLOCKED: '0xf27b6ce5b2f5e68ddb2fd95a8a909d4ecf1daaac270935fff052feacb24f1842', // Unlocked(uint256)
+  ERC2309_CONSECUTIVE: '0xdeaa91b6123d068f5821d0fb0678463d1a8a6079fe8af5de3ce5e896dcf9133d', // ConsecutiveTransfer(uint256,uint256,address,address)
+  ERC3525_TRANSFERVALUE: '0x0b2aac84f3ec956911fd78eae5311062972ff949f38412e8da39069d9f068cc6', // TransferValue(uint256,uint256,uint256)
+  ERC3525_SLOTCHANGED: '0xe4f48c240d3b994948aa54f3e2f5fca59263dfe1d52b6e4cf39a5d249b5ccb65', // SlotChanged(uint256,uint256,uint256)
+  ERC4907_UPDATEUSER: '0x4e06b4e7000e659094299b3533b47b6aa8ad048e95e872d23d1f4ee55af89cfe', // UpdateUser(uint256,address,uint64)
 } as const;
 
 // Coverage floor for every on-chain count on this dashboard.
@@ -141,13 +148,67 @@ export const STANDARDS: Standard[] = [
     evidence: 'Emits the Sent(...) event unique to ERC-777 operator transfers.',
     detect: { kind: 'event', topics: [SIG.ERC777_SENT] },
   },
+  {
+    id: 'eip-7702',
+    eip: 'EIP-7702',
+    name: 'EOA Code Delegation',
+    category: 'Accounts',
+    blurb: 'Lets an EOA run smart-account code via a signed delegation.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-7702',
+    confidence: 'high',
+    evidence: 'Measured from type-4 (set-code) authorization transactions — a transaction feature, counted as delegating accounts, not contracts.',
+    detect: { kind: 'txtype', txType: 4 },
+  },
+  {
+    id: 'erc-5192',
+    eip: 'ERC-5192',
+    name: 'Minimal Soulbound NFTs',
+    category: 'Tokens',
+    blurb: 'Non-transferable (soulbound) NFTs.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-5192',
+    confidence: 'high',
+    evidence: 'Emits the Locked / Unlocked events unique to ERC-5192.',
+    detect: { kind: 'event', topics: [SIG.ERC5192_LOCKED, SIG.ERC5192_UNLOCKED] },
+  },
+  {
+    id: 'erc-2309',
+    eip: 'ERC-2309',
+    name: 'Consecutive NFT Transfers',
+    category: 'Tokens',
+    blurb: 'Gas-efficient batch minting of NFT ranges.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-2309',
+    confidence: 'high',
+    evidence: 'Emits the ConsecutiveTransfer event for ranged mints.',
+    detect: { kind: 'event', topics: [SIG.ERC2309_CONSECUTIVE] },
+  },
+  {
+    id: 'erc-3525',
+    eip: 'ERC-3525',
+    name: 'Semi-Fungible Tokens',
+    category: 'Tokens',
+    blurb: 'Tokens that carry both an id and a value (semi-fungible).',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-3525',
+    confidence: 'high',
+    evidence: 'Emits the TransferValue / SlotChanged events unique to ERC-3525.',
+    detect: { kind: 'event', topics: [SIG.ERC3525_TRANSFERVALUE, SIG.ERC3525_SLOTCHANGED] },
+  },
+  {
+    id: 'erc-4907',
+    eip: 'ERC-4907',
+    name: 'Rental NFTs',
+    category: 'Tokens',
+    blurb: 'NFTs with a time-limited "user" role for rentals.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-4907',
+    confidence: 'high',
+    evidence: 'Emits the UpdateUser event when a time-limited user is set.',
+    detect: { kind: 'event', topics: [SIG.ERC4907_UPDATEUSER] },
+  },
 ];
 
 // ── Catalog-only standards: tracked, but detection needs a non-event method.
 // Listed for transparency and as the roadmap for what gets measured next.
 export const DEFERRED: Standard[] = [
   { id: 'eip-712', eip: 'EIP-712', name: 'Typed Structured Data', category: 'Signatures', blurb: 'Human-readable typed data signing.', specUrl: 'https://eips.ethereum.org/EIPS/eip-712', confidence: 'low', evidence: 'Used in off-chain signing; no reliable on-chain event. Measured via usage, not deployments.', detect: { kind: 'deferred', reason: 'Off-chain signatures' } },
-  { id: 'eip-7702', eip: 'EIP-7702', name: 'EOA Code Delegation', category: 'Accounts', blurb: 'Let an EOA temporarily act as a smart account.', specUrl: 'https://eips.ethereum.org/EIPS/eip-7702', confidence: 'low', evidence: 'Measured through type-4 authorization transactions, not contract deployments.', detect: { kind: 'deferred', reason: 'Transaction-type based' } },
   { id: 'erc-2612', eip: 'ERC-2612', name: 'Permit Approvals', category: 'Tokens', blurb: 'Gasless ERC-20 approvals via signatures.', specUrl: 'https://eips.ethereum.org/EIPS/eip-2612', confidence: 'low', evidence: 'A permit() function, not an event — needs ABI/bytecode detection.', detect: { kind: 'deferred', reason: 'Function, not event' } },
   { id: 'erc-1271', eip: 'ERC-1271', name: 'Contract Signatures', category: 'Signatures', blurb: 'Signature validation for smart-contract wallets.', specUrl: 'https://eips.ethereum.org/EIPS/eip-1271', confidence: 'low', evidence: 'isValidSignature() view call — no event trail.', detect: { kind: 'deferred', reason: 'View function' } },
   { id: 'erc-165', eip: 'ERC-165', name: 'Interface Detection', category: 'Interfaces', blurb: 'Standard way to ask a contract which interfaces it supports.', specUrl: 'https://eips.ethereum.org/EIPS/eip-165', confidence: 'low', evidence: 'supportsInterface() view call — detected by probing, not logs.', detect: { kind: 'deferred', reason: 'Interface probe' } },
