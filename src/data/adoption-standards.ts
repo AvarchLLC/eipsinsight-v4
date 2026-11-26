@@ -29,6 +29,7 @@ export type Confidence = 'high' | 'medium' | 'low';
 export type Detect =
   | { kind: 'transfer'; side: 'erc20' | 'erc721' }
   | { kind: 'event'; topics: string[] }
+  | { kind: 'calldata'; selector: string } // function selector (4-byte prefix) on ethereum.transactions.input
   | { kind: 'txtype'; txType: number } // a transaction-type feature (e.g. EIP-7702 set-code), measured from ethereum.transactions
   | { kind: 'deferred'; reason: string };
 
@@ -60,6 +61,7 @@ export const SIG = {
   ERC3525_TRANSFERVALUE: '0x0b2aac84f3ec956911fd78eae5311062972ff949f38412e8da39069d9f068cc6', // TransferValue(uint256,uint256,uint256)
   ERC3525_SLOTCHANGED: '0xe4f48c240d3b994948aa54f3e2f5fca59263dfe1d52b6e4cf39a5d249b5ccb65', // SlotChanged(uint256,uint256,uint256)
   ERC4907_UPDATEUSER: '0x4e06b4e7000e659094299b3533b47b6aa8ad048e95e872d23d1f4ee55af89cfe', // UpdateUser(uint256,address,uint64)
+  ERC6551_ACCOUNT_CREATED: '0x79f19b3655ee38b1ce526556b7731a20c8f218fbda4a3990b6cc4172fdf88722', // ERC6551AccountCreated(address,address,bytes32,uint256,address,uint256)
 } as const;
 
 // Coverage floor for every on-chain count on this dashboard.
@@ -203,15 +205,35 @@ export const STANDARDS: Standard[] = [
     evidence: 'Emits the UpdateUser event when a time-limited user is set.',
     detect: { kind: 'event', topics: [SIG.ERC4907_UPDATEUSER] },
   },
+  {
+    id: 'erc-6551',
+    eip: 'ERC-6551',
+    name: 'Token-Bound Accounts',
+    category: 'Applications',
+    blurb: 'Smart-contract accounts owned by NFTs.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-6551',
+    confidence: 'high',
+    evidence: 'Emits ERC6551AccountCreated when a token-bound account is deployed.',
+    detect: { kind: 'event', topics: [SIG.ERC6551_ACCOUNT_CREATED] },
+  },
+  {
+    id: 'erc-2612',
+    eip: 'ERC-2612',
+    name: 'Permit Approvals',
+    category: 'Tokens',
+    blurb: 'Gasless ERC-20 approvals via off-chain signatures.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-2612',
+    confidence: 'high',
+    evidence: 'Measured from permit() calls (selector 0xd505accf) on ethereum.transactions — counted by implementing token contracts.',
+    detect: { kind: 'calldata', selector: '0xd505accf' },
+  },
 ];
 
 // ── Catalog-only standards: tracked, but detection needs a non-event method.
 // Listed for transparency and as the roadmap for what gets measured next.
 export const DEFERRED: Standard[] = [
-  { id: 'eip-712', eip: 'EIP-712', name: 'Typed Structured Data', category: 'Signatures', blurb: 'Human-readable typed data signing.', specUrl: 'https://eips.ethereum.org/EIPS/eip-712', confidence: 'low', evidence: 'Used in off-chain signing; no reliable on-chain event. Measured via usage, not deployments.', detect: { kind: 'deferred', reason: 'Off-chain signatures' } },
-  { id: 'erc-2612', eip: 'ERC-2612', name: 'Permit Approvals', category: 'Tokens', blurb: 'Gasless ERC-20 approvals via signatures.', specUrl: 'https://eips.ethereum.org/EIPS/eip-2612', confidence: 'low', evidence: 'A permit() function, not an event — needs ABI/bytecode detection.', detect: { kind: 'deferred', reason: 'Function, not event' } },
+  { id: 'eip-712', eip: 'EIP-712', name: 'Typed Structured Data', category: 'Signatures', blurb: 'Human-readable typed data signing.', specUrl: 'https://eips.ethereum.org/EIPS/eip-712', confidence: 'low', evidence: 'Used in off-chain signing; no reliable on-chain event.', detect: { kind: 'deferred', reason: 'Off-chain signatures' } },
   { id: 'erc-1271', eip: 'ERC-1271', name: 'Contract Signatures', category: 'Signatures', blurb: 'Signature validation for smart-contract wallets.', specUrl: 'https://eips.ethereum.org/EIPS/eip-1271', confidence: 'low', evidence: 'isValidSignature() view call — no event trail.', detect: { kind: 'deferred', reason: 'View function' } },
   { id: 'erc-165', eip: 'ERC-165', name: 'Interface Detection', category: 'Interfaces', blurb: 'Standard way to ask a contract which interfaces it supports.', specUrl: 'https://eips.ethereum.org/EIPS/eip-165', confidence: 'low', evidence: 'supportsInterface() view call — detected by probing, not logs.', detect: { kind: 'deferred', reason: 'Interface probe' } },
-  { id: 'erc-6551', eip: 'ERC-6551', name: 'Token-Bound Accounts', category: 'Applications', blurb: 'Smart-contract accounts owned by NFTs.', specUrl: 'https://eips.ethereum.org/EIPS/eip-6551', confidence: 'low', evidence: 'Registry events vary by deployment; needs multi-registry coverage before ranking.', detect: { kind: 'deferred', reason: 'Multi-registry' } },
   { id: 'erc-2981', eip: 'ERC-2981', name: 'NFT Royalties', category: 'Tokens', blurb: 'A standard royalty-info interface for NFTs.', specUrl: 'https://eips.ethereum.org/EIPS/eip-2981', confidence: 'low', evidence: 'royaltyInfo() view function — no event.', detect: { kind: 'deferred', reason: 'View function' } },
 ];

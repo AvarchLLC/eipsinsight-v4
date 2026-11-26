@@ -241,7 +241,12 @@ async function getValueMoved(window: Window): Promise<ValueMoved> {
 }
 
 // Contract standards (shown in the main leaderboard) vs transaction features.
-const CONTRACT_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'event' || s.detect.kind === 'transfer')
+const CONTRACT_STANDARDS = STANDARDS.filter(
+  (s) => s.detect.kind === 'event' || s.detect.kind === 'transfer' || s.detect.kind === 'calldata',
+)
+const CALLDATA_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'calldata') as (Standard & {
+  detect: { kind: 'calldata'; selector: string }
+})[]
 const TXTYPE_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'txtype') as (Standard & {
   detect: { kind: 'txtype'; txType: number }
 })[]
@@ -283,6 +288,40 @@ const leaderboardCache = new Map<Window, { at: number; data: AdoptionLeaderboard
 
 function emptyLeaderboard(window: Window): AdoptionLeaderboard {
   return { available: false, window, rows: [], txFeatures: [], coverage: COVERAGE, generatedAt: new Date().toISOString() }
+}
+
+async function getCalldataMetrics(
+  s: Standard & { detect: { kind: 'calldata'; selector: string } },
+  interval: string,
+): Promise<{ contracts: number; active: number; events: number }> {
+  const sel = s.detect.selector
+  const [snap, winRows] = await Promise.all([
+    readSnapshot<{ contracts: number }>(`alltime_calldata:${s.id}`),
+    clickhouseQuery<{ active: string; events: string }>(
+      `SELECT uniqExact(to_address) AS active, count() AS events
+       FROM ethereum.transactions
+       WHERE startsWith(input, '${sel}')
+         AND to_address != ''
+         AND is_deleted = 0
+         AND block_timestamp >= now() - ${interval}`,
+      { timeoutMs: 30_000 },
+    ),
+  ])
+  let contracts = snap ? N(snap.contracts) : 0
+  if (!snap) {
+    const allRows = await clickhouseQuery<{ contracts: string }>(
+      `SELECT uniqExact(to_address) AS contracts
+       FROM ethereum.transactions
+       WHERE startsWith(input, '${sel}') AND to_address != '' AND is_deleted = 0`,
+      { timeoutMs: 45_000 },
+    )
+    contracts = N(allRows[0]?.contracts)
+  }
+  return {
+    contracts,
+    active: N(winRows[0]?.active),
+    events: N(winRows[0]?.events),
+  }
 }
 
 // Distinct accounts + tx count for a transaction-type feature, in window.
@@ -355,6 +394,21 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     }
     contractsBy.set('erc-20', transferAllTime.erc20)
     contractsBy.set('erc-721', transferAllTime.erc721)
+
+    await Promise.all(
+      CALLDATA_STANDARDS.map(async (s) => {
+        try {
+          const m = await getCalldataMetrics(s, interval)
+          contractsBy.set(s.id, m.contracts)
+          activeBy.set(s.id, m.active)
+          eventsBy.set(s.id, m.events)
+        } catch {
+          contractsBy.set(s.id, 0)
+          activeBy.set(s.id, 0)
+          eventsBy.set(s.id, 0)
+        }
+      }),
+    )
 
     // Growth (momentum) per standard, from the monthly active series. Trends are
     // Postgres-snapshotted for the heavy standards and cheap for the rest, so
@@ -575,6 +629,23 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
       ])
       metrics = { contracts: N(allRows[0]?.accounts), active: N(winRows[0]?.active), events: N(winRows[0]?.txs) }
       directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
+    } else if (ranked.detect.kind === 'calldata') {
+      const sel = ranked.detect.selector
+      const [m, dirRows] = await Promise.all([
+        getCalldataMetrics(ranked as Standard & { detect: { kind: 'calldata'; selector: string } }, interval),
+        clickhouseQuery<{ address: string; events: string; last: string }>(
+          `SELECT to_address AS address, count() AS events, max(block_timestamp) AS last
+           FROM ethereum.transactions
+           WHERE startsWith(input, '${sel}')
+             AND to_address != ''
+             AND is_deleted = 0
+             AND block_timestamp >= now() - ${interval}
+           GROUP BY to_address ORDER BY events DESC LIMIT 25`,
+          { timeoutMs: 30_000 },
+        ),
+      ])
+      metrics = m
+      directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
     }
 
     const data: StandardDetail = {
@@ -781,6 +852,21 @@ async function getTrend(id: string): Promise<AdoptionTrend> {
       return tdata
     }
 
+    if (s.detect.kind === 'calldata') {
+      const sel = s.detect.selector
+      const crows = await clickhouseQuery<{ m: string; active: string; events: string }>(
+        `SELECT toStartOfMonth(block_timestamp) AS m, uniqExact(to_address) AS active, count() AS events
+         FROM ethereum.transactions
+         WHERE startsWith(input, '${sel}') AND to_address != '' AND is_deleted = 0
+         GROUP BY m ORDER BY m`,
+        { timeoutMs: 60_000 },
+      )
+      const cseries: TrendPoint[] = crows.map((r) => ({ month: r.m.slice(0, 7), active: N(r.active), events: N(r.events) }))
+      const cdata: AdoptionTrend = { available: true, id, series: cseries, coverage: COVERAGE, generatedAt: new Date().toISOString() }
+      trendCache.set(id, { at: Date.now(), data: cdata })
+      return cdata
+    }
+
     const where =
       s.detect.kind === 'transfer'
         ? `topic0 = '${SIG.TRANSFER}' AND ${s.detect.side === 'erc20' ? 'topic3 IS NULL' : 'topic3 IS NOT NULL'}`
@@ -838,11 +924,22 @@ async function getDirectory(id: string, window: Window, limit: number): Promise<
            GROUP BY from_address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )
-      : await clickhouseQuery<{ address: string; events: string; last: string }>(
-          `SELECT address, count() AS events, max(block_timestamp) AS last
-           FROM ethereum.logs
-           WHERE block_timestamp >= now() - ${interval} AND ${logsWhereFor(s)}
-           GROUP BY address ORDER BY events DESC LIMIT ${limit}`,
+      : s.detect.kind === 'calldata'
+        ? await clickhouseQuery<{ address: string; events: string; last: string }>(
+            `SELECT to_address AS address, count() AS events, max(block_timestamp) AS last
+             FROM ethereum.transactions
+             WHERE startsWith(input, '${s.detect.selector}')
+               AND to_address != ''
+               AND is_deleted = 0
+               AND block_timestamp >= now() - ${interval}
+             GROUP BY to_address ORDER BY events DESC LIMIT ${limit}`,
+            { timeoutMs: 45_000 },
+          )
+        : await clickhouseQuery<{ address: string; events: string; last: string }>(
+            `SELECT address, count() AS events, max(block_timestamp) AS last
+             FROM ethereum.logs
+             WHERE block_timestamp >= now() - ${interval} AND ${logsWhereFor(s)}
+             GROUP BY address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )
     return {

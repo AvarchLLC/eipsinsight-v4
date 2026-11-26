@@ -725,10 +725,13 @@ export function AdoptionDashboard({
                   <div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-mono text-xs font-semibold text-[var(--brand-strong)]">{c.eip}</span>
-                      <LedgerBadge token="draft" className="text-[9px]">Queued</LedgerBadge>
+                      <LedgerBadge token="draft" className="text-[9px]">
+                        {c.deferredReason ?? 'Queued'}
+                      </LedgerBadge>
                     </div>
                     <p className="mt-1 text-xs font-medium text-[var(--ink)]">{c.name}</p>
                     <p className="mt-1.5 text-xs leading-relaxed text-[var(--ink-muted)]">{c.blurb}</p>
+                    <p className="mt-2 font-mono text-[10px] text-[var(--ink-faint)]">{c.evidence}</p>
                   </div>
                   <div className="mt-3 flex items-center gap-1 font-mono text-[10px] text-[var(--ink-faint)]">
                     <span>Specification</span>
