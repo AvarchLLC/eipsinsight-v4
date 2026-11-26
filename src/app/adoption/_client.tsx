@@ -18,10 +18,13 @@ import type {
   AdoptionLeaderboard,
   AdoptionRow,
   AddressLookup,
+  ValueMoved,
   Window,
 } from '@/server/orpc/procedures/adoption';
 
 const compact = (n: number): string => {
+  if (n >= 1_000_000_000_000) return `${(n / 1_000_000_000_000).toFixed(2)}T`;
+  if (n >= 1_000_000_000) return `${(n / 1_000_000_000).toFixed(2)}B`;
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}k`;
   return `${n}`;
@@ -370,6 +373,7 @@ export function AdoptionDashboard({
 }) {
   const [window, setWindow] = useState<Window>(initialLeaderboard.window);
   const [lb, setLb] = useState<AdoptionLeaderboard>(initialLeaderboard);
+  const [valueMoved, setValueMoved] = useState<ValueMoved | null>(null);
   const [loading, setLoading] = useState(false);
 
   const cache = useMemo(() => {
@@ -419,6 +423,21 @@ export function AdoptionDashboard({
       cancelled = true;
     };
   }, [totals.available]);
+
+  useEffect(() => {
+    let cancelled = false;
+    client.adoption
+      .valueMoved({ window })
+      .then((res) => {
+        if (!cancelled) setValueMoved(res);
+      })
+      .catch(() => {
+        if (!cancelled) setValueMoved(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [window]);
 
   const [sort, setSort] = useState<SortKey>('active');
   const rows = useMemo(() => [...lb.rows].sort((a, b) => b[sort] - a[sort]), [lb.rows, sort]);
@@ -508,9 +527,15 @@ export function AdoptionDashboard({
             <p className="mt-1 text-xs text-[var(--ink-muted)]">Emitted events recently</p>
           </div>
           <div className="px-5 py-4">
-            <p className="eyebrow">Networks Covered</p>
-            <p className="t-figure mt-2 text-2xl sm:text-3xl">{overview.networks}</p>
-            <p className="mt-1 text-xs text-[var(--ink-muted)]">{overview.coverage.network}</p>
+            <p className="eyebrow">ERC-20 Value Moved ({window})</p>
+            <p className="t-figure mt-2 text-2xl sm:text-3xl">
+              {valueMoved?.available ? `$${compact(valueMoved.usd)}` : '—'}
+            </p>
+            <p className="mt-1 text-xs text-[var(--ink-muted)]">
+              {valueMoved?.available
+                ? `${valueMoved.tokens} priced tokens · Tier ${valueMoved.tier ?? 1}`
+                : 'Computing USD floor…'}
+            </p>
           </div>
         </div>
 

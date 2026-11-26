@@ -165,33 +165,78 @@ const PRICED_ETH_18 = [
 ]
 const ALL_PRICED = [...PRICED_USD_6, ...PRICED_USD_18, ...PRICED_ETH_18]
 
-export type ValueMoved = { available: boolean; window: Window; usd: number; tokens: number; generatedAt: string }
-const valueCache = new Map<Window, { at: number; data: ValueMoved }>()
+export type ValueMoved = {
+  available: boolean;
+  window: Window;
+  usd: number;
+  tier1Usd?: number;
+  tier2Usd?: number;
+  tokens: number;
+  tier?: 1 | 2;
+  generatedAt: string;
+};
+const valueCache = new Map<Window, { at: number; data: ValueMoved }>();
 
 async function getValueMoved(window: Window): Promise<ValueMoved> {
-  const base = { window, generatedAt: new Date().toISOString() }
-  if (!clickhouseConfigured()) return { available: false, usd: 0, tokens: ALL_PRICED.length, ...base }
-  const hit = valueCache.get(window)
-  if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data
+  const base = { window, generatedAt: new Date().toISOString() };
+  const hit = valueCache.get(window);
+  if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data;
+
+  // 1) Prefer the scheduler-precomputed Tier-1 + Tier-2 snapshot (instant).
+  const snap = await readSnapshot<ValueMoved>(`value_moved:${window}`);
+  if (snap && snap.available) {
+    const data: ValueMoved = {
+      available: true,
+      window,
+      usd: N(snap.usd),
+      tier1Usd: snap.tier1Usd != null ? N(snap.tier1Usd) : undefined,
+      tier2Usd: snap.tier2Usd != null ? N(snap.tier2Usd) : undefined,
+      tokens: N(snap.tokens) || ALL_PRICED.length,
+      tier: snap.tier === 2 ? 2 : 1,
+      generatedAt: snap.generatedAt || base.generatedAt,
+    };
+    valueCache.set(window, { at: Date.now(), data });
+    return data;
+  }
+
+  if (!clickhouseConfigured()) return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
   try {
-    const interval = WINDOW_SQL[window]
-    const rows = await clickhouseQuery<{ usd: string }>(
+    const interval = WINDOW_SQL[window];
+    const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
+    const dexEntries = Object.entries(dexSnap?.prices ?? {});
+    const allTokens = [...ALL_PRICED, ...dexEntries.map(([t]) => t)];
+    const tier2Arms = dexEntries.map(([tok, info]) => `token_address = '${tok}', amt * ${Number(info.usdPerRaw)}`).join(', ');
+    const tier2Expr = tier2Arms ? `multiIf(${tier2Arms}, 0)` : '0';
+
+    const rows = await clickhouseQuery<{ tier1_usd: string; tier2_usd: string }>(
       `WITH (SELECT price_usd FROM blob_lens.eth_daily_price ORDER BY date DESC LIMIT 1) AS ethp,
             toFloat64(reinterpretAsUInt256(reverse(unhex(substring(amount_raw, 3))))) AS amt
-       SELECT round(sum(multiIf(
-         token_address IN (${quote(PRICED_USD_6)}), amt / 1e6,
-         token_address IN (${quote(PRICED_USD_18)}), amt / 1e18,
-         token_address IN (${quote(PRICED_ETH_18)}), amt / 1e18 * ethp,
-         0))) AS usd
+       SELECT
+         round(sum(multiIf(
+           token_address IN (${quote(PRICED_USD_6)}), amt / 1e6,
+           token_address IN (${quote(PRICED_USD_18)}), amt / 1e18,
+           token_address IN (${quote(PRICED_ETH_18)}), amt / 1e18 * ethp,
+           0))) AS tier1_usd,
+         round(sum(${tier2Expr})) AS tier2_usd
        FROM ethereum.erc20_transfers
-       WHERE block_timestamp >= now() - ${interval} AND token_address IN (${quote(ALL_PRICED)})`,
+       WHERE block_timestamp >= now() - ${interval} AND token_address IN (${quote(allTokens)})`,
       { timeoutMs: 30_000 },
-    )
-    const data: ValueMoved = { available: true, usd: N(rows[0]?.usd), tokens: ALL_PRICED.length, ...base }
-    valueCache.set(window, { at: Date.now(), data })
-    return data
+    );
+    const tier1Usd = N(rows[0]?.tier1_usd);
+    const tier2Usd = N(rows[0]?.tier2_usd);
+    const data: ValueMoved = {
+      available: true,
+      usd: tier1Usd + tier2Usd,
+      tier1Usd,
+      tier2Usd,
+      tokens: allTokens.length,
+      tier: dexEntries.length > 0 ? 2 : 1,
+      ...base,
+    };
+    valueCache.set(window, { at: Date.now(), data });
+    return data;
   } catch {
-    return { available: false, usd: 0, tokens: ALL_PRICED.length, ...base }
+    return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
   }
 }
 
