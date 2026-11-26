@@ -179,69 +179,6 @@ export type ValueMoved = {
 };
 const valueCache = new Map<Window, { at: number; data: ValueMoved }>();
 
-async function getValueMoved(window: Window): Promise<ValueMoved> {
-  const base = { window, generatedAt: new Date().toISOString() };
-  const hit = valueCache.get(window);
-  if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data;
-
-  // 1) Prefer the scheduler-precomputed Tier-1 + Tier-2 snapshot (instant).
-  const snap = await readSnapshot<ValueMoved>(`value_moved:${window}`);
-  if (snap && snap.available) {
-    const data: ValueMoved = {
-      available: true,
-      window,
-      usd: N(snap.usd),
-      tier1Usd: snap.tier1Usd != null ? N(snap.tier1Usd) : undefined,
-      tier2Usd: snap.tier2Usd != null ? N(snap.tier2Usd) : undefined,
-      tokens: N(snap.tokens) || ALL_PRICED.length,
-      tier: snap.tier === 2 ? 2 : 1,
-      generatedAt: snap.generatedAt || base.generatedAt,
-    };
-    valueCache.set(window, { at: Date.now(), data });
-    return data;
-  }
-
-  if (!clickhouseConfigured()) return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
-  try {
-    const tsCond = tsFilter('block_timestamp', window);
-    const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
-    const dexEntries = Object.entries(dexSnap?.prices ?? {});
-    const allTokens = [...ALL_PRICED, ...dexEntries.map(([t]) => t)];
-    const tier2Arms = dexEntries.map(([tok, info]) => `token_address = '${tok}', amt * ${Number(info.usdPerRaw)}`).join(', ');
-    const tier2Expr = tier2Arms ? `multiIf(${tier2Arms}, 0)` : '0';
-
-    const rows = await clickhouseQuery<{ tier1_usd: string; tier2_usd: string }>(
-      `WITH (SELECT price_usd FROM blob_lens.eth_daily_price ORDER BY date DESC LIMIT 1) AS ethp,
-            toFloat64(reinterpretAsUInt256(reverse(unhex(substring(amount_raw, 3))))) AS amt
-       SELECT
-         round(sum(multiIf(
-           token_address IN (${quote(PRICED_USD_6)}), amt / 1e6,
-           token_address IN (${quote(PRICED_USD_18)}), amt / 1e18,
-           token_address IN (${quote(PRICED_ETH_18)}), amt / 1e18 * ethp,
-           0))) AS tier1_usd,
-         round(sum(${tier2Expr})) AS tier2_usd
-       FROM ethereum.erc20_transfers
-       WHERE ${tsCond} AND token_address IN (${quote(allTokens)})`,
-      { timeoutMs: 30_000 },
-    );
-    const tier1Usd = N(rows[0]?.tier1_usd);
-    const tier2Usd = N(rows[0]?.tier2_usd);
-    const data: ValueMoved = {
-      available: true,
-      usd: tier1Usd + tier2Usd,
-      tier1Usd,
-      tier2Usd,
-      tokens: allTokens.length,
-      tier: dexEntries.length > 0 ? 2 : 1,
-      ...base,
-    };
-    valueCache.set(window, { at: Date.now(), data });
-    return data;
-  } catch {
-    return { available: false, usd: 0, tokens: ALL_PRICED.length, tier: 1, ...base };
-  }
-}
-
 // ── USD breakdown: top priced ERC-20 tokens by USD value moved in window ──
 const TIER1_LABELS: Record<string, string> = {
   '0xdac17f958d2ee523a2206206994597c13d831ec7': 'USDT',
@@ -275,9 +212,140 @@ export type UsdBreakdownResult = {
 };
 
 const usdBreakdownCache = new Map<string, { at: number; data: UsdBreakdownResult }>();
+const inflightUsd = new Map<Window, Promise<{ value: ValueMoved; breakdown: UsdBreakdownResult }>>();
+
+async function computeTokenUsd(window: Window): Promise<{ value: ValueMoved; breakdown: UsdBreakdownResult }> {
+  const existing = inflightUsd.get(window);
+  if (existing) return existing;
+
+  const work = (async () => {
+    const generatedAt = new Date().toISOString();
+    const emptyVal: ValueMoved = { available: false, window, usd: 0, tokens: ALL_PRICED.length, tier: 1, generatedAt };
+    const emptyBk: UsdBreakdownResult = { available: false, window, totalUsd: 0, rows: [], generatedAt };
+    if (!clickhouseConfigured()) return { value: emptyVal, breakdown: emptyBk };
+
+    try {
+      const tsCond = tsFilter('block_timestamp', window);
+      const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
+      const dexMap = new Map(Object.entries(dexSnap?.prices ?? {}));
+      const allTokens = [...ALL_PRICED, ...dexMap.keys()];
+
+      const [ethRows, rows] = await Promise.all([
+        clickhouseQuery<{ price_usd: string }>(
+          `SELECT price_usd FROM blob_lens.eth_daily_price ORDER BY date DESC LIMIT 1`,
+          { timeoutMs: 15_000 },
+        ),
+        clickhouseQuery<{ token_address: string; total_amt: string; transfers: string }>(
+          `WITH toFloat64(reinterpretAsUInt256(reverse(unhex(substring(amount_raw, 3))))) AS amt
+           SELECT token_address, sum(amt) AS total_amt, count() AS transfers
+           FROM ethereum.erc20_transfers
+           WHERE ${tsCond} AND token_address IN (${quote(allTokens)})
+           GROUP BY token_address`,
+          { timeoutMs: 90_000 },
+        ),
+      ]);
+
+      const ethp = N(ethRows[0]?.price_usd);
+      const usd6 = new Set(PRICED_USD_6);
+      const usd18 = new Set(PRICED_USD_18);
+      const eth18 = new Set(PRICED_ETH_18);
+
+      let tier1Usd = 0;
+      let tier2Usd = 0;
+      const parsed: UsdBreakdownRow[] = [];
+
+      for (const r of rows) {
+        const addr = r.token_address.toLowerCase();
+        const amt = N(r.total_amt);
+        const transfers = N(r.transfers);
+        let usd = 0;
+        let tier: 1 | 2 = 1;
+
+        if (usd6.has(addr)) usd = amt / 1e6;
+        else if (usd18.has(addr)) usd = amt / 1e18;
+        else if (eth18.has(addr)) usd = (amt / 1e18) * ethp;
+        else {
+          tier = 2;
+          const info = dexMap.get(addr);
+          if (info) usd = amt * Number(info.usdPerRaw);
+        }
+
+        const roundedUsd = Math.round(usd);
+        if (roundedUsd <= 0) continue;
+        if (tier === 1) tier1Usd += roundedUsd;
+        else tier2Usd += roundedUsd;
+
+        const label = TIER1_LABELS[addr];
+        parsed.push({
+          address: addr,
+          symbol: label ?? `${addr.slice(0, 6)}…${addr.slice(-4)}`,
+          tier,
+          usd: roundedUsd,
+          transfers,
+        });
+      }
+
+      parsed.sort((a, b) => b.usd - a.usd);
+      const totalUsd = tier1Usd + tier2Usd;
+
+      const value: ValueMoved = {
+        available: true,
+        window,
+        usd: totalUsd,
+        tier1Usd,
+        tier2Usd,
+        tokens: allTokens.length,
+        tier: dexMap.size > 0 ? 2 : 1,
+        generatedAt,
+      };
+      const breakdown: UsdBreakdownResult = {
+        available: true,
+        window,
+        totalUsd,
+        rows: parsed.slice(0, 25),
+        generatedAt,
+      };
+
+      valueCache.set(window, { at: Date.now(), data: value });
+      usdBreakdownCache.set(window, { at: Date.now(), data: breakdown });
+      return { value, breakdown };
+    } catch {
+      return { value: emptyVal, breakdown: emptyBk };
+    } finally {
+      inflightUsd.delete(window);
+    }
+  })();
+
+  inflightUsd.set(window, work);
+  return work;
+}
+
+async function getValueMoved(window: Window): Promise<ValueMoved> {
+  const hit = valueCache.get(window);
+  if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data;
+
+  // 1) Prefer the scheduler-precomputed Tier-1 + Tier-2 snapshot (instant).
+  const snap = await readSnapshot<ValueMoved>(`value_moved:${window}`);
+  if (snap && snap.available) {
+    const data: ValueMoved = {
+      available: true,
+      window,
+      usd: N(snap.usd),
+      tier1Usd: snap.tier1Usd != null ? N(snap.tier1Usd) : undefined,
+      tier2Usd: snap.tier2Usd != null ? N(snap.tier2Usd) : undefined,
+      tokens: N(snap.tokens) || ALL_PRICED.length,
+      tier: snap.tier === 2 ? 2 : 1,
+      generatedAt: snap.generatedAt || new Date().toISOString(),
+    };
+    valueCache.set(window, { at: Date.now(), data });
+    return data;
+  }
+
+  const { value } = await computeTokenUsd(window);
+  return value;
+}
 
 async function getUsdBreakdown(window: Window): Promise<UsdBreakdownResult> {
-  const base = { window, generatedAt: new Date().toISOString() };
   const hit = usdBreakdownCache.get(window);
   if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data;
 
@@ -287,54 +355,8 @@ async function getUsdBreakdown(window: Window): Promise<UsdBreakdownResult> {
     return snap;
   }
 
-  if (!clickhouseConfigured()) return { available: false, totalUsd: 0, rows: [], ...base };
-
-  try {
-    const tsCond = tsFilter('block_timestamp', window);
-    const dexSnap = await readSnapshot<{ prices?: Record<string, { usdPerRaw: number }> }>('dex_token_prices');
-    const dexEntries = Object.entries(dexSnap?.prices ?? {});
-    const allTokens = [...ALL_PRICED, ...dexEntries.map(([t]) => t)];
-    const tier2Arms = dexEntries.map(([tok, info]) => `token_address = '${tok}', amt * ${Number(info.usdPerRaw)}`).join(', ');
-    const tier2Expr = tier2Arms ? `multiIf(${tier2Arms}, 0)` : '0';
-
-    const rows = await clickhouseQuery<{ token_address: string; usd: string; transfers: string }>(
-      `WITH (SELECT price_usd FROM blob_lens.eth_daily_price ORDER BY date DESC LIMIT 1) AS ethp,
-            toFloat64(reinterpretAsUInt256(reverse(unhex(substring(amount_raw, 3))))) AS amt
-       SELECT
-         token_address,
-         round(sum(multiIf(
-           token_address IN (${quote(PRICED_USD_6)}), amt / 1e6,
-           token_address IN (${quote(PRICED_USD_18)}), amt / 1e18,
-           token_address IN (${quote(PRICED_ETH_18)}), amt / 1e18 * ethp,
-           ${tier2Expr}))) AS usd,
-         count() AS transfers
-       FROM ethereum.erc20_transfers
-       WHERE ${tsCond} AND token_address IN (${quote(allTokens)})
-       GROUP BY token_address
-       HAVING usd > 0
-       ORDER BY usd DESC
-       LIMIT 25`,
-      { timeoutMs: 45_000 },
-    );
-
-    const parsed: UsdBreakdownRow[] = rows.map((r) => {
-      const addr = r.token_address.toLowerCase();
-      const label = TIER1_LABELS[addr];
-      return {
-        address: addr,
-        symbol: label ?? `${addr.slice(0, 6)}…${addr.slice(-4)}`,
-        tier: label ? 1 : 2,
-        usd: N(r.usd),
-        transfers: N(r.transfers),
-      };
-    });
-    const totalUsd = parsed.reduce((acc, r) => acc + r.usd, 0);
-    const data: UsdBreakdownResult = { available: true, totalUsd, rows: parsed, ...base };
-    usdBreakdownCache.set(window, { at: Date.now(), data });
-    return data;
-  } catch {
-    return { available: false, totalUsd: 0, rows: [], ...base };
-  }
+  const { breakdown } = await computeTokenUsd(window);
+  return breakdown;
 }
 
 // Contract standards (shown in the main leaderboard) vs transaction features.
