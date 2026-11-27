@@ -354,6 +354,8 @@ export interface PqImpl {
 }
 
 /** PQ_IMPLEMENTATIONS[eipNumber][client | 'Devnet'] = { state, url? }. */
+const PQ_DEVNET_1_URL = 'https://notes.ethereum.org/@ethpandaops/pq-devnet-1';
+
 export const PQ_IMPLEMENTATIONS: Record<number, Record<string, PqImpl>> = {
   8141: {
     Geth: { state: 'tested' },
@@ -362,8 +364,27 @@ export const PQ_IMPLEMENTATIONS: Record<number, Record<string, PqImpl>> = {
     Besu: { state: 'planned' },
     Devnet: { state: 'tested' },
   },
-  // 8288 / 8292 / 8310 / 8321 / 8365: consensus-layer, early-stage, cells default
-  // to 'not-started' until client work is verified.
+  8292: {
+    Lighthouse: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Prysm: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Teku: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Nimbus: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Grandine: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Lodestar: { state: 'interoperable', url: PQ_DEVNET_1_URL },
+    Devnet: { state: 'tested', url: PQ_DEVNET_1_URL },
+  },
+  8310: {
+    Lighthouse: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Prysm: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Teku: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Nimbus: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Grandine: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Lodestar: { state: 'implemented', url: PQ_DEVNET_1_URL },
+    Devnet: { state: 'implemented', url: PQ_DEVNET_1_URL },
+  },
+  8288: {
+    Devnet: { state: 'planned', url: '/calls/pqts' },
+  },
 };
 
 export const IMPL_STATE_ORDER: ImplState[] = ['not-started', 'planned', 'pr-open', 'implemented', 'interoperable', 'tested'];
@@ -416,8 +437,8 @@ export const PQ_MIGRATION: MigrationCategory[] = [
     current: 'BLS12-381',
     pqCandidate: 'Hash-based (XMSS)',
     eips: [8310, 8365],
-    readiness: 'spec',
-    note: 'Keystore design drafted (8310); the deposit-guard that stops new BLS validators (8365) is CFI for Hegota.',
+    readiness: 'in-progress',
+    note: 'leanXMSS genesis keys active on pq-devnet-1 (8310); BLS-to-XMSS transition deferred to later devnet; deposit-guard (8365) is CFI for Hegota.',
   },
   {
     name: 'Attestation aggregation',
@@ -425,8 +446,8 @@ export const PQ_MIGRATION: MigrationCategory[] = [
     current: 'BLS aggregation',
     pqCandidate: 'STARK / hash-based aggregation',
     eips: [8292, 8288],
-    readiness: 'research',
-    note: 'Aggregating hash-based signatures at validator scale is the open scalability problem.',
+    readiness: 'in-progress',
+    note: 'pq-devnet-1 live across all CL clients using leanXMSS + leanVM v0.19.x STARK aggregation; segmented proof broadcast planned next.',
   },
   {
     name: 'Beacon randomness (RANDAO)',
@@ -482,7 +503,7 @@ export const PQ_MIGRATION: MigrationCategory[] = [
 // ── PQTS testnet ─────────────────────────────────────────────────────────────
 // The Post-Quantum Transaction Signatures breakout (chaired by Antonio Sanso, EF)
 // runs a research testnet exercising PQ signatures end to end. Sourced from the
-// PQTS breakout calls (/calls/pqts); facts from Breakout #16 (Sep 30 2026).
+// PQTS breakout calls (/calls/pqts); updated through Breakout #19 (Nov 25 2026).
 
 export interface PqtsPhase {
   version: string;
@@ -514,7 +535,7 @@ export const PQTS_TESTNET = {
     {
       version: 'v0.3',
       status: 'in-progress',
-      summary: 'In-mempool signature aggregation (EIP-8288) via LeanVM + Lean-SPHINCS. Contributors wanted.',
+      summary: 'Lean-SPHINCS+ (sphincs.art defaults) targeting Bogota devnet; in-mempool aggregation (EIP-8288) via LeanVM deferred past bogota-devnet-3.',
       schemes: ['Lean-SPHINCS', 'LeanVM'],
       eips: [8288],
     },
