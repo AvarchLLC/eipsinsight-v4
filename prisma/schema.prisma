@@ -438,6 +438,7 @@ model protocol_calls_upcoming {
   issue_number Int       @unique
   issue_url    String?
   youtube_url  String?
+  zoom_url     String?
   updated_at   DateTime  @default(now()) @db.Timestamptz(6)
 
   @@index([occurs_on])

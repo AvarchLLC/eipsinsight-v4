@@ -16,6 +16,8 @@ import {
 import { cn } from '@/lib/utils';
 import { callDisplayName, callSeriesBadgeClass, callSeriesShort, callSeriesToken } from '@/data/call-series';
 import { LedgerBadge } from '@/components/ledger/badge';
+import { AddToCalendarButton } from '@/components/calls/add-to-calendar';
+import { CallSubscriptionCard } from '@/components/calls/call-subscription-card';
 import { CallTldr } from '@/components/upgrade/call-tldr';
 import {
   SeriesFilter,
@@ -43,6 +45,8 @@ export interface UpcomingCall {
   issue_url: string | null;
   occurs_at: string | null;
   occurs_on: string | null;
+  youtube_url?: string | null;
+  zoom_url?: string | null;
 }
 
 function SeriesBadge({ series }: { series: string | null }) {
@@ -216,11 +220,14 @@ export function CallsBrowser({
                 <span className="h-px w-10 bg-[var(--brand)]" />
                 <span className="h-px flex-1 bg-[var(--ink)]" />
               </div>
-              <div className="flex items-center gap-2.5">
-                <CalendarClock className="h-5 w-5 shrink-0 text-[var(--brand-strong)]" />
-                <h2 className="t-h2 font-serif text-2xl font-bold tracking-tight text-[var(--ink)] sm:text-3xl">
-                  Upcoming Calls
-                </h2>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5">
+                  <CalendarClock className="h-5 w-5 shrink-0 text-[var(--brand-strong)]" />
+                  <h2 className="t-h2 font-serif text-2xl font-bold tracking-tight text-[var(--ink)] sm:text-3xl">
+                    Upcoming Calls
+                  </h2>
+                </div>
+                <CallSubscriptionCard upcoming={upcoming} />
               </div>
               <p className="mt-1 text-xs text-[var(--ink-muted)] max-w-4xl leading-relaxed">
                 Parsed from open agenda issues on ethereum/pm.
@@ -254,6 +261,14 @@ export function CallsBrowser({
                         <CalendarClock className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
                         {formatUpcoming(call)}
                       </span>
+                      <AddToCalendarButton
+                        title={call.title}
+                        occursAt={call.occurs_at}
+                        occursOn={call.occurs_on}
+                        detailsUrl={call.issue_url}
+                        zoomUrl={call.zoom_url}
+                        youtubeUrl={call.youtube_url}
+                      />
                     </li>
                   ))}
                 </ul>

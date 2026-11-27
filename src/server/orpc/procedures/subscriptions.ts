@@ -16,7 +16,7 @@ import {
   type RepositoryFilter,
   type UpgradeFilter,
 } from "@/lib/subscriptions";
-import { protectedProcedure, ORPCError } from "./types";
+import { protectedProcedure, optionalAuthProcedure, ORPCError } from "./types";
 import { PQ_EIPS } from "@/data/pq-registry";
 
 const repoSchema = z.enum(PROPOSAL_REPOS);
@@ -707,5 +707,94 @@ export const subscriptionsProcedures = {
           path: `/upgrade/${subscription.upgrades.slug}`,
         })),
       };
+    }),
+
+  getCallSubscriptions: protectedProcedure
+    .input(z.object({}))
+    .handler(async ({ context }) => {
+      const user = await requireSessionUser(context.headers);
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS call_series_subscription (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          email TEXT,
+          series TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await prisma.$executeRawUnsafe(`ALTER TABLE call_series_subscription ADD COLUMN IF NOT EXISTS email TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE call_series_subscription ALTER COLUMN user_id DROP NOT NULL`);
+      const rows = await prisma.$queryRawUnsafe<Array<{ series: string }>>(
+        `SELECT series FROM call_series_subscription WHERE user_id = $1 ORDER BY series ASC`,
+        user.id,
+      );
+      return { series: rows.map((r) => r.series) };
+    }),
+
+  subscribeToCalls: optionalAuthProcedure
+    .input(z.object({
+      series: z.array(z.string().min(1)).min(1),
+      email: z.string().email().optional(),
+    }))
+    .handler(async ({ context, input }) => {
+      const session = await auth.api.getSession({ headers: context.headers });
+      const userId = session?.user?.id ?? null;
+      const targetEmail = (session?.user?.email ?? input.email ?? "").trim().toLowerCase();
+      if (!userId && !targetEmail) {
+        throw new ORPCError("BAD_REQUEST", { message: "Please enter a valid email address." });
+      }
+
+      await prisma.$executeRawUnsafe(`
+        CREATE TABLE IF NOT EXISTS call_series_subscription (
+          id TEXT PRIMARY KEY,
+          user_id TEXT,
+          email TEXT,
+          series TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+      `);
+      await prisma.$executeRawUnsafe(`ALTER TABLE call_series_subscription ADD COLUMN IF NOT EXISTS email TEXT`);
+      await prisma.$executeRawUnsafe(`ALTER TABLE call_series_subscription ALTER COLUMN user_id DROP NOT NULL`);
+
+      const normalized = Array.from(new Set(input.series.map((s) => s.trim().toLowerCase()).filter(Boolean)));
+      const finalList = normalized.includes("all") ? ["all"] : normalized;
+
+      if (userId) {
+        await prisma.$executeRawUnsafe(`DELETE FROM call_series_subscription WHERE user_id = $1`, userId);
+      } else {
+        await prisma.$executeRawUnsafe(`DELETE FROM call_series_subscription WHERE user_id IS NULL AND LOWER(email) = $1`, targetEmail);
+      }
+
+      for (const s of finalList) {
+        const keyPart = userId ?? targetEmail.replace(/[^a-z0-9]/gi, "_");
+        const id = `callsub_${keyPart}_${s}`;
+        await prisma.$executeRawUnsafe(
+          `INSERT INTO call_series_subscription (id, user_id, email, series) VALUES ($1, $2, $3, $4)
+           ON CONFLICT (id) DO UPDATE SET email = EXCLUDED.email, updated_at = NOW()`,
+          id,
+          userId,
+          targetEmail || null,
+          s,
+        );
+      }
+      return { success: true, series: finalList };
+    }),
+
+  unsubscribeFromCalls: protectedProcedure
+    .input(z.object({ series: z.string().optional() }))
+    .handler(async ({ context, input }) => {
+      const user = await requireSessionUser(context.headers);
+      if (input.series) {
+        await prisma.$executeRawUnsafe(
+          `DELETE FROM call_series_subscription WHERE user_id = $1 AND series = $2`,
+          user.id,
+          input.series.toLowerCase(),
+        );
+      } else {
+        await prisma.$executeRawUnsafe(`DELETE FROM call_series_subscription WHERE user_id = $1`, user.id);
+      }
+      return { success: true };
     }),
 };

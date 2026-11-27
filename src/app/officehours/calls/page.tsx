@@ -17,6 +17,7 @@ import { client } from "@/lib/orpc";
 import { cn } from "@/lib/utils";
 import { InlineBrandLoader } from "@/components/inline-brand-loader";
 import { OFFICE_HOUR_RECAPS } from "@/data/office-hour-recaps";
+import { AddToCalendarButton } from "@/components/calls/add-to-calendar";
 
 type Meeting = Awaited<ReturnType<typeof client.calls.listOfficeHourMeetings>>[number];
 type DbCall = Awaited<ReturnType<typeof client.calls.listRecentCalls>>[number];
@@ -233,15 +234,22 @@ export default function OfficeHoursCallsTab() {
                     <CalendarClock className="h-3.5 w-3.5" /> {prettyDate(m.date)}
                   </div>
                 </div>
-                {m.issue_url && (
-                  <Link
-                    href={m.issue_url}
-                    target="_blank"
-                    className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
-                  >
-                    Issue <ExternalLink className="h-3 w-3" />
-                  </Link>
-                )}
+                <div className="flex shrink-0 flex-wrap items-center gap-1.5">
+                  <AddToCalendarButton
+                    title={m.title}
+                    occursOn={m.date}
+                    detailsUrl={m.issue_url}
+                  />
+                  {m.issue_url && (
+                    <Link
+                      href={m.issue_url}
+                      target="_blank"
+                      className="inline-flex shrink-0 items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:text-foreground"
+                    >
+                      Issue <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
               </div>
             </li>
           ))}

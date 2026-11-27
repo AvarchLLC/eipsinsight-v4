@@ -90,6 +90,8 @@ export const callsProcedures = {
         call_number: row.call_number,
         issue_number: row.issue_number,
         issue_url: row.issue_url,
+        youtube_url: row.youtube_url ?? null,
+        zoom_url: row.zoom_url ?? null,
       }))
     }),
 
@@ -118,6 +120,8 @@ export const callsProcedures = {
         date: row.occurs_on!.toISOString().slice(0, 10),
         issue_number: row.issue_number,
         issue_url: row.issue_url,
+        youtube_url: row.youtube_url ?? null,
+        zoom_url: row.zoom_url ?? null,
       }))
     }),
 
