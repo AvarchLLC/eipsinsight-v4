@@ -31,6 +31,7 @@ export type Detect =
   | { kind: 'event'; topics: string[] }
   | { kind: 'calldata'; selector: string } // function selector (4-byte prefix) on ethereum.transactions.input
   | { kind: 'txtype'; txType: number } // a transaction-type feature (e.g. EIP-7702 set-code), measured from ethereum.transactions
+  | { kind: 'system_contract'; address: string } // protocol system contract address called via ethereum.transactions.to_address
   | { kind: 'deferred'; reason: string };
 
 export type Standard = {
@@ -193,6 +194,39 @@ export const STANDARDS: Standard[] = [
     confidence: 'high',
     evidence: 'Measured from type-1 (access-list) transactions in ethereum.transactions.',
     detect: { kind: 'txtype', txType: 1 },
+  },
+  {
+    id: 'eip-7002',
+    eip: 'EIP-7002',
+    name: 'Execution-Layer Exits',
+    category: 'Accounts',
+    blurb: 'Lets smart contracts and stakers trigger validator withdrawals directly from the execution layer.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-7002',
+    confidence: 'high',
+    evidence: 'Measured from transactions calling the canonical EIP-7002 withdrawal request system contract (0x00000961…7002).',
+    detect: { kind: 'system_contract', address: '0x00000961ef480eb55e80d19ad83579a64c007002' },
+  },
+  {
+    id: 'eip-7251',
+    eip: 'EIP-7251',
+    name: 'MaxEB Consolidations',
+    category: 'Accounts',
+    blurb: 'Allows validator balances above 32 ETH and execution-layer consolidation requests.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-7251',
+    confidence: 'high',
+    evidence: 'Measured from transactions calling the canonical EIP-7251 consolidation request system contract (0x0000bbdd…7251).',
+    detect: { kind: 'system_contract', address: '0x0000bbddc7ce488642fb579f8b00f3a590007251' },
+  },
+  {
+    id: 'eip-4788',
+    eip: 'EIP-4788',
+    name: 'Beacon Block Root',
+    category: 'Applications',
+    blurb: 'Exposes consensus-layer beacon block roots inside the EVM for trustless staking and bridge proofs.',
+    specUrl: 'https://eips.ethereum.org/EIPS/eip-4788',
+    confidence: 'high',
+    evidence: 'Measured from transactions interacting with the EIP-4788 beacon roots system contract (0x000f3df6…ac02).',
+    detect: { kind: 'system_contract', address: '0x000f3df6d732807ef1319fb7b8bb8522d0beac02' },
   },
   {
     id: 'erc-5192',

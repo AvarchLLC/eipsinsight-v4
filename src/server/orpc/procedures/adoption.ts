@@ -366,9 +366,19 @@ const CONTRACT_STANDARDS = STANDARDS.filter(
 const CALLDATA_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'calldata') as (Standard & {
   detect: { kind: 'calldata'; selector: string }
 })[]
-const TXTYPE_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'txtype') as (Standard & {
-  detect: { kind: 'txtype'; txType: number }
-})[]
+type TxFeatureDetect =
+  | { kind: 'txtype'; txType: number }
+  | { kind: 'system_contract'; address: string }
+
+const TXTYPE_STANDARDS = STANDARDS.filter(
+  (s) => s.detect.kind === 'txtype' || s.detect.kind === 'system_contract',
+) as (Standard & { detect: TxFeatureDetect })[]
+
+function txFeatureWhere(d: TxFeatureDetect): string {
+  return d.kind === 'txtype'
+    ? `tx_type = ${d.txType}`
+    : `to_address = '${d.address.toLowerCase()}' AND is_deleted = 0`
+}
 
 const quote = (xs: string[]) => xs.map((x) => `'${x}'`).join(',')
 
@@ -444,13 +454,13 @@ async function getCalldataMetrics(
   }
 }
 
-// Distinct accounts + tx count for a transaction-type feature, in window.
-async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: number } }, window: Window): Promise<TxFeatureRow> {
+// Distinct accounts + tx count for a transaction-type or system-contract feature, in window.
+async function getTxFeature(s: Standard & { detect: TxFeatureDetect }, window: Window): Promise<TxFeatureRow> {
   const tsCond = tsFilter('block_timestamp', window)
   const rows = await clickhouseQuery<{ accounts: string; txs: string }>(
     `SELECT uniqExact(from_address) AS accounts, count() AS txs
      FROM ethereum.transactions
-     WHERE tx_type = ${s.detect.txType} AND ${tsCond}`,
+     WHERE ${txFeatureWhere(s.detect)} AND ${tsCond}`,
     { timeoutMs: 12_000 },
   )
   return {
@@ -852,22 +862,22 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
       ])
       metrics = { contracts: N(ceRows[0]?.contracts), active: N(ceRows[0]?.active), events: N(logRows[0]?.events) }
       directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
-    } else if (ranked.detect.kind === 'txtype') {
-      // transaction feature (e.g. EIP-7702): accounts = delegating EOAs, events = authorization txs
-      const t = ranked.detect.txType
+    } else if (ranked.detect.kind === 'txtype' || ranked.detect.kind === 'system_contract') {
+      // transaction / system-contract feature: accounts = calling EOAs, events = matching txs
+      const cond = txFeatureWhere(ranked.detect)
       const [allRows, winRows, dirRows] = await Promise.all([
         clickhouseQuery<{ accounts: string }>(
-          `SELECT uniqExact(from_address) AS accounts FROM ethereum.transactions WHERE tx_type = ${t}`,
+          `SELECT uniqExact(from_address) AS accounts FROM ethereum.transactions WHERE ${cond}`,
           { timeoutMs: 45_000 },
         ),
         clickhouseQuery<{ active: string; txs: string }>(
           `SELECT uniqExact(from_address) AS active, count() AS txs
-           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}`,
+           FROM ethereum.transactions WHERE ${cond} AND ${tsCond}`,
           { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
-           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}
+           FROM ethereum.transactions WHERE ${cond} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 30_000 },
         ),
@@ -1082,12 +1092,12 @@ async function getTrend(id: string): Promise<AdoptionTrend> {
   if (!clickhouseConfigured()) return emptyTrend(id, false)
 
   try {
-    // transaction features (EIP-7702, …) trend from the transactions table.
-    if (s.detect.kind === 'txtype') {
-      const t = s.detect.txType
+    // transaction / system-contract features (EIP-7702, EIP-7002, …) trend from transactions.
+    if (s.detect.kind === 'txtype' || s.detect.kind === 'system_contract') {
+      const cond = txFeatureWhere(s.detect)
       const trows = await clickhouseQuery<{ m: string; active: string; events: string }>(
         `SELECT toStartOfMonth(block_timestamp) AS m, uniqExact(from_address) AS active, count() AS events
-         FROM ethereum.transactions WHERE tx_type = ${t}
+         FROM ethereum.transactions WHERE ${cond}
          GROUP BY m ORDER BY m`,
         { timeoutMs: 60_000 },
       )
@@ -1161,11 +1171,11 @@ async function getDirectory(id: string, window: Window, limit: number): Promise<
   if (!clickhouseConfigured()) return { available: false, rows: [], ...base }
   try {
     const tsCond = tsFilter('block_timestamp', window)
-    const rows = s.detect.kind === 'txtype'
+    const rows = s.detect.kind === 'txtype' || s.detect.kind === 'system_contract'
       ? await clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.transactions
-           WHERE tx_type = ${s.detect.txType} AND ${tsCond}
+           WHERE ${txFeatureWhere(s.detect)} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )
