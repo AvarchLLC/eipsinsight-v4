@@ -20,6 +20,8 @@ import {
   ChevronRight,
   PanelRightClose,
   PanelRightOpen,
+  Link2,
+  Check,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { LedgerBadge } from "@/components/ledger/badge";
@@ -50,6 +52,54 @@ interface YTNamespace {
   ) => YTPlayer;
 }
 type YTWindow = Window & { YT?: YTNamespace; onYouTubeIframeAPIReady?: () => void };
+
+const topicAnchorId = (topic: string) =>
+  `topic-${topic.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+
+function CopySectionLink({
+  id,
+  tab,
+  label = "Copy link",
+}: {
+  id: string;
+  tab?: string;
+  label?: string;
+}) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    try {
+      const qs = tab ? `?tab=${encodeURIComponent(tab)}` : "";
+      const hash = `#${id}`;
+      const url = `${window.location.origin}${window.location.pathname}${qs}${hash}`;
+      window.history.replaceState(null, "", `${window.location.pathname}${qs}${hash}`);
+      navigator.clipboard?.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* clipboard unavailable */
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleCopy}
+      title={`Copy direct link to #${id}`}
+      className="chip cursor-pointer gap-1"
+    >
+      {copied ? (
+        <>
+          <Check className="h-3 w-3 text-[#10b981]" />
+          <span>Copied</span>
+        </>
+      ) : (
+        <>
+          <Link2 className="h-3 w-3 text-[var(--ink-muted)]" />
+          <span>{label}</span>
+        </>
+      )}
+    </button>
+  );
+}
 
 let ytReady: Promise<void> | null = null;
 function loadYouTubeApi(): Promise<void> {
@@ -320,6 +370,24 @@ export function CallWorkspace({
   }, [call, transcript, chat]);
 
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get("tab");
+    const hash = window.location.hash.replace(/^#/, "");
+    if (tabParam && tabs.some((t) => t.id === tabParam)) {
+      setActiveTab(tabParam);
+    } else if (hash === "all-decisions" || hash === "action-items") {
+      setActiveTab("decisions");
+    } else if (hash === "proposals") {
+      setActiveTab("eips");
+    }
+    if (hash) {
+      setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [tabs]);
 
   const callResearchLinks = useMemo(() => {
     const corpus = [
@@ -681,17 +749,22 @@ export function CallWorkspace({
       {/* ─────────────────────────────────────────────────────────── */}
       {(call.summary || call.decisions.length > 0 || call.highlights.length > 0 || call.eipMentions.length > 0) && (
         <section
+          id="brief"
           aria-label="Call brief"
-          className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]"
+          className="scroll-mt-24 overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]"
         >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border)] px-5 py-4 sm:px-6">
             <div>
               <p className="eyebrow mb-1">
-                <span className="text-[var(--brand-strong)]">01</span>  CALL BRIEF · HIGHLIGHTS &amp; DECISIONS
+                CALL BRIEF · HIGHLIGHTS &amp; DECISIONS
               </p>
               <h2 className="t-h2 text-xl sm:text-2xl">What Happened on This Call</h2>
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              <CopySectionLink id="brief" label="Copy Brief Link" />
+              {call.decisions.length > 0 && (
+                <CopySectionLink id="decisions" label="Copy Decisions Link" />
+              )}
               <button
                 type="button"
                 onClick={() => {
@@ -716,7 +789,7 @@ export function CallWorkspace({
               )}
 
               {call.decisions.length > 0 && (
-                <div className="space-y-2.5">
+                <div id="decisions" className="scroll-mt-24 space-y-2.5">
                   <div className="flex items-center justify-between gap-2">
                     <p className="eyebrow">Key Decisions ({call.decisions.length})</p>
                     {call.decisions.length > 4 && (
@@ -902,27 +975,49 @@ export function CallWorkspace({
       {activeTab === "overview" && (
         <div className="space-y-8 animate-in fade-in-50 duration-200">
           {call.summary && (
-            <section className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="h-4 w-4 text-[var(--brand-strong)]" />
-                <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
-                  Call Executive Summary
-                </h3>
+            <section id="summary" className="scroll-mt-24 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-6 shadow-xs">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-[var(--brand-strong)]" />
+                  <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
+                    Call Executive Summary
+                  </h3>
+                </div>
+                <CopySectionLink id="summary" tab="overview" />
               </div>
-              <p className="text-sm leading-relaxed text-[var(--ink)] font-normal">
-                {call.summary}
-              </p>
+              <div className="space-y-3">
+                {call.summary
+                  .split(/(?<=[.!?])\s+(?=[A-Z])/)
+                  .filter((s) => s.trim().length > 0)
+                  .reduce<string[]>((acc, sentence) => {
+                    const last = acc[acc.length - 1];
+                    if (last && last.length < 180) {
+                      acc[acc.length - 1] = `${last} ${sentence}`;
+                    } else {
+                      acc.push(sentence);
+                    }
+                    return acc;
+                  }, [])
+                  .map((para, idx) => (
+                    <p key={idx} className="text-sm leading-relaxed text-[var(--ink)] font-normal">
+                      {para}
+                    </p>
+                  ))}
+              </div>
             </section>
           )}
 
           {call.highlights.length > 0 && (
-            <section className="space-y-4">
+            <section id="notes" className="scroll-mt-24 space-y-4">
               <div className="space-y-3">
-                <div className="flex items-center gap-2.5">
-                  <Sparkles className="h-5 w-5 text-[var(--brand-strong)]" />
-                  <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
-                    Detailed Notes by Topic
-                  </h3>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <Sparkles className="h-5 w-5 text-[var(--brand-strong)]" />
+                    <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
+                      Detailed Notes by Topic
+                    </h3>
+                  </div>
+                  <CopySectionLink id="notes" tab="overview" />
                 </div>
 
                 {/* Topic quick filter pills: Solid Ledger Chips */}
@@ -959,14 +1054,15 @@ export function CallWorkspace({
                   return (
                   <div
                     key={topic.topic}
-                    className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col justify-between"
+                    id={topicAnchorId(topic.topic)}
+                    className="scroll-mt-24 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 shadow-xs flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] pb-2.5 mb-3.5">
                         <span className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--brand-strong)]">
                           {topic.topic}
                         </span>
-                        <div className="flex items-center gap-2.5">
+                        <div className="flex flex-wrap items-center gap-2">
                           {topicLinks.slice(0, 2).map((rl) => (
                             <Link
                               key={rl.href}
@@ -980,27 +1076,28 @@ export function CallWorkspace({
                           <span className="font-mono text-[10px] text-[var(--ink-faint)]">
                             {topic.items.length} {topic.items.length === 1 ? "note" : "notes"}
                           </span>
+                          <CopySectionLink id={topicAnchorId(topic.topic)} tab="overview" label="Link" />
                         </div>
                       </div>
-                      <ul className="space-y-2.5">
+                      <div className="grid gap-2.5">
                         {topic.items.map((h, i) => (
-                          <li
+                          <div
                             key={i}
                             className={cn(
-                              "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border p-2.5 transition-colors",
+                              "flex items-start gap-2.5 rounded-[var(--l-radius-control)] border p-3 transition-colors",
                               isActive(h.seconds)
                                 ? "border-[var(--brand)] bg-[var(--surface-3)]"
                                 : "border-[var(--border)] bg-[var(--surface-2)]"
                             )}
                           >
-                            <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
-                            <p className="min-w-0 flex-1 text-xs leading-relaxed text-[var(--ink)]">
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[var(--brand)]" />
+                            <p className="min-w-0 flex-1 text-[13px] leading-relaxed text-[var(--ink)]">
                               {h.text}
                             </p>
                             <Seek m={h} onSeek={seek} href={hrefFor(h.seconds)} />
-                          </li>
+                          </div>
                         ))}
-                      </ul>
+                      </div>
                     </div>
                   </div>
                   );
@@ -1013,12 +1110,15 @@ export function CallWorkspace({
 
       {/* TAB 2: PROPOSALS & EIPS */}
       {activeTab === "eips" && (
-        <div className="space-y-6 animate-in fade-in-50 duration-200">
+        <div id="proposals" className="scroll-mt-24 space-y-6 animate-in fade-in-50 duration-200">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
-                Proposals Discussed on this Call
-              </h3>
+              <div className="flex items-center gap-2.5">
+                <h3 className="t-h2 font-serif text-xl sm:text-2xl text-[var(--ink)]">
+                  Proposals Discussed on this Call
+                </h3>
+                <CopySectionLink id="proposals" tab="eips" />
+              </div>
               <p className="text-xs text-[var(--ink-muted)] mt-1">
                 Every standard referenced in agenda or conversation, along with verbatim quotes and timestamps.
               </p>
@@ -1155,16 +1255,19 @@ export function CallWorkspace({
         <div className="grid gap-6 sm:grid-cols-2 animate-in fade-in-50 duration-200">
           {/* Formal Decisions */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+            <div id="all-decisions" className="scroll-mt-24 flex items-center justify-between border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2">
                 <ListChecks className="h-4 w-4 text-[var(--brand-strong)]" />
                 <h3 className="t-h2 font-serif text-xl text-[var(--ink)]">
                   Consensus Decisions
                 </h3>
               </div>
-              <LedgerBadge token="final">
-                {call.decisions.length}
-              </LedgerBadge>
+              <div className="flex items-center gap-2">
+                <CopySectionLink id="all-decisions" tab="decisions" />
+                <LedgerBadge token="final">
+                  {call.decisions.length}
+                </LedgerBadge>
+              </div>
             </div>
 
             {call.decisions.length === 0 ? (
