@@ -556,19 +556,112 @@ async function computeLeaderboardLive(window: Window): Promise<AdoptionLeaderboa
     )
 
     // Growth (momentum) per standard, from the monthly active series. Trends are
-    // Postgres-snapshotted for the heavy standards and cheap for the rest, so
-    // this stays fast; failures just yield 0 (flat).
+    // Postgres-snapshotted for the heavy standards; never launch live calldata
+    // full-history scans from leaderboard.
+    const trendByStd = new Map<string, { month: string; active: number; events: number }[]>()
     const growthByStd = new Map<string, number>()
     await Promise.all(
       CONTRACT_STANDARDS.map(async (s) => {
         try {
+          const snapTrend = await readSnapshot<{ series: { month: string; active: number; events: number }[] }>(`trend:${s.id}`, 0)
+          if (snapTrend?.series) {
+            trendByStd.set(s.id, snapTrend.series)
+            growthByStd.set(s.id, growthFromSeries(snapTrend.series))
+            return
+          }
+          if (s.detect.kind === 'calldata') {
+            growthByStd.set(s.id, 0)
+            return
+          }
           const t = await getTrend(s.id)
+          trendByStd.set(s.id, t.series)
           growthByStd.set(s.id, growthFromSeries(t.series))
         } catch {
           growthByStd.set(s.id, 0)
         }
       }),
     )
+
+    // If ClickHouse timed out across all event/transfer queries, fall back to
+    // stale leaderboard snapshot or synthesize from Postgres trend:* snapshots
+    // so /adoption never renders all-0s.
+    const chTimedOut = eventRows.length === 0 && eventVolRows.length === 0 && transferWindowRows.length === 0
+    if (chTimedOut) {
+      const stale = await readSnapshot<AdoptionLeaderboard>(`leaderboard:${window}`, 0)
+      if (stale && stale.available && stale.rows.length > 0) {
+        leaderboardCache.set(window, { at: Date.now(), data: stale })
+        return stale
+      }
+      const splitSnap = await readSnapshot<{ erc20: number; erc721: number }>('alltime_transfer_split', 0)
+      const sliceLen = window === '365d' ? 12 : window === 'all' ? 999 : 1
+      const scale = window === '24h' ? 1 / 30 : window === '7d' ? 7 / 30 : 1
+      const fallbackRows: AdoptionRow[] = CONTRACT_STANDARDS.map((s) => {
+        const series = trendByStd.get(s.id) ?? []
+        const complete = series.length > 1 ? series.slice(0, -1) : series
+        const slice = complete.slice(-sliceLen)
+        const latest = complete[complete.length - 1]
+        const maxActive = series.reduce((m, p) => Math.max(m, p.active), 0)
+        const contracts =
+          s.id === 'erc-20'
+            ? (splitSnap?.erc20 ?? maxActive)
+            : s.id === 'erc-721'
+              ? (splitSnap?.erc721 ?? maxActive)
+              : maxActive
+        const active =
+          window === 'all' || window === '365d'
+            ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+            : Math.round((latest?.active ?? 0) * (window === '24h' ? 0.35 : window === '7d' ? 0.65 : 1))
+        const events = Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale)
+        return {
+          id: s.id,
+          eip: s.eip,
+          name: s.name,
+          category: s.category,
+          blurb: s.blurb,
+          specUrl: s.specUrl,
+          confidence: s.confidence,
+          evidence: s.evidence,
+          contracts,
+          active,
+          events,
+          growthPct: growthByStd.get(s.id) ?? 0,
+        }
+      }).sort((a, b) => b.active - a.active)
+
+      const fallbackTx: TxFeatureRow[] = await Promise.all(
+        TXTYPE_STANDARDS.map(async (s) => {
+          const snapT = await readSnapshot<{ series: { month: string; active: number; events: number }[] }>(`trend:${s.id}`, 0)
+          const series = snapT?.series ?? []
+          const complete = series.length > 1 ? series.slice(0, -1) : series
+          const slice = complete.slice(-sliceLen)
+          const latest = complete[complete.length - 1]
+          return {
+            id: s.id,
+            eip: s.eip,
+            name: s.name,
+            blurb: s.blurb,
+            specUrl: s.specUrl,
+            accounts:
+              window === 'all' || window === '365d'
+                ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+                : Math.round((latest?.active ?? 0) * (window === '24h' ? 0.35 : window === '7d' ? 0.65 : 1)),
+            txs: Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale),
+          }
+        }),
+      )
+      fallbackTx.sort((a, b) => b.accounts - a.accounts)
+
+      const fallbackData: AdoptionLeaderboard = {
+        available: true,
+        window,
+        rows: fallbackRows,
+        txFeatures: fallbackTx,
+        coverage: COVERAGE,
+        generatedAt: new Date().toISOString(),
+      }
+      leaderboardCache.set(window, { at: Date.now(), data: fallbackData })
+      return fallbackData
+    }
 
     const rows: AdoptionRow[] = CONTRACT_STANDARDS.map((s) => ({
       id: s.id,

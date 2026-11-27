@@ -21,7 +21,8 @@ export async function clickhouseQuery<T = Record<string, unknown>>(
     throw new Error('ClickHouse is not configured');
   }
 
-  const url = `${env.CLICKHOUSE_URL}/?user=${encodeURIComponent(env.CLICKHOUSE_USER!)}&password=${encodeURIComponent(env.CLICKHOUSE_PASSWORD ?? '')}`;
+  const maxExecSec = Math.max(1, Math.ceil(timeoutMs / 1000));
+  const url = `${env.CLICKHOUSE_URL}/?user=${encodeURIComponent(env.CLICKHOUSE_USER!)}&password=${encodeURIComponent(env.CLICKHOUSE_PASSWORD ?? '')}&max_execution_time=${maxExecSec}`;
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
