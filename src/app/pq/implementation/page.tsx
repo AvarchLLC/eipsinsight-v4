@@ -17,6 +17,67 @@ import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
 
+interface DoraEpoch {
+  epoch: number;
+  finalized: boolean;
+  validators: number;
+  vote_participation: number;
+  proposed_blocks: number;
+  missed_blocks: number;
+}
+
+interface DoraHealth {
+  epoch: number;
+  finalized: boolean;
+  validators: number;
+  participationPct: number;
+  proposed: number;
+  missed: number;
+  clients: string[];
+}
+
+async function fetchDoraHealth(devnetId: string): Promise<DoraHealth | null> {
+  const base = `https://dora.${devnetId}.ethpandaops.io/api/v1`;
+  try {
+    const [epRes, slRes] = await Promise.all([
+      fetch(`${base}/epochs?limit=2`, { signal: AbortSignal.timeout(3500), next: { revalidate: 300 } }),
+      fetch(`${base}/slots?limit=32`, { signal: AbortSignal.timeout(3500), next: { revalidate: 300 } }),
+    ]);
+    if (!epRes.ok) return null;
+    const epJson = (await epRes.json()) as { data?: { epochs?: DoraEpoch[] } };
+    const epochs = epJson?.data?.epochs ?? [];
+    const current = epochs[0];
+    const completed = epochs[1] ?? current;
+    if (!current) return null;
+
+    let clients: string[] = [];
+    if (slRes.ok) {
+      const slJson = (await slRes.json()) as { data?: { slots?: { proposer_name?: string; status?: string }[] } };
+      const set = new Set<string>();
+      for (const sl of slJson?.data?.slots ?? []) {
+        if (!sl.proposer_name || sl.status === 'Missed') continue;
+        set.add(sl.proposer_name.replace(/-\d+$/, ''));
+      }
+      clients = [...set].sort();
+    }
+
+    const rawPart = completed?.vote_participation ?? 0;
+    const participationPct = rawPart <= 1 ? Math.round(rawPart * 1000) / 10 : Math.round(rawPart * 10) / 10;
+
+    return {
+      epoch: current.epoch,
+      finalized: current.finalized,
+      validators: current.validators ?? 0,
+      participationPct,
+      proposed: completed?.proposed_blocks ?? current.proposed_blocks ?? 0,
+      missed: completed?.missed_blocks ?? current.missed_blocks ?? 0,
+      clients,
+    };
+  } catch {
+    return null;
+  }
+}
+
 const stateClass: Record<ImplState, string> = {
   'not-started': 'bg-muted/50 text-muted-foreground border-border',
   planned: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
@@ -123,6 +184,11 @@ export default async function PqImplementationPage() {
     })
     .catch(() => []);
 
+  const healthEntries = await Promise.all(
+    pqDevnets.map(async (d) => [d.id, d.active ? await fetchDoraHealth(d.id) : null] as const),
+  );
+  const doraById = new Map(healthEntries);
+
   return (
     <div className="space-y-4">
       {/* ── Core: the spec → running code matrix ───────────────────────── */}
@@ -210,6 +276,42 @@ export default async function PqImplementationPage() {
                         {scopeText}
                       </p>
                     )}
+                    {(() => {
+                      const health = doraById.get(d.id);
+                      if (!health) return null;
+                      return (
+                        <div className="mt-3 space-y-2 rounded-md border border-border/80 bg-card/70 p-2.5">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-foreground">
+                            <span>Epoch {health.epoch}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.validators.toLocaleString()} validators</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.participationPct}% participation</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.proposed}/{health.proposed + health.missed} blocks</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className={health.finalized ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                              {health.finalized ? 'Finalized' : 'Unfinalized'}
+                            </span>
+                          </div>
+                          {health.clients.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="mr-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                                Active clients:
+                              </span>
+                              {health.clients.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
