@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowUpRight, FlaskConical, KeyRound, Radio, Video } from 'lucide-react';
+import { ArrowUpRight, FlaskConical, KeyRound, Radio, Server, Video } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 import {
   PQ_EIPS,
   PQ_EL_CLIENTS,
@@ -111,9 +112,16 @@ const phaseBadge = (status: string) =>
       ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
       : 'border-border bg-muted/50 text-muted-foreground');
 
-export default function PqImplementationPage() {
+export default async function PqImplementationPage() {
   const elEips = PQ_EIPS.filter((e) => e.layer === 'Execution' || e.layer === 'Data');
   const clEips = PQ_EIPS.filter((e) => e.layer === 'Consensus');
+  const pqDevnets = await prisma.devnet_specs
+    .findMany({
+      where: { series: 'pq', canceled: false },
+      orderBy: { devnet_number: 'desc' },
+      take: 4,
+    })
+    .catch(() => []);
 
   return (
     <div className="space-y-4">
@@ -149,6 +157,87 @@ export default function PqImplementationPage() {
           Corrections welcome at dev@avarch.org.
         </p>
       </section>
+
+      {/* ── Live PQ Consensus Devnets (from ethPandaOps / cartographoor) ─ */}
+      {pqDevnets.length > 0 && (
+        <section id="pq-devnets" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-foreground">
+              <Server className="h-4 w-4 text-primary" /> PQ Consensus Devnets
+            </h2>
+            <div className="flex items-center gap-3 text-xs">
+              <Link href="/calls/pqi" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+                <Video className="h-3.5 w-3.5" /> PQ Interop calls
+              </Link>
+              <Link href="/calls/acdc" className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground hover:underline">
+                ACDC calls
+              </Link>
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Spec scope, LeanVM version constraints, and fork context from ethPandaOps devnet notes alongside Dora Explorer links.
+          </p>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {pqDevnets.map((d) => {
+              const genesisDate = d.genesis_time
+                ? new Date(Number(d.genesis_time) * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
+                : null;
+              const scopeLines = Array.isArray(d.announcements)
+                ? d.announcements.filter((s): s is string => typeof s === 'string')
+                : [];
+              const scopeText = scopeLines
+                .map((s) => s.replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'))
+                .join(' · ');
+              const doraUrl = `https://dora.${d.id}.ethpandaops.io`;
+
+              return (
+                <div key={d.id} className="flex flex-col justify-between rounded-lg border border-border bg-background/50 p-4">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-bold text-foreground">{d.title}</span>
+                      <span className={phaseBadge(d.active ? 'live' : 'planned')}>
+                        {d.active ? 'Active' : 'Archived'}
+                      </span>
+                    </div>
+                    {genesisDate && (
+                      <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                        Genesis · {genesisDate}
+                      </p>
+                    )}
+                    {scopeText && (
+                      <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-muted-foreground">
+                        {scopeText}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                    <a
+                      href={doraUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15"
+                    >
+                      Dora Explorer <ArrowUpRight className="h-3 w-3" />
+                    </a>
+                    {d.source_url && (
+                      <a
+                        href={d.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        Devnet Spec Note <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Evidence: the live PQ testnet (PQTS phases + Daisugi telemetry) ─ */}
       <section className="rounded-xl border border-border bg-card/60 p-5">
