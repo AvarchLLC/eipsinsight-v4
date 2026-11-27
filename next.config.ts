@@ -21,6 +21,8 @@ const nextConfig: NextConfig = {
       { source: '/p/:path*', destination: '/', permanent: true },
       { source: '/debug/persona', destination: '/', permanent: false },
       // Legacy route redirects
+      { source: '/pqai', destination: '/pq', permanent: false },
+      { source: '/pqai/:path*', destination: '/pq/:path*', permanent: false },
       {
         // /people was renamed to /user (contributor profiles).
         source: '/people/:actor',

@@ -69,9 +69,10 @@ export default function PqOverviewPage() {
               <CopyLinkButton sectionId="pq-positioning" className="h-7 w-7 shrink-0" />
             </div>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              <span className="font-medium text-foreground">Post-quantum (PQ)</span> cryptography is designed to stay
-              secure against a large quantum computer, which could one day break the ECDSA and BLS signatures Ethereum
-              relies on today. Ethereum&apos;s PQ roadmap says <span className="font-medium text-foreground">where</span>{' '}
+              <span className="font-medium text-foreground">Post-quantum (PQ)</span> cryptography (increasingly framed under{' '}
+              <span className="font-medium text-foreground">PQAI</span> to account for both quantum computers and AI-driven cryptanalysis)
+              is designed to stay secure against threats that could break the ECDSA and BLS signatures Ethereum relies on today.
+              Ethereum&apos;s PQ roadmap says <span className="font-medium text-foreground">where</span>{' '}
               the protocol needs to go; this hub tracks <span className="font-medium text-foreground">how</span> the EIPs
               and specifications to get there are progressing: their roadmap milestone, dependencies, upgrade status,
               and the open coordination gaps between research and shipped protocol changes.
