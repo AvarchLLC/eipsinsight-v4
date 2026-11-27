@@ -10,13 +10,13 @@ import { STANDARDS, DEFERRED, COVERAGE, SIG, type Standard, type Detect } from '
 // a stalled scheduler serving very old numbers.
 const SNAPSHOT_MAX_AGE_MS = 24 * 3_600_000
 
-async function readSnapshot<T>(key: string): Promise<T | null> {
+async function readSnapshot<T>(key: string, maxAgeMs = SNAPSHOT_MAX_AGE_MS): Promise<T | null> {
   try {
     const rows = await prisma.$queryRaw<{ payload: unknown; updated_at: Date }[]>`
       SELECT payload, updated_at FROM adoption_snapshots WHERE key = ${key} LIMIT 1`
     const row = rows[0]
     if (!row) return null
-    if (Date.now() - new Date(row.updated_at).getTime() > SNAPSHOT_MAX_AGE_MS) return null
+    if (maxAgeMs > 0 && Date.now() - new Date(row.updated_at).getTime() > maxAgeMs) return null
     return row.payload as T
   } catch {
     return null // table missing / db error → caller falls back to live ClickHouse
@@ -424,7 +424,7 @@ async function getCalldataMetrics(
          AND to_address != ''
          AND is_deleted = 0
          AND ${tsCond}`,
-      { timeoutMs: 90_000 },
+      { timeoutMs: 12_000 },
     ),
   ])
   let contracts = snap ? N(snap.contracts) : 0
@@ -433,7 +433,7 @@ async function getCalldataMetrics(
       `SELECT uniqExact(to_address) AS contracts
        FROM ethereum.transactions
        WHERE startsWith(input, '${sel}') AND to_address != '' AND is_deleted = 0`,
-      { timeoutMs: 45_000 },
+      { timeoutMs: 12_000 },
     )
     contracts = N(allRows[0]?.contracts)
   }
@@ -451,13 +451,15 @@ async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: nu
     `SELECT uniqExact(from_address) AS accounts, count() AS txs
      FROM ethereum.transactions
      WHERE tx_type = ${s.detect.txType} AND ${tsCond}`,
-    { timeoutMs: 90_000 },
+    { timeoutMs: 12_000 },
   )
   return {
     id: s.id, eip: s.eip, name: s.name, blurb: s.blurb, specUrl: s.specUrl,
     accounts: N(rows[0]?.accounts), txs: N(rows[0]?.txs),
   }
 }
+
+const leaderboardInFlight = new Map<Window, Promise<AdoptionLeaderboard>>()
 
 async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
   const hit = leaderboardCache.get(window)
@@ -469,7 +471,21 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     return snap
   }
 
-  if (!clickhouseConfigured()) return emptyLeaderboard(window)
+  const pending = leaderboardInFlight.get(window)
+  if (pending) return pending
+
+  const run = computeLeaderboardLive(window).finally(() => {
+    leaderboardInFlight.delete(window)
+  })
+  leaderboardInFlight.set(window, run)
+  return run
+}
+
+async function computeLeaderboardLive(window: Window): Promise<AdoptionLeaderboard> {
+  if (!clickhouseConfigured()) {
+    const stale = await readSnapshot<AdoptionLeaderboard>(`leaderboard:${window}`, 0)
+    return stale && stale.available && stale.rows.length > 0 ? stale : emptyLeaderboard(window)
+  }
 
   try {
     const tsCond = tsFilter('block_timestamp', window)
@@ -484,7 +500,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.contract_events
          WHERE topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
-        { timeoutMs: 45_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       // event-standards: raw event volume in window
       clickhouseQuery<{ sid: string; events: string }>(
@@ -492,7 +508,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE ${tsCond} AND topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
-        { timeoutMs: 90_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       // transfer split: active + events in window
       clickhouseQuery<{ is20: number; active: string; events: string }>(
@@ -500,7 +516,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE ${tsCond} AND topic0 = '${SIG.TRANSFER}'
          GROUP BY is20`,
-        { timeoutMs: 90_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       getAllTimeTransferSplit().catch(() => ({ erc20: 0, erc721: 0 })),
     ])
@@ -620,9 +636,6 @@ async function getOverview(): Promise<AdoptionOverview> {
     coverage: COVERAGE,
     catalog,
     generatedAt: new Date().toISOString(),
-  }
-  if (!clickhouseConfigured()) {
-    return { available: false, totalImplementations: 0, activeContracts30d: 0, ...base }
   }
   const lb = await getLeaderboard('30d')
   if (!lb.available) {
