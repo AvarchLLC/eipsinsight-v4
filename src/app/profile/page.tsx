@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSession } from "@/hooks/useSession";
 import { ProfileAvatar } from "@/components/profile-avatar";
+import { SubscriptionsPanel } from "@/components/subscriptions-panel";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
@@ -355,6 +356,9 @@ export default function ProfilePage() {
             </div>
           </div>
         </div>
+
+        {/* Email & Alert Subscriptions */}
+        <SubscriptionsPanel />
 
         {/* Quick Actions */}
         <div className="grid gap-4 md:grid-cols-2">

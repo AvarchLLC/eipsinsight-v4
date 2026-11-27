@@ -72,25 +72,58 @@ export const callsProcedures = {
       // should drop out of "upcoming" even if its agenda issue is still open.
       const cutoff = new Date()
       cutoff.setUTCHours(0, 0, 0, 0)
-      const rows = await prisma.protocol_calls_upcoming.findMany({
-        where: {
-          OR: [
-            { occurs_on: null },
-            { occurs_on: { gte: cutoff } },
-          ],
-        },
-        orderBy: [{ occurs_on: 'asc' }, { occurs_at: 'asc' }],
-        take: 30,
-      })
-      return rows.map(row => ({
-        series: row.series,
-        title: row.title,
-        occurs_at: row.occurs_at?.toISOString() ?? null,
-        occurs_on: row.occurs_on?.toISOString().slice(0, 10) ?? null,
-        call_number: row.call_number,
-        issue_number: row.issue_number,
-        issue_url: row.issue_url,
-      }))
+      const where = {
+        OR: [
+          { occurs_on: null },
+          { occurs_on: { gte: cutoff } },
+        ],
+      };
+      try {
+        const rows = await prisma.protocol_calls_upcoming.findMany({
+          where,
+          orderBy: [{ occurs_on: 'asc' }, { occurs_at: 'asc' }],
+          take: 30,
+        })
+        return rows.map(row => ({
+          series: row.series,
+          title: row.title,
+          occurs_at: row.occurs_at?.toISOString() ?? null,
+          occurs_on: row.occurs_on?.toISOString().slice(0, 10) ?? null,
+          call_number: row.call_number,
+          issue_number: row.issue_number,
+          issue_url: row.issue_url,
+          youtube_url: row.youtube_url ?? null,
+          zoom_url: row.zoom_url ?? null,
+        }))
+      } catch {
+        // Fallback if zoom_url column has not been migrated yet in a target DB
+        const rows = await prisma.protocol_calls_upcoming.findMany({
+          where,
+          select: {
+            series: true,
+            title: true,
+            occurs_at: true,
+            occurs_on: true,
+            call_number: true,
+            issue_number: true,
+            issue_url: true,
+            youtube_url: true,
+          },
+          orderBy: [{ occurs_on: 'asc' }, { occurs_at: 'asc' }],
+          take: 30,
+        })
+        return rows.map(row => ({
+          series: row.series,
+          title: row.title,
+          occurs_at: row.occurs_at?.toISOString() ?? null,
+          occurs_on: row.occurs_on?.toISOString().slice(0, 10) ?? null,
+          call_number: row.call_number,
+          issue_number: row.issue_number,
+          issue_url: row.issue_url,
+          youtube_url: row.youtube_url ?? null,
+          zoom_url: null,
+        }))
+      }
     }),
 
   /**
@@ -118,6 +151,8 @@ export const callsProcedures = {
         date: row.occurs_on!.toISOString().slice(0, 10),
         issue_number: row.issue_number,
         issue_url: row.issue_url,
+        youtube_url: row.youtube_url ?? null,
+        zoom_url: row.zoom_url ?? null,
       }))
     }),
 

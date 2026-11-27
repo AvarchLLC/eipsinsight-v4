@@ -45,7 +45,41 @@ interface AuthorSearchResult {
   reviewCount?: number;
 }
 
-const POPULAR_SEARCHES = ['1559', '4844', '7702', 'ERC-20', 'ERC-4337', 'ERC-721', 'RIP-7560', 'blobs'];
+interface PrSearchResult {
+  kind: 'pr';
+  prNumber: number;
+  repo: string;
+  title: string | null;
+  author: string | null;
+  state: string | null;
+  mergedAt: string | null;
+}
+
+interface PageMatch {
+  url: string;
+  label: string;
+  sub: string;
+  badge: string;
+}
+
+const SEARCHABLE_HUBS: Array<PageMatch & { keywords: string[] }> = [
+  { url: '/upgrade/glamsterdam', label: 'Glamsterdam Upgrade', sub: 'Hoodi Dec 15, 2026 · EIP-7773 · ePBS + BALs', badge: 'Upgrade', keywords: ['glamsterdam', 'hoodi', 'sepolia', 'epbs', 'bal', '7773', '8037', '8038'] },
+  { url: '/upgrade/hegota', label: 'Hegota Upgrade', sub: 'Next fork scoping · FOCIL / Frames', badge: 'Upgrade', keywords: ['hegota', 'focil', 'frames', '8081', '7805'] },
+  { url: '/upgrade/fusaka', label: 'Fusaka Upgrade', sub: 'PeerDAS + Osaka/Fulu', badge: 'Upgrade', keywords: ['fusaka', 'osaka', 'fulu', 'peerdas', '7594'] },
+  { url: '/upgrade/pectra', label: 'Pectra Upgrade', sub: 'Prague + Electra · EIP-7702', badge: 'Upgrade', keywords: ['pectra', 'prague', 'electra', '7702'] },
+  { url: '/upgrade/schedule', label: 'Upgrade Schedule & Timeline', sub: 'Fork phases, devnets, testnets, mainnet', badge: 'Schedule', keywords: ['schedule', 'timeline', 'fork', 'devnet', 'testnet', 'hoodi'] },
+  { url: '/upgrade/devnets', label: 'Ethereum Devnets', sub: 'Live devnet trackers & specs', badge: 'Devnets', keywords: ['devnet', 'devnets', 'ethpandaops'] },
+  { url: '/adoption', label: 'Standards On-Chain Adoption', sub: 'Top ERCs/EIPs by contracts, active usage & USD value', badge: 'Adoption', keywords: ['adoption', 'onchain', 'usd', 'erc-20', 'erc-721', 'erc-4626', 'contract'] },
+  { url: '/research/glamsterdam', label: 'Glamsterdam Repricer Research', sub: 'Sepolia & mainnet gas audit (EIP-8037/8038)', badge: 'Research', keywords: ['research', 'repricer', 'repricing', 'gas audit', 'glamsterdam', 'invariants'] },
+  { url: '/aa/overview', label: 'Account Abstraction Research', sub: 'ERC-4337, EIP-7702, smart accounts', badge: 'Research', keywords: ['aa', 'account abstraction', '4337', '7702', 'smart account', 'paymaster'] },
+  { url: '/pq/overview', label: 'Post-Quantum (PQ) Research', sub: 'PQ signatures, roadmap, dependencies', badge: 'Research', keywords: ['pq', 'post-quantum', 'quantum', 'pqc', 'falcon', 'xmss'] },
+  { url: '/officehours/editors', label: 'Editors & Office Hours', sub: 'Leaderboard, attendance matrix, PR explorer, contributor lookup', badge: 'Editors', keywords: ['editor', 'editors', 'office hour', 'eipip', 'attendance', 'samwilsn', 'jochem'] },
+  { url: '/analytics/contributors', label: 'Contributors & PR Analytics', sub: 'Search any contributor across EIPs, ERCs & RIPs', badge: 'Analytics', keywords: ['contributor', 'contributors', 'analytics', 'author', 'tony', 'creative score'] },
+  { url: '/officehours/prs', label: 'PR & Editorial Queue', sub: 'Open, waiting-on-editor, merged & closed PRs', badge: 'PRs', keywords: ['pr', 'prs', 'pull request', 'queue', 'review'] },
+  { url: '/calls', label: 'Protocol Calls (ACDC / ACDE / EIPIP)', sub: 'Call briefs, key decisions, detailed notes & transcripts', badge: 'Calls', keywords: ['call', 'calls', 'acdc', 'acde', 'eipip', 'meeting', 'notes', 'transcript'] },
+];
+
+const POPULAR_SEARCHES = ['Glamsterdam', '1559', '4844', '7702', 'ERC-4337', 'Account Abstraction', 'PQ', 'SamWilsn'];
 
 const QUICK_JUMPS = [
   { href: '/standards', label: 'Browse all standards', icon: FileText },
@@ -83,11 +117,12 @@ export function CommandPalette() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ProposalSearchResult[]>([]);
   const [peopleResults, setPeopleResults] = useState<AuthorSearchResult[]>([]);
+  const [prResults, setPrResults] = useState<PrSearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
-  const cacheRef = useRef<Map<string, { proposals: ProposalSearchResult[]; people: AuthorSearchResult[] }>>(new Map());
+  const cacheRef = useRef<Map<string, { proposals: ProposalSearchResult[]; people: AuthorSearchResult[]; prs: PrSearchResult[] }>>(new Map());
   const reqIdRef = useRef(0);
 
   const term = query.trim();
@@ -174,6 +209,7 @@ export function CommandPalette() {
       setQuery('');
       setResults([]);
       setPeopleResults([]);
+      setPrResults([]);
       setSelectedIndex(0);
     }
     return () => {
@@ -187,6 +223,7 @@ export function CommandPalette() {
     if (!open || !term) {
       setResults([]);
       setPeopleResults([]);
+      setPrResults([]);
       setLoading(false);
       return;
     }
@@ -198,6 +235,7 @@ export function CommandPalette() {
     if (cached) {
       setResults(cached.proposals);
       setPeopleResults(cached.people);
+      setPrResults(cached.prs);
       setLoading(false);
       return;
     }
@@ -207,9 +245,10 @@ export function CommandPalette() {
 
     const timer = setTimeout(async () => {
       try {
-        const [proposalsRes, authorsRes] = await Promise.allSettled([
+        const [proposalsRes, authorsRes, prsRes] = await Promise.allSettled([
           client.search.searchProposals({ query: term, limit: 6 }),
-          client.search.searchAuthors({ query: term, limit: 4 }),
+          client.search.searchAuthors({ query: term, limit: 5 }),
+          client.search.searchPRs({ query: term, limit: 5 }),
         ]);
 
         if (myId !== reqIdRef.current) return;
@@ -218,10 +257,13 @@ export function CommandPalette() {
           proposalsRes.status === 'fulfilled' ? (proposalsRes.value as ProposalSearchResult[]) : [];
         const people =
           authorsRes.status === 'fulfilled' ? (authorsRes.value as AuthorSearchResult[]) : [];
+        const prs =
+          prsRes.status === 'fulfilled' ? (prsRes.value as PrSearchResult[]) : [];
 
-        cacheRef.current.set(key, { proposals, people });
+        cacheRef.current.set(key, { proposals, people, prs });
         setResults(proposals);
         setPeopleResults(people);
+        setPrResults(prs);
       } catch (err) {
         if (myId === reqIdRef.current) console.error('Failed search in palette:', err);
       } finally {
@@ -233,10 +275,25 @@ export function CommandPalette() {
   }, [open, term]);
   /* eslint-enable react-hooks/set-state-in-effect */
 
+  const pageMatches = useMemo<PageMatch[]>(() => {
+    const q = term.toLowerCase();
+    if (!q) return [];
+    return SEARCHABLE_HUBS.filter(
+      (h) =>
+        h.label.toLowerCase().includes(q) ||
+        h.sub.toLowerCase().includes(q) ||
+        h.keywords.some((k) => k.includes(q) || q.includes(k))
+    ).slice(0, 4);
+  }, [term]);
+
   const navigateTo = useCallback(
     (url: string) => {
       setOpen(false);
-      router.push(url);
+      if (url.startsWith('http')) {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      } else {
+        router.push(url);
+      }
     },
     [router]
   );
@@ -244,10 +301,12 @@ export function CommandPalette() {
   const flatDestinations = useMemo(() => {
     const list: string[] = [];
     if (swoop) list.push(swoop.url);
+    pageMatches.forEach((m) => list.push(m.url));
     peopleResults.forEach((p) => list.push(`/user/${encodeURIComponent(p.name)}`));
     results.forEach((r) => list.push(`/${r.repo}/${r.number}`));
+    prResults.forEach((pr) => list.push(`https://github.com/${pr.repo}/pull/${pr.prNumber}`));
     return list;
-  }, [swoop, peopleResults, results]);
+  }, [swoop, pageMatches, peopleResults, results, prResults]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'ArrowDown') {
@@ -280,13 +339,13 @@ export function CommandPalette() {
       aria-modal="true"
       aria-label="Command search palette"
     >
-      {/* Dimmed backdrop - solid dark with blur so underlying page is muted */}
+      {/* Dimmed backdrop - keep underlying page softly visible */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.15 }}
-        className="fixed inset-0 bg-black/80 backdrop-blur-md"
+        className="fixed inset-0 bg-black/35 dark:bg-black/50 backdrop-blur-sm"
         onClick={() => setOpen(false)}
         aria-hidden
       />
@@ -312,7 +371,7 @@ export function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Search proposals, people, upgrades…"
+            placeholder="Search EIPs, upgrades, authors, contributors, PRs…"
             className="w-full bg-transparent text-base text-[var(--ink)] outline-none placeholder:text-[var(--ink-faint)]"
             spellCheck={false}
             autoComplete="off"
@@ -326,6 +385,8 @@ export function CommandPalette() {
               onClick={() => {
                 setQuery('');
                 setResults([]);
+                setPeopleResults([]);
+                setPrResults([]);
                 inputRef.current?.focus();
               }}
               className="grid h-6 w-6 shrink-0 place-items-center rounded-md text-[var(--ink-faint)] transition-colors hover:bg-[var(--surface-2)] hover:text-[var(--ink)] cursor-pointer"
@@ -415,6 +476,47 @@ export function CommandPalette() {
               </button>
             )}
 
+            {/* Upgrades & Hubs */}
+            {pageMatches.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">
+                  <Package className="h-3 w-3" />
+                  <span>Upgrades &amp; Hubs · {pageMatches.length}</span>
+                </div>
+                {pageMatches.map((m, i) => {
+                  const targetIdx = (swoop ? 1 : 0) + i;
+                  const isSelected = selectedIndex === targetIdx;
+                  return (
+                    <button
+                      key={`hub-${m.url}`}
+                      type="button"
+                      data-idx={targetIdx}
+                      onClick={() => navigateTo(m.url)}
+                      onMouseEnter={() => setSelectedIndex(targetIdx)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-3 rounded-[var(--l-radius-control)] px-3 py-2 text-left transition-colors cursor-pointer',
+                        isSelected ? 'bg-[var(--surface-2)]' : 'hover:bg-[var(--surface-2)]'
+                      )}
+                    >
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="truncate text-xs font-semibold sm:text-sm text-[var(--ink)]">{m.label}</span>
+                          <LedgerBadge token="core" className="text-[10px]">{m.badge}</LedgerBadge>
+                        </div>
+                        <p className="truncate font-mono text-[11px] text-[var(--ink-faint)]">{m.sub}</p>
+                      </div>
+                      <ArrowRight
+                        className={cn(
+                          'h-3.5 w-3.5 shrink-0 transition-opacity',
+                          isSelected ? 'text-[var(--brand-strong)] opacity-100' : 'opacity-0'
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* People (Authors / Editors) List */}
             {peopleResults.length > 0 && (
               <div className="mt-1 space-y-0.5">
@@ -423,7 +525,7 @@ export function CommandPalette() {
                   <span>People &amp; Editors · {peopleResults.length}</span>
                 </div>
                 {peopleResults.map((p, i) => {
-                  const targetIdx = (swoop ? 1 : 0) + i;
+                  const targetIdx = (swoop ? 1 : 0) + pageMatches.length + i;
                   const isSelected = selectedIndex === targetIdx;
                   const url = `/user/${encodeURIComponent(p.name)}`;
                   const roleLabel = p.role || 'Contributor';
@@ -497,7 +599,7 @@ export function CommandPalette() {
                   Proposals · {results.length}
                 </div>
                 {results.map((r, i) => {
-                  const targetIdx = (swoop ? 1 : 0) + peopleResults.length + i;
+                  const targetIdx = (swoop ? 1 : 0) + pageMatches.length + peopleResults.length + i;
                   const isSelected = selectedIndex === targetIdx;
                   const url = `/${r.repo}/${r.number}`;
                   const meta = [r.category, r.type].filter(Boolean).join(' · ');
@@ -541,8 +643,55 @@ export function CommandPalette() {
               </div>
             )}
 
+            {/* Pull Requests */}
+            {prResults.length > 0 && (
+              <div className="mt-1 space-y-0.5">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 font-mono text-[11px] uppercase tracking-wider text-[var(--ink-faint)]">
+                  <GitPullRequest className="h-3 w-3" />
+                  <span>Pull Requests · {prResults.length}</span>
+                </div>
+                {prResults.map((pr, i) => {
+                  const targetIdx = (swoop ? 1 : 0) + pageMatches.length + peopleResults.length + results.length + i;
+                  const isSelected = selectedIndex === targetIdx;
+                  const repoShort = pr.repo.split('/')[1] || pr.repo;
+                  const url = `https://github.com/${pr.repo}/pull/${pr.prNumber}`;
+                  const stateLabel = pr.mergedAt ? 'Merged' : pr.state === 'closed' ? 'Closed' : 'Open';
+                  return (
+                    <button
+                      key={`pr-${pr.repo}-${pr.prNumber}`}
+                      type="button"
+                      data-idx={targetIdx}
+                      onClick={() => navigateTo(url)}
+                      onMouseEnter={() => setSelectedIndex(targetIdx)}
+                      className={cn(
+                        'flex w-full items-center justify-between gap-3 rounded-[var(--l-radius-control)] px-3 py-2 text-left transition-colors cursor-pointer',
+                        isSelected ? 'bg-[var(--surface-2)]' : 'hover:bg-[var(--surface-2)]'
+                      )}
+                    >
+                      <div className="flex min-w-0 items-center gap-2.5">
+                        <span className="rounded border border-[var(--border)] bg-[var(--surface-2)] px-1.5 py-0.5 font-mono text-[10px] font-semibold text-[var(--ink)]">
+                          {repoShort}#{pr.prNumber}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold sm:text-sm text-[var(--ink)]">
+                            {pr.title || `PR #${pr.prNumber}`}
+                          </p>
+                          <p className="truncate font-mono text-[11px] text-[var(--ink-faint)]">
+                            {pr.author ? `by ${pr.author}` : pr.repo}
+                          </p>
+                        </div>
+                      </div>
+                      <LedgerBadge token={pr.mergedAt ? 'final' : pr.state === 'closed' ? 'stagnant' : 'review'}>
+                        {stateLabel}
+                      </LedgerBadge>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Empty State */}
-            {!loading && results.length === 0 && peopleResults.length === 0 && !swoop && (
+            {!loading && pageMatches.length === 0 && results.length === 0 && peopleResults.length === 0 && prResults.length === 0 && !swoop && (
               <div className="px-5 py-8 text-center">
                 <p className="text-sm font-medium text-[var(--ink)]">No results found for “{term}”</p>
                 <p className="mt-1 text-xs text-[var(--ink-muted)]">
