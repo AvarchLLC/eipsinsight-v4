@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowUpRight, FlaskConical, KeyRound, Radio, Video } from 'lucide-react';
+import { ArrowUpRight, FlaskConical, KeyRound, Radio, Server, Video } from 'lucide-react';
+import { prisma } from '@/lib/prisma';
 import {
   PQ_EIPS,
   PQ_EL_CLIENTS,
@@ -15,6 +16,67 @@ import { DaisugiPanel } from '@/components/pq/daisugi-panel';
 import { CopyLinkButton } from '@/components/header';
 
 export const revalidate = 300;
+
+interface DoraEpoch {
+  epoch: number;
+  finalized: boolean;
+  validators: number;
+  vote_participation: number;
+  proposed_blocks: number;
+  missed_blocks: number;
+}
+
+interface DoraHealth {
+  epoch: number;
+  finalized: boolean;
+  validators: number;
+  participationPct: number;
+  proposed: number;
+  missed: number;
+  clients: string[];
+}
+
+async function fetchDoraHealth(devnetId: string): Promise<DoraHealth | null> {
+  const base = `https://dora.${devnetId}.ethpandaops.io/api/v1`;
+  try {
+    const [epRes, slRes] = await Promise.all([
+      fetch(`${base}/epochs?limit=2`, { signal: AbortSignal.timeout(3500), next: { revalidate: 300 } }),
+      fetch(`${base}/slots?limit=32`, { signal: AbortSignal.timeout(3500), next: { revalidate: 300 } }),
+    ]);
+    if (!epRes.ok) return null;
+    const epJson = (await epRes.json()) as { data?: { epochs?: DoraEpoch[] } };
+    const epochs = epJson?.data?.epochs ?? [];
+    const current = epochs[0];
+    const completed = epochs[1] ?? current;
+    if (!current) return null;
+
+    let clients: string[] = [];
+    if (slRes.ok) {
+      const slJson = (await slRes.json()) as { data?: { slots?: { proposer_name?: string; status?: string }[] } };
+      const set = new Set<string>();
+      for (const sl of slJson?.data?.slots ?? []) {
+        if (!sl.proposer_name || sl.status === 'Missed') continue;
+        set.add(sl.proposer_name.replace(/-\d+$/, ''));
+      }
+      clients = [...set].sort();
+    }
+
+    const rawPart = completed?.vote_participation ?? 0;
+    const participationPct = rawPart <= 1 ? Math.round(rawPart * 1000) / 10 : Math.round(rawPart * 10) / 10;
+
+    return {
+      epoch: current.epoch,
+      finalized: current.finalized,
+      validators: current.validators ?? 0,
+      participationPct,
+      proposed: completed?.proposed_blocks ?? current.proposed_blocks ?? 0,
+      missed: completed?.missed_blocks ?? current.missed_blocks ?? 0,
+      clients,
+    };
+  } catch {
+    return null;
+  }
+}
 
 const stateClass: Record<ImplState, string> = {
   'not-started': 'bg-muted/50 text-muted-foreground border-border',
@@ -111,9 +173,21 @@ const phaseBadge = (status: string) =>
       ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-300'
       : 'border-border bg-muted/50 text-muted-foreground');
 
-export default function PqImplementationPage() {
+export default async function PqImplementationPage() {
   const elEips = PQ_EIPS.filter((e) => e.layer === 'Execution' || e.layer === 'Data');
   const clEips = PQ_EIPS.filter((e) => e.layer === 'Consensus');
+  const pqDevnets = await prisma.devnet_specs
+    .findMany({
+      where: { series: 'pq', canceled: false },
+      orderBy: { devnet_number: 'desc' },
+      take: 4,
+    })
+    .catch(() => []);
+
+  const healthEntries = await Promise.all(
+    pqDevnets.map(async (d) => [d.id, d.active ? await fetchDoraHealth(d.id) : null] as const),
+  );
+  const doraById = new Map(healthEntries);
 
   return (
     <div className="space-y-4">
@@ -149,6 +223,123 @@ export default function PqImplementationPage() {
           Corrections welcome at dev@avarch.org.
         </p>
       </section>
+
+      {/* ── Live PQ Consensus Devnets (from ethPandaOps / cartographoor) ─ */}
+      {pqDevnets.length > 0 && (
+        <section id="pq-devnets" className="scroll-mt-20 rounded-xl border border-border bg-card/60 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="flex items-center gap-2 text-base font-bold tracking-tight text-foreground">
+              <Server className="h-4 w-4 text-primary" /> PQ Consensus Devnets
+            </h2>
+            <div className="flex items-center gap-3 text-xs">
+              <Link href="/calls/pqi" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+                <Video className="h-3.5 w-3.5" /> PQ Interop calls
+              </Link>
+              <Link href="/calls/acdc" className="inline-flex items-center gap-1 font-semibold text-muted-foreground hover:text-foreground hover:underline">
+                ACDC calls
+              </Link>
+            </div>
+          </div>
+          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
+            Spec scope, LeanVM version constraints, and fork context from ethPandaOps devnet notes alongside Dora Explorer links.
+          </p>
+
+          <div className="mt-3 grid gap-3 md:grid-cols-2">
+            {pqDevnets.map((d) => {
+              const genesisDate = d.genesis_time
+                ? new Date(Number(d.genesis_time) * 1000).toISOString().replace('T', ' ').slice(0, 16) + ' UTC'
+                : null;
+              const scopeLines = Array.isArray(d.announcements)
+                ? d.announcements.filter((s): s is string => typeof s === 'string')
+                : [];
+              const scopeText = scopeLines
+                .map((s) => s.replace(/\*\*/g, '').replace(/\[([^\]]+)\]\([^)]+\)/g, '$1'))
+                .join(' · ');
+              const doraUrl = `https://dora.${d.id}.ethpandaops.io`;
+
+              return (
+                <div key={d.id} className="flex flex-col justify-between rounded-lg border border-border bg-background/50 p-4">
+                  <div>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-mono text-sm font-bold text-foreground">{d.title}</span>
+                      <span className={phaseBadge(d.active ? 'live' : 'planned')}>
+                        {d.active ? 'Active' : 'Archived'}
+                      </span>
+                    </div>
+                    {genesisDate && (
+                      <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                        Genesis · {genesisDate}
+                      </p>
+                    )}
+                    {scopeText && (
+                      <p className="mt-2 line-clamp-4 text-xs leading-relaxed text-muted-foreground">
+                        {scopeText}
+                      </p>
+                    )}
+                    {(() => {
+                      const health = doraById.get(d.id);
+                      if (!health) return null;
+                      return (
+                        <div className="mt-3 space-y-2 rounded-md border border-border/80 bg-card/70 p-2.5">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] text-foreground">
+                            <span>Epoch {health.epoch}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.validators.toLocaleString()} validators</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.participationPct}% participation</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span>{health.proposed}/{health.proposed + health.missed} blocks</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className={health.finalized ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}>
+                              {health.finalized ? 'Finalized' : 'Unfinalized'}
+                            </span>
+                          </div>
+                          {health.clients.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1">
+                              <span className="mr-1 font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                                Active clients:
+                              </span>
+                              {health.clients.map((c) => (
+                                <span
+                                  key={c}
+                                  className="rounded border border-border bg-background px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground"
+                                >
+                                  {c}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border/60 pt-3">
+                    <a
+                      href={doraUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/15"
+                    >
+                      Dora Explorer <ArrowUpRight className="h-3 w-3" />
+                    </a>
+                    {d.source_url && (
+                      <a
+                        href={d.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                      >
+                        Devnet Spec Note <ArrowUpRight className="h-3 w-3" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* ── Evidence: the live PQ testnet (PQTS phases + Daisugi telemetry) ─ */}
       <section className="rounded-xl border border-border bg-card/60 p-5">
