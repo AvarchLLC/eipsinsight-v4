@@ -26,13 +26,7 @@ export function SectionHead({
       </div>
       <div className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div className="min-w-0">
-          {eyebrow ? (
-            <p className="eyebrow mb-1.5">
-              {index ? <span className="text-[var(--brand-strong)]">{index}</span> : null}
-              {index ? "  " : null}
-              {eyebrow}
-            </p>
-          ) : null}
+          {eyebrow ? <p className="eyebrow mb-1.5">{eyebrow}</p> : null}
           <h2 className="t-h2">{title}</h2>
           {description ? <p className="t-lead mt-2">{description}</p> : null}
         </div>

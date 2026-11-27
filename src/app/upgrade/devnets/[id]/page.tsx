@@ -345,7 +345,7 @@ export default async function DevnetDetailPage({ params }: Props) {
                               {meta.layer}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground/40">—</span>
+                            <span className="text-xs text-muted-foreground/40">-</span>
                           )}
                         </td>
                         <td className="px-4 py-2.5 text-center">
@@ -359,7 +359,7 @@ export default async function DevnetDetailPage({ params }: Props) {
                               {meta.status}
                             </span>
                           ) : (
-                            <span className="text-xs text-muted-foreground/40">—</span>
+                            <span className="text-xs text-muted-foreground/40">-</span>
                           )}
                         </td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
@@ -394,7 +394,7 @@ export default async function DevnetDetailPage({ params }: Props) {
             <div>
               <p className="text-sm font-semibold text-foreground">Live EIP-8141 frame-transaction activity</p>
               <p className="text-xs text-muted-foreground">
-                Frames processed, batching, modes, and signatures on this devnet — charted from the execution RPC.
+                Frames processed, batching, modes, and signatures on this devnet - charted from the execution RPC.
               </p>
             </div>
           </div>

@@ -489,17 +489,14 @@ export function DeltaHistogram() {
 }
 
 /* Shared: Instrument-Serif section head (brand rule + mono index + serif title). */
-export function SerifSectionHead({ n, title, className }: { n: string; title: string; className?: string }) {
+export function SerifSectionHead({ n: _n, title, className }: { n?: string; title: string; className?: string }) {
   return (
     <div className={cn('mb-6', className)}>
       <div className="mb-3 flex items-center">
         <span className="h-px w-10 bg-[var(--brand)]" />
         <span className="h-px flex-1 bg-[var(--ink)]" />
       </div>
-      <div className="flex items-baseline gap-3">
-        <span className="mono text-sm font-semibold text-[var(--brand-strong)]">{n}</span>
-        <h2 className="text-[1.9rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)] sm:text-[2.3rem]">{title}</h2>
-      </div>
+      <h2 className="text-[1.9rem] leading-[1.05] text-[var(--ink)] [font-family:var(--font-instrument-serif)] sm:text-[2.3rem]">{title}</h2>
     </div>
   );
 }

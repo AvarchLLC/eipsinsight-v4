@@ -832,7 +832,7 @@ export function UpgradeDetailBody({
                     >
                       <GitCommit className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       <span className="w-20 shrink-0 text-xs text-muted-foreground">
-                        {event.commit_date?.slice(0, 10) ?? '—'}
+                        {event.commit_date?.slice(0, 10) ?? '-'}
                       </span>
                       {event.eip_number ? (
                         <Link
@@ -842,7 +842,7 @@ export function UpgradeDetailBody({
                           EIP-{event.eip_number}
                         </Link>
                       ) : (
-                        <span className="font-mono text-xs text-muted-foreground">—</span>
+                        <span className="font-mono text-xs text-muted-foreground">-</span>
                       )}
                       <span className="text-xs text-muted-foreground">
                         {event.event_type ?? 'changed'}

@@ -98,7 +98,7 @@ export const upgradeRegistry: Record<string, UpgradeRegistryEntry> = {
     status: 'Upcoming',
     tagline: 'The next major upgrade after Fusaka, featuring Enshrined Proposer-Builder Separation (ePBS) and Block-Level Access Lists (BALs).',
     statusNote:
-      'Live on Sepolia since 6 Oct 2026 (ePBS + BALs). Note: Hoodi activation was postponed (though previously listed in Meta EIP-7773); revised testnet timeline pending ACD.',
+      'Live on Sepolia since 6 Oct 2026 (ePBS + BALs). Hoodi activation locked at ACDC #192 for 15 Dec 2026 at 19:12 UTC (Epoch 143,616 / Slot 4,595,712).',
     description:
       'Ethereum developers are preparing for the next major network upgrade, Glamsterdam. It introduces key changes to both the Execution and Consensus layers on mainnet. Candidate EIPs are being fine-tuned, implemented, and tested on devnets as the scope firms up.',
     executionName: 'Amsterdam',

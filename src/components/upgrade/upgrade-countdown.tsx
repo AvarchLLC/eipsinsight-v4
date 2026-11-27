@@ -54,15 +54,14 @@ const COUNTDOWN_CONFIG: Record<string, CountdownConfig> = {
       {
         key: 'hoodi',
         label: 'Hoodi',
-        // Gloas (CL) fork epoch 132352 was originally scheduled in EIP-7773
-        // for 2026-10-26 17:42:48 UTC, but was postponed by All Core Devs (ACD).
-        // It must not be marked live.
-        postponed: true,
-        estimate: 'Postponed',
-        postponedNote:
-          'Hoodi activation was postponed by All Core Devs (ACD). Although it might still appear as scheduled or live in the Meta EIP (EIP-7773), the rollout was deferred pending further client testing. A revised activation slot has not yet been locked.',
+        // ACDC #192 (2026-11-26): Hoodi Glamsterdam upgrade locked for
+        // Epoch 143616 (Slot 4,595,712) — 2026-12-15 19:12:00 UTC.
+        epoch: 143616,
+        timestamp: 1797361920, // 2026-12-15 19:12:00 UTC
+        beaconApi: 'https://ethereum-hoodi-beacon-api.publicnode.com',
+        rpc: 'https://ethereum-hoodi-rpc.publicnode.com',
       },
-      { key: 'mainnet', label: 'Mainnet', estimate: 'Early Dec 2026' },
+      { key: 'mainnet', label: 'Mainnet', estimate: 'Jan 2027' },
     ],
   },
 };

@@ -83,18 +83,18 @@ export function UpgradeDetailHeader({
       : null;
 
   return (
-    <div className="relative w-full border-b border-border/60 bg-background">
+    <div className="masthead relative w-full border-b border-[var(--border)] bg-[var(--surface)]">
       <div className="mx-auto w-full max-w-6xl px-4 pt-6 sm:px-6 sm:pt-8">
         <Link
           href="/upgrade"
-          className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+          className="inline-flex items-center gap-1.5 font-mono text-xs text-[var(--ink-muted)] transition-colors hover:text-[var(--brand-strong)]"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Go back to main upgrades page
+          All upgrades
         </Link>
 
         <div className="mt-3 flex flex-wrap items-center gap-3">
-          <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
+          <h1 className="t-h1 text-balance text-3xl sm:text-4xl text-[var(--ink)]">
             {name}
           </h1>
           {phase ? (
@@ -103,36 +103,36 @@ export function UpgradeDetailHeader({
             entry && <UpgradeStatusBadge status={entry.status} />
           )}
           {phase && (
-            <span className="text-xs font-medium text-muted-foreground">
+            <span className="font-mono text-xs text-[var(--ink-muted)]">
               Target: {phase.targetYear}
             </span>
           )}
         </div>
 
         {entry?.tagline && (
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="t-lead mt-2 max-w-4xl">
             {entry.tagline}
           </p>
         )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-xs text-muted-foreground">
+        <div className="mt-3.5 flex flex-wrap items-center gap-2 text-xs text-[var(--ink-muted)]">
           {metaEip && (
             <Link
               href={`/eip/${metaEip}`}
-              className="inline-flex items-center gap-1.5 font-medium text-amber-700 dark:text-amber-300 bg-amber-500/10 border border-amber-500/30 hover:border-amber-500/50 hover:bg-amber-500/20 rounded-full px-2.5 py-0.5 text-xs transition-all"
+              className="chip"
             >
-              <FileText className="h-3.5 w-3.5 text-amber-500" />
-              <span>Meta EIP: <span className="font-semibold underline">EIP-{metaEip}</span></span>
+              <FileText className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
+              <span>Meta EIP: <strong className="font-mono text-[var(--ink)]">EIP-{metaEip}</strong></span>
             </Link>
           )}
           {entry?.mascot && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-primary/10 border border-primary/20 rounded-full px-2.5 py-0.5 text-xs">
+            <span className="chip">
               <span>{entry.mascot.emoji}</span>
               <span>Mascot: {entry.mascot.name}</span>
               {entry.mascot.eip && (
                 <Link
                   href={`/eip/${entry.mascot.eip}`}
-                  className="text-primary hover:underline text-[11px] ml-0.5"
+                  className="font-mono text-[11px] text-[var(--brand-strong)] hover:underline"
                   title="Selected per EIP-8066 process"
                 >
                   (EIP-{entry.mascot.eip})
@@ -141,8 +141,8 @@ export function UpgradeDetailHeader({
             </span>
           )}
           {entry?.executionName && entry?.consensusName && (
-            <span className="inline-flex items-center gap-1.5 font-medium text-foreground bg-purple-500/10 border border-purple-500/20 rounded-full px-2.5 py-0.5 text-xs">
-              <Layers className="h-3.5 w-3.5 text-purple-500" />
+            <span className="chip">
+              <Layers className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
               {entry.nameOriginDetails ? (
                 <span>
                   {renderNameWithHighlight(entry.nameOriginDetails.clName, entry.nameOriginDetails.clHighlight)} (CL) + {renderNameWithHighlight(entry.nameOriginDetails.elName, entry.nameOriginDetails.elHighlight)} (EL)
@@ -153,7 +153,7 @@ export function UpgradeDetailHeader({
               {entry.nameOriginDetails?.eip && (
                 <Link
                   href={`/eip/${entry.nameOriginDetails.eip}`}
-                  className="text-primary hover:underline text-[11px] ml-0.5 font-medium"
+                  className="font-mono text-[11px] text-[var(--brand-strong)] hover:underline"
                   title="Naming convention per EIP-8133"
                 >
                   (EIP-{entry.nameOriginDetails.eip})
@@ -162,13 +162,13 @@ export function UpgradeDetailHeader({
             </span>
           )}
           {entry?.activationDate && (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 font-mono text-xs">
               <CalendarDays className="h-3.5 w-3.5" />
               Activated {entry.activationDate}
             </span>
           )}
           {typeof entry?.activationBlock === 'number' && (
-            <span className="inline-flex items-center gap-1">
+            <span className="inline-flex items-center gap-1 font-mono text-xs">
               <Box className="h-3.5 w-3.5" />
               Block {entry.activationBlock.toLocaleString()}
             </span>
@@ -182,22 +182,18 @@ export function UpgradeDetailHeader({
         {/* Live activation countdown (renders only for forks with a config) */}
         <UpgradeCountdown slug={slug} />
 
-        {/* Subtab bar — segmented pill control so the sections read clearly as tabs */}
+        {/* Subtab bar: solid Ledger chips */}
         {subtabs.length > 0 && (
           <div className="mt-5 pb-4">
-            <nav className="flex w-full flex-wrap gap-1.5 rounded-xl border border-border bg-muted/50 p-1.5 sm:inline-flex sm:w-auto">
+            <nav className="flex flex-wrap items-center gap-1.5">
               {[{ id: 'overview' as const, label: 'Overview', href: `/upgrade/${slug}` }, ...subtabs].map(
                 (tab) => (
                   <Link
                     key={tab.id}
                     href={tab.href}
                     aria-current={activeTab === tab.id ? 'page' : undefined}
-                    className={cn(
-                      'whitespace-nowrap rounded-lg px-3.5 py-1.5 text-sm font-medium transition-all duration-150',
-                      activeTab === tab.id
-                        ? 'bg-background text-primary shadow-sm ring-1 ring-border'
-                        : 'text-muted-foreground hover:bg-background/60 hover:text-foreground'
-                    )}
+                    data-active={activeTab === tab.id}
+                    className="chip h-8 px-3.5 text-xs whitespace-nowrap"
                   >
                     {tab.label}
                   </Link>
