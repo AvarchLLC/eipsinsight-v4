@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { Bell, Loader2, Rows3, Trash2, Package } from "lucide-react";
+import { Bell, Calendar, Loader2, Rows3, Trash2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { client } from "@/lib/orpc";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,19 @@ function normalizeProposalRepo(repo: ProposalRepo): "eip" | "erc" | "rip" {
 
 export function SubscriptionsPanel() {
   const [data, setData] = useState<SubscriptionState | null>(null);
+  const [callSeries, setCallSeries] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [removing, setRemoving] = useState<string | null>(null);
 
   const load = async () => {
     setLoading(true);
     try {
-      const result = await client.subscriptions.listMySubscriptions({});
+      const [result, callRes] = await Promise.all([
+        client.subscriptions.listMySubscriptions({}),
+        client.subscriptions.getCallSubscriptions({}).catch(() => ({ series: [] as string[] })),
+      ]);
       setData(result);
+      setCallSeries(callRes.series ?? []);
     } catch (error) {
       console.error("Failed to load subscriptions:", error);
       toast.error("Failed to load subscriptions");
@@ -83,7 +88,27 @@ export function SubscriptionsPanel() {
     }
   };
 
-  const isEmpty = !loading && data && data.proposals.length === 0 && data.repositories.length === 0 && data.upgrades.length === 0;
+  const removeCalls = async () => {
+    setRemoving("calls:all");
+    try {
+      await client.subscriptions.unsubscribeFromCalls({});
+      toast.success("Unsubscribed from protocol call alerts");
+      await load();
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to unsubscribe from call alerts");
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  const isEmpty =
+    !loading &&
+    data &&
+    data.proposals.length === 0 &&
+    data.repositories.length === 0 &&
+    data.upgrades.length === 0 &&
+    callSeries.length === 0;
 
   return (
     <div className="rounded-xl border border-border bg-card/60 p-6">
@@ -138,6 +163,23 @@ export function SubscriptionsPanel() {
                   />
                 );
               })}
+            </Section>
+          )}
+
+          {callSeries.length > 0 && (
+            <Section title="Protocol Call alerts" icon={<Calendar className="h-4 w-4 text-primary" />}>
+              <SubscriptionRow
+                title={
+                  callSeries.includes("all")
+                    ? "All Protocol Calls"
+                    : callSeries.map((s) => s.toUpperCase()).join(", ")
+                }
+                description="Email alerts with Zoom, YouTube Live, and agenda links before calls"
+                meta={callSeries.includes("all") ? "all series" : `${callSeries.length} series`}
+                href="/calls"
+                busy={removing === "calls:all"}
+                onRemove={() => void removeCalls()}
+              />
             </Section>
           )}
 
