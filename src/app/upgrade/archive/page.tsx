@@ -512,7 +512,7 @@ export default function PreviousUpgradesPage() {
                             {upgrade.metaEip}
                           </Link>
                         ) : (
-                          '—'
+                          '-'
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-foreground tabular-nums">{upgrade.eipCount}</td>
@@ -612,7 +612,7 @@ export default function PreviousUpgradesPage() {
               </div>
               <div className="rounded-lg border border-border bg-background/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Meta EIP</p>
-                <p className="mt-1 text-sm font-mono font-semibold text-primary">{selected.metaEip ?? '—'}</p>
+                <p className="mt-1 text-sm font-mono font-semibold text-primary">{selected.metaEip ?? '-'}</p>
               </div>
               <div className="rounded-lg border border-border bg-background/40 p-3">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Category</p>

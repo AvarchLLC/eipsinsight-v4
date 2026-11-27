@@ -12,5 +12,9 @@ export const metadata: Metadata = buildMetadata({
 });
 
 export default function UpgradeLayout({ children }: { children: React.ReactNode }) {
-  return <>{children}</>;
+  return (
+    <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)]">
+      {children}
+    </div>
+  );
 }

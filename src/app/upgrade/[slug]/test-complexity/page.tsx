@@ -82,7 +82,7 @@ export default async function TestComplexityPage({ params }: Props) {
           >
             STEEL team&apos;s
           </a>{' '}
-          published complexity assessments ({assessedCount} of {rows.length} EIPs assessed —
+          published complexity assessments ({assessedCount} of {rows.length} EIPs assessed -
           scores sum ~24 testing anchors; &lt;10 Low, 10–19 Medium, ≥20 High), alongside live
           test-module counts from{' '}
           <a
@@ -140,7 +140,7 @@ export default async function TestComplexityPage({ params }: Props) {
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-center font-mono text-xs text-foreground">
-                    {assessment?.total ?? '—'}
+                    {assessment?.total ?? '-'}
                   </td>
                   <td className="px-3 py-2.5 text-center">
                     {tests ? (
@@ -155,7 +155,7 @@ export default async function TestComplexityPage({ params }: Props) {
                         <ExternalLink className="h-2.5 w-2.5" />
                       </a>
                     ) : (
-                      <span className="text-xs text-muted-foreground/40">—</span>
+                      <span className="text-xs text-muted-foreground/40">-</span>
                     )}
                   </td>
                   <td className="px-3 py-2.5 text-right">

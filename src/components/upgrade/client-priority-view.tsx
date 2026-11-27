@@ -250,7 +250,7 @@ export function ClientPriorityView({
                                 </span>
                               </td>
                               <td className="max-w-md py-2 pr-3 text-xs leading-relaxed text-muted-foreground">
-                                {stance.comment || <span className="opacity-50">—</span>}
+                                {stance.comment || <span className="opacity-50">-</span>}
                               </td>
                               <td className="py-2">
                                 {stance.sourceUrl ? (
@@ -263,7 +263,7 @@ export function ClientPriorityView({
                                     View <ExternalLink className="h-3 w-3" />
                                   </a>
                                 ) : (
-                                  <span className="text-xs text-muted-foreground/50">—</span>
+                                  <span className="text-xs text-muted-foreground/50">-</span>
                                 )}
                               </td>
                             </tr>

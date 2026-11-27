@@ -1126,7 +1126,7 @@ export function UpgradeEipDirectory({ initialEips, upgrades }: UpgradeEipDirecto
                           {eip.status}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-muted-foreground/40">—</span>
+                        <span className="text-[10px] text-muted-foreground/40">-</span>
                       )}
                     </td>
 

@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import type { LucideIcon } from 'lucide-react';
-import { ArrowRight, ArrowUpRight, Archive, CalendarClock, GitCommit, Info, LineChart, Package, PieChart, Search, Zap } from 'lucide-react';
+import { ArrowRight, ArrowUpRight, Archive, GitCommit } from 'lucide-react';
 import { CopyLinkButton } from '@/components/header';
 import { ShareButtons } from '@/components/share-buttons';
+import { PageHead } from '@/components/ledger/page-head';
+import { SectionHead } from '@/components/ledger/section-head';
 import '@/lib/orpc.server';
 import { cn } from '@/lib/utils';
 import { statusBadgeClass } from '@/lib/proposal-status';
@@ -30,72 +31,40 @@ function timeAgo(iso: string): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** Per-section accent tints for the header icon chips. */
-const ACCENTS = {
-  blue: { chip: 'bg-blue-500/10 ring-blue-500/20', icon: 'text-blue-500' },
-  violet: { chip: 'bg-violet-500/10 ring-violet-500/20', icon: 'text-violet-500' },
-  amber: { chip: 'bg-amber-500/10 ring-amber-500/20', icon: 'text-amber-500' },
-  cyan: { chip: 'bg-cyan-500/10 ring-cyan-500/20', icon: 'text-cyan-500' },
-  emerald: { chip: 'bg-emerald-500/10 ring-emerald-500/20', icon: 'text-emerald-500' },
-  rose: { chip: 'bg-rose-500/10 ring-rose-500/20', icon: 'text-rose-500' },
-  green: { chip: 'bg-green-500/10 ring-green-500/20', icon: 'text-green-500' },
-  indigo: { chip: 'bg-indigo-500/10 ring-indigo-500/20', icon: 'text-indigo-500' },
-} as const;
-
-/**
- * Consistent section header: a colored icon chip, the title (optionally a link
- * out), a copy-link button, and a description aligned under the title. An
- * optional `action` slot floats to the right (e.g. the Live "Full archive" pill).
- */
-function SectionHeader({
-  icon: Icon,
-  accent,
+function UpgradeSection({
+  eyebrow,
   title,
   sectionId,
   description,
   href,
   action,
 }: {
-  icon: LucideIcon;
-  accent: keyof typeof ACCENTS;
+  eyebrow: string;
   title: string;
   sectionId: string;
   description: string;
   href?: string;
   action?: ReactNode;
 }) {
-  const a = ACCENTS[accent];
   return (
-    <div className="mb-5 flex flex-wrap items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2.5">
-          <span
-            className={cn(
-              'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ring-1 ring-inset',
-              a.chip
-            )}
-          >
-            <Icon className={cn('h-[18px] w-[18px]', a.icon)} />
-          </span>
+    <SectionHead
+      eyebrow={eyebrow}
+      title={
+        <span className="inline-flex items-center gap-2">
           {href ? (
-            <Link
-              href={href}
-              className="dec-title inline-flex items-center gap-1 text-xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary sm:text-2xl"
-            >
+            <Link href={href} className="inline-flex items-center gap-1 hover:text-[var(--brand-strong)] transition-colors">
               {title}
-              <ArrowUpRight className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+              <ArrowUpRight className="h-4 w-4 shrink-0 text-[var(--ink-faint)]" />
             </Link>
           ) : (
-            <h2 className="dec-title text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-              {title}
-            </h2>
+            <span>{title}</span>
           )}
           <CopyLinkButton sectionId={sectionId} tooltipLabel="Copy link" />
-        </div>
-        <p className="mt-1.5 pl-[46px] text-sm text-muted-foreground">{description}</p>
-      </div>
-      {action}
-    </div>
+        </span>
+      }
+      description={description}
+      action={action}
+    />
   );
 }
 
@@ -156,32 +125,30 @@ export default async function UpgradeIndexPage() {
   const activity = await getCachedRecentActivity(10);
 
   return (
-    <div className="mx-auto w-full max-w-6xl divide-y divide-border/50 px-4 pb-12 pt-8 sm:px-6 [&>*:first-child]:pt-0 [&>*]:py-10">
-      {/* Hero */}
-      <header className="space-y-2.5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="min-w-0">
-            <h1 className="dec-title persona-title text-balance text-3xl font-semibold tracking-tight leading-[1.1] sm:text-4xl">
-              Ethereum upgrades, tracked live
-            </h1>
-          </div>
+    <div data-ledger className="min-h-screen bg-[var(--paper)] text-[var(--ink)] pb-16">
+      <PageHead
+        eyebrow="NETWORK UPGRADES"
+        title={
+          <>
+            Ethereum upgrades, <span className="accent">tracked live</span>
+          </>
+        }
+        lead="What's shipping in each network upgrade, where every EIP stands, and how it got there, parsed automatically from meta-EIP commits."
+      >
+        <div className="mt-3">
           <ShareButtons
             text="Ethereum upgrades, tracked live: what's shipping in each network upgrade and where every EIP stands, on EIPsInsight"
             hashtags={['Ethereum', 'EIPs']}
             className="shrink-0"
           />
         </div>
-        <p className="w-full text-sm leading-relaxed text-muted-foreground sm:text-base">
-          What&apos;s shipping in each network upgrade, where every EIP stands, and how it got
-          there, parsed automatically from meta-EIP commits.
-        </p>
-      </header>
+      </PageHead>
 
-      {/* Upgrade Directory — top of page */}
-      <section id="eip-directory">
-        <SectionHeader
-          icon={Search}
-          accent="blue"
+      <div className="wrap space-y-12 py-8">
+      {/* Upgrade Directory - top of page */}
+      <section id="eip-directory" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="EIP DIRECTORY"
           title="Upgrade EIP Directory"
           sectionId="eip-directory"
           href="/upgrade/eips"
@@ -194,11 +161,10 @@ export default async function UpgradeIndexPage() {
         />
       </section>
 
-      {/* Network upgrades — roadmap timeline (the cards moved to the stats panel below) */}
-      <section id="network-upgrades">
-        <SectionHeader
-          icon={Package}
-          accent="violet"
+      {/* Network upgrades - roadmap timeline */}
+      <section id="network-upgrades" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="ROADMAP"
           title="Network upgrades"
           sectionId="network-upgrades"
           description="The last shipped fork, the one being built now, and what's next, showing where each stands today."
@@ -206,11 +172,10 @@ export default async function UpgradeIndexPage() {
         <UpgradeTimelineStrip liveCount={4} />
       </section>
 
-      {/* Timeline View — schedule preview */}
-      <section id="timeline-view">
-        <SectionHeader
-          icon={CalendarClock}
-          accent="amber"
+      {/* Timeline View - schedule preview */}
+      <section id="timeline-view" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="SCHEDULE"
           title="Timeline View"
           sectionId="timeline-view"
           href="/upgrade/schedule"
@@ -219,11 +184,10 @@ export default async function UpgradeIndexPage() {
         <ScheduleTimelinePreview today={today} />
       </section>
 
-      {/* Upgrade charts — Ethereum timeline + EIP distribution (tabbed) */}
-      <section id="upgrade-charts">
-        <SectionHeader
-          icon={LineChart}
-          accent="cyan"
+      {/* Upgrade charts - Ethereum timeline + EIP distribution */}
+      <section id="upgrade-charts" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="CHARTS"
           title="Upgrade timelines"
           sectionId="upgrade-charts"
           description="The full historical timeline, and how EIPs are distributed across upgrades."
@@ -233,15 +197,14 @@ export default async function UpgradeIndexPage() {
 
       {/* Latest changes */}
       {activity.length > 0 && (
-        <section id="latest-changes">
-          <SectionHeader
-            icon={GitCommit}
-            accent="emerald"
+        <section id="latest-changes" className="scroll-mt-24">
+          <UpgradeSection
+            eyebrow="COMMIT ACTIVITY"
             title="Latest changes"
             sectionId="latest-changes"
             description="Every EIP movement across all upgrades, straight from the meta-EIP commit history."
           />
-          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+          <div className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
             <ul className="divide-y divide-border/60">
               {activity.map((event, index) => (
                 <li
@@ -306,19 +269,18 @@ export default async function UpgradeIndexPage() {
       )}
 
       {/* How inclusion works */}
-      <section id="how-inclusion-works">
-        <SectionHeader
-          icon={Info}
-          accent="rose"
+      <section id="how-inclusion-works" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="PROCESS"
           title="How EIPs get into an upgrade"
           sectionId="how-inclusion-works"
           description="Proposals move through inclusion stages as client teams evaluate them."
         />
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+          <div className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
             <EipInclusionProcessGraph />
           </div>
-          <div className="rounded-xl border border-border bg-card/60 p-4 sm:p-5">
+          <div className="rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:p-5">
             <ul className="space-y-3">
               {STAGE_ORDER.map((bucket) => (
                 <li key={bucket} className="flex items-start gap-3">
@@ -337,24 +299,23 @@ export default async function UpgradeIndexPage() {
       </section>
 
       {/* Live upgrades */}
-      <section id="live">
-        <SectionHeader
-          icon={Zap}
-          accent="green"
+      <section id="live" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="MAINNET HISTORY"
           title="Live on mainnet"
           sectionId="live"
           description={`All ${liveUpgrades.length} activated network upgrades, newest first.`}
           action={
             <Link
               href="/upgrade/archive"
-              className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/60 px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              className="btn h-8 px-3 text-xs font-medium"
             >
               <Archive className="h-3.5 w-3.5" />
               Full archive
             </Link>
           }
         />
-        <div className="overflow-hidden rounded-xl border border-border bg-card/60">
+        <div className="overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)]">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
@@ -395,11 +356,11 @@ export default async function UpgradeIndexPage() {
                           {entry.metaEip}
                         </Link>
                       ) : (
-                        '—'
+                        '-'
                       )}
                     </td>
                     <td className="hidden px-4 py-3 text-muted-foreground sm:table-cell">
-                      {entry.eipCount || '—'}
+                      {entry.eipCount || '-'}
                     </td>
                     <td className="hidden max-w-md px-4 py-3 text-muted-foreground md:table-cell">
                       {entry.tagline}
@@ -418,16 +379,16 @@ export default async function UpgradeIndexPage() {
       </section>
 
       {/* Analytics stats: cards (click to reveal each dataset) + EIP/author tables */}
-      <section id="analytics">
-        <SectionHeader
-          icon={PieChart}
-          accent="indigo"
+      <section id="analytics" className="scroll-mt-24">
+        <UpgradeSection
+          eyebrow="UPGRADE ANALYTICS"
           title="Upgrade analytics"
           sectionId="analytics"
           description="The numbers behind the upgrades. Click any card to see the EIPs, meta EIPs, or authors behind it."
         />
         <UpgradeStatsPanel />
       </section>
+      </div>
     </div>
   );
 }

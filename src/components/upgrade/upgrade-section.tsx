@@ -37,31 +37,31 @@ export function UpgradeSection({
   children: React.ReactNode;
 }) {
   return (
-    <>
-      {separator && <div className="h-px w-full bg-border/60" aria-hidden />}
-      <section id={id} className={cn('scroll-mt-24 pt-5 pb-6', className)}>
-        <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
-          {/* min-w-0 lets long titles/descriptions wrap instead of overflowing the flex row. */}
-          <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <Icon className="h-5 w-5 shrink-0 text-primary" />
-              <h2 className="dec-title text-balance text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
-                {title}
-              </h2>
-              <CopyLinkButton sectionId={id} tooltipLabel="Copy link" />
-            </div>
-            {description && (
-              // Same measure + text-pretty as PageHeader's description, so section
-              // sub-descriptions wrap identically to the one under the page title.
-              <p className="mt-0.5 max-w-4xl text-pretty text-sm leading-relaxed text-muted-foreground">
-                {description}
-              </p>
-            )}
-          </div>
-          {action}
+    <section id={id} className={cn('scroll-mt-24 pt-6 pb-8', className)}>
+      {separator && (
+        <div className="mb-4 flex items-center" aria-hidden>
+          <span className="h-px w-10 bg-[var(--brand)]" />
+          <span className="h-px flex-1 bg-[var(--ink)]" />
         </div>
-        {children}
-      </section>
-    </>
+      )}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Icon className="h-4 w-4 shrink-0 text-[var(--brand-strong)]" />
+            <h2 className="t-h2 text-balance text-xl sm:text-2xl text-[var(--ink)]">
+              {title}
+            </h2>
+            <CopyLinkButton sectionId={id} tooltipLabel="Copy link" />
+          </div>
+          {description && (
+            <p className="t-lead mt-1.5 max-w-4xl text-pretty">
+              {description}
+            </p>
+          )}
+        </div>
+        {action ? <div className="shrink-0">{action}</div> : null}
+      </div>
+      {children}
+    </section>
   );
 }
