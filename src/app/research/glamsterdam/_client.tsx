@@ -103,8 +103,6 @@ export function GlamsterdamResearch() {
         <span className="mono text-xs">Fork · <span className="text-[var(--ink)]">{META.fork}</span></span>
         <span className="text-[var(--border-strong)]">·</span>
         <span className="mono text-xs">{META.eips}</span>
-        <span className="text-[var(--border-strong)]">·</span>
-        <span className="mono text-xs">Updated · <span className="text-[var(--ink)]">{META.published}</span></span>
       </PageHead>
 
       <div className="wrap py-6 sm:py-8">
@@ -224,6 +222,26 @@ export function GlamsterdamResearch() {
             </div>
           </Reveal>
 
+          <Reveal>
+            <div className="mt-4 flex flex-col gap-3 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className="mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)]">
+                  What are INV-1 to INV-8?
+                </p>
+                <p className="mt-1 text-xs leading-relaxed text-[var(--ink-muted)]">
+                  Each invariant tracks a gas-cost assumption in contract source code (like hardcoded gas stipends, state-creation margins, or AA EntryPoint limits) that EIP-8037 or EIP-8038 repricing can invalidate.
+                </p>
+              </div>
+              <Link
+                href="/research/glamsterdam/report#invariants"
+                className="chip shrink-0 gap-1.5 self-start px-3 py-1.5 text-xs font-medium text-[var(--ink)] hover:border-[var(--ink)] sm:self-center"
+              >
+                <span>Read invariant guide</span>
+                <ArrowRight className="h-3.5 w-3.5 text-[var(--brand-strong)]" />
+              </Link>
+            </div>
+          </Reveal>
+
           {/* charts */}
           <div className="mt-8 grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-2">
             <Reveal><InvariantChart /></Reveal>
@@ -282,12 +300,17 @@ export function GlamsterdamResearch() {
 
           {/* report footer link */}
           <Reveal>
-            <Link
-              href="/research/glamsterdam/report"
-              className="mt-10 inline-flex items-center gap-2 mono text-xs font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
-            >
-              Read the full report <ArrowRight className="h-3.5 w-3.5" />
-            </Link>
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5">
+              <Link
+                href="/research/glamsterdam/report"
+                className="inline-flex items-center gap-2 mono text-xs font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
+              >
+                Read the full report <ArrowRight className="h-3.5 w-3.5" />
+              </Link>
+              <span className="mono text-xs text-[var(--ink-muted)]">
+                Updated · <span className="text-[var(--ink)]">{META.published}</span>
+              </span>
+            </div>
           </Reveal>
         </section>
       </div>

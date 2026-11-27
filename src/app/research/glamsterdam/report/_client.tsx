@@ -234,7 +234,7 @@ export function GlamsterdamReport() {
             <InvariantChart />
           </Reveal>
           <Reveal>
-            <div className="divide-y divide-[var(--border)]/60 border-y border-[var(--border)]/60">
+            <div id="invariants" className="scroll-mt-24 divide-y divide-[var(--border)]/60 border-y border-[var(--border)]/60">
               {INVARIANTS.map((iv) => (
                 <div key={iv.id} className="py-4">
                   <div className="flex items-baseline gap-2.5">
