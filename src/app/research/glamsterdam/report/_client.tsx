@@ -52,8 +52,6 @@ export function GlamsterdamReport() {
         <span className="mono text-xs">Fork · <span className="text-[var(--ink)]">{META.fork}</span></span>
         <span className="text-[var(--border-strong)]">·</span>
         <span className="mono text-xs">{META.eips}</span>
-        <span className="text-[var(--border-strong)]">·</span>
-        <span className="mono text-xs">Updated · <span className="text-[var(--ink)]">{META.published}</span></span>
       </PageHead>
 
       <div className="wrap py-8 sm:py-12">
@@ -236,12 +234,14 @@ export function GlamsterdamReport() {
           <Reveal>
             <div id="invariants" className="scroll-mt-24 divide-y divide-[var(--border)]/60 border-y border-[var(--border)]/60">
               {INVARIANTS.map((iv) => (
-                <div key={iv.id} className="py-4">
-                  <div className="flex items-baseline gap-2.5">
-                    <span className="mono text-sm font-bold text-[var(--brand-strong)]">{iv.id}</span>
+                <div key={iv.id} id={iv.id.toLowerCase()} className="scroll-mt-24 py-4">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 mono text-xs font-bold text-[var(--brand-strong)]">
+                      {iv.id}
+                    </span>
                     <span className="ml-auto mono text-[11px] text-[var(--ink-faint)]">{iv.count} / {SCAN.flagged} flagged contracts touch this</span>
                   </div>
-                  <p className="mt-1.5 text-[16px] font-medium text-[var(--ink)]">{iv.plain}</p>
+                  <p className="mt-2 text-[16px] font-medium text-[var(--ink)]">{iv.plain}</p>
                   <p className="mt-1.5 text-[14px] leading-relaxed text-[var(--ink-muted)]">{iv.tech}</p>
                 </div>
               ))}
@@ -435,13 +435,16 @@ export function GlamsterdamReport() {
             </ul>
           </Reveal>
           <Reveal>
-            <div className="mt-10 border-t border-[var(--border)]/60 pt-4">
+            <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-[var(--border)] pt-5">
               <Link
                 href="/research/glamsterdam"
-                className="inline-flex items-center gap-1.5 mono text-[11px] font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
+                className="inline-flex items-center gap-1.5 mono text-xs font-semibold uppercase tracking-wider text-[var(--brand-strong)] hover:underline"
               >
                 <ArrowLeft className="h-3.5 w-3.5" /> Back to the numbers
               </Link>
+              <span className="mono text-xs text-[var(--ink-muted)]">
+                Updated · <span className="text-[var(--ink)]">{META.published}</span>
+              </span>
             </div>
           </Reveal>
         </section>
