@@ -43,9 +43,8 @@ export interface ForkScheduleConfig {
 export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
   {
     slug: 'glamsterdam',
-    // Projected early Dec 2026 — ~5–6 weeks after the Hoodi fork (Oct 26). Keep
-    // in sync with the /upgrade countdown's mainnet estimate.
-    mainnetTarget: '2026-12-03',
+    // Projected mid-Jan 2027 — ~30 days after the Hoodi fork (2026-12-15).
+    mainnetTarget: '2027-01-14',
     devnetCount: 9,
     lockedDates: {
       // ACDE #240 (2026-07-02): devnet-7 launch targeting week of July 7.
@@ -54,8 +53,8 @@ export const FORK_SCHEDULE_CONFIGS: ForkScheduleConfig[] = [
       'devnet-8': '2026-08-12',
       // Sepolia activated 2026-10-06 13:53 UTC (slot 11,296,768).
       'sepolia': '2026-10-06',
-      // Note: Hoodi was scheduled for 2026-10-26 in Meta EIP-7773, but was postponed by ACD.
-      // Do not lock to a past date so testnets phase correctly reflects pending rollout.
+      // ACDC #192 (2026-11-26): Hoodi locked for Epoch 143,616 on 2026-12-15 19:12 UTC.
+      'hoodi': '2026-12-15',
     },
   },
   {
