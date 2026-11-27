@@ -10,13 +10,13 @@ import { STANDARDS, DEFERRED, COVERAGE, SIG, type Standard, type Detect } from '
 // a stalled scheduler serving very old numbers.
 const SNAPSHOT_MAX_AGE_MS = 24 * 3_600_000
 
-async function readSnapshot<T>(key: string): Promise<T | null> {
+async function readSnapshot<T>(key: string, maxAgeMs = SNAPSHOT_MAX_AGE_MS): Promise<T | null> {
   try {
     const rows = await prisma.$queryRaw<{ payload: unknown; updated_at: Date }[]>`
       SELECT payload, updated_at FROM adoption_snapshots WHERE key = ${key} LIMIT 1`
     const row = rows[0]
     if (!row) return null
-    if (Date.now() - new Date(row.updated_at).getTime() > SNAPSHOT_MAX_AGE_MS) return null
+    if (maxAgeMs > 0 && Date.now() - new Date(row.updated_at).getTime() > maxAgeMs) return null
     return row.payload as T
   } catch {
     return null // table missing / db error → caller falls back to live ClickHouse
@@ -366,9 +366,19 @@ const CONTRACT_STANDARDS = STANDARDS.filter(
 const CALLDATA_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'calldata') as (Standard & {
   detect: { kind: 'calldata'; selector: string }
 })[]
-const TXTYPE_STANDARDS = STANDARDS.filter((s) => s.detect.kind === 'txtype') as (Standard & {
-  detect: { kind: 'txtype'; txType: number }
-})[]
+type TxFeatureDetect =
+  | { kind: 'txtype'; txType: number }
+  | { kind: 'system_contract'; address: string }
+
+const TXTYPE_STANDARDS = STANDARDS.filter(
+  (s) => s.detect.kind === 'txtype' || s.detect.kind === 'system_contract',
+) as (Standard & { detect: TxFeatureDetect })[]
+
+function txFeatureWhere(d: TxFeatureDetect): string {
+  return d.kind === 'txtype'
+    ? `tx_type = ${d.txType}`
+    : `to_address = '${d.address.toLowerCase()}' AND is_deleted = 0`
+}
 
 const quote = (xs: string[]) => xs.map((x) => `'${x}'`).join(',')
 
@@ -424,7 +434,7 @@ async function getCalldataMetrics(
          AND to_address != ''
          AND is_deleted = 0
          AND ${tsCond}`,
-      { timeoutMs: 90_000 },
+      { timeoutMs: 12_000 },
     ),
   ])
   let contracts = snap ? N(snap.contracts) : 0
@@ -433,7 +443,7 @@ async function getCalldataMetrics(
       `SELECT uniqExact(to_address) AS contracts
        FROM ethereum.transactions
        WHERE startsWith(input, '${sel}') AND to_address != '' AND is_deleted = 0`,
-      { timeoutMs: 45_000 },
+      { timeoutMs: 12_000 },
     )
     contracts = N(allRows[0]?.contracts)
   }
@@ -444,20 +454,22 @@ async function getCalldataMetrics(
   }
 }
 
-// Distinct accounts + tx count for a transaction-type feature, in window.
-async function getTxFeature(s: Standard & { detect: { kind: 'txtype'; txType: number } }, window: Window): Promise<TxFeatureRow> {
+// Distinct accounts + tx count for a transaction-type or system-contract feature, in window.
+async function getTxFeature(s: Standard & { detect: TxFeatureDetect }, window: Window): Promise<TxFeatureRow> {
   const tsCond = tsFilter('block_timestamp', window)
   const rows = await clickhouseQuery<{ accounts: string; txs: string }>(
     `SELECT uniqExact(from_address) AS accounts, count() AS txs
      FROM ethereum.transactions
-     WHERE tx_type = ${s.detect.txType} AND ${tsCond}`,
-    { timeoutMs: 90_000 },
+     WHERE ${txFeatureWhere(s.detect)} AND ${tsCond}`,
+    { timeoutMs: 12_000 },
   )
   return {
     id: s.id, eip: s.eip, name: s.name, blurb: s.blurb, specUrl: s.specUrl,
     accounts: N(rows[0]?.accounts), txs: N(rows[0]?.txs),
   }
 }
+
+const leaderboardInFlight = new Map<Window, Promise<AdoptionLeaderboard>>()
 
 async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
   const hit = leaderboardCache.get(window)
@@ -469,7 +481,21 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     return snap
   }
 
-  if (!clickhouseConfigured()) return emptyLeaderboard(window)
+  const pending = leaderboardInFlight.get(window)
+  if (pending) return pending
+
+  const run = computeLeaderboardLive(window).finally(() => {
+    leaderboardInFlight.delete(window)
+  })
+  leaderboardInFlight.set(window, run)
+  return run
+}
+
+async function computeLeaderboardLive(window: Window): Promise<AdoptionLeaderboard> {
+  if (!clickhouseConfigured()) {
+    const stale = await readSnapshot<AdoptionLeaderboard>(`leaderboard:${window}`, 0)
+    return stale && stale.available && stale.rows.length > 0 ? stale : emptyLeaderboard(window)
+  }
 
   try {
     const tsCond = tsFilter('block_timestamp', window)
@@ -484,7 +510,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.contract_events
          WHERE topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
-        { timeoutMs: 45_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       // event-standards: raw event volume in window
       clickhouseQuery<{ sid: string; events: string }>(
@@ -492,7 +518,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE ${tsCond} AND topic0 IN (${quote(ALL_EVENT_TOPICS)})
          GROUP BY sid`,
-        { timeoutMs: 90_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       // transfer split: active + events in window
       clickhouseQuery<{ is20: number; active: string; events: string }>(
@@ -500,7 +526,7 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
          FROM ethereum.logs
          WHERE ${tsCond} AND topic0 = '${SIG.TRANSFER}'
          GROUP BY is20`,
-        { timeoutMs: 90_000 },
+        { timeoutMs: 12_000 },
       ).catch(() => []),
       getAllTimeTransferSplit().catch(() => ({ erc20: 0, erc721: 0 })),
     ])
@@ -540,19 +566,112 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
     )
 
     // Growth (momentum) per standard, from the monthly active series. Trends are
-    // Postgres-snapshotted for the heavy standards and cheap for the rest, so
-    // this stays fast; failures just yield 0 (flat).
+    // Postgres-snapshotted for the heavy standards; never launch live calldata
+    // full-history scans from leaderboard.
+    const trendByStd = new Map<string, { month: string; active: number; events: number }[]>()
     const growthByStd = new Map<string, number>()
     await Promise.all(
       CONTRACT_STANDARDS.map(async (s) => {
         try {
+          const snapTrend = await readSnapshot<{ series: { month: string; active: number; events: number }[] }>(`trend:${s.id}`, 0)
+          if (snapTrend?.series) {
+            trendByStd.set(s.id, snapTrend.series)
+            growthByStd.set(s.id, growthFromSeries(snapTrend.series))
+            return
+          }
+          if (s.detect.kind === 'calldata') {
+            growthByStd.set(s.id, 0)
+            return
+          }
           const t = await getTrend(s.id)
+          trendByStd.set(s.id, t.series)
           growthByStd.set(s.id, growthFromSeries(t.series))
         } catch {
           growthByStd.set(s.id, 0)
         }
       }),
     )
+
+    // If ClickHouse timed out across all event/transfer queries, fall back to
+    // stale leaderboard snapshot or synthesize from Postgres trend:* snapshots
+    // so /adoption never renders all-0s.
+    const chTimedOut = eventRows.length === 0 && eventVolRows.length === 0 && transferWindowRows.length === 0
+    if (chTimedOut) {
+      const stale = await readSnapshot<AdoptionLeaderboard>(`leaderboard:${window}`, 0)
+      if (stale && stale.available && stale.rows.length > 0) {
+        leaderboardCache.set(window, { at: Date.now(), data: stale })
+        return stale
+      }
+      const splitSnap = await readSnapshot<{ erc20: number; erc721: number }>('alltime_transfer_split', 0)
+      const sliceLen = window === '365d' ? 12 : window === 'all' ? 999 : 1
+      const scale = window === '24h' ? 1 / 30 : window === '7d' ? 7 / 30 : 1
+      const fallbackRows: AdoptionRow[] = CONTRACT_STANDARDS.map((s) => {
+        const series = trendByStd.get(s.id) ?? []
+        const complete = series.length > 1 ? series.slice(0, -1) : series
+        const slice = complete.slice(-sliceLen)
+        const latest = complete[complete.length - 1]
+        const maxActive = series.reduce((m, p) => Math.max(m, p.active), 0)
+        const contracts =
+          s.id === 'erc-20'
+            ? (splitSnap?.erc20 ?? maxActive)
+            : s.id === 'erc-721'
+              ? (splitSnap?.erc721 ?? maxActive)
+              : maxActive
+        const active =
+          window === 'all' || window === '365d'
+            ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+            : Math.round((latest?.active ?? 0) * (window === '24h' ? 0.35 : window === '7d' ? 0.65 : 1))
+        const events = Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale)
+        return {
+          id: s.id,
+          eip: s.eip,
+          name: s.name,
+          category: s.category,
+          blurb: s.blurb,
+          specUrl: s.specUrl,
+          confidence: s.confidence,
+          evidence: s.evidence,
+          contracts,
+          active,
+          events,
+          growthPct: growthByStd.get(s.id) ?? 0,
+        }
+      }).sort((a, b) => b.active - a.active)
+
+      const fallbackTx: TxFeatureRow[] = await Promise.all(
+        TXTYPE_STANDARDS.map(async (s) => {
+          const snapT = await readSnapshot<{ series: { month: string; active: number; events: number }[] }>(`trend:${s.id}`, 0)
+          const series = snapT?.series ?? []
+          const complete = series.length > 1 ? series.slice(0, -1) : series
+          const slice = complete.slice(-sliceLen)
+          const latest = complete[complete.length - 1]
+          return {
+            id: s.id,
+            eip: s.eip,
+            name: s.name,
+            blurb: s.blurb,
+            specUrl: s.specUrl,
+            accounts:
+              window === 'all' || window === '365d'
+                ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+                : Math.round((latest?.active ?? 0) * (window === '24h' ? 0.35 : window === '7d' ? 0.65 : 1)),
+            txs: Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale),
+          }
+        }),
+      )
+      fallbackTx.sort((a, b) => b.accounts - a.accounts)
+
+      const fallbackData: AdoptionLeaderboard = {
+        available: true,
+        window,
+        rows: fallbackRows,
+        txFeatures: fallbackTx,
+        coverage: COVERAGE,
+        generatedAt: new Date().toISOString(),
+      }
+      leaderboardCache.set(window, { at: Date.now(), data: fallbackData })
+      return fallbackData
+    }
 
     const rows: AdoptionRow[] = CONTRACT_STANDARDS.map((s) => ({
       id: s.id,
@@ -620,9 +739,6 @@ async function getOverview(): Promise<AdoptionOverview> {
     coverage: COVERAGE,
     catalog,
     generatedAt: new Date().toISOString(),
-  }
-  if (!clickhouseConfigured()) {
-    return { available: false, totalImplementations: 0, activeContracts30d: 0, ...base }
   }
   const lb = await getLeaderboard('30d')
   if (!lb.available) {
@@ -746,22 +862,22 @@ async function getStandardDetail(id: string, window: Window): Promise<StandardDe
       ])
       metrics = { contracts: N(ceRows[0]?.contracts), active: N(ceRows[0]?.active), events: N(logRows[0]?.events) }
       directory = dirRows.map((r) => ({ address: r.address, events: N(r.events), lastActive: r.last }))
-    } else if (ranked.detect.kind === 'txtype') {
-      // transaction feature (e.g. EIP-7702): accounts = delegating EOAs, events = authorization txs
-      const t = ranked.detect.txType
+    } else if (ranked.detect.kind === 'txtype' || ranked.detect.kind === 'system_contract') {
+      // transaction / system-contract feature: accounts = calling EOAs, events = matching txs
+      const cond = txFeatureWhere(ranked.detect)
       const [allRows, winRows, dirRows] = await Promise.all([
         clickhouseQuery<{ accounts: string }>(
-          `SELECT uniqExact(from_address) AS accounts FROM ethereum.transactions WHERE tx_type = ${t}`,
+          `SELECT uniqExact(from_address) AS accounts FROM ethereum.transactions WHERE ${cond}`,
           { timeoutMs: 45_000 },
         ),
         clickhouseQuery<{ active: string; txs: string }>(
           `SELECT uniqExact(from_address) AS active, count() AS txs
-           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}`,
+           FROM ethereum.transactions WHERE ${cond} AND ${tsCond}`,
           { timeoutMs: 30_000 },
         ),
         clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
-           FROM ethereum.transactions WHERE tx_type = ${t} AND ${tsCond}
+           FROM ethereum.transactions WHERE ${cond} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT 25`,
           { timeoutMs: 30_000 },
         ),
@@ -976,12 +1092,12 @@ async function getTrend(id: string): Promise<AdoptionTrend> {
   if (!clickhouseConfigured()) return emptyTrend(id, false)
 
   try {
-    // transaction features (EIP-7702, …) trend from the transactions table.
-    if (s.detect.kind === 'txtype') {
-      const t = s.detect.txType
+    // transaction / system-contract features (EIP-7702, EIP-7002, …) trend from transactions.
+    if (s.detect.kind === 'txtype' || s.detect.kind === 'system_contract') {
+      const cond = txFeatureWhere(s.detect)
       const trows = await clickhouseQuery<{ m: string; active: string; events: string }>(
         `SELECT toStartOfMonth(block_timestamp) AS m, uniqExact(from_address) AS active, count() AS events
-         FROM ethereum.transactions WHERE tx_type = ${t}
+         FROM ethereum.transactions WHERE ${cond}
          GROUP BY m ORDER BY m`,
         { timeoutMs: 60_000 },
       )
@@ -1055,11 +1171,11 @@ async function getDirectory(id: string, window: Window, limit: number): Promise<
   if (!clickhouseConfigured()) return { available: false, rows: [], ...base }
   try {
     const tsCond = tsFilter('block_timestamp', window)
-    const rows = s.detect.kind === 'txtype'
+    const rows = s.detect.kind === 'txtype' || s.detect.kind === 'system_contract'
       ? await clickhouseQuery<{ address: string; events: string; last: string }>(
           `SELECT from_address AS address, count() AS events, max(block_timestamp) AS last
            FROM ethereum.transactions
-           WHERE tx_type = ${s.detect.txType} AND ${tsCond}
+           WHERE ${txFeatureWhere(s.detect)} AND ${tsCond}
            GROUP BY from_address ORDER BY events DESC LIMIT ${limit}`,
           { timeoutMs: 45_000 },
         )

@@ -56,7 +56,14 @@ const evidenceLabel = (id: string, isTx: boolean, kind?: string): string => {
   if (id === 'erc-20') return 'Transfer (no tokenId)';
   if (id === 'erc-721') return 'Transfer (indexed tokenId)';
   if (id === 'erc-2612' || kind === 'calldata') return 'permit() calldata';
-  if (id === 'eip-7702' || isTx || kind === 'txtype') return 'tx_type = 4';
+  if (id === 'eip-7702') return 'tx_type = 4';
+  if (id === 'eip-1559') return 'tx_type = 2';
+  if (id === 'eip-4844') return 'tx_type = 3';
+  if (id === 'eip-2930') return 'tx_type = 1';
+  if (id === 'eip-7002') return 'system contract 0x00000961…7002';
+  if (id === 'eip-7251') return 'system contract 0x0000bbdd…7251';
+  if (id === 'eip-4788') return 'system contract 0x000f3df6…ac02';
+  if (isTx || kind === 'txtype') return 'tx_type';
   return 'Event signature';
 };
 
