@@ -99,11 +99,7 @@ export function GlamsterdamResearch() {
             <span className="accent">busiest mainnet contracts</span>.
           </>
         }
-      >
-        <span className="mono text-xs">Fork · <span className="text-[var(--ink)]">{META.fork}</span></span>
-        <span className="text-[var(--border-strong)]">·</span>
-        <span className="mono text-xs">{META.eips}</span>
-      </PageHead>
+      />
 
       <div className="wrap py-6 sm:py-8">
         {/* the repricing, in numbers */}

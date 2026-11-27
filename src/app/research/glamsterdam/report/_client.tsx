@@ -48,11 +48,7 @@ export function GlamsterdamReport() {
             The <Link href="/research/glamsterdam" className="accent hover:underline">numbers and charts live on the research page</Link>; this is the write-up.
           </>
         }
-      >
-        <span className="mono text-xs">Fork · <span className="text-[var(--ink)]">{META.fork}</span></span>
-        <span className="text-[var(--border-strong)]">·</span>
-        <span className="mono text-xs">{META.eips}</span>
-      </PageHead>
+      />
 
       <div className="wrap py-8 sm:py-12">
         <Link
