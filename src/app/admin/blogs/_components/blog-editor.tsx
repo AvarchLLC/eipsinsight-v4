@@ -345,7 +345,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
         <div className="flex items-center gap-1.5">
           {mode === "edit" && slug && (
             <Link
-              href={`/resources/blogs/${slug}`}
+              href={`/blogs/${slug}`}
               target="_blank"
               className="flex h-8 items-center gap-1.5 rounded-lg border border-border px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             >
@@ -536,7 +536,7 @@ export function BlogEditor({ mode, postId, initialData }: BlogEditorProps) {
                     </button>
                   </div>
                   <p className="mt-1 text-[10px] text-muted-foreground">
-                    /resources/blogs/{slug || "…"}
+                    /blogs/{slug || "…"}
                   </p>
                 </div>
 

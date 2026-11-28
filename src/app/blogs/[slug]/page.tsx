@@ -222,7 +222,7 @@ export default function BlogPostPage() {
     return (
       <div className="page-shell py-24 text-center">
         <h1 className="dec-title text-xl font-semibold text-foreground">Post not found</h1>
-        <Link href="/resources/blogs" className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
+        <Link href="/blogs" className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
           <ArrowLeft className="h-4 w-4" /> Back to Journal
         </Link>
       </div>
@@ -239,7 +239,7 @@ export default function BlogPostPage() {
       <header className="page-shell pt-10 pb-0">
         {/* Back link */}
         <Link
-          href="/resources/blogs"
+          href="/blogs"
           className="mb-8 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
         >
           <ArrowLeft className="h-3.5 w-3.5" />
@@ -250,7 +250,7 @@ export default function BlogPostPage() {
           {/* Category */}
           {post.category && (
             <Link
-              href={`/resources/blogs?category=${post.category.slug}`}
+              href={`/blogs?category=${post.category.slug}`}
               className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
             >
               {post.category.name}
@@ -507,7 +507,7 @@ export default function BlogPostPage() {
                     {relatedPosts.map((rp) => (
                       <Link
                         key={rp.id}
-                        href={`/resources/blogs/${rp.slug}`}
+                        href={`/blogs/${rp.slug}`}
                         className="group block border-t border-border/40 pt-4 first:border-t-0 first:pt-0"
                       >
                         {rp.category && (

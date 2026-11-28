@@ -29,7 +29,7 @@ function stripMarkdown(md: string): string {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const path = `/resources/blogs/${slug}`;
+  const path = `/blogs/${slug}`;
 
   try {
     const post = await prisma.blog.findUnique({
@@ -123,7 +123,7 @@ export default async function BlogSlugLayout({ children, params }: Props) {
     });
 
     if (post?.published) {
-      const path = `/resources/blogs/${slug}`;
+      const path = `/blogs/${slug}`;
       const description =
         post.excerpt?.trim() ||
         stripMarkdown(post.content).slice(0, 160) ||
