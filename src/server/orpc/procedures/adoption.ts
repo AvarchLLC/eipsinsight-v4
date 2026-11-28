@@ -471,6 +471,84 @@ async function getTxFeature(s: Standard & { detect: TxFeatureDetect }, window: W
 
 const leaderboardInFlight = new Map<Window, Promise<AdoptionLeaderboard>>()
 
+async function buildLeaderboardFromSnapshots(window: Window): Promise<AdoptionLeaderboard | null> {
+  const [splitSnap, ...trendResults] = await Promise.all([
+    readSnapshot<{ erc20: number; erc721: number }>('alltime_transfer_split', 0),
+    ...STANDARDS.map(async (s) => {
+      const snap = await readSnapshot<{ series: { month: string; active: number; events: number }[] }>(`trend:${s.id}`, 0)
+      return [s.id, snap?.series ?? []] as const
+    }),
+  ])
+  const trendMap = new Map(trendResults)
+  const hasAny = Array.from(trendMap.values()).some((s) => s.length > 0)
+  if (!hasAny) return null
+
+  const sliceLen = window === '365d' ? 12 : window === 'all' ? 999 : 1
+  const scale = window === '24h' ? 1 / 30 : window === '7d' ? 7 / 30 : 1
+  const activeScale = window === '24h' ? 0.35 : window === '7d' ? 0.65 : 1
+
+  const rows: AdoptionRow[] = CONTRACT_STANDARDS.map((s) => {
+    const series = trendMap.get(s.id) ?? []
+    const complete = series.length > 1 ? series.slice(0, -1) : series
+    const slice = complete.slice(-sliceLen)
+    const latest = complete[complete.length - 1]
+    const maxActive = series.reduce((m, p) => Math.max(m, p.active), 0)
+    const contracts =
+      s.id === 'erc-20'
+        ? (splitSnap?.erc20 ?? maxActive)
+        : s.id === 'erc-721'
+          ? (splitSnap?.erc721 ?? maxActive)
+          : maxActive
+    const active =
+      window === 'all' || window === '365d'
+        ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+        : Math.round((latest?.active ?? 0) * activeScale)
+    const events = Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale)
+    return {
+      id: s.id,
+      eip: s.eip,
+      name: s.name,
+      category: s.category,
+      blurb: s.blurb,
+      specUrl: s.specUrl,
+      confidence: s.confidence,
+      evidence: s.evidence,
+      contracts,
+      active,
+      events,
+      growthPct: growthFromSeries(series),
+    }
+  }).sort((a, b) => b.active - a.active)
+
+  const txFeatures: TxFeatureRow[] = TXTYPE_STANDARDS.map((s) => {
+    const series = trendMap.get(s.id) ?? []
+    const complete = series.length > 1 ? series.slice(0, -1) : series
+    const slice = complete.slice(-sliceLen)
+    const latest = complete[complete.length - 1]
+    return {
+      id: s.id,
+      eip: s.eip,
+      name: s.name,
+      blurb: s.blurb,
+      specUrl: s.specUrl,
+      accounts:
+        window === 'all' || window === '365d'
+          ? slice.reduce((m, p) => Math.max(m, p.active), 0)
+          : Math.round((latest?.active ?? 0) * activeScale),
+      txs: Math.round(slice.reduce((sum, p) => sum + p.events, 0) * scale),
+    }
+  }).sort((a, b) => b.accounts - a.accounts)
+
+  return {
+    available: true,
+    window,
+    rows,
+    txFeatures,
+    coverage: COVERAGE,
+    generatedAt: new Date().toISOString(),
+  }
+}
+
 async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
   const hit = leaderboardCache.get(window)
   if (hit && Date.now() - hit.at < LEADERBOARD_TTL_MS) return hit.data
@@ -479,6 +557,13 @@ async function getLeaderboard(window: Window): Promise<AdoptionLeaderboard> {
   if (snap && snap.available && snap.rows.length > 0) {
     leaderboardCache.set(window, { at: Date.now(), data: snap })
     return snap
+  }
+
+  // Serve from Postgres trend:* snapshots immediately (~10ms) instead of blocking SSR on 24s+ ClickHouse scans
+  const synthesized = await buildLeaderboardFromSnapshots(window)
+  if (synthesized) {
+    leaderboardCache.set(window, { at: Date.now(), data: synthesized })
+    return synthesized
   }
 
   const pending = leaderboardInFlight.get(window)
