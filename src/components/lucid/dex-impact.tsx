@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { BarChart, Bar, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
+import { BarChart, Bar, CartesianGrid, Cell, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
 import { Bot, Crosshair, Droplets, Layers } from 'lucide-react';
 import { client } from '@/lib/orpc';
 import type { DexImpact } from '@/server/orpc/procedures/mev';
@@ -127,8 +127,15 @@ export function DexImpactView() {
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             <Kpi icon={Crosshair} accent="text-rose-500" label="Sandwich attacks" value={compact(data.totalSandwiches)} />
+            <Kpi
+              icon={Layers}
+              accent="text-amber-500"
+              label="Logical campaigns"
+              value={compact(data.campaigns)}
+              sub={`${compact(data.multiVictimCampaigns)} multi-victim`}
+            />
             <Kpi icon={Bot} accent="text-orange-500" label="Active bots" value={compact(data.uniqueBots)} />
             <Kpi icon={Layers} accent="text-violet-500" label="DEX protocols hit" value={`${data.protocols.length}`} />
             <Kpi icon={Droplets} accent="text-cyan-500" label="Pools attacked" value={compact(data.protocols.reduce((s, p) => s + p.pools, 0))} />
@@ -156,6 +163,62 @@ export function DexImpactView() {
               </ResponsiveContainer>
             </div>
           </div>
+
+          {/* Pool activity vs. attacks scatter */}
+          {data.pools.some((p) => p.totalSwaps != null && p.totalSwaps > 0) && (
+            <div className="rounded-xl border border-border bg-card/60 p-4">
+              <h3 className="mb-1 flex items-center gap-2 text-sm font-bold tracking-tight text-foreground">
+                <Droplets className="h-4 w-4 text-primary" /> Pool activity vs. sandwich attacks
+              </h3>
+              <p className="mb-2 text-[11px] text-muted-foreground">
+                Total swaps in pool (x) vs. sandwich attacks (y) across the top targeted pools. Bubble size reflects attack share %.
+              </p>
+              <div className="h-56 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <ScatterChart margin={{ top: 8, right: 20, left: 4, bottom: 8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke={CHART_GRID} />
+                    <XAxis
+                      type="number"
+                      dataKey="totalSwaps"
+                      name="Pool swaps"
+                      tick={{ fill: CHART_AXIS, fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => compact(Number(v))}
+                    />
+                    <YAxis
+                      type="number"
+                      dataKey="attacks"
+                      name="Attacks"
+                      tick={{ fill: CHART_AXIS, fontSize: 10 }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(v) => compact(Number(v))}
+                    />
+                    <ZAxis type="number" dataKey="attackRatePct" range={[45, 320]} name="Attack %" />
+                    <Tooltip
+                      contentStyle={CHART_TOOLTIP}
+                      formatter={(val: number, name: string) =>
+                        name === 'Attack %' ? [`${val}%`, name] : [compact(Number(val)), name]
+                      }
+                      labelFormatter={(_, payload) => {
+                        const item = payload?.[0]?.payload as DexImpact['pools'][number] | undefined;
+                        if (!item) return '';
+                        const pair = item.token0 || item.token1 ? `${tokenLabel(item.token0)}/${tokenLabel(item.token1)}` : addr(item.pool);
+                        return `${pair} (${protoLabel(item.protocol)})`;
+                      }}
+                    />
+                    <Scatter
+                      data={data.pools.filter((p) => (p.totalSwaps ?? 0) > 0)}
+                      fill="#8b5cf6"
+                      fillOpacity={0.75}
+                      isAnimationActive={false}
+                    />
+                  </ScatterChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* Bot leaderboard */}
@@ -214,6 +277,8 @@ export function DexImpactView() {
                       <th className="px-4 py-2 text-left font-semibold">Pool</th>
                       <th className="px-3 py-2 text-left font-semibold">Pair</th>
                       <th className="px-3 py-2 text-left font-semibold">DEX</th>
+                      <th className="px-3 py-2 text-right font-semibold">Swaps</th>
+                      <th className="px-3 py-2 text-right font-semibold">Attack %</th>
                       <th className="px-4 py-2 text-right font-semibold">Attacks</th>
                     </tr>
                   </thead>
@@ -234,6 +299,12 @@ export function DexImpactView() {
                           {p.token0 || p.token1 ? `${tokenLabel(p.token0)} / ${tokenLabel(p.token1)}` : '—'}
                         </td>
                         <td className="px-3 py-2 text-xs text-muted-foreground">{protoLabel(p.protocol)}</td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
+                          {p.totalSwaps != null ? compact(p.totalSwaps) : '—'}
+                        </td>
+                        <td className="px-3 py-2 text-right font-mono tabular-nums text-muted-foreground">
+                          {p.attackRatePct != null ? `${p.attackRatePct}%` : '—'}
+                        </td>
                         <td className="px-4 py-2 text-right font-mono font-semibold tabular-nums text-foreground">{compact(p.attacks)}</td>
                       </tr>
                     ))}
@@ -260,11 +331,13 @@ function Kpi({
   accent,
   label,
   value,
+  sub,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   accent: string;
   label: string;
   value: string;
+  sub?: string;
 }) {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-3.5">
@@ -272,6 +345,7 @@ function Kpi({
         <Icon className={cn('h-3.5 w-3.5', accent)} /> {label}
       </div>
       <div className="mt-1.5 text-2xl font-bold tabular-nums tracking-tight text-foreground">{value}</div>
+      {sub && <div className="mt-0.5 text-[11px] text-muted-foreground">{sub}</div>}
     </div>
   );
 }

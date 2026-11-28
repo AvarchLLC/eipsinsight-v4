@@ -371,6 +371,8 @@ export interface DexPool {
   token0: string
   token1: string
   attacks: number
+  totalSwaps: number | null
+  attackRatePct: number | null
 }
 export interface DexProtocol {
   protocol: string
@@ -380,6 +382,8 @@ export interface DexProtocol {
 export interface DexImpact {
   available: boolean
   totalSandwiches: number
+  campaigns: number
+  multiVictimCampaigns: number
   uniqueBots: number
   bots: DexBot[]
   pools: DexPool[]
@@ -392,6 +396,8 @@ export interface DexImpact {
 const emptyDexImpact: DexImpact = {
   available: false,
   totalSandwiches: 0,
+  campaigns: 0,
+  multiVictimCampaigns: 0,
   uniqueBots: 0,
   bots: [],
   pools: [],
@@ -413,7 +419,7 @@ async function getDexImpact(range: Range): Promise<DexImpact> {
     const { from, to } = resolveRange(range)
     const where = `block_timestamp >= toDateTime('${from} 00:00:00') AND block_timestamp < toDateTime('${to} 00:00:00') + INTERVAL 1 DAY`
 
-    const [botRows, poolRows, protoRows, totalRows] = await Promise.all([
+    const [botRows, poolRows, protoRows, totalRows, campaignRows] = await Promise.all([
       clickhouseQuery<{ bot: string; attacks: string; pools: string; protocols: string }>(`
         SELECT sandwicher AS bot, count() AS attacks, uniqExact(pool) AS pools, uniqExact(protocol) AS protocols
         FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
@@ -433,20 +439,54 @@ async function getDexImpact(range: Range): Promise<DexImpact> {
         SELECT count() AS total, uniqExact(sandwicher) AS bots
         FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
       `),
+      clickhouseQuery<{ campaigns: string; multi_victim: string }>(`
+        SELECT count() AS campaigns, countIf(cnt > 1) AS multi_victim
+        FROM (
+          SELECT block_number, sandwicher, pool, count() AS cnt
+          FROM blob_lens.mev_sandwiches FINAL WHERE ${where}
+          GROUP BY block_number, sandwicher, pool
+        )
+      `, { timeoutMs: 10_000 }).catch(() => []),
     ])
+
+    const swapByPool = new Map<string, number>()
+    if (poolRows.length > 0) {
+      const addrs = poolRows.map((p) => `'${p.pool.toLowerCase()}'`).join(',')
+      const topics = SWAP_TOPICS.map((t) => `'${t}'`).join(',')
+      const swapRows = await clickhouseQuery<{ address: string; swaps: string }>(`
+        SELECT lower(address) AS address, count() AS swaps
+        FROM ethereum.logs
+        WHERE ${where} AND address IN (${addrs}) AND topic0 IN (${topics})
+        GROUP BY address
+      `, { timeoutMs: 10_000 }).catch(() => [])
+      for (const s of swapRows) swapByPool.set(s.address, N(s.swaps))
+    }
+
+    const totalSandwiches = N(totalRows[0]?.total)
+    const campaigns = N(campaignRows[0]?.campaigns) || totalSandwiches
+    const multiVictimCampaigns = N(campaignRows[0]?.multi_victim)
 
     const data: DexImpact = {
       available: true,
-      totalSandwiches: N(totalRows[0]?.total),
+      totalSandwiches,
+      campaigns,
+      multiVictimCampaigns,
       uniqueBots: N(totalRows[0]?.bots),
       bots: botRows.map((b) => ({ bot: b.bot, attacks: N(b.attacks), pools: N(b.pools), protocols: N(b.protocols) })),
-      pools: poolRows.map((p) => ({
-        pool: p.pool,
-        protocol: p.protocol,
-        token0: p.token0,
-        token1: p.token1,
-        attacks: N(p.attacks),
-      })),
+      pools: poolRows.map((p) => {
+        const attacks = N(p.attacks)
+        const totalSwaps = swapByPool.get(p.pool.toLowerCase()) ?? null
+        const attackRatePct = totalSwaps && totalSwaps > 0 ? Math.round((10000 * attacks) / totalSwaps) / 100 : null
+        return {
+          pool: p.pool,
+          protocol: p.protocol,
+          token0: p.token0,
+          token1: p.token1,
+          attacks,
+          totalSwaps,
+          attackRatePct,
+        }
+      }),
       protocols: protoRows.map((p) => ({ protocol: p.protocol, attacks: N(p.attacks), pools: N(p.pools) })),
       from,
       to,
