@@ -60,10 +60,11 @@ type BlogPost = {
 
 type Heading = { id: string; text: string; level: number };
 
-function useArticleReadProgress(rootRef: React.RefObject<HTMLDivElement | null>) {
+function useArticleReadProgress(rootRef: React.RefObject<HTMLDivElement | null>, ready: boolean) {
   const [pct, setPct] = useState(0);
 
   useEffect(() => {
+    if (!ready) return;
     const el = rootRef.current;
     if (!el) return;
 
@@ -72,7 +73,7 @@ function useArticleReadProgress(rootRef: React.RefObject<HTMLDivElement | null>)
     let cur: HTMLElement | null = el.parentElement;
     while (cur) {
       const style = getComputedStyle(cur);
-      if (/(auto|scroll)/.test(style.overflowY) && cur.scrollHeight > cur.clientHeight) {
+      if (/(auto|scroll)/.test(style.overflowY) && cur.scrollHeight > cur.clientHeight + 2) {
         scrollParent = cur;
         break;
       }
@@ -93,12 +94,14 @@ function useArticleReadProgress(rootRef: React.RefObject<HTMLDivElement | null>)
 
     update();
     scrollParent.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update, { passive: true });
     return () => {
       scrollParent.removeEventListener("scroll", update);
+      window.removeEventListener("scroll", update);
       window.removeEventListener("resize", update);
     };
-  }, [rootRef]);
+  }, [rootRef, ready]);
 
   return pct;
 }
@@ -119,7 +122,7 @@ export default function BlogPostPage() {
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
   const pageRef = useRef<HTMLDivElement | null>(null);
-  const readPct = useArticleReadProgress(pageRef);
+  const readPct = useArticleReadProgress(pageRef, !loading && Boolean(post));
 
   useEffect(() => {
     const stored = localStorage.getItem("blog-like-key");
