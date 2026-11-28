@@ -122,6 +122,7 @@ const mobileNavSections = [
       { title: "Contributors", href: "/analytics/contributors", icon: LineChart },
       { title: "Monthly", href: "/insights", icon: Lightbulb },
       { title: "Editorial", href: "/insights/commentary", icon: Lightbulb },
+      { title: "The Journal (Blogs)", href: "/blogs", icon: BookOpen },
     ],
   },
   {
@@ -145,7 +146,6 @@ const mobileNavSections = [
     label: "Resources",
     items: [
       { title: "Docs", href: "/resources/docs", icon: BookOpen },
-      { title: "Blogs", href: "/resources/blogs", icon: BookOpen },
       { title: "Videos", href: "/resources/videos", icon: BookOpen },
       { title: "News", href: "/resources/news", icon: BookOpen },
       { title: "FAQ", href: "/resources/faq", icon: BookOpen },

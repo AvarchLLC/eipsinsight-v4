@@ -251,7 +251,7 @@ export default function VideosPage() {
                 Open Documentation
               </Link>
               <Link
-                href="/resources/blogs"
+                href="/blogs"
                 className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground transition-all hover:border-primary/40 hover:bg-primary/10 hover:text-primary"
               >
                 Read Commentary

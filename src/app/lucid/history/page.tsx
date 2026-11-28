@@ -119,7 +119,7 @@ const STEPS: EvolutionaryStep[] = [
     category: 'eips',
     tag: 'EIP-8184',
     status: 'Proposed',
-    description: 'Public encrypted transaction inclusion with commit-before-reveal semantics using Sealed Transactions and key release.',
+    description: 'Public encrypted transaction inclusion with commit-before-reveal semantics using Sealed Transactions and key release. Optionality was decoupled into a follow-on EIP (ETM #012), with companion specs EIP-8491 and consensus-specs#5403 under CL review.',
     significance: 'Combines public permissionless inclusion with hidden transaction intent to eliminate front-running and sandwiching.',
     link: '/eip/8184',
   },

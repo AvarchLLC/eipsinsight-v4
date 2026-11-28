@@ -220,7 +220,7 @@ export default function NewsletterPage() {
 
           {/* Footer nav */}
           <div className="mt-6 flex flex-wrap justify-center gap-4">
-            {[['Home', '/'], ['Blog', '/resources/blogs'], ['About', '/about']].map(([label, href]) => (
+            {[['Home', '/'], ['Blog', '/blogs'], ['About', '/about']].map(([label, href]) => (
               <Link key={label} href={href} className="text-xs text-muted-foreground transition-colors hover:text-foreground">
                 {label}
               </Link>

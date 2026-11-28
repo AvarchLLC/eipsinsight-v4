@@ -21,7 +21,7 @@ const STATIC_PUBLIC_PATHS = [
   "/insights",
   "/insights/commentary",
   "/resources",
-  "/resources/blogs",
+  "/blogs",
   "/resources/docs",
   "/resources/faq",
   "/resources/news",
@@ -89,7 +89,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ]);
 
   const blogEntries: MetadataRoute.Sitemap = blogs.map((post) => ({
-    url: `${SITE_URL}/resources/blogs/${post.slug}`,
+    url: `${SITE_URL}/blogs/${post.slug}`,
     lastModified: post.updatedAt ?? now,
     changeFrequency: "weekly",
     priority: 0.8,

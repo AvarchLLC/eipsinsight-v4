@@ -279,13 +279,17 @@ const sidebarSections: SidebarSection[] = [
         href: "/resources",
         items: [
           { title: "Docs", href: "/resources/docs" },
-          { title: "Blogs", href: "/resources/blogs" },
           { title: "Videos", href: "/resources/videos" },
           { title: "News", href: "/resources/news" },
           { title: "FAQ", href: "/resources/faq" },
           { title: "Milestones", href: "/resources/milestones" },
           { title: "About Us", href: "/about" },
         ],
+      },
+      {
+        title: "The Journal (Blogs)",
+        icon: BookOpen,
+        href: "/blogs",
       },
     ],
   },
