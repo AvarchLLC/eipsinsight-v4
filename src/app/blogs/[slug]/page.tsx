@@ -7,8 +7,10 @@ import { useParams } from "next/navigation";
 import { cloudinaryLoader } from "@/lib/cloudinary-loader";
 import {
   ArrowLeft,
+  ArrowUpRight,
   Calendar,
   Check,
+  ChevronDown,
   Clock,
   Copy,
   ListTree,
@@ -18,6 +20,7 @@ import {
   MessageCircle,
   Send,
   Twitter,
+  X,
 } from "lucide-react";
 import { client } from "@/lib/orpc";
 import { MarkdownRenderer } from "@/components/markdown-renderer";
@@ -77,6 +80,7 @@ export default function BlogPostPage() {
   const [likeKey, setLikeKey] = useState<string | null>(null);
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [tocOpen, setTocOpen] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("blog-like-key");
@@ -212,147 +216,205 @@ export default function BlogPostPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div data-ledger className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[var(--ink-muted)]" />
       </div>
     );
   }
 
   if (error || !post) {
     return (
-      <div className="page-shell py-24 text-center">
-        <h1 className="dec-title text-xl font-semibold text-foreground">Post not found</h1>
-        <Link href="/blogs" className="mt-4 inline-flex items-center gap-1.5 text-sm text-primary hover:underline">
-          <ArrowLeft className="h-4 w-4" /> Back to Journal
+      <div data-ledger className="wrap py-24 text-center">
+        <h1 className="font-serif text-xl font-bold text-[var(--ink)]">Post not found</h1>
+        <Link href="/blogs" className="mt-4 inline-flex items-center gap-1.5 font-mono text-xs text-[var(--brand-strong)] hover:underline">
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Journal
         </Link>
       </div>
     );
   }
 
   const profile = post.author.blog_editor_profile;
+  const activeHeadingText = headings.find((h) => h.id === activeHeadingId)?.text ?? headings[0]?.text ?? "Contents";
 
   return (
-    <div className="min-h-screen bg-background pb-24">
+    <div data-ledger className="min-h-screen pb-24">
       <ReadingProgressBar />
 
-      {/* ── Article header ── */}
-      <header className="page-shell pt-10 pb-0">
-        {/* Back link */}
-        <Link
-          href="/blogs"
-          className="mb-8 inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-widest text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-3.5 w-3.5" />
-          Journal
-        </Link>
-
-        <div className="max-w-4xl space-y-5">
-          {/* Category */}
-          {post.category && (
+      {/* ── Article masthead ── */}
+      <header className="masthead">
+        <div className="mx-auto max-w-4xl px-4 py-8 sm:px-6 sm:py-10">
+          <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
             <Link
-              href={`/blogs?category=${post.category.slug}`}
-              className="inline-flex items-center rounded-md border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-primary transition-colors hover:bg-primary/20"
+              href="/blogs"
+              className="inline-flex items-center gap-1.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted)] transition-colors hover:text-[var(--ink)]"
             >
-              {post.category.name}
+              <ArrowLeft className="h-3.5 w-3.5" />
+              The Journal
             </Link>
-          )}
+            {post.category && (
+              <Link
+                href={`/blogs?category=${post.category.slug}`}
+                className="chip px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-[var(--brand-strong)] hover:border-[var(--ink)]"
+              >
+                {post.category.name}
+              </Link>
+            )}
+          </div>
 
-          {/* Title */}
-          <h1 className="dec-title persona-title text-balance text-3xl font-semibold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-            {post.title}
-          </h1>
+          <h1 className="t-h1 text-balance">{post.title}</h1>
 
-          {/* Excerpt */}
           {post.excerpt && (
-            <p className="max-w-3xl text-pretty text-base leading-relaxed text-muted-foreground sm:text-lg">
-              {post.excerpt}
-            </p>
+            <p className="t-lead mt-3 max-w-3xl text-pretty">{post.excerpt}</p>
           )}
 
-          {/* Like + share toolbar — moved up here, right after the title/excerpt
-              and before the "written by" byline, so it's visible immediately. */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={handleLike}
-              className={cn(
-                "flex h-9 items-center gap-2 rounded-md border px-4 text-xs font-semibold uppercase tracking-wider transition-all",
-                liked
-                  ? "border-rose-500/50 bg-rose-500/10 text-rose-500"
-                  : "border-border bg-muted/60 text-muted-foreground hover:border-rose-500/30 hover:text-rose-500"
-              )}
-            >
-              <Heart className={cn("h-3.5 w-3.5", liked && "fill-current")} />
-              {likeCount}
-            </button>
-            <button
-              onClick={() => document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" })}
-              className="flex h-9 items-center gap-2 rounded-md border border-border bg-muted/60 px-4 text-xs font-semibold uppercase tracking-wider text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
-            >
-              <MessageCircle className="h-3.5 w-3.5" />
-              Discuss
-            </button>
+          {/* Meta + actions bar */}
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-[var(--border)] pt-5">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2.5">
+                <div className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full border border-[var(--border)] bg-[var(--surface-2)]">
+                  {post.author.image ? (
+                    <Image src={post.author.image} alt={post.author.name} fill sizes="32px" unoptimized className="object-cover" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center font-mono text-xs font-bold text-[var(--ink-muted)]">
+                      {post.author.name.charAt(0)}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <p className="text-xs font-semibold text-[var(--ink)]">{post.author.name}</p>
+                  <p className="font-mono text-[10px] text-[var(--ink-muted)]">
+                    {new Date(post.createdAt).toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })} · {post.readingTimeMinutes ?? 5} min read
+                  </p>
+                </div>
+              </div>
+            </div>
 
-            <div className="ml-auto flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                Share
-              </span>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                onClick={handleLike}
+                className={cn(
+                  "chip h-8 cursor-pointer gap-1.5 px-2.5 font-mono text-[11px]",
+                  liked
+                    ? "border-rose-500/50 bg-rose-500/10 text-rose-500"
+                    : "hover:border-[var(--ink)]"
+                )}
+              >
+                <Heart className={cn("h-3.5 w-3.5", liked && "fill-current")} />
+                {likeCount}
+              </button>
+              <button
+                type="button"
+                onClick={() => document.getElementById("comments")?.scrollIntoView({ behavior: "smooth" })}
+                className="chip h-8 cursor-pointer gap-1.5 px-2.5 font-mono text-[11px] hover:border-[var(--ink)]"
+              >
+                <MessageCircle className="h-3.5 w-3.5" />
+                Discuss
+              </button>
               {[
-                { id: "twitter", icon: Twitter },
-                { id: "linkedin", icon: Linkedin },
-              ].map(({ id, icon: Icon }) => (
+                { id: "twitter", icon: Twitter, label: "Share on X" },
+                { id: "linkedin", icon: Linkedin, label: "Share on LinkedIn" },
+              ].map(({ id, icon: Icon, label }) => (
                 <button
                   key={id}
+                  type="button"
+                  aria-label={label}
                   onClick={() => handleShare(id)}
-                  className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+                  className="chip h-8 w-8 cursor-pointer justify-center p-0 hover:border-[var(--ink)]"
                 >
                   <Icon className="h-3.5 w-3.5" />
                 </button>
               ))}
               <button
+                type="button"
+                aria-label="Copy link"
                 onClick={() => handleShare("copy")}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary"
+                className="chip h-8 w-8 cursor-pointer justify-center p-0 hover:border-[var(--ink)]"
               >
-                {copied ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? <Check className="h-3.5 w-3.5 text-[var(--brand-strong)]" /> : <Copy className="h-3.5 w-3.5" />}
               </button>
-            </div>
-          </div>
-
-          {/* Meta row */}
-          <div className="flex flex-wrap items-center gap-6 border-t border-border/60 pt-5">
-            <div className="flex items-center gap-2.5">
-              <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full border border-border bg-muted">
-                {post.author.image ? (
-                  <Image src={post.author.image} alt={post.author.name} fill sizes="36px" unoptimized className="object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-xs font-bold text-muted-foreground">
-                    {post.author.name.charAt(0)}
-                  </div>
-                )}
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-foreground">{post.author.name}</p>
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Author</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-4 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1.5">
-                <Calendar className="h-3.5 w-3.5" />
-                {new Date(post.createdAt).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" })}
-              </span>
-              <span className="flex items-center gap-1.5">
-                <Clock className="h-3.5 w-3.5" />
-                {post.readingTimeMinutes ?? 5} min read
-              </span>
             </div>
           </div>
         </div>
       </header>
 
+      {/* ── Top overlay TOC bar (replaces permanent left sidebar) ── */}
+      {headings.length > 0 && (
+        <div className="sticky top-14 z-30 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm">
+          <div className="relative mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
+            <button
+              type="button"
+              onClick={() => setTocOpen((o) => !o)}
+              className="inline-flex min-w-0 cursor-pointer items-center gap-2 rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1 text-left text-xs transition-colors hover:border-[var(--ink)]"
+            >
+              <ListTree className="h-3.5 w-3.5 shrink-0 text-[var(--brand-strong)]" />
+              <span className="truncate font-medium text-[var(--ink)]">{activeHeadingText}</span>
+              <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 text-[var(--ink-muted)] transition-transform", tocOpen && "rotate-180")} />
+            </button>
+
+            <div className="flex shrink-0 items-center gap-2">
+              <span className="hidden font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] sm:inline">
+                {headings.length} sections
+              </span>
+              <Link
+                href="/newsletter"
+                className="chip px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-[var(--brand-strong)] hover:border-[var(--ink)]"
+              >
+                Subscribe
+              </Link>
+            </div>
+
+            {tocOpen && (
+              <div className="absolute left-4 right-4 top-full z-40 mt-1.5 max-h-[60vh] overflow-y-auto rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-3 shadow-lg sm:left-6 sm:right-auto sm:w-96">
+                <div className="mb-2 flex items-center justify-between border-b border-[var(--border)] pb-2">
+                  <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-[var(--ink-muted)]">
+                    On this page
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setTocOpen(false)}
+                    className="rounded p-0.5 text-[var(--ink-faint)] hover:text-[var(--ink)]"
+                    aria-label="Close contents"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <nav className="space-y-0.5">
+                  {headings.map((h) => {
+                    const active = activeHeadingId === h.id;
+                    return (
+                      <a
+                        key={h.id}
+                        href={`#${h.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" });
+                          setActiveHeadingId(h.id);
+                          setTocOpen(false);
+                        }}
+                        className={cn(
+                          "block rounded-[var(--l-radius-control)] py-1.5 pr-2 text-xs transition-colors",
+                          h.level === 3 ? "pl-5" : "pl-2.5",
+                          active
+                            ? "bg-[var(--surface-2)] font-semibold text-[var(--brand-strong)]"
+                            : "text-[var(--ink-muted)] hover:bg-[var(--surface-2)] hover:text-[var(--ink)]"
+                        )}
+                      >
+                        {h.text}
+                      </a>
+                    );
+                  })}
+                </nav>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* ── Cover image ── */}
       {post.coverImage && (
-        <div className="page-shell pt-8">
-          <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-muted shadow-lg lg:aspect-[21/9]">
+        <div className="mx-auto max-w-4xl px-4 pt-8 sm:px-6">
+          <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface-2)]">
             <Image
               src={post.coverImage}
               alt={post.title}
@@ -360,190 +422,117 @@ export default function BlogPostPage() {
               priority
               loader={cloudinaryLoader}
               className="object-cover"
-              sizes="100vw"
+              sizes="(max-width: 1024px) 100vw, 896px"
             />
           </div>
         </div>
       )}
 
-      {/* ── Body: article + sidebar ── */}
-      <div className="page-shell pt-12">
-        <div className="flex flex-col gap-8 lg:flex-row lg:items-start">
+      {/* ── Full-page centered article body (no sidebar) ── */}
+      <div className="mx-auto max-w-4xl px-4 pt-10 sm:px-6">
+        <article className="min-w-0">
+          <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none
+            prose-headings:font-serif prose-headings:font-bold prose-headings:tracking-tight
+            prose-p:text-[var(--ink)]/90 prose-p:leading-relaxed
+            prose-a:text-[var(--brand-strong)] prose-a:no-underline hover:prose-a:underline
+            prose-img:rounded-[var(--l-radius)] prose-img:border prose-img:border-[var(--border)]
+            prose-pre:rounded-[var(--l-radius)] prose-pre:border prose-pre:border-[var(--border)] prose-pre:bg-[var(--surface-2)]
+            prose-code:text-[var(--brand-strong)] prose-code:bg-[var(--surface-2)] prose-code:rounded prose-code:px-1 prose-code:py-0.5">
+            <MarkdownRenderer content={post.content} skipPreamble />
+          </div>
 
-          {/* Article — fills the width left of / beside the sidebar (no max cap,
-              so there's no dead space next to it). */}
-          <article className="min-w-0 flex-1 lg:order-2">
-            <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none
-              prose-headings:dec-title prose-headings:font-semibold prose-headings:tracking-tight
-              prose-p:text-foreground/90 prose-p:leading-relaxed
-              prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-              prose-img:rounded-xl prose-img:border prose-img:border-border
-              prose-pre:rounded-lg prose-pre:border prose-pre:border-border prose-pre:bg-muted/40
-              prose-code:text-primary prose-code:bg-primary/10 prose-code:rounded prose-code:px-1 prose-code:py-0.5">
-              <MarkdownRenderer content={post.content} skipPreamble />
+          {/* Tags */}
+          {post.tags.length > 0 && (
+            <div className="mt-10 flex flex-wrap gap-1.5 border-t border-[var(--border)] pt-6">
+              {post.tags.map((tag) => (
+                <span key={tag} className="chip px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-wider">
+                  #{tag}
+                </span>
+              ))}
             </div>
+          )}
 
-            {/* ── Tags ── */}
-            {post.tags.length > 0 && (
-              <div className="mt-10 flex flex-wrap gap-2 border-t border-border/60 pt-8">
-                {post.tags.map((tag) => (
-                  <span key={tag} className="rounded-md border border-border bg-muted/60 px-3 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            {/* ── Author bio ── */}
-            <div className="mt-8 flex flex-col gap-6 rounded-xl border border-border bg-card/60 p-6 sm:flex-row sm:items-start">
-              <div className="relative h-20 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-muted">
-                {post.author.image ? (
-                  <Image src={post.author.image} alt={post.author.name} fill sizes="64px" unoptimized className="object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-muted-foreground">
-                    {post.author.name.charAt(0)}
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="dec-title text-lg font-semibold text-foreground">
-                  Written by {post.author.name}
-                </h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-                  {profile?.bio ?? `${post.author.name} is a contributor at EIPsInsight, documenting the evolution of Ethereum standards and protocol governance.`}
-                </p>
-                {(profile?.x || profile?.linkedin || profile?.telegram) && (
-                  <div className="mt-4 flex items-center gap-2">
-                    {profile.x && (
-                      <a href={profile.x} target="_blank" rel="noreferrer" className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary">
-                        <Twitter className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                    {profile.linkedin && (
-                      <a href={profile.linkedin} target="_blank" rel="noreferrer" className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary">
-                        <Linkedin className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                    {profile.telegram && (
-                      <a href={`https://t.me/${profile.telegram}`} target="_blank" rel="noreferrer" className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-muted/60 text-muted-foreground transition-all hover:border-primary/40 hover:text-primary">
-                        <Send className="h-3.5 w-3.5" />
-                      </a>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* ── Comments ── */}
-            <section id="comments" className="mt-12">
-              <div className="mb-6 flex items-center gap-4">
-                <h2 className="dec-title text-xl font-semibold text-foreground sm:text-2xl">Discussion</h2>
-                <div className="flex-1 border-t border-border/60" />
-              </div>
-              <PageComments />
-            </section>
-          </article>
-
-          {/* ── Sidebar (left of the article on desktop; stays after it in DOM
-              order so mobile shows the article first) ── */}
-          <aside className="hidden w-64 shrink-0 lg:sticky lg:top-28 lg:order-1 lg:block">
-            <div className="space-y-8">
-
-              {/* Table of contents — a distinct live rail: accent header + icon,
-                  a continuous rail, and a filled accent dot marking the heading
-                  currently in view (matches the app sidebar's "On this page"). */}
-              {headings.length > 0 && (
-                <div className="rounded-xl border border-primary/15 bg-primary/[0.04] p-4">
-                  <div className="mb-2.5 flex items-center gap-1.5">
-                    <ListTree className="h-4 w-4 text-primary" />
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-primary/90">
-                      On this page
-                    </h3>
-                  </div>
-                  <nav className="relative space-y-0.5 border-l border-border/60">
-                    {headings.map((h) => {
-                      const active = activeHeadingId === h.id;
-                      return (
-                        <a
-                          key={h.id}
-                          href={`#${h.id}`}
-                          className={cn(
-                            "group relative flex items-center rounded-md py-1.5 pr-2 text-sm transition-colors",
-                            h.level === 3 ? "pl-6" : "pl-4",
-                            active
-                              ? "font-medium text-primary"
-                              : "text-muted-foreground/80 hover:text-foreground"
-                          )}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            document.getElementById(h.id)?.scrollIntoView({ behavior: "smooth" });
-                            setActiveHeadingId(h.id);
-                          }}
-                        >
-                          <span
-                            aria-hidden
-                            className={cn(
-                              "absolute top-1/2 -translate-y-1/2 rounded-full transition-all",
-                              active
-                                ? "-left-[4px] h-2 w-2 bg-primary ring-2 ring-background"
-                                : "left-[-1px] h-1 w-1 bg-border group-hover:bg-primary/60"
-                            )}
-                          />
-                          <span className="truncate">{h.text}</span>
-                        </a>
-                      );
-                    })}
-                  </nav>
+          {/* Author bio */}
+          <div className="mt-8 flex flex-col gap-5 rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-5 sm:flex-row sm:items-start">
+            <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)]">
+              {post.author.image ? (
+                <Image src={post.author.image} alt={post.author.name} fill sizes="64px" unoptimized className="object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center font-serif text-xl font-bold text-[var(--ink-muted)]">
+                  {post.author.name.charAt(0)}
                 </div>
               )}
-
-              {/* Related posts */}
-              {relatedPosts.length > 0 && (
-                <div className="rounded-xl border border-border bg-card/60 p-5">
-                  <h3 className="mb-4 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
-                    Continue reading
-                  </h3>
-                  <div className="space-y-4">
-                    {relatedPosts.map((rp) => (
-                      <Link
-                        key={rp.id}
-                        href={`/blogs/${rp.slug}`}
-                        className="group block border-t border-border/40 pt-4 first:border-t-0 first:pt-0"
-                      >
-                        {rp.category && (
-                          <span className="mb-1.5 block text-[10px] font-semibold uppercase tracking-wider text-primary">
-                            {rp.category.name}
-                          </span>
-                        )}
-                        <h4 className="dec-title line-clamp-2 text-sm font-semibold text-foreground transition-colors group-hover:text-primary">
-                          {rp.title}
-                        </h4>
-                        <div className="mt-1.5 flex items-center gap-1 text-[10px] text-muted-foreground">
-                          <Clock className="h-3 w-3" />
-                          {rp.readingTimeMinutes ?? 5} min
-                        </div>
-                      </Link>
-                    ))}
-                  </div>
+            </div>
+            <div className="flex-1">
+              <p className="font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)]">Author</p>
+              <h3 className="mt-0.5 font-serif text-lg font-bold text-[var(--ink)]">{post.author.name}</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-[var(--ink-muted)]">
+                {profile?.bio ?? `${post.author.name} is a contributor at EIPsInsight, documenting the evolution of Ethereum standards and protocol governance.`}
+              </p>
+              {(profile?.x || profile?.linkedin || profile?.telegram) && (
+                <div className="mt-3 flex items-center gap-2">
+                  {profile.x && (
+                    <a href={profile.x} target="_blank" rel="noreferrer" className="chip h-8 w-8 justify-center p-0 hover:border-[var(--ink)]">
+                      <Twitter className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {profile.linkedin && (
+                    <a href={profile.linkedin} target="_blank" rel="noreferrer" className="chip h-8 w-8 justify-center p-0 hover:border-[var(--ink)]">
+                      <Linkedin className="h-3.5 w-3.5" />
+                    </a>
+                  )}
+                  {profile.telegram && (
+                    <a href={`https://t.me/${profile.telegram}`} target="_blank" rel="noreferrer" className="chip h-8 w-8 justify-center p-0 hover:border-[var(--ink)]">
+                      <Send className="h-3.5 w-3.5" />
+                    </a>
+                  )}
                 </div>
               )}
+            </div>
+          </div>
 
-              {/* Newsletter nudge */}
-              <div className="rounded-xl border border-primary/20 bg-primary/5 p-5">
-                <h3 className="dec-title text-base font-semibold text-foreground">Stay updated</h3>
-                <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
-                  Ethereum upgrades & EIP analysis straight to your inbox.
-                </p>
-                <Link
-                  href="/newsletter"
-                  className="mt-4 inline-flex w-full h-9 items-center justify-center rounded-md persona-gradient text-xs font-semibold uppercase tracking-wider text-black shadow-sm transition hover:opacity-90"
-                >
-                  Subscribe
+          {/* Continue reading (moved from sidebar to bottom grid) */}
+          {relatedPosts.length > 0 && (
+            <section className="mt-12 border-t border-[var(--border)] pt-8">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="font-serif text-xl font-bold text-[var(--ink)]">Continue reading</h2>
+                <Link href="/blogs" className="font-mono text-xs text-[var(--brand-strong)] hover:underline">
+                  All articles →
                 </Link>
               </div>
-            </div>
-          </aside>
-        </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {relatedPosts.map((rp) => (
+                  <Link
+                    key={rp.id}
+                    href={`/blogs/${rp.slug}`}
+                    className="group flex flex-col justify-between rounded-[var(--l-radius)] border border-[var(--border)] bg-[var(--surface)] p-4 transition-colors hover:border-[var(--ink)]"
+                  >
+                    <div>
+                      {rp.category && (
+                        <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--brand-strong)]">
+                          {rp.category.name}
+                        </span>
+                      )}
+                      <h3 className="mt-1.5 line-clamp-2 font-serif text-sm font-bold leading-snug text-[var(--ink)] group-hover:text-[var(--brand-strong)]">
+                        {rp.title}
+                      </h3>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-[var(--border)] pt-2.5 font-mono text-[10px] text-[var(--ink-muted)]">
+                      <span>{rp.readingTimeMinutes ?? 5} min read</span>
+                      <ArrowUpRight className="h-3.5 w-3.5 text-[var(--ink-faint)] group-hover:text-[var(--ink)]" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Comments */}
+          <section id="comments" className="mt-12 border-t border-[var(--border)] pt-8">
+            <h2 className="mb-5 font-serif text-xl font-bold text-[var(--ink)]">Discussion</h2>
+            <PageComments />
+          </section>
+        </article>
       </div>
     </div>
   );
