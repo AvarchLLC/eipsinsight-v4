@@ -338,9 +338,9 @@ export default function BlogPostPage() {
         </div>
       </header>
 
-      {/* ── Top overlay TOC bar (replaces permanent left sidebar) ── */}
+      {/* ── Top overlay TOC bar (flush under navbar, solid Ledger surface) ── */}
       {headings.length > 0 && (
-        <div className="sticky top-14 z-30 border-b border-[var(--border)] bg-[var(--bg)]/95 backdrop-blur-sm">
+        <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]">
           <div className="relative mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
             <button
               type="button"
