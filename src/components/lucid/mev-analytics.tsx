@@ -162,7 +162,17 @@ export function MevAnalytics({ featured = false }: { featured?: boolean }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             <Metric icon={Crosshair} accent="text-rose-500" label="Sandwich Attacks" value={compactNum(mev.totalSandwiches)} sub={rangeLabel} />
             <Metric icon={Users} accent="text-orange-500" label="Unique Victims" value={compactNum(mev.uniqueVictims)} sub="swaps exploited" />
-            <Metric icon={ShieldAlert} accent="text-amber-500" label="Extracted Value" value={usdCompact(mev.botProfitUsd)} sub="bot gross profit" />
+            <Metric
+              icon={ShieldAlert}
+              accent="text-amber-500"
+              label="Extracted Value"
+              value={usdCompact(mev.botProfitUsd)}
+              sub={
+                mev.victimVolumeUsd > 0
+                  ? `${((mev.botProfitUsd / mev.victimVolumeUsd) * 100).toFixed(3)}% of victim vol`
+                  : 'bot gross profit'
+              }
+            />
             <Metric
               icon={Coins}
               accent="text-emerald-500"
@@ -193,10 +203,20 @@ export function MevAnalytics({ featured = false }: { featured?: boolean }) {
                   href="/lucid#lucid-mev"
                   className="inline-flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <TrendingUp className="h-3.5 w-3.5" /> See the full MEV analytics on the Lucid hub
-                  <ArrowUpRight className="h-3.5 w-3.5" />
+                  View full MEV charts &amp; breakdown →
                 </Link>
               )}
+
+          {featured && (
+            <div className="rounded-xl border border-border bg-card/50 p-4 text-xs leading-relaxed text-muted-foreground">
+              <p className="font-semibold uppercase tracking-wider text-foreground">
+                Sandwich Index Methodology (Lower Bound)
+              </p>
+              <p className="mt-1.5">
+                Matches canonical same-pool, same-block triples (<span className="font-mono text-foreground">frontrun &lt; victim &lt; backrun</span>) with matching attacker sender and distinct victim sender across Uniswap v2/v3/v4, SushiSwap, Curve, DODO, Balancer, and PancakeSwap. Extracted value is gross attacker profit winsorized at $10,000/attack and tracked separately from victim swap volume. Figures are a conservative floor (~75% pool coverage; unmapped pools, unpriced tokens, multi-leg splits, and cross-pool/JIT strategies are excluded).
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>
