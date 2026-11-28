@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useParams } from "next/navigation";
@@ -60,10 +60,47 @@ type BlogPost = {
 
 type Heading = { id: string; text: string; level: number };
 
-function ReadingProgressBar() {
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
-  return <motion.div className="fixed top-0 left-0 right-0 z-50 h-0.5 origin-left bg-primary" style={{ scaleX }} />;
+function useArticleReadProgress(rootRef: React.RefObject<HTMLDivElement | null>) {
+  const [pct, setPct] = useState(0);
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+
+    // Find the actual scrollable ancestor (layout main/SidebarInset) or fall back to window
+    let scrollParent: HTMLElement | Window = window;
+    let cur: HTMLElement | null = el.parentElement;
+    while (cur) {
+      const style = getComputedStyle(cur);
+      if (/(auto|scroll)/.test(style.overflowY) && cur.scrollHeight > cur.clientHeight) {
+        scrollParent = cur;
+        break;
+      }
+      cur = cur.parentElement;
+    }
+
+    const update = () => {
+      if (scrollParent === window) {
+        const doc = document.documentElement;
+        const max = doc.scrollHeight - window.innerHeight;
+        setPct(max > 0 ? Math.min(100, Math.max(0, Math.round((window.scrollY / max) * 100))) : 0);
+      } else {
+        const box = scrollParent as HTMLElement;
+        const max = box.scrollHeight - box.clientHeight;
+        setPct(max > 0 ? Math.min(100, Math.max(0, Math.round((box.scrollTop / max) * 100))) : 0);
+      }
+    };
+
+    update();
+    scrollParent.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update, { passive: true });
+    return () => {
+      scrollParent.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, [rootRef]);
+
+  return pct;
 }
 
 export default function BlogPostPage() {
@@ -81,6 +118,8 @@ export default function BlogPostPage() {
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
   const [tocOpen, setTocOpen] = useState(false);
+  const pageRef = useRef<HTMLDivElement | null>(null);
+  const readPct = useArticleReadProgress(pageRef);
 
   useEffect(() => {
     const stored = localStorage.getItem("blog-like-key");
@@ -237,8 +276,7 @@ export default function BlogPostPage() {
   const activeHeadingText = headings.find((h) => h.id === activeHeadingId)?.text ?? headings[0]?.text ?? "Contents";
 
   return (
-    <div data-ledger className="min-h-screen pb-24">
-      <ReadingProgressBar />
+    <div ref={pageRef} data-ledger className="min-h-screen pb-24">
 
       {/* ── Article masthead ── */}
       <header className="masthead">
@@ -341,6 +379,12 @@ export default function BlogPostPage() {
       {/* ── Top overlay TOC bar (flush under navbar, solid Ledger surface) ── */}
       {headings.length > 0 && (
         <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[var(--surface)]">
+          <div className="h-0.5 w-full bg-[var(--surface-2)]">
+            <div
+              className="h-full bg-[var(--brand-strong)] transition-[width] duration-150"
+              style={{ width: `${readPct}%` }}
+            />
+          </div>
           <div className="relative mx-auto flex max-w-4xl items-center justify-between gap-3 px-4 py-2 sm:px-6">
             <button
               type="button"
@@ -353,8 +397,8 @@ export default function BlogPostPage() {
             </button>
 
             <div className="flex shrink-0 items-center gap-2">
-              <span className="hidden font-mono text-[10px] uppercase tracking-wider text-[var(--ink-faint)] sm:inline">
-                {headings.length} sections
+              <span className="rounded-[var(--l-radius-control)] border border-[var(--border)] bg-[var(--surface-2)] px-2 py-0.5 font-mono text-[10px] font-semibold tabular-nums text-[var(--ink-muted)]">
+                {readPct >= 98 ? "Done · 100%" : `${readPct}% read`}
               </span>
               <Link
                 href="/newsletter"

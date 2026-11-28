@@ -292,27 +292,27 @@ const markdownComponents: Components = {
     );
   },
   table: ({ children, node: _node, ...props }: any) => (
-    <div className="my-6 w-full overflow-x-auto rounded-xl border border-border bg-card/60">
-      <table className="w-full border-collapse text-sm" {...props}>
+    <div className="not-prose my-6 w-full overflow-x-auto rounded-[var(--l-radius,6px)] border border-[var(--border,hsl(var(--border)))] bg-[var(--surface,hsl(var(--card)))]">
+      <table className="w-full border-collapse text-left text-sm" {...props}>
         {children}
       </table>
     </div>
   ),
   thead: ({ children, node: _node, ...props }: any) => (
-    <thead className="bg-muted/40" {...props}>
+    <thead className="border-b border-[var(--border,hsl(var(--border)))] bg-[var(--surface-2,hsl(var(--muted)))]" {...props}>
       {children}
     </thead>
   ),
   th: ({ children, node: _node, ...props }: any) => (
     <th
-      className="border-b border-border px-4 py-2 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground"
+      className="px-4 py-2.5 text-left font-mono text-[11px] font-semibold uppercase tracking-wider text-[var(--ink-muted,hsl(var(--muted-foreground)))]"
       {...props}
     >
       {children}
     </th>
   ),
   td: ({ children, node: _node, ...props }: any) => (
-    <td className="border-b border-border/60 px-4 py-2 text-sm text-foreground" {...props}>
+    <td className="border-t border-[var(--border,hsl(var(--border)))]/70 px-4 py-3 align-top text-sm leading-relaxed text-[var(--ink,hsl(var(--foreground)))]" {...props}>
       {children}
     </td>
   ),
